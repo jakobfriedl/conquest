@@ -1,2 +1,1 @@
-# conquest
-Conquest Command &amp; Control Framework
+# Conquest Command & Control Framework
