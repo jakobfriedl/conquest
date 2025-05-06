@@ -1,3 +1,2 @@
-# Define command line switches in this file
---define:usestd
+# Compiler flags
 --threads:on
