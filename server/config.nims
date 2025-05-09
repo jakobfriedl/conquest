@@ -1,2 +1,2 @@
 # Compiler flags
---threads:on
+# --threads:on
