@@ -1,13 +1,12 @@
-import strformat, strutils, sequtils, checksums/sha1, nanoid, terminal, sugar
+import strformat, strutils, sequtils, checksums/sha1, nanoid, terminal
 import prologue
 
 import ./[api, utils]
 import ../types
 import ../db/database
 
-
-proc listenerUsage*(console: Console) = 
-    console.writeLine("""Manage, start and stop listeners.
+proc listenerUsage*(cq: Conquest) = 
+    cq.writeLine("""Manage, start and stop listeners.
 
 Usage:
   listener [options] COMMAND
@@ -21,18 +20,18 @@ Commands:
 Options:
   -h, --help""")
 
-proc listenerList*(console: Console) = 
-    let listeners = console.dbGetAllListeners()
-    console.drawTable(listeners)
+proc listenerList*(cq: Conquest) = 
+    let listeners = cq.dbGetAllListeners()
+    cq.drawTable(listeners)
 
-proc listenerStart*(console: Console, host: string, portStr: string) = 
+proc listenerStart*(cq: Conquest, host: string, portStr: string) = 
 
     # Validate arguments
     # if not validateIPv4Address(host): 
-    #     console.writeLine(fgRed, styleBright, fmt"Invalid IPv4 IP address: {ip}.")
+    #     cq.writeLine(fgRed, styleBright, fmt"Invalid IPv4 IP address: {ip}.")
     #     return
     if not validatePort(portStr):
-        console.writeLine(fgRed, styleBright, fmt"[-] Invalid port number: {portStr}")
+        cq.writeLine(fgRed, styleBright, fmt"[-] Invalid port number: {portStr}")
         return
 
     let port = portStr.parseInt
@@ -50,26 +49,25 @@ proc listenerStart*(console: Console, host: string, portStr: string) =
     var listener = newApp(settings = listenerSettings)
 
     # Define API endpoints
-    listener.addRoute("/", api.index, @[HttpGet])
-    listener.addRoute("/register", api.agentRegister, @[HttpPost])
-    listener.addRoute("/{name}/tasks", api.addTasks, @[HttpGet, HttpPost])
+    listener.post("{listener}/register", api.register)
+    listener.get("{listener}/{agent}/tasks", api.getTasks)
+    listener.post("{listener}/{agent}/results", api.postResults)
 
     # Store listener in database
     let listenerInstance = newListener(name, host, port)
-    if not console.dbStore(listenerInstance):
+    if not cq.dbStoreListener(listenerInstance):
         return
 
     # Start serving
     try:
         discard listener.runAsync() 
-        console.activeListeners.add(listener)
-        inc console.listeners
-        console.writeLine(fgGreen, "[+] ", resetStyle, "Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on port {portStr}.")
+        inc cq.listeners
+        cq.writeLine(fgGreen, "[+] ", resetStyle, "Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on port {portStr}.")
     except CatchableError as err: 
-        console.writeLine(fgRed, styleBright, "[-] Failed to start listener: ", getCurrentExceptionMsg())
+        cq.writeLine(fgRed, styleBright, "[-] Failed to start listener: ", getCurrentExceptionMsg())
 
-proc restartListeners*(console: Console) = 
-    let listeners: seq[Listener] = console.dbGetAllListeners()
+proc restartListeners*(cq: Conquest) = 
+    let listeners: seq[Listener] = cq.dbGetAllListeners()
     
     # Restart all active listeners that are stored in the database
     for l in listeners: 
@@ -83,29 +81,28 @@ proc restartListeners*(console: Console) =
             listener = newApp(settings = settings)
 
         # Define API endpoints
-        listener.addRoute("/", api.index, @[HttpGet])
-        listener.addRoute("/register", api.agentRegister, @[HttpPost])
-        listener.addRoute("/{name}/tasks", api.addTasks, @[HttpGet, HttpPost])
+        listener.post("{listener}/register", api.register)
+        listener.get("{listener}/{agent}/tasks", api.getTasks)
+        listener.post("{listener}/{agent}/results", api.postResults)
 
         try:
             discard listener.runAsync() 
-            console.activeListeners.add(listener)
-            inc console.listeners
-            console.writeLine(fgGreen, "[+] ", resetStyle, "Restarted listener", fgGreen, fmt" {l.name} ", resetStyle, fmt"on port {$l.port}.")
+            inc cq.listeners
+            cq.writeLine(fgGreen, "[+] ", resetStyle, "Restarted listener", fgGreen, fmt" {l.name} ", resetStyle, fmt"on port {$l.port}.")
         except CatchableError as err: 
-            console.writeLine(fgRed, styleBright, "[-] Failed to restart listener: ", getCurrentExceptionMsg())
+            cq.writeLine(fgRed, styleBright, "[-] Failed to restart listener: ", getCurrentExceptionMsg())
         
         # Delay before starting serving another listener to avoid crashing the application
         waitFor sleepAsync(10)
 
-    console.writeLine("")
+    cq.writeLine("")
 
-proc listenerStop*(console: Console, name: string) = 
+proc listenerStop*(cq: Conquest, name: string) = 
         
-    if not console.dbDeleteListenerByName(name.toUpperAscii): 
-        console.writeLine(fgRed, styleBright, "[-] Failed to stop listener: ", getCurrentExceptionMsg())
+    if not cq.dbDeleteListenerByName(name.toUpperAscii): 
+        cq.writeLine(fgRed, styleBright, "[-] Failed to stop listener: ", getCurrentExceptionMsg())
         return
 
-    dec console.listeners
-    console.writeLine(fgGreen, "[+] ", resetStyle, "Stopped listener ", fgGreen, fmt"{name.toUpperAscii}.")
+    dec cq.listeners
+    cq.writeLine(fgGreen, "[+] ", resetStyle, "Stopped listener ", fgGreen, name.toUpperAscii, resetStyle, ".")
     

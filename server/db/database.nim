@@ -3,10 +3,10 @@ import ../types
 
 import system, terminal, strformat
 
-proc dbInit*(console: Console) =
+proc dbInit*(cq: Conquest) =
 
     try: 
-        let conquestDb = openDatabase(console.dbPath, mode=dbReadWrite)
+        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
         # Create tables
         conquestDb.execScript("""
@@ -21,15 +21,15 @@ proc dbInit*(console: Console) =
 
         """)
         
-        console.writeLine(fgGreen, "[+] ", console.dbPath, ": Database created.")
+        cq.writeLine(fgGreen, "[+] ", cq.dbPath, ": Database created.")
         conquestDb.close()
     except SqliteError: 
-        console.writeLine(fgGreen, "[+] ", console.dbPath, ": Database file found.")
+        cq.writeLine(fgGreen, "[+] ", cq.dbPath, ": Database file found.")
 
-proc dbStore*(console: Console, listener: Listener): bool = 
+proc dbStoreListener*(cq: Conquest, listener: Listener): bool = 
 
     try: 
-        let conquestDb = openDatabase(console.dbPath, mode=dbReadWrite)
+        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
         conquestDb.exec("""
         INSERT INTO listener (name, address, port, protocol, sleep, jitter)
@@ -38,17 +38,17 @@ proc dbStore*(console: Console, listener: Listener): bool =
 
         conquestDb.close() 
     except: 
-        console.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
+        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
         return false
     
     return true
 
-proc dbGetAllListeners*(console: Console): seq[Listener] = 
+proc dbGetAllListeners*(cq: Conquest): seq[Listener] = 
 
     var listeners: seq[Listener] = @[]
 
     try: 
-        let conquestDb = openDatabase(console.dbPath, mode=dbReadWrite)
+        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
         for row in conquestDb.iterate("SELECT name, address, port, protocol, sleep, jitter FROM listener;"):
             let (name, address, port, protocol, sleep, jitter) = row.unpack((string, string, int, string, int, float ))
@@ -65,13 +65,13 @@ proc dbGetAllListeners*(console: Console): seq[Listener] =
 
         conquestDb.close()
     except: 
-        console.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
+        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
 
     return listeners
 
-proc dbDeleteListenerByName*(console: Console, name: string): bool =
+proc dbDeleteListenerByName*(cq: Conquest, name: string): bool =
     try: 
-        let conquestDb = openDatabase(console.dbPath, mode=dbReadWrite)
+        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
         conquestDb.exec("DELETE FROM listener WHERE name = ?", name)
 
@@ -81,5 +81,5 @@ proc dbDeleteListenerByName*(console: Console, name: string): bool =
     
     return true
 
-proc dbStore*(agent: Agent): bool = 
+proc dbStoreAgent*(agent: Agent): bool = 
     discard

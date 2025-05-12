@@ -41,23 +41,23 @@ proc row(cells: seq[string], widths: seq[int]): string =
         row.add(" " & cell.alignLeft(widths[i] - 2) & " " & vert)
     return row
 
-proc drawTable*(console: Console, listeners: seq[Listener]) = 
+proc drawTable*(cq: Conquest, listeners: seq[Listener]) = 
 
     # Column headers and widths
     let headers = @["Name", "Address", "Port", "Protocol", "Agents"]
     let widths = @[10, 15, 7, 10, 8]
 
-    console.writeLine(border(topLeft, topMid, topRight, widths))
-    console.writeLine(row(headers, widths))
-    console.writeLine(border(midLeft, midMid, midRight, widths))
+    cq.writeLine(border(topLeft, topMid, topRight, widths))
+    cq.writeLine(row(headers, widths))
+    cq.writeLine(border(midLeft, midMid, midRight, widths))
 
     for l in listeners:
         # TODO: Add number of agents connected to the listener
         let row = @[l.name, l.address, $l.port, $l.protocol, "X"]
-        console.writeLine(row(row, widths)) 
+        cq.writeLine(row(row, widths)) 
 
-    console.writeLine(border(botLeft, botMid, botRight, widths)) 
+    cq.writeLine(border(botLeft, botMid, botRight, widths)) 
 
 
-proc drawTable*(console: Console, agents: seq[Agent]) = 
+proc drawTable*(cq: Conquest, agents: seq[Agent]) = 
     discard

@@ -2,58 +2,110 @@ import prompt
 import prologue
 
 #[
-    Console 
+    Conquest 
 ]#
 type 
-    Console* = ref object
+    Conquest* = ref object
         prompt*: Prompt
         listeners*: int
         agents*: int
         dbPath*: string
-        activeListeners*: seq[Prologue]
 
-    Command* = object
-        cmd*: string
-        execute*: proc(console: Console, args: varargs[string])
-
-proc newConsole*(): Console = 
-    var console = new Console
+proc initConquest*(): Conquest = 
+    var cq = new Conquest
     var prompt = Prompt.init()
-    console.prompt = prompt
-    console.dbPath = "db/conquest.db"
-    console.listeners = 0
-    console.agents = 0
-    console.activeListeners = @[]
+    cq.prompt = prompt
+    cq.dbPath = "db/conquest.db"
+    cq.listeners = 0
+    cq.agents = 0
 
-    return console
+    return cq
 
-template writeLine*(console: Console, args: varargs[untyped]) = 
-    console.prompt.writeLine(args)
-proc readLine*(console: Console): string =
-    return console.prompt.readLine()
-template setIndicator*(console: Console, indicator: string) = 
-    console.prompt.setIndicator(indicator)
-template showPrompt*(console: Console) = 
-    console.prompt.showPrompt()
-template hidePrompt*(console: Console) = 
-    console.prompt.hidePrompt()
-template setStatusBar*(console: Console, statusBar: seq[StatusBarItem]) = 
-    console.prompt.setStatusBar(statusBar) 
-template clear*(console: Console) = 
-    console.prompt.clear()
+template writeLine*(cq: Conquest, args: varargs[untyped]) = 
+    cq.prompt.writeLine(args)
+proc readLine*(cq: Conquest): string =
+    return cq.prompt.readLine()
+template setIndicator*(cq: Conquest, indicator: string) = 
+    cq.prompt.setIndicator(indicator)
+template showPrompt*(cq: Conquest) = 
+    cq.prompt.showPrompt()
+template hidePrompt*(cq: Conquest) = 
+    cq.prompt.hidePrompt()
+template setStatusBar*(cq: Conquest, statusBar: seq[StatusBarItem]) = 
+    cq.prompt.setStatusBar(statusBar) 
+template clear*(cq: Conquest) = 
+    cq.prompt.clear()
 
 # Overwrite withOutput function to handle function arguments
-proc withOutput*(console: Console, outputFunction: proc(console: Console, args: varargs[string]), args: varargs[string]) =
-    console.hidePrompt()
-    outputFunction(console, args)
-    console.showPrompt()
+proc withOutput*(cq: Conquest, outputFunction: proc(cq: Conquest, args: varargs[string]), args: varargs[string]) =
+    cq.hidePrompt()
+    outputFunction(cq, args)
+    cq.showPrompt()
 
 #[
     Agent
 ]#
 type 
+
+    TaskCommand* = enum 
+        ExecuteShell = "shell"
+        ExecuteBof = "bof"
+        ExecuteAssembly = "dotnet"
+        ExecutePe = "pe"
+
+    TaskStatus* = enum 
+        Created = "created"
+        Completed = "completed"
+        Pending = "pending"
+        Failed = "failed"
+        Cancelled = "cancelled"
+
+    TaskResult* = string 
+
+    Task* = ref object 
+        id*: int 
+        agent*: string
+        command*: TaskCommand
+        args*: seq[string]
+        result*: TaskResult
+        status*: TaskStatus        
+
+    AgentRegistrationData* = object
+        username*: string
+        hostname*: string
+        ip*: string
+        os*: string 
+        pid*: int 
+        elevated*: bool
+
     Agent* = ref object 
         name*: string
+        listener*: string 
+        sleep*: int 
+        jitter*: float 
+        pid*: int
+        username*: string 
+        hostname*: string
+        ip*: string
+        os*: string
+        elevated*: bool 
+        tasks*: seq[Task]
+
+proc newAgent*(name, listener, username, hostname, ip, os: string, pid: int, elevated: bool): Agent = 
+    var agent = new Agent
+    agent.name = name 
+    agent.listener = listener 
+    agent.pid = pid 
+    agent.username = username 
+    agent.hostname = hostname 
+    agent.ip = ip 
+    agent.os = os
+    agent.elevated = elevated 
+    agent.sleep = 10
+    agent.jitter = 0.2
+    agent.tasks = @[]
+
+    return agent
 
 #[
     Listener 
