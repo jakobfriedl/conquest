@@ -1,6 +1,6 @@
 import prompt, terminal
 import argparse
-import strutils, strformat, times, system, unicode
+import strutils, strformat, times, system, tables
 
 import ./[types, globals]
 import agent/agent, listener/listener, db/database
@@ -21,6 +21,7 @@ var parser = newParser:
             option("-h", "-host", default=some("0.0.0.0"), help="IPv4 address to listen on.", required=false)
             option("-p", "-port", help="Port to listen on.", required=true)
             # flag("--dns", help="Use the DNS protocol for C2 communication.")
+            # flag("--doh", help="Use DNS over HTTPS for C2 communication.)
         command("stop"):
             help("Stop an active listener.")
             option("-n", "-name", help="Name of the listener to stop.", required=true)
@@ -131,7 +132,7 @@ proc main() =
     # Main loop
     while true: 
         cq.setIndicator("[conquest]> ")
-        cq.setStatusBar(@[("mode", "manage"), ("listeners", $cq.listeners), ("agents", $cq.agents)])    
+        cq.setStatusBar(@[("mode", "manage"), ("listeners", $len(cq.listeners)), ("agents", $len(cq.agents))])    
         cq.showPrompt() 
             
         var command: string = cq.readLine()

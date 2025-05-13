@@ -3,7 +3,9 @@ import terminal, sequtils, strutils
 
 import ../[types]
 import ../agent/agent
-import ./utils
+
+proc error404*(ctx: Context) {.async.} = 
+    resp "", Http404
 
 #[
     POST /{listener-uuid}/register
@@ -12,31 +14,47 @@ import ./utils
 proc register*(ctx: Context) {.async.} = 
 
     # Check headers
-    doAssert(ctx.request.getHeader("CONTENT-TYPE") == @["application/json"])
-    doAssert(ctx.request.getHeader("USER-AGENT") == @["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"])
+    # If POST data is not JSON data, return 404 error code
+    if ctx.request.contentType != "application/json": 
+        resp "", Http404
+        return
 
-    # Handle POST data, the register data should look like the following
+    # The JSON data for the agent registration has to be in the following format
     #[
         {
             "username": "username",
             "hostname":"hostname",
             "ip": "ip-address",
-            "os": "operating-system"
-            "pid":  1234
+            "os": "operating-system",
+            "pid":  1234,
             "elevated": false
         }
     ]#  
-    
-    let 
-        postData: JsonNode = %ctx.request.body()
-        name = generate(alphabet=join(toSeq('A'..'Z'), ""), size=8)
 
-    let agent = new Agent
-    agent.name = name
-    notifyAgentRegister(agent)
+    try: 
+        let 
+            postData: JsonNode = parseJson(ctx.request.body)
+            agentRegistrationData = postData.to(AgentRegistrationData)
+            agentUuid = generate(alphabet=join(toSeq('A'..'Z'), ""), size=8)
+            listenerUuid = ctx.getPathParams("listener")
 
+        let agent: Agent = newAgent(agentUuid, listenerUuid, agentRegistrationData) 
+        
+        # Fully register agent and add it to database
+        if not agent.register(): 
+            # Either the listener the agent tries to connect to does not exist in the database, or the insertion of the agent failed
+            # Return a 404 error code either way
+            resp "", Http404
+            return 
 
-    resp agent.name
+        # If registration is successful, the agent receives it's UUID, which is then used to poll for tasks and post results
+        resp agent.name
+
+    except CatchableError:
+        # JSON data is invalid or does not match the expected format (described above)
+        resp "", Http404
+
+    return
 
 #[
     GET /{listener-uuid}/{agent-uuid}/tasks

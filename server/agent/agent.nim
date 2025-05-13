@@ -1,5 +1,6 @@
 import terminal, strformat, times
 import ../[types, globals]
+import ../db/database
 
 
 #[ 
@@ -41,16 +42,29 @@ proc agentInteract*(cq: Conquest, args: varargs[string]) =
   Agent API
   Functions relevant for dealing with the agent API, such as registering new agents, querying tasks and posting results
 ]#
-proc notifyAgentRegister*(agent: Agent) = 
+proc register*(agent: Agent): bool = 
 
     let date: string = now().format("dd-MM-yyyy HH:mm:ss")
 
-
-
     # The following line is required to be able to use the `cq` global variable for console output
     {.cast(gcsafe).}:
-        cq.writeLine(fgYellow, styleBright, fmt"[{date}] Agent {agent.name} connected.", "\n") 
 
+        # Check if listener that is requested exists
+        # TODO: Verify that the listener accessed is also the listener specified in the URL
+        # This can be achieved by extracting the port number from the `Host` header and matching it to the one queried from the database
+        if not cq.listenerExists(agent.listener): 
+            cq.writeLine(fgRed, styleBright, fmt"[-] Agent from {agent.ip} attempted to register to non-existent listener: {agent.listener}.", "\n")
+            return false
+
+        # Store agent in database
+        if not cq.dbStoreAgent(agent): 
+            cq.writeLine(fgRed, styleBright, fmt"[-] Failed to insert agent {agent.name} into database.", "\n")
+            return false
+
+        cq.add(agent.name, agent)
+        cq.writeLine(fgYellow, styleBright, fmt"[{date}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.name, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listener, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
+
+    return true
 #[
     Agent interaction mode
     When interacting with a agent, the following functions are called:

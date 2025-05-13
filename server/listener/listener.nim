@@ -52,16 +52,17 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
     listener.post("{listener}/register", api.register)
     listener.get("{listener}/{agent}/tasks", api.getTasks)
     listener.post("{listener}/{agent}/results", api.postResults)
+    listener.registerErrorHandler(Http404, api.error404)
 
     # Store listener in database
-    let listenerInstance = newListener(name, host, port)
+    var listenerInstance = newListener(name, host, port)
     if not cq.dbStoreListener(listenerInstance):
         return
 
     # Start serving
     try:
         discard listener.runAsync() 
-        inc cq.listeners
+        cq.add(listenerInstance.name, listenerInstance)
         cq.writeLine(fgGreen, "[+] ", resetStyle, "Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on port {portStr}.")
     except CatchableError as err: 
         cq.writeLine(fgRed, styleBright, "[-] Failed to start listener: ", getCurrentExceptionMsg())
@@ -84,10 +85,11 @@ proc restartListeners*(cq: Conquest) =
         listener.post("{listener}/register", api.register)
         listener.get("{listener}/{agent}/tasks", api.getTasks)
         listener.post("{listener}/{agent}/results", api.postResults)
-
+        listener.registerErrorHandler(Http404, api.error404)
+        
         try:
             discard listener.runAsync() 
-            inc cq.listeners
+            cq.add(l.name, l)
             cq.writeLine(fgGreen, "[+] ", resetStyle, "Restarted listener", fgGreen, fmt" {l.name} ", resetStyle, fmt"on port {$l.port}.")
         except CatchableError as err: 
             cq.writeLine(fgRed, styleBright, "[-] Failed to restart listener: ", getCurrentExceptionMsg())
@@ -103,6 +105,6 @@ proc listenerStop*(cq: Conquest, name: string) =
         cq.writeLine(fgRed, styleBright, "[-] Failed to stop listener: ", getCurrentExceptionMsg())
         return
 
-    dec cq.listeners
+    cq.delListener(name)
     cq.writeLine(fgGreen, "[+] ", resetStyle, "Stopped listener ", fgGreen, name.toUpperAscii, resetStyle, ".")
     

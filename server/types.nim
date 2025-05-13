@@ -1,46 +1,6 @@
 import prompt
 import prologue
-
-#[
-    Conquest 
-]#
-type 
-    Conquest* = ref object
-        prompt*: Prompt
-        listeners*: int
-        agents*: int
-        dbPath*: string
-
-proc initConquest*(): Conquest = 
-    var cq = new Conquest
-    var prompt = Prompt.init()
-    cq.prompt = prompt
-    cq.dbPath = "db/conquest.db"
-    cq.listeners = 0
-    cq.agents = 0
-
-    return cq
-
-template writeLine*(cq: Conquest, args: varargs[untyped]) = 
-    cq.prompt.writeLine(args)
-proc readLine*(cq: Conquest): string =
-    return cq.prompt.readLine()
-template setIndicator*(cq: Conquest, indicator: string) = 
-    cq.prompt.setIndicator(indicator)
-template showPrompt*(cq: Conquest) = 
-    cq.prompt.showPrompt()
-template hidePrompt*(cq: Conquest) = 
-    cq.prompt.hidePrompt()
-template setStatusBar*(cq: Conquest, statusBar: seq[StatusBarItem]) = 
-    cq.prompt.setStatusBar(statusBar) 
-template clear*(cq: Conquest) = 
-    cq.prompt.clear()
-
-# Overwrite withOutput function to handle function arguments
-proc withOutput*(cq: Conquest, outputFunction: proc(cq: Conquest, args: varargs[string]), args: varargs[string]) =
-    cq.hidePrompt()
-    outputFunction(cq, args)
-    cq.showPrompt()
+import tables
 
 #[
     Agent
@@ -107,6 +67,23 @@ proc newAgent*(name, listener, username, hostname, ip, os: string, pid: int, ele
 
     return agent
 
+proc newAgent*(name, listener: string, postData: AgentRegistrationData): Agent = 
+    var agent = new Agent
+    agent.name = name 
+    agent.listener = listener 
+    agent.pid = postData.pid
+    agent.username = postData.username 
+    agent.hostname = postData.hostname 
+    agent.ip = postData.ip 
+    agent.os = postData.os
+    agent.elevated = postData.elevated 
+    agent.sleep = 10
+    agent.jitter = 0.2
+    agent.tasks = @[]
+
+    return agent
+
+
 #[
     Listener 
 ]#
@@ -138,3 +115,57 @@ proc stringToProtocol*(protocol: string): Protocol =
     of "http": 
         return HTTP
     else: discard
+
+
+#[
+    Conquest 
+]#
+type 
+    Conquest* = ref object
+        prompt*: Prompt
+        dbPath*: string
+        listeners*: Table[string, Listener]
+        agents*: Table[string, Agent]
+
+proc add*(cq: Conquest, listenerName: string, listener: Listener) = 
+    cq.listeners[listenerName] = listener
+
+proc add*(cq: Conquest, agentName: string, agent: Agent) = 
+    cq.agents[agentName] = agent
+
+proc delListener*(cq: Conquest, listenerName: string) = 
+    cq.listeners.del(listenerName)
+
+proc delAgent*(cq: Conquest, agentName: string) = 
+    cq.agents.del(agentName)
+
+proc initConquest*(): Conquest = 
+    var cq = new Conquest
+    var prompt = Prompt.init()
+    cq.prompt = prompt
+    cq.dbPath = "db/conquest.db"
+    cq.listeners = initTable[string, Listener]()
+    cq.agents = initTable[string, Agent]() 
+
+    return cq
+
+template writeLine*(cq: Conquest, args: varargs[untyped]) = 
+    cq.prompt.writeLine(args)
+proc readLine*(cq: Conquest): string =
+    return cq.prompt.readLine()
+template setIndicator*(cq: Conquest, indicator: string) = 
+    cq.prompt.setIndicator(indicator)
+template showPrompt*(cq: Conquest) = 
+    cq.prompt.showPrompt()
+template hidePrompt*(cq: Conquest) = 
+    cq.prompt.hidePrompt()
+template setStatusBar*(cq: Conquest, statusBar: seq[StatusBarItem]) = 
+    cq.prompt.setStatusBar(statusBar) 
+template clear*(cq: Conquest) = 
+    cq.prompt.clear()
+
+# Overwrite withOutput function to handle function arguments
+proc withOutput*(cq: Conquest, outputFunction: proc(cq: Conquest, args: varargs[string]), args: varargs[string]) =
+    cq.hidePrompt()
+    outputFunction(cq, args)
+    cq.showPrompt()
