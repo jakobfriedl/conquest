@@ -24,6 +24,7 @@ proc register*(ctx: Context) {.async.} =
         {
             "username": "username",
             "hostname":"hostname",
+            "domain": "domain.local",
             "ip": "ip-address",
             "os": "operating-system",
             "process": "agent.exe",

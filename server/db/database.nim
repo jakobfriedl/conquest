@@ -14,9 +14,7 @@ proc dbInit*(cq: Conquest) =
             name TEXT PRIMARY KEY,
             address TEXT NOT NULL,
             port INTEGER NOT NULL UNIQUE,
-            protocol TEXT NOT NULL CHECK (protocol IN ('http')),
-            sleep INTEGER NOT NULL,
-            jitter REAL NOT NULL
+            protocol TEXT NOT NULL CHECK (protocol IN ('http'))
         );
 
         CREATE TABLE agents (
@@ -26,6 +24,7 @@ proc dbInit*(cq: Conquest) =
             pid INTEGER NOT NULL,
             username TEXT NOT NULL,
             hostname TEXT NOT NULL,
+            domain TEXT NOT NULL,
             ip TEXT NOT NULL,
             os TEXT NOT NULL,
             elevated BOOLEAN NOT NULL,
@@ -43,7 +42,7 @@ proc dbInit*(cq: Conquest) =
         cq.writeLine(fgGreen, "[+] ", cq.dbPath, ": Database file found.")
 
 #[
-    Listeners
+    Listener database functions
 ]#
 proc dbStoreListener*(cq: Conquest, listener: Listener): bool = 
 
@@ -51,9 +50,9 @@ proc dbStoreListener*(cq: Conquest, listener: Listener): bool =
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
         conquestDb.exec("""
-        INSERT INTO listeners (name, address, port, protocol, sleep, jitter)
-        VALUES (?, ?, ?, ?, ?, ?);
-        """, listener.name, listener.address, listener.port, $listener.protocol, listener.sleep, listener.jitter)
+        INSERT INTO listeners (name, address, port, protocol)
+        VALUES (?, ?, ?, ?);
+        """, listener.name, listener.address, listener.port, $listener.protocol)
 
         conquestDb.close() 
     except: 
@@ -69,16 +68,14 @@ proc dbGetAllListeners*(cq: Conquest): seq[Listener] =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        for row in conquestDb.iterate("SELECT name, address, port, protocol, sleep, jitter FROM listeners;"):
-            let (name, address, port, protocol, sleep, jitter) = row.unpack((string, string, int, string, int, float ))
+        for row in conquestDb.iterate("SELECT name, address, port, protocol FROM listeners;"):
+            let (name, address, port, protocol) = row.unpack((string, string, int, string))
             
             let l = Listener(
                 name: name,
                 address: address,
                 port: port,
                 protocol: stringToProtocol(protocol),
-                sleep: sleep,
-                jitter: jitter
             )
             listeners.add(l)
 
@@ -100,7 +97,7 @@ proc dbDeleteListenerByName*(cq: Conquest, name: string): bool =
     
     return true
 
-proc listenerExists*(cq: Conquest, listenerName: string): bool =
+proc dbListenerExists*(cq: Conquest, listenerName: string): bool =
     try:
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
@@ -114,7 +111,7 @@ proc listenerExists*(cq: Conquest, listenerName: string): bool =
         return false
 
 #[
-    Agents
+    Agent database functions
 ]#
 proc dbStoreAgent*(cq: Conquest, agent: Agent): bool = 
     
@@ -122,9 +119,9 @@ proc dbStoreAgent*(cq: Conquest, agent: Agent): bool =
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
         conquestDb.exec("""
-        INSERT INTO agents (name, listener, sleep, jitter, process, pid, username, hostname, ip, os, elevated, firstCheckin)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-        """, agent.name, agent.listener, agent.sleep, agent.jitter, agent.process, agent.pid, agent.username, agent.hostname, agent.ip, agent.os, agent.elevated, $agent.firstCheckin)
+        INSERT INTO agents (name, listener, process, pid, username, hostname, domain, ip, os, elevated, sleep, jitter, firstCheckin)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """, agent.name, agent.listener, agent.process, agent.pid, agent.username, agent.hostname, agent.domain, agent.ip, agent.os, agent.elevated, agent.sleep, agent.jitter, $agent.firstCheckin)
 
         conquestDb.close() 
     except: 
@@ -140,22 +137,23 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        for row in conquestDb.iterate("SELECT name, listener, sleep, jitter, process, pid, username, hostname, ip, os, elevated, firstCheckin FROM agents;"):
-            let (name, listener, sleep, jitter, process, pid, username, hostname, ip, os, elevated, firstCheckin) = row.unpack((string, string, int, float, string, int, string, string, string, string, bool, string))
+        for row in conquestDb.iterate("SELECT name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin FROM agents;"):
+            let (name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin) = row.unpack((string, string, int, float, string, int, string, string, string, string, string, bool, string))
 
             let a = Agent(
                     name: name,
                     listener: listener,
                     sleep: sleep,
-                    jitter: jitter,
-                    process: process,
                     pid: pid,
                     username: username,
                     hostname: hostname,
+                    domain: domain,
                     ip: ip,
                     os: os,
                     elevated: elevated,
                     firstCheckin: firstCheckin,
+                    jitter: jitter,
+                    process: process,
                     tasks: @[] 
                 )
 
@@ -166,3 +164,28 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
         cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
 
     return agents
+
+proc dbDeleteAgentByName*(cq: Conquest, name: string): bool =
+    try: 
+        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
+
+        conquestDb.exec("DELETE FROM agents WHERE name = ?", name)
+
+        conquestDb.close()
+    except: 
+        return false
+    
+    return true
+
+proc dbAgentExists*(cq: Conquest, agentName: string): bool =
+    try:
+        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
+
+        let res = conquestDb.one("SELECT 1 FROM agents WHERE name = ? LIMIT 1", agentName)
+        
+        conquestDb.close()
+
+        return res.isSome
+    except:
+        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
+        return false

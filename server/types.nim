@@ -3,7 +3,7 @@ import prologue
 import tables, times
 
 #[
-    Agent
+    Agent types & procs
 ]#
 type 
 
@@ -33,55 +33,39 @@ type
     AgentRegistrationData* = object
         username*: string
         hostname*: string
+        domain*: string
         ip*: string
         os*: string 
         process*: string
         pid*: int 
         elevated*: bool
 
-    # TODO: Add additional fields: domain, ...
     Agent* = ref object 
         name*: string
         listener*: string 
-        sleep*: int 
-        jitter*: float 
-        process*: string
-        pid*: int
         username*: string 
         hostname*: string
+        domain*: string
+        process*: string
+        pid*: int
         ip*: string
         os*: string
         elevated*: bool 
+        sleep*: int 
+        jitter*: float 
         tasks*: seq[Task]
         firstCheckin*: string
         lastCheckin*: string
-
-proc newAgent*(name, listener, username, hostname, process, ip, os, firstCheckin: string, pid: int, elevated: bool): Agent = 
-    var agent = new Agent
-    agent.name = name 
-    agent.listener = listener 
-    agent.process = process
-    agent.pid = pid 
-    agent.username = username 
-    agent.hostname = hostname 
-    agent.ip = ip 
-    agent.os = os
-    agent.elevated = elevated 
-    agent.sleep = 10
-    agent.jitter = 0.2
-    agent.tasks = @[]
-    agent.firstCheckin = firstCheckin
-    
-    return agent
 
 proc newAgent*(name, listener, firstCheckin: string, postData: AgentRegistrationData): Agent = 
     var agent = new Agent
     agent.name = name 
     agent.listener = listener 
-    agent.process = postData.process
-    agent.pid = postData.pid
     agent.username = postData.username 
     agent.hostname = postData.hostname 
+    agent.domain = postData.domain
+    agent.process = postData.process
+    agent.pid = postData.pid
     agent.ip = postData.ip 
     agent.os = postData.os
     agent.elevated = postData.elevated 
@@ -93,7 +77,7 @@ proc newAgent*(name, listener, firstCheckin: string, postData: AgentRegistration
     return agent
 
 #[
-    Listener 
+    Listener types and procs
 ]#
 type 
     Protocol* = enum
@@ -104,8 +88,6 @@ type
         address*: string
         port*: int
         protocol*: Protocol
-        sleep*: int 
-        jitter*: float 
 
 proc newListener*(name: string, address: string, port: int): Listener = 
     var listener = new Listener
@@ -113,8 +95,6 @@ proc newListener*(name: string, address: string, port: int): Listener =
     listener.address = address 
     listener.port = port 
     listener.protocol = HTTP
-    listener.sleep = 5          # 5 seconds beaconing 
-    listener.jitter = 0.2       # 20% Jitter
 
     return listener
 
@@ -126,7 +106,7 @@ proc stringToProtocol*(protocol: string): Protocol =
 
 
 #[
-    Conquest framework
+    Conquest framework types & procs
 ]#
 type 
     Conquest* = ref object
@@ -135,11 +115,15 @@ type
         listeners*: Table[string, Listener]
         agents*: Table[string, Agent]
 
-proc add*(cq: Conquest, listenerName: string, listener: Listener) = 
-    cq.listeners[listenerName] = listener
+proc add*(cq: Conquest, listener: Listener) = 
+    cq.listeners[listener.name] = listener
 
-proc add*(cq: Conquest, agentName: string, agent: Agent) = 
-    cq.agents[agentName] = agent
+proc add*(cq: Conquest, agent: Agent) = 
+    cq.agents[agent.name] = agent
+
+proc addMutliple*(cq: Conquest, agents: seq[Agent]) = 
+    for a in agents: 
+        cq.agents[a.name] = a
 
 proc delListener*(cq: Conquest, listenerName: string) = 
     cq.listeners.del(listenerName)

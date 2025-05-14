@@ -33,9 +33,9 @@ var parser = newParser:
             help("List all agents.")
             # TODO: Add a flag that allows the user to only list agents that are connected to a specific listener (-n <uuid>)
 
-        command("build"):
-            help("Build an agent to connect to an active listener.")
-
+        command("kill"):
+            help("Terminate the connection of an active listener and remove it from the interface.")
+            option("-n", "-name", help="Name of the agent to stop.", required=true)
 
         command("interact"):
             help("Interact with an active agent.")
@@ -82,8 +82,8 @@ proc handleConsoleCommand*(cq: Conquest, args: varargs[string]) =
             case opts.agent.get.command
             of "list":
                 cq.agentList()
-            of "build": 
-                cq.agentBuild()
+            of "kill": 
+                cq.agentKill(opts.agent.get.kill.get.name)
             of "interact":
                 cq.agentInteract() 
             else: 
@@ -128,13 +128,14 @@ proc main() =
     # Initialize database
     cq.dbInit()
     cq.restartListeners()
+    cq.addMutliple(cq.dbGetAllAgents())
 
     # Main loop
     while true: 
         cq.setIndicator("[conquest]> ")
-        cq.setStatusBar(@[("mode", "manage"), ("listeners", $len(cq.listeners)), ("agents", $len(cq.agents))])    
+        cq.setStatusBar(@[("[mode]", "manage"), ("[listeners]", $len(cq.listeners)), ("[agents]", $len(cq.agents))])    
         cq.showPrompt() 
-            
+ 
         var command: string = cq.readLine()
         cq.withOutput(handleConsoleCommand, command)
 

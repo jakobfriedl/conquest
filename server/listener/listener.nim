@@ -62,7 +62,7 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
     # Start serving
     try:
         discard listener.runAsync() 
-        cq.add(listenerInstance.name, listenerInstance)
+        cq.add(listenerInstance)
         cq.writeLine(fgGreen, "[+] ", resetStyle, "Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on port {portStr}.")
     except CatchableError as err: 
         cq.writeLine(fgRed, styleBright, "[-] Failed to start listener: ", getCurrentExceptionMsg())
@@ -89,7 +89,7 @@ proc restartListeners*(cq: Conquest) =
         
         try:
             discard listener.runAsync() 
-            cq.add(l.name, l)
+            cq.add(l)
             cq.writeLine(fgGreen, "[+] ", resetStyle, "Restarted listener", fgGreen, fmt" {l.name} ", resetStyle, fmt"on port {$l.port}.")
         except CatchableError as err: 
             cq.writeLine(fgRed, styleBright, "[-] Failed to restart listener: ", getCurrentExceptionMsg())
@@ -99,8 +99,15 @@ proc restartListeners*(cq: Conquest) =
 
     cq.writeLine("")
 
+# Remove listener from database, preventing automatic startup on server restart
 proc listenerStop*(cq: Conquest, name: string) = 
         
+    # Check if listener supplied via -n parameter exists in database
+    if not cq.dbListenerExists(name.toUpperAscii): 
+        cq.writeLine(fgRed, styleBright, fmt"[-] Listener {name.toUpperAscii} does not exist.")
+        return
+
+    # Remove database entry
     if not cq.dbDeleteListenerByName(name.toUpperAscii): 
         cq.writeLine(fgRed, styleBright, "[-] Failed to stop listener: ", getCurrentExceptionMsg())
         return
