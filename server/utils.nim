@@ -1,6 +1,6 @@
 import re, strutils
 
-import ../types
+import ./types
 
 proc validateIPv4Address*(ip: string): bool = 
     let ipv4Pattern = re"^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$"
@@ -45,7 +45,7 @@ proc drawTable*(cq: Conquest, listeners: seq[Listener]) =
 
     # Column headers and widths
     let headers = @["Name", "Address", "Port", "Protocol", "Agents"]
-    let widths = @[10, 15, 7, 10, 8]
+    let widths = @[10, 17, 7, 10, 8]
 
     cq.writeLine(border(topLeft, topMid, topRight, widths))
     cq.writeLine(row(headers, widths))
@@ -60,4 +60,17 @@ proc drawTable*(cq: Conquest, listeners: seq[Listener]) =
 
 
 proc drawTable*(cq: Conquest, agents: seq[Agent]) = 
-    discard
+    
+    let headers: seq[string] = @["Name", "Address", "Username", "Hostname", "Operating System", "Process", "PID"]
+    let widths = @[10, 17, 25, 20, 22, 15, 8]
+
+    cq.writeLine(border(topLeft, topMid, topRight, widths))
+    cq.writeLine(row(headers, widths))
+    cq.writeLine(border(midLeft, midMid, midRight, widths))
+
+    # TODO: Highlight elevated processes 
+    for a in agents:
+        let row = @[a.name, a.ip, a.username, a.hostname, a.os, a.process, $a.pid] 
+        cq.writeLine(row(row, widths)) 
+
+    cq.writeLine(border(botLeft, botMid, botRight, widths)) 

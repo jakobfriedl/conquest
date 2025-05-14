@@ -1,6 +1,6 @@
 import prompt
 import prologue
-import tables
+import tables, times
 
 #[
     Agent
@@ -35,14 +35,17 @@ type
         hostname*: string
         ip*: string
         os*: string 
+        process*: string
         pid*: int 
         elevated*: bool
 
+    # TODO: Add additional fields: domain, ...
     Agent* = ref object 
         name*: string
         listener*: string 
         sleep*: int 
         jitter*: float 
+        process*: string
         pid*: int
         username*: string 
         hostname*: string
@@ -50,11 +53,14 @@ type
         os*: string
         elevated*: bool 
         tasks*: seq[Task]
+        firstCheckin*: string
+        lastCheckin*: string
 
-proc newAgent*(name, listener, username, hostname, ip, os: string, pid: int, elevated: bool): Agent = 
+proc newAgent*(name, listener, username, hostname, process, ip, os, firstCheckin: string, pid: int, elevated: bool): Agent = 
     var agent = new Agent
     agent.name = name 
     agent.listener = listener 
+    agent.process = process
     agent.pid = pid 
     agent.username = username 
     agent.hostname = hostname 
@@ -64,13 +70,15 @@ proc newAgent*(name, listener, username, hostname, ip, os: string, pid: int, ele
     agent.sleep = 10
     agent.jitter = 0.2
     agent.tasks = @[]
-
+    agent.firstCheckin = firstCheckin
+    
     return agent
 
-proc newAgent*(name, listener: string, postData: AgentRegistrationData): Agent = 
+proc newAgent*(name, listener, firstCheckin: string, postData: AgentRegistrationData): Agent = 
     var agent = new Agent
     agent.name = name 
     agent.listener = listener 
+    agent.process = postData.process
     agent.pid = postData.pid
     agent.username = postData.username 
     agent.hostname = postData.hostname 
@@ -80,9 +88,9 @@ proc newAgent*(name, listener: string, postData: AgentRegistrationData): Agent =
     agent.sleep = 10
     agent.jitter = 0.2
     agent.tasks = @[]
+    agent.firstCheckin = firstCheckin
 
     return agent
-
 
 #[
     Listener 
@@ -118,7 +126,7 @@ proc stringToProtocol*(protocol: string): Protocol =
 
 
 #[
-    Conquest 
+    Conquest framework
 ]#
 type 
     Conquest* = ref object

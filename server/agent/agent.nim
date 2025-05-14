@@ -1,5 +1,5 @@
-import terminal, strformat, times
-import ../[types, globals]
+import terminal, strformat
+import ../[types, globals, utils]
 import ../db/database
 
 
@@ -23,7 +23,8 @@ Options:
   -h, --help""")
 
 proc agentList*(cq: Conquest, args: varargs[string]) = 
-    discard
+    let agents = cq.dbGetAllAgents()
+    cq.drawTable(agents)
 
 proc agentBuild*(cq: Conquest, args: varargs[string]) = 
     discard
@@ -44,8 +45,6 @@ proc agentInteract*(cq: Conquest, args: varargs[string]) =
 ]#
 proc register*(agent: Agent): bool = 
 
-    let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-
     # The following line is required to be able to use the `cq` global variable for console output
     {.cast(gcsafe).}:
 
@@ -62,7 +61,7 @@ proc register*(agent: Agent): bool =
             return false
 
         cq.add(agent.name, agent)
-        cq.writeLine(fgYellow, styleBright, fmt"[{date}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.name, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listener, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
+        cq.writeLine(fgYellow, styleBright, fmt"[{agent.firstCheckin}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.name, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listener, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
 
     return true
 #[

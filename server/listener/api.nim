@@ -1,5 +1,5 @@
 import prologue, nanoid
-import terminal, sequtils, strutils
+import terminal, sequtils, strutils, times
 
 import ../[types]
 import ../agent/agent
@@ -26,6 +26,7 @@ proc register*(ctx: Context) {.async.} =
             "hostname":"hostname",
             "ip": "ip-address",
             "os": "operating-system",
+            "process": "agent.exe",
             "pid":  1234,
             "elevated": false
         }
@@ -34,11 +35,12 @@ proc register*(ctx: Context) {.async.} =
     try: 
         let 
             postData: JsonNode = parseJson(ctx.request.body)
-            agentRegistrationData = postData.to(AgentRegistrationData)
-            agentUuid = generate(alphabet=join(toSeq('A'..'Z'), ""), size=8)
-            listenerUuid = ctx.getPathParams("listener")
+            agentRegistrationData: AgentRegistrationData = postData.to(AgentRegistrationData)
+            agentUuid: string = generate(alphabet=join(toSeq('A'..'Z'), ""), size=8)
+            listenerUuid: string = ctx.getPathParams("listener")
+            date: string = now().format("dd-MM-yyyy HH:mm:ss")
 
-        let agent: Agent = newAgent(agentUuid, listenerUuid, agentRegistrationData) 
+        let agent: Agent = newAgent(agentUuid, listenerUuid, date, agentRegistrationData) 
         
         # Fully register agent and add it to database
         if not agent.register(): 

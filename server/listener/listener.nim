@@ -1,8 +1,8 @@
 import strformat, strutils, sequtils, checksums/sha1, nanoid, terminal
 import prologue
 
-import ./[api, utils]
-import ../types
+import ./api
+import ../[types, utils]
 import ../db/database
 
 proc listenerUsage*(cq: Conquest) = 

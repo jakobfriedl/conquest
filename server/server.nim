@@ -31,6 +31,7 @@ var parser = newParser:
 
         command("list"):
             help("List all agents.")
+            # TODO: Add a flag that allows the user to only list agents that are connected to a specific listener (-n <uuid>)
 
         command("build"):
             help("Build an agent to connect to an active listener.")
@@ -112,7 +113,6 @@ proc header(cq: Conquest) =
     Conquest framework entry point
 ]#
 proc main() =
-
     # Handle CTRL+C,  
     proc exit() {.noconv.} = 
         echo "Received CTRL+C. Type \"exit\" to close the application.\n"    
