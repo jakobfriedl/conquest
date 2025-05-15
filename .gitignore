@@ -1,6 +1,6 @@
 # Ignore agents
 agents/
-
+*.db
 
 # Nim
 nimcache/

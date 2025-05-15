@@ -32,8 +32,7 @@ var parser = newParser:
 
         command("list"):
             help("List all agents.")
-            option("-n", "-name", help="Name of the listener.")
-            # TODO: Add a flag that allows the user to only list agents that are connected to a specific listener (-n <uuid>)
+            option("-l", "-listener", help="Name of the listener.")
 
         command("info"): 
             help("Display details for a specific agent.")
@@ -86,11 +85,8 @@ proc handleConsoleCommand*(cq: Conquest, args: varargs[string]) =
 
         of "agent":
             case opts.agent.get.command
-            of "list":
-                if opts.agent.get.list.get.name == "": 
-                    cq.agentList()
-                else: 
-                    cq.agentList(opts.agent.get.list.get.name)
+            of "list":    
+                cq.agentList(opts.agent.get.list.get.listener)
             of "info":
                 cq.agentInfo(opts.agent.get.info.get.name)
             of "kill": 

@@ -1,4 +1,4 @@
-import re, strutils, strformat, terminal
+import re, strutils, strformat, terminal, tables, sequtils
 
 import ./types
 
@@ -61,8 +61,10 @@ proc drawTable*(cq: Conquest, listeners: seq[Listener]) =
     cq.writeLine(border(midLeft, midMid, midRight, widths))
 
     for l in listeners:
-        # TODO: Add number of agents connected to the listener
-        let row = @[l.name, l.address, $l.port, $l.protocol, "X"]
+        # Get number of agents connected to the listener
+        let connectedAgents = cq.agents.values.countIt(it.listener == l.name)
+
+        let row = @[l.name, l.address, $l.port, $l.protocol, $connectedAgents]
         cq.writeLine(row(row, widths)) 
 
     cq.writeLine(border(botLeft, botMid, botRight, widths)) 

@@ -24,19 +24,18 @@ Options:
   -h, --help""")
 
 # List agents
-proc agentList*(cq: Conquest) = 
-    let agents = cq.dbGetAllAgents()
-    cq.drawTable(agents)
-
 proc agentList*(cq: Conquest, listener: string) =
 
-    # Check if listener exists
-    if not cq.dbListenerExists(listener.toUpperAscii): 
-        cq.writeLine(fgRed, styleBright, fmt"[-] Listener {listener.toUpperAscii} does not exist.")
-        return
+    # If no argument is passed via -n, list all agents, otherwise only display agents connected to a specific listener
+    if listener == "": 
+        cq.drawTable(cq.dbGetAllAgents())
+    else: 
+        # Check if listener exists
+        if not cq.dbListenerExists(listener.toUpperAscii): 
+            cq.writeLine(fgRed, styleBright, fmt"[-] Listener {listener.toUpperAscii} does not exist.")
+            return
 
-    let agents = cq.dbGetAllAgentsByListener(listener.toUpperAscii) 
-    cq.drawTable(agents)
+        cq.drawTable(cq.dbGetAllAgentsByListener(listener.toUpperAscii))
 
 # Display agent properties and details
 proc agentInfo*(cq: Conquest, name: string) = 
@@ -47,7 +46,7 @@ proc agentInfo*(cq: Conquest, name: string) =
 
     let agent = cq.agents[name.toUpperAscii]
 
-    # TODO: Improve formating
+    # TODO: Improve formatting
     cq.writeLine(fmt"""
 Agent name (UUID):     {agent.name}
 Connected to listener: {agent.listener}
