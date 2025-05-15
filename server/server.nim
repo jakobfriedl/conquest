@@ -20,22 +20,28 @@ var parser = newParser:
             help("Starts a new HTTP listener.")
             option("-h", "-host", default=some("0.0.0.0"), help="IPv4 address to listen on.", required=false)
             option("-p", "-port", help="Port to listen on.", required=true)
+            # TODO: Future features:
             # flag("--dns", help="Use the DNS protocol for C2 communication.")
             # flag("--doh", help="Use DNS over HTTPS for C2 communication.)
         command("stop"):
             help("Stop an active listener.")
-            option("-n", "-name", help="Name of the listener to stop.", required=true)
+            option("-n", "-name", help="Name of the listener.", required=true)
     
     command("agent"): 
         help("Manage, build and interact with agents.")
 
         command("list"):
             help("List all agents.")
+            option("-n", "-name", help="Name of the listener.")
             # TODO: Add a flag that allows the user to only list agents that are connected to a specific listener (-n <uuid>)
+
+        command("info"): 
+            help("Display details for a specific agent.")
+            option("-n", "-name", help="Name of the agent.", required=true)
 
         command("kill"):
             help("Terminate the connection of an active listener and remove it from the interface.")
-            option("-n", "-name", help="Name of the agent to stop.", required=true)
+            option("-n", "-name", help="Name of the agent.", required=true)
 
         command("interact"):
             help("Interact with an active agent.")
@@ -81,7 +87,12 @@ proc handleConsoleCommand*(cq: Conquest, args: varargs[string]) =
         of "agent":
             case opts.agent.get.command
             of "list":
-                cq.agentList()
+                if opts.agent.get.list.get.name == "": 
+                    cq.agentList()
+                else: 
+                    cq.agentList(opts.agent.get.list.get.name)
+            of "info":
+                cq.agentInfo(opts.agent.get.info.get.name)
             of "kill": 
                 cq.agentKill(opts.agent.get.kill.get.name)
             of "interact":

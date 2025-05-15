@@ -1,4 +1,4 @@
-import terminal, strformat, strutils
+import terminal, strformat, strutils, tables
 import ../[types, globals, utils]
 import ../db/database
 
@@ -16,6 +16,7 @@ Usage:
 Commands:
 
   list             List all agents.
+  info             Display details for a specific agent.
   kill             Terminate the connection of an active listener and remove it from the interface.
   interact         Interact with an active agent.
 
@@ -23,9 +24,45 @@ Options:
   -h, --help""")
 
 # List agents
-proc agentList*(cq: Conquest, args: varargs[string]) = 
+proc agentList*(cq: Conquest) = 
     let agents = cq.dbGetAllAgents()
     cq.drawTable(agents)
+
+proc agentList*(cq: Conquest, listener: string) =
+
+    # Check if listener exists
+    if not cq.dbListenerExists(listener.toUpperAscii): 
+        cq.writeLine(fgRed, styleBright, fmt"[-] Listener {listener.toUpperAscii} does not exist.")
+        return
+
+    let agents = cq.dbGetAllAgentsByListener(listener.toUpperAscii) 
+    cq.drawTable(agents)
+
+# Display agent properties and details
+proc agentInfo*(cq: Conquest, name: string) = 
+    # Check if agent supplied via -n parameter exists in database
+    if not cq.dbAgentExists(name.toUpperAscii): 
+        cq.writeLine(fgRed, styleBright, fmt"[-] Agent {name.toUpperAscii} does not exist.")
+        return
+
+    let agent = cq.agents[name.toUpperAscii]
+
+    # TODO: Improve formating
+    cq.writeLine(fmt"""
+Agent name (UUID):     {agent.name}
+Connected to listener: {agent.listener}
+──────────────────────────────────────────
+Username:              {agent.username}
+Hostname:              {agent.hostname}
+Domain:                {agent.domain}
+IP-Address:            {agent.ip}
+Operating system:      {agent.os}
+──────────────────────────────────────────
+Process name:          {agent.process}
+Process ID:            {$agent.pid}
+Process elevated:      {$agent.elevated}
+First checkin:         {agent.firstCheckin}
+    """)
 
 # Terminate agent and remove it from the database
 proc agentKill*(cq: Conquest, name: string) =
@@ -67,7 +104,7 @@ proc register*(agent: Agent): bool =
         # Check if listener that is requested exists
         # TODO: Verify that the listener accessed is also the listener specified in the URL
         # This can be achieved by extracting the port number from the `Host` header and matching it to the one queried from the database
-        if not cq.dbListenerExists(agent.listener): 
+        if not cq.dbListenerExists(agent.listener.toUpperAscii): 
             cq.writeLine(fgRed, styleBright, fmt"[-] Agent from {agent.ip} attempted to register to non-existent listener: {agent.listener}.", "\n")
             return false
 

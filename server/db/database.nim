@@ -165,6 +165,41 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
 
     return agents
 
+proc dbGetAllAgentsByListener*(cq: Conquest, listenerName: string): seq[Agent] = 
+
+    var agents: seq[Agent] = @[]
+
+    try: 
+        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
+
+        for row in conquestDb.iterate("SELECT name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin FROM agents WHERE listener = ?;", listenerName):
+            let (name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin) = row.unpack((string, string, int, float, string, int, string, string, string, string, string, bool, string))
+
+            let a = Agent(
+                    name: name,
+                    listener: listener,
+                    sleep: sleep,
+                    pid: pid,
+                    username: username,
+                    hostname: hostname,
+                    domain: domain,
+                    ip: ip,
+                    os: os,
+                    elevated: elevated,
+                    firstCheckin: firstCheckin,
+                    jitter: jitter,
+                    process: process,
+                    tasks: @[] 
+                )
+
+            agents.add(a)
+
+        conquestDb.close()
+    except: 
+        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
+
+    return agents
+
 proc dbDeleteAgentByName*(cq: Conquest, name: string): bool =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)

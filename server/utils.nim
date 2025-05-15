@@ -1,4 +1,4 @@
-import re, strutils
+import re, strutils, strformat, terminal
 
 import ./types
 
@@ -38,7 +38,16 @@ proc border(left, mid, right: string, widths: seq[int]): string =
 proc row(cells: seq[string], widths: seq[int]): string =
     var row = vert
     for i, cell in cells:
-        row.add(" " & cell.alignLeft(widths[i] - 2) & " " & vert)
+        # Truncate content of a cell with "..." when the value to be inserted is longer than the designated width
+        let w = widths[i] - 2
+        let c = if cell.len > w:
+            if w >= 3:
+                cell[0 ..< w - 3] & "..."
+            else:
+                ".".repeat(max(0, w))
+        else:
+            cell
+        row.add(" " & c.alignLeft(w) & " " & vert)
     return row
 
 proc drawTable*(cq: Conquest, listeners: seq[Listener]) = 
@@ -62,7 +71,7 @@ proc drawTable*(cq: Conquest, listeners: seq[Listener]) =
 proc drawTable*(cq: Conquest, agents: seq[Agent]) = 
     
     let headers: seq[string] = @["Name", "Address", "Username", "Hostname", "Operating System", "Process", "PID"]
-    let widths = @[10, 17, 25, 20, 22, 15, 8]
+    let widths = @[10, 17, 20, 20, 20, 15, 7]
 
     cq.writeLine(border(topLeft, topMid, topRight, widths))
     cq.writeLine(row(headers, widths))
