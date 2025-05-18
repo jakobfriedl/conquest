@@ -1,4 +1,4 @@
-import strformat, strutils, sequtils, checksums/sha1, nanoid, terminal
+import strformat, strutils, sequtils, nanoid, terminal
 import prologue
 
 import ./api
@@ -27,9 +27,6 @@ proc listenerList*(cq: Conquest) =
 proc listenerStart*(cq: Conquest, host: string, portStr: string) = 
 
     # Validate arguments
-    # if not validateIPv4Address(host): 
-    #     cq.writeLine(fgRed, styleBright, fmt"Invalid IPv4 IP address: {ip}.")
-    #     return
     if not validatePort(portStr):
         cq.writeLine(fgRed, styleBright, fmt"[-] Invalid port number: {portStr}")
         return

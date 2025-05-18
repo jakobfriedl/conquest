@@ -1,6 +1,6 @@
 import prompt
 import prologue
-import tables, times
+import tables
 
 #[
     Agent types & procs
@@ -114,6 +114,7 @@ type
         dbPath*: string
         listeners*: Table[string, Listener]
         agents*: Table[string, Agent]
+        interactAgent*: Agent
 
 proc add*(cq: Conquest, listener: Listener) = 
     cq.listeners[listener.name] = listener
@@ -121,7 +122,7 @@ proc add*(cq: Conquest, listener: Listener) =
 proc add*(cq: Conquest, agent: Agent) = 
     cq.agents[agent.name] = agent
 
-proc addMutliple*(cq: Conquest, agents: seq[Agent]) = 
+proc addMultiple*(cq: Conquest, agents: seq[Agent]) = 
     for a in agents: 
         cq.agents[a.name] = a
 
@@ -138,6 +139,7 @@ proc initConquest*(): Conquest =
     cq.dbPath = "db/conquest.db"
     cq.listeners = initTable[string, Listener]()
     cq.agents = initTable[string, Agent]() 
+    cq.interactAgent = nil 
 
     return cq
 

@@ -1,5 +1,5 @@
 import prologue, nanoid
-import terminal, sequtils, strutils, times
+import sequtils, strutils, times
 
 import ../[types]
 import ../agent/agent

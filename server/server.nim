@@ -1,5 +1,4 @@
-import prompt, terminal
-import argparse
+import prompt, terminal, argparse
 import strutils, strformat, times, system, tables
 
 import ./[types, globals]
@@ -44,7 +43,7 @@ var parser = newParser:
 
         command("interact"):
             help("Interact with an active agent.")
-
+            option("-n", "-name", help="Name of the agent.", required=true)
 
     command("help"):
         nohelpflag()
@@ -92,7 +91,7 @@ proc handleConsoleCommand*(cq: Conquest, args: varargs[string]) =
             of "kill": 
                 cq.agentKill(opts.agent.get.kill.get.name)
             of "interact":
-                cq.agentInteract() 
+                cq.agentInteract(opts.agent.get.interact.get.name) 
             else: 
                 cq.agentUsage()
 
@@ -115,7 +114,6 @@ proc header(cq: Conquest) =
     cq.writeLine("─".repeat(21))
     cq.writeLine("")
     
-
 #[
     Conquest framework entry point
 ]#
@@ -135,7 +133,7 @@ proc main() =
     # Initialize database
     cq.dbInit()
     cq.restartListeners()
-    cq.addMutliple(cq.dbGetAllAgents())
+    cq.addMultiple(cq.dbGetAllAgents())
 
     # Main loop
     while true: 

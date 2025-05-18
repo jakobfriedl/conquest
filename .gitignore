@@ -1,6 +1,10 @@
 # Ignore agents
 agents/
 *.db
+# Ignore binaries
+*/bin/*
+server/server
+*.exe
 
 # Nim
 nimcache/

@@ -1,10 +1,6 @@
-import re, strutils, strformat, terminal, tables, sequtils
+import re, strutils, terminal, tables, sequtils
 
-import ./types
-
-proc validateIPv4Address*(ip: string): bool = 
-    let ipv4Pattern = re"^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$"
-    return ip.match(ipv4Pattern)
+import ./[types]
 
 proc validatePort*(portStr: string): bool = 
     try:

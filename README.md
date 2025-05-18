@@ -1,5 +1,6 @@
-# Conquest Command & Control Framework
+# Conquest Framework
 
+> Command - Control - Conquer
 
 ## Acknowledgements
 
