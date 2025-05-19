@@ -2,7 +2,7 @@ import argparse, times, strformat, terminal
 import ../[types]
 
 #[
-    Agnet Argument parsing
+    Agent Argument parsing
 ]# 
 var parser = newParser: 
     help("Conquest Command & Control")
@@ -45,3 +45,10 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
         cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
 
     cq.writeLine("")
+
+proc createTask*(args: varargs[string]): Task = 
+    discard 
+
+proc addTask*(cq: Conquest, agent: Agent, task: Task) = 
+    discard
+

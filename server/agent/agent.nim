@@ -1,5 +1,5 @@
 import terminal, strformat, strutils, tables
-import ./commands
+import ./interact
 import ../[types, globals, utils]
 import ../db/database
 
@@ -132,10 +132,3 @@ proc register*(agent: Agent): bool =
         cq.writeLine(fgYellow, styleBright, fmt"[{agent.firstCheckin}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.name, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listener, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
 
     return true
-    
-#[
-    Agent interaction mode
-    When interacting with a agent, the following functions are called:
-    - addTask, to add a new tasks to the agents task queue
-    - getTaskResult, get the result for the task from the agent 
-]#
