@@ -101,7 +101,7 @@ proc agentInteract*(cq: Conquest, name: string) =
     cq.writeLine(fgYellow, "[+] ", resetStyle, fmt"Started interacting with agent ", fgYellow, agent.name, resetStyle, ". Type 'help' to list available commands.\n")
     cq.interactAgent = agent
 
-    while command != "exit": 
+    while command != "back": 
         command = cq.readLine()
         cq.withOutput(handleAgentCommand, command)
 

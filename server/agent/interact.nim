@@ -13,7 +13,7 @@ var parser = newParser:
     command("help"):
         nohelpflag()
 
-    command("exit"):
+    command("back"):
         nohelpflag()
 
 proc handleAgentCommand*(cq: Conquest, args: varargs[string]) = 
@@ -29,7 +29,7 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
 
         case opts.command
         
-        of "exit": # Exit program 
+        of "back": # Return to management mode
             discard
 
         of "help": # Display help menu

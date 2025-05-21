@@ -5,7 +5,5 @@ var cq*: Conquest
 
 # Colors
 # https://colors.sh/
-# TODO Replace all colored output with custom colors
-const yellow* = "\e[48;5;232m"
+const red* = "\e[210;66;79m"
 const resetColor* = "\e[0m"
-

@@ -75,9 +75,14 @@ proc drawTable*(cq: Conquest, agents: seq[Agent]) =
     cq.writeLine(row(headers, widths))
     cq.writeLine(border(midLeft, midMid, midRight, widths))
 
-    # TODO: Highlight elevated processes 
     for a in agents:
         let row = @[a.name, a.ip, a.username, a.hostname, a.os, a.process, $a.pid] 
-        cq.writeLine(row(row, widths)) 
+        
+        # Highlight agents running within elevated processes
+        if a.elevated: 
+            cq.writeLine(bgRed, fgBlack, row(row, widths)) 
+        else: 
+            cq.writeLine(row(row, widths)) 
+
 
     cq.writeLine(border(botLeft, botMid, botRight, widths)) 
