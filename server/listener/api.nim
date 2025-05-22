@@ -1,4 +1,4 @@
-import prologue, nanoid
+import prologue, nanoid, json
 import sequtils, strutils, times
 
 import ../[types]
@@ -65,19 +65,48 @@ proc register*(ctx: Context) {.async.} =
 ]#
 proc getTasks*(ctx: Context) {.async.} = 
     
-    stdout.writeLine(ctx.getPathParams("listener"))
-    let name = ctx.getPathParams("agent")
+    let 
+        listener = ctx.getPathParams("listener")
+        agent = ctx.getPathParams("agent")
     
+    let tasksJson = getTasks(listener, agent)
+    
+    # If agent/listener is invalid, return a 404 Not Found error code 
+    if tasksJson == nil: 
+        resp "", Http404
 
-    resp name
+    # Return all currently active tasks as a JsonObject
+    resp jsonResponse(tasksJson)
+
 
 #[
-    POST /{listener-uuid}/{agent-uuid}/results
+    POST /{listener-uuid}/{agent-uuid}/{task-uuid}/results
     Called from agent to post results of a task
 
 ]#
 proc postResults*(ctx: Context) {.async.} = 
     
-    let name = ctx.getPathParams("agent")
+    let 
+        listener = ctx.getPathParams("listener")
+        agent = ctx.getPathParams("agent")
+        task = ctx.getPathParams("task")
     
-    resp name
+    # Check headers
+    # If POST data is not JSON data, return 404 error code
+    if ctx.request.contentType != "application/json": 
+        resp "", Http404
+        return
+
+    try: 
+        let 
+            taskResultJson: JsonNode = parseJson(ctx.request.body)
+            taskResult: Task = taskResultJson.to(Task)
+        
+        # Handle and display task result
+        handleResult(listener, agent, task, taskResult)
+
+    except CatchableError:
+        # JSON data is invalid or does not match the expected format (described above)
+        resp "", Http404
+
+    return

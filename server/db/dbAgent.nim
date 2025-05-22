@@ -44,8 +44,7 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
                     elevated: elevated,
                     firstCheckin: firstCheckin,
                     jitter: jitter,
-                    process: process,
-                    tasks: @[] 
+                    process: process 
                 )
 
             agents.add(a)
@@ -80,7 +79,6 @@ proc dbGetAllAgentsByListener*(cq: Conquest, listenerName: string): seq[Agent] =
                     firstCheckin: firstCheckin,
                     jitter: jitter,
                     process: process,
-                    tasks: @[] 
                 )
 
             agents.add(a)

@@ -57,7 +57,7 @@ proc handleConsoleCommand*(cq: Conquest, args: varargs[string]) =
     if args[0].replace(" ", "").len == 0: return
 
     let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-    cq.writeLine(fgCyan, fmt"[{date}] ", resetStyle, styleBright, args[0])
+    cq.writeLine(fgBlue, styleBright, fmt"[{date}] ", resetStyle, styleBright, args[0])
 
     try:
         let opts = parser.parse(args[0].split(" ").filterIt(it.len > 0))

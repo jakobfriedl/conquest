@@ -69,7 +69,7 @@ proc getIPv4Address*(): string =
 
 # Windows Version fingerprinting
 proc getProductType(): ProductType =
-    # Instead, we retrieve the product key from the registry
+    # The product key is retrieved from the registry
     # HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\ProductOptions
     #   ProductType    REG_SZ    WinNT
     # Possible values are: 

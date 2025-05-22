@@ -23,7 +23,7 @@ type
     TaskResult* = string 
 
     Task* = ref object 
-        id*: int 
+        id*: string 
         agent*: string
         command*: TaskCommand
         args*: seq[string]

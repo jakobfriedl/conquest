@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, tables
+import terminal, strformat, strutils, sequtils, tables, json
 import ./interact
 import ../[types, globals, utils]
 import ../db/database
@@ -98,10 +98,10 @@ proc agentInteract*(cq: Conquest, name: string) =
     # Change prompt indicator to show agent interaction
     cq.setIndicator(fmt"[{agent.name}]> ")
     cq.setStatusBar(@[("[mode]", "interact"), ("[username]", fmt"{agent.username}"), ("[hostname]", fmt"{agent.hostname}"), ("[ip]", fmt"{agent.ip}"), ("[domain]", fmt"{agent.domain}")])    
-    cq.writeLine(fgYellow, "[+] ", resetStyle, fmt"Started interacting with agent ", fgYellow, agent.name, resetStyle, ". Type 'help' to list available commands.\n")
+    cq.writeLine(fgYellow, styleBright, "[+] ", resetStyle, fmt"Started interacting with agent ", fgYellow, styleBright, agent.name, resetStyle, ". Type 'help' to list available commands.\n")
     cq.interactAgent = agent
 
-    while command != "back": 
+    while command.replace(" ", "") != "back": 
         command = cq.readLine()
         cq.withOutput(handleAgentCommand, command)
 
@@ -120,7 +120,7 @@ proc register*(agent: Agent): bool =
         # TODO: Verify that the listener accessed is also the listener specified in the URL
         # This can be achieved by extracting the port number from the `Host` header and matching it to the one queried from the database
         if not cq.dbListenerExists(agent.listener.toUpperAscii): 
-            cq.writeLine(fgRed, styleBright, fmt"[-] Agent from {agent.ip} attempted to register to non-existent listener: {agent.listener}.", "\n")
+            cq.writeLine(fgRed, styleBright, fmt"[-] {agent.ip} attempted to register to non-existent listener: {agent.listener}.", "\n")
             return false
 
         # Store agent in database
@@ -132,3 +132,33 @@ proc register*(agent: Agent): bool =
         cq.writeLine(fgYellow, styleBright, fmt"[{agent.firstCheckin}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.name, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listener, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
 
     return true
+
+proc getTasks*(listener, agent: string): JsonNode = 
+
+    {.cast(gcsafe).}:
+
+        # Check if listener exists
+        if not cq.dbListenerExists(listener.toUpperAscii): 
+            cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent listener: {listener}.", "\n")
+            return nil
+
+        # Check if agent exists
+        if not cq.dbAgentExists(agent.toUpperAscii): 
+            cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent agent: {agent}.", "\n")
+            return nil
+
+        # TODO: Update the last check-in date for the accessed agent
+
+        let agent = cq.agents[agent]
+        return %agent.tasks.filterIt(it.status != Completed)
+
+proc handleResult*(listener, agent, task: string, taskResult: Task) = 
+
+    {.cast(gcsafe).}:
+
+        cq.writeLine(fgBlack, styleBright, fmt"[*] [{task}] ", resetStyle, "Task execution finished.")
+        cq.writeLine(taskResult.result)
+
+        # TODO: Remove completed task from the queue 
+
+        return 

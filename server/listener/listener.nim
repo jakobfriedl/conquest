@@ -48,7 +48,7 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
     # Define API endpoints
     listener.post("{listener}/register", api.register)
     listener.get("{listener}/{agent}/tasks", api.getTasks)
-    listener.post("{listener}/{agent}/results", api.postResults)
+    listener.post("{listener}/{agent}/{task}/results", api.postResults)
     listener.registerErrorHandler(Http404, api.error404)
 
     # Store listener in database
@@ -62,7 +62,7 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
         cq.add(listenerInstance)
         cq.writeLine(fgGreen, "[+] ", resetStyle, "Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on port {portStr}.")
     except CatchableError as err: 
-        cq.writeLine(fgRed, styleBright, "[-] Failed to start listener: ", getCurrentExceptionMsg())
+        cq.writeLine(fgRed, styleBright, "[-] Failed to start listener: ", err.msg)
 
 proc restartListeners*(cq: Conquest) = 
     let listeners: seq[Listener] = cq.dbGetAllListeners()
@@ -81,7 +81,7 @@ proc restartListeners*(cq: Conquest) =
         # Define API endpoints
         listener.post("{listener}/register", api.register)
         listener.get("{listener}/{agent}/tasks", api.getTasks)
-        listener.post("{listener}/{agent}/results", api.postResults)
+        listener.post("{listener}/{agent}/{task}/results", api.postResults)
         listener.registerErrorHandler(Http404, api.error404)
         
         try:
@@ -89,7 +89,7 @@ proc restartListeners*(cq: Conquest) =
             cq.add(l)
             cq.writeLine(fgGreen, "[+] ", resetStyle, "Restarted listener", fgGreen, fmt" {l.name} ", resetStyle, fmt"on port {$l.port}.")
         except CatchableError as err: 
-            cq.writeLine(fgRed, styleBright, "[-] Failed to restart listener: ", getCurrentExceptionMsg())
+            cq.writeLine(fgRed, styleBright, "[-] Failed to restart listener: ", err.msg)
         
         # Delay before starting serving another listener to avoid crashing the application
         waitFor sleepAsync(10)

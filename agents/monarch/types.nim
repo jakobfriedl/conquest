@@ -1,6 +1,6 @@
 import winim 
 
-type
+type 
     TaskCommand* = enum 
         ExecuteShell = "shell"
         ExecuteBof = "bof"
@@ -17,12 +17,12 @@ type
     TaskResult* = string 
 
     Task* = ref object 
-        id*: int 
+        id*: string 
         agent*: string
         command*: TaskCommand
         args*: seq[string]
         result*: TaskResult
-        status*: TaskStatus  
+        status*: TaskStatus 
 
 type 
     ProductType* = enum

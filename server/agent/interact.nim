@@ -1,5 +1,6 @@
-import argparse, times, strformat, terminal
+import argparse, times, strformat, terminal, nanoid
 import ../[types]
+import ./commands
 
 #[
     Agent Argument parsing
@@ -9,6 +10,8 @@ var parser = newParser:
 
     command("shell"):
         help("Execute a shell command.")
+        arg("command", help="Command", nargs = 1)
+        arg("arguments", help="Arguments.", nargs = -1) # Handle 0 or more command-line arguments (seq[string])
 
     command("help"):
         nohelpflag()
@@ -22,18 +25,25 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
     if args[0].replace(" ", "").len == 0: return
 
     let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-    cq.writeLine(fgCyan, fmt"[{date}] ", fgYellow, fmt"[{cq.interactAgent.name}] ", resetStyle, styleBright, args[0])
+    cq.writeLine(fgBlue, styleBright, fmt"[{date}] ", fgYellow, fmt"[{cq.interactAgent.name}] ", resetStyle, styleBright, args[0])
 
     try:
         let opts = parser.parse(args[0].split(" ").filterIt(it.len > 0))
 
         case opts.command
-        
+    
         of "back": # Return to management mode
             discard
 
         of "help": # Display help menu
             cq.writeLine(parser.help())
+
+        of "shell":
+            var 
+                command: string = opts.shell.get.command 
+                arguments: seq[string] = opts.shell.get.arguments
+            arguments.insert(command, 0)
+            cq.taskExecuteShell(arguments)
 
     # Handle help flag
     except ShortCircuit as err:
