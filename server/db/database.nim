@@ -33,6 +33,7 @@ proc dbInit*(cq: Conquest) =
             sleep INTEGER DEFAULT 10,
             jitter REAL DEFAULT 0.1,
             firstCheckin DATETIME NOT NULL,
+            latestCheckin DATETIME NOT NULL,
             FOREIGN KEY (listener) REFERENCES listeners(name)
         );
 
@@ -40,5 +41,5 @@ proc dbInit*(cq: Conquest) =
         
         cq.writeLine(fgGreen, "[+] ", cq.dbPath, ": Database created.")
         conquestDb.close()
-    except SqliteError: 
+    except SqliteError as err: 
         cq.writeLine(fgGreen, "[+] ", cq.dbPath, ": Database file found.")

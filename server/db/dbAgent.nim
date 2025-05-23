@@ -1,4 +1,4 @@
-import system, terminal, tiny_sqlite
+import system, terminal, tiny_sqlite, times
 import ../types
 
 #[
@@ -10,9 +10,9 @@ proc dbStoreAgent*(cq: Conquest, agent: Agent): bool =
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
         conquestDb.exec("""
-        INSERT INTO agents (name, listener, process, pid, username, hostname, domain, ip, os, elevated, sleep, jitter, firstCheckin)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-        """, agent.name, agent.listener, agent.process, agent.pid, agent.username, agent.hostname, agent.domain, agent.ip, agent.os, agent.elevated, agent.sleep, agent.jitter, $agent.firstCheckin)
+        INSERT INTO agents (name, listener, process, pid, username, hostname, domain, ip, os, elevated, sleep, jitter, firstCheckin, latestCheckin)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """, agent.name, agent.listener, agent.process, agent.pid, agent.username, agent.hostname, agent.domain, agent.ip, agent.os, agent.elevated, agent.sleep, agent.jitter, agent.firstCheckin.format("dd-MM-yyyy HH:mm:ss"), agent.latestCheckin.format("dd-MM-yyyy HH:mm:ss"))
 
         conquestDb.close() 
     except: 
@@ -28,8 +28,8 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        for row in conquestDb.iterate("SELECT name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin FROM agents;"):
-            let (name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin) = row.unpack((string, string, int, float, string, int, string, string, string, string, string, bool, string))
+        for row in conquestDb.iterate("SELECT name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin, latestCheckin FROM agents;"):
+            let (name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin, latestCheckin) = row.unpack((string, string, int, float, string, int, string, string, string, string, string, bool, string, string))
 
             let a = Agent(
                     name: name,
@@ -42,7 +42,8 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
                     ip: ip,
                     os: os,
                     elevated: elevated,
-                    firstCheckin: firstCheckin,
+                    firstCheckin: parse(firstCheckin, "dd-MM-yyyy HH:mm:ss"),
+                    latestCheckin: parse(latestCheckin, "dd-MM-yyyy HH:mm:ss"),
                     jitter: jitter,
                     process: process 
                 )
@@ -62,8 +63,8 @@ proc dbGetAllAgentsByListener*(cq: Conquest, listenerName: string): seq[Agent] =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        for row in conquestDb.iterate("SELECT name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin FROM agents WHERE listener = ?;", listenerName):
-            let (name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin) = row.unpack((string, string, int, float, string, int, string, string, string, string, string, bool, string))
+        for row in conquestDb.iterate("SELECT name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin, latestCheckin FROM agents WHERE listener = ?;", listenerName):
+            let (name, listener, sleep, jitter, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin, latestCheckin) = row.unpack((string, string, int, float, string, int, string, string, string, string, string, bool, string, string))
 
             let a = Agent(
                     name: name,
@@ -76,7 +77,8 @@ proc dbGetAllAgentsByListener*(cq: Conquest, listenerName: string): seq[Agent] =
                     ip: ip,
                     os: os,
                     elevated: elevated,
-                    firstCheckin: firstCheckin,
+                    firstCheckin: parse(firstCheckin, "dd-MM-yyyy HH:mm:ss"),
+                    latestCheckin: parse(latestCheckin, "dd-MM-yyyy HH:mm:ss"),
                     jitter: jitter,
                     process: process,
                 )
@@ -110,6 +112,18 @@ proc dbAgentExists*(cq: Conquest, agentName: string): bool =
         conquestDb.close()
 
         return res.isSome
+    except:
+        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
+        return false
+
+proc dbUpdateCheckin*(cq: Conquest, agentName: string, timestamp: string): bool =
+    try:
+        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
+
+        conquestDb.exec("UPDATE agents SET latestCheckin = ? WHERE name = ?", timestamp, agentName)
+
+        conquestDb.close()
+        return true
     except:
         cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
         return false

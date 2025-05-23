@@ -7,7 +7,7 @@ proc handleTask*(task: Task): Task =
     case task.command: 
     of ExecuteShell: 
         
-        let cmdResult = executeShellCommand(task.args)
+        let cmdResult = taskShell(task.args)
         echo cmdResult
 
         return Task(

@@ -16,7 +16,7 @@ proc main() =
 
     # TODO: Read data from configuration file
 
-    let listener = "NVIACCXB"
+    let listener = "HVVOGEOM"
     let agent = register(listener)
     echo fmt"[+] [{agent}] Agent registered."
 

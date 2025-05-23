@@ -56,9 +56,3 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
 
     cq.writeLine("")
 
-proc createTask*(args: varargs[string]): Task = 
-    discard 
-
-proc addTask*(cq: Conquest, agent: Agent, task: Task) = 
-    discard
-

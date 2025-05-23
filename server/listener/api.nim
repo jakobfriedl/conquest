@@ -39,7 +39,7 @@ proc register*(ctx: Context) {.async.} =
             agentRegistrationData: AgentRegistrationData = postData.to(AgentRegistrationData)
             agentUuid: string = generate(alphabet=join(toSeq('A'..'Z'), ""), size=8)
             listenerUuid: string = ctx.getPathParams("listener")
-            date: string = now().format("dd-MM-yyyy HH:mm:ss")
+            date: DateTime = now()
 
         let agent: Agent = newAgent(agentUuid, listenerUuid, date, agentRegistrationData) 
         

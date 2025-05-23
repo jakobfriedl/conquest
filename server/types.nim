@@ -1,6 +1,8 @@
 import prompt
 import prologue
 import tables
+import times
+import terminal
 
 #[
     Agent types & procs
@@ -54,10 +56,10 @@ type
         sleep*: int 
         jitter*: float 
         tasks*: seq[Task]
-        firstCheckin*: string
-        lastCheckin*: string
+        firstCheckin*: DateTime
+        latestCheckin*: DateTime
 
-proc newAgent*(name, listener, firstCheckin: string, postData: AgentRegistrationData): Agent = 
+proc newAgent*(name, listener: string, firstCheckin: DateTime, postData: AgentRegistrationData): Agent = 
     var agent = new Agent
     agent.name = name 
     agent.listener = listener 
@@ -73,6 +75,7 @@ proc newAgent*(name, listener, firstCheckin: string, postData: AgentRegistration
     agent.jitter = 0.2
     agent.tasks = @[]
     agent.firstCheckin = firstCheckin
+    agent.latestCheckin = firstCheckin
 
     return agent
 

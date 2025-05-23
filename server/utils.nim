@@ -1,4 +1,5 @@
-import re, strutils, terminal, tables, sequtils
+import strutils, terminal, tables, sequtils, times, strformat
+import std/wordwrap
 
 import ./[types]
 
@@ -10,6 +11,14 @@ proc validatePort*(portStr: string): bool =
         return false
 
 # Table border characters
+
+type
+  Cell = object
+    text: string
+    fg: ForegroundColor = fgWhite
+    bg: BackgroundColor = bgDefault
+    style: Style
+
 const topLeft = "╭"
 const topMid  = "┬"
 const topRight= "╮"
@@ -22,67 +31,136 @@ const botRight= "╯"
 const hor     = "─"
 const vert    = "│"
 
+# Wrap cell content
+proc wrapCell(text: string, width: int): seq[string] =
+    result = text.wrapWords(width).splitLines()
+
 # Format border
 proc border(left, mid, right: string, widths: seq[int]): string =
     var line = left
     for i, w in widths:
-        line.add(hor.repeat(w))
+        line.add(hor.repeat(w + 2))
         line.add(if i < widths.len - 1: mid else: right)
     return line
 
 # Format a row of data
-proc row(cells: seq[string], widths: seq[int]): string =
-    var row = vert
+proc formatRow(cells: seq[Cell], widths: seq[int]): seq[seq[Cell]] =
+    var wrappedCols: seq[seq[Cell]]
+    var maxLines = 1
+
     for i, cell in cells:
-        # Truncate content of a cell with "..." when the value to be inserted is longer than the designated width
-        let w = widths[i] - 2
-        let c = if cell.len > w:
-            if w >= 3:
-                cell[0 ..< w - 3] & "..."
-            else:
-                ".".repeat(max(0, w))
-        else:
-            cell
-        row.add(" " & c.alignLeft(w) & " " & vert)
-    return row
+        let wrappedLines = wrapCell(cell.text, widths[i])
+        wrappedCols.add(wrappedLines.mapIt(Cell(text: it, fg: cell.fg, bg: cell.bg, style: cell.style)))
+        maxLines = max(maxLines, wrappedLines.len)
+
+    for line in 0 ..< maxLines:
+        var lineRow: seq[Cell] = @[]
+        for i, col in wrappedCols:
+            let lineText = if line < col.len: col[line].text else: ""
+            let base = cells[i]
+            lineRow.add(Cell(text: " " & lineText.alignLeft(widths[i]) & " ", fg: base.fg, bg: base.bg, style: base.style))
+        result.add(lineRow)
+
+proc writeRow(cq: Conquest, row: seq[Cell]) =
+    stdout.write(vert)
+    for cell in row: 
+        stdout.styledWrite(cell.fg, cell.bg, cell.style, cell.text, resetStyle, vert)    
+    stdout.write("\n")
 
 proc drawTable*(cq: Conquest, listeners: seq[Listener]) = 
 
     # Column headers and widths
     let headers = @["Name", "Address", "Port", "Protocol", "Agents"]
     let widths = @[10, 17, 7, 10, 8]
+    let headerCells = headers.mapIt(Cell(text: it, fg: fgWhite, bg: bgDefault))    
 
     cq.writeLine(border(topLeft, topMid, topRight, widths))
-    cq.writeLine(row(headers, widths))
+    for line in formatRow(headerCells, widths):
+        cq.hidePrompt()
+        cq.writeRow(line)
+        cq.showPrompt()
     cq.writeLine(border(midLeft, midMid, midRight, widths))
 
     for l in listeners:
         # Get number of agents connected to the listener
         let connectedAgents = cq.agents.values.countIt(it.listener == l.name)
 
-        let row = @[l.name, l.address, $l.port, $l.protocol, $connectedAgents]
-        cq.writeLine(row(row, widths)) 
+        let rowCells = @[
+            Cell(text: l.name, fg: fgGreen),
+            Cell(text: l.address),
+            Cell(text: $l.port),
+            Cell(text: $l.protocol),
+            Cell(text: $connectedAgents)
+        ]
+
+        for line in formatRow(rowCells, widths):
+            cq.hidePrompt()
+            cq.writeRow(line)
+            cq.showPrompt() 
 
     cq.writeLine(border(botLeft, botMid, botRight, widths)) 
 
+# Calculate time since latest checking in format: Xd Xh Xm Xs
+proc timeSince*(timestamp: DateTime): Cell = 
+    
+    let 
+        now = now()
+        duration = now - timestamp
+        totalSeconds = int(duration.inSeconds)
+
+    let 
+        days = totalSeconds div 86400
+        hours = (totalSeconds mod 86400) div 3600
+        minutes = (totalSeconds mod 3600) div 60
+        seconds = totalSeconds mod 60
+
+    var text = ""
+
+    if days > 0:
+        text &= fmt"{days}d "
+    if hours > 0 or days > 0:
+        text &= fmt"{hours}h "
+    if minutes > 0 or hours > 0 or days > 0:
+        text &= fmt"{minutes}m "
+    text &= fmt"{seconds}s"
+
+    return Cell(
+        text: text.strip(),
+        # When the agent is 'dead', meaning that the latest checkin occured 
+        # more than 15 seconds ago, dim the text of the cell
+        style: if totalSeconds > 15: styleDim else: styleBright
+    )
 
 proc drawTable*(cq: Conquest, agents: seq[Agent]) = 
     
-    let headers: seq[string] = @["Name", "Address", "Username", "Hostname", "Operating System", "Process", "PID"]
-    let widths = @[10, 17, 20, 20, 20, 15, 7]
+    let headers: seq[string] = @["Name", "Address", "Username", "Hostname", "Operating System", "Process", "PID", "Activity"]
+    let widths = @[10, 17, 15, 15, 18, 15, 7, 10]
+    let headerCells = headers.mapIt(Cell(text: it, fg: fgWhite, bg: bgDefault))
 
     cq.writeLine(border(topLeft, topMid, topRight, widths))
-    cq.writeLine(row(headers, widths))
+    for line in formatRow(headerCells, widths):
+        cq.hidePrompt()
+        cq.writeRow(line)
+        cq.showPrompt()
     cq.writeLine(border(midLeft, midMid, midRight, widths))
 
     for a in agents:
-        let row = @[a.name, a.ip, a.username, a.hostname, a.os, a.process, $a.pid] 
-        
-        # Highlight agents running within elevated processes
-        if a.elevated: 
-            cq.writeLine(bgRed, fgBlack, row(row, widths)) 
-        else: 
-            cq.writeLine(row(row, widths)) 
 
+        var cells = @[
+            Cell(text: a.name, fg: fgYellow, style: styleBright),
+            Cell(text: a.ip),
+            Cell(text: a.username),
+            Cell(text: a.hostname),
+            Cell(text: a.os),
+            Cell(text: a.process, fg: if a.elevated: fgRed else: fgWhite),
+            Cell(text: $a.pid, fg: if a.elevated: fgRed else: fgWhite),
+            timeSince(a.latestCheckin)
+        ]
+
+        # Highlight agents running within elevated processes
+        for line in formatRow(cells, widths):
+            cq.hidePrompt()
+            cq.writeRow(line)
+            cq.showPrompt()
 
     cq.writeLine(border(botLeft, botMid, botRight, widths)) 

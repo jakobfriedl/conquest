@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, sequtils, tables, json
+import terminal, strformat, strutils, sequtils, tables, json, times
 import ./interact
 import ../[types, globals, utils]
 import ../db/database
@@ -61,8 +61,9 @@ Operating system:      {agent.os}
 Process name:          {agent.process}
 Process ID:            {$agent.pid}
 Process elevated:      {$agent.elevated}
-First checkin:         {agent.firstCheckin}
-    """)
+First checkin:         {agent.firstCheckin.format("dd-MM-yyyy HH:mm:ss")}
+Latest checkin:        {agent.latestCheckin.format("dd-MM-yyyy HH:mm:ss")}
+""")
 
 # Terminate agent and remove it from the database
 proc agentKill*(cq: Conquest, name: string) =
@@ -129,7 +130,9 @@ proc register*(agent: Agent): bool =
             return false
 
         cq.add(agent)
-        cq.writeLine(fgYellow, styleBright, fmt"[{agent.firstCheckin}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.name, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listener, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
+
+        let date = agent.firstCheckin.format("dd-MM-yyyy HH:mm:ss")
+        cq.writeLine(fgYellow, styleBright, fmt"[{date}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.name, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listener, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
 
     return true
 
@@ -147,10 +150,13 @@ proc getTasks*(listener, agent: string): JsonNode =
             cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent agent: {agent}.", "\n")
             return nil
 
-        # TODO: Update the last check-in date for the accessed agent
+        # Update the last check-in date for the accessed agent
+        cq.agents[agent.toUpperAscii].latestCheckin = now()
+        if not cq.dbUpdateCheckin(agent.toUpperAscii, now().format("dd-MM-yyyy HH:mm:ss")):
+            return nil
 
-        let agent = cq.agents[agent]
-        return %agent.tasks.filterIt(it.status != Completed)
+        # Return tasks in JSON format    
+        return %cq.agents[agent.toUpperAscii].tasks.filterIt(it.status != Completed)
 
 proc handleResult*(listener, agent, task: string, taskResult: Task) = 
 

@@ -2,7 +2,7 @@ import winim, osproc, strutils
 
 import ../types
 
-proc executeShellCommand*(command: seq[string]): TaskResult = 
+proc taskShell*(command: seq[string]): TaskResult = 
 
     echo command.join(" ")
     let (output, status) = execCmdEx(command.join(" ")) 
