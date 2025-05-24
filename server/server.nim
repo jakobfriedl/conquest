@@ -125,7 +125,8 @@ proc main() =
     setControlCHook(exit)
 
     # Initialize framework
-    cq = initConquest() 
+    let dbPath: string = "../server/db/conquest.db"
+    cq = initConquest(dbPath) 
 
     # Print header
     cq.header()

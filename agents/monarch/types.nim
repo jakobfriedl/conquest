@@ -46,3 +46,9 @@ type OSVersionInfoExW* {.importc: "OSVERSIONINFOEXW", header: "<windows.h>".} = 
   wProductType*: UCHAR
   wReserved*: UCHAR
 
+type 
+    AgentConfig* = object 
+        listener*: string 
+        ip*: string 
+        port*: int 
+        sleep*: int 

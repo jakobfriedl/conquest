@@ -135,11 +135,11 @@ proc delListener*(cq: Conquest, listenerName: string) =
 proc delAgent*(cq: Conquest, agentName: string) = 
     cq.agents.del(agentName)
 
-proc initConquest*(): Conquest = 
+proc initConquest*(dbPath: string): Conquest = 
     var cq = new Conquest
     var prompt = Prompt.init()
     cq.prompt = prompt
-    cq.dbPath = "db/conquest.db"
+    cq.dbPath = dbPath
     cq.listeners = initTable[string, Listener]()
     cq.agents = initTable[string, Agent]() 
     cq.interactAgent = nil 

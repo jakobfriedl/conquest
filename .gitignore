@@ -2,8 +2,7 @@
 # agents/
 *.db
 # Ignore binaries
-*/bin/*
-server/server
+bin/*
 *.exe
 
 # Nim
