@@ -9,6 +9,7 @@ import agent/agent, listener/listener, db/database
 ]# 
 var parser = newParser: 
     help("Conquest Command & Control")
+    nohelpflag()
 
     command("listener"):
         help("Manage, start and stop listeners.")
@@ -17,33 +18,41 @@ var parser = newParser:
             help("List all active listeners.")
         command("start"): 
             help("Starts a new HTTP listener.")
-            option("-h", "-host", default=some("0.0.0.0"), help="IPv4 address to listen on.", required=false)
-            option("-p", "-port", help="Port to listen on.", required=true)
+            option("-i", "--ip", default=some("localhost"), help="IPv4 address to listen on.", required=false)
+            option("-p", "--port", help="Port to listen on.", required=true)
+            
             # TODO: Future features:
             # flag("--dns", help="Use the DNS protocol for C2 communication.")
             # flag("--doh", help="Use DNS over HTTPS for C2 communication.)
         command("stop"):
             help("Stop an active listener.")
-            option("-n", "-name", help="Name of the listener.", required=true)
+            option("-n", "--name", help="Name of the listener.", required=true)
     
     command("agent"): 
         help("Manage, build and interact with agents.")
 
         command("list"):
             help("List all agents.")
-            option("-l", "-listener", help="Name of the listener.")
+            option("-l", "--listener", help="Name of the listener.")
 
         command("info"): 
             help("Display details for a specific agent.")
-            option("-n", "-name", help="Name of the agent.", required=true)
+            option("-n", "--name", help="Name of the agent.", required=true)
 
         command("kill"):
             help("Terminate the connection of an active listener and remove it from the interface.")
-            option("-n", "-name", help="Name of the agent.", required=true)
+            option("-n", "--name", help="Name of the agent.", required=true)
+            # flag("--self-delete", help="Remove agent executable from target system.")
 
         command("interact"):
             help("Interact with an active agent.")
-            option("-n", "-name", help="Name of the agent.", required=true)
+            option("-n", "--name", help="Name of the agent.", required=true)
+
+        command("build"): 
+            help("Generate a new agent to connect to an active listener.")
+            option("-l", "--listener", help="Name of the listener.", required=true)
+            option("-s", "--sleep", help="Sleep delay in seconds.", default=some("10") )
+            option("-p", "--payload", help="Agent type", choices = @["monarch"], default=some("monarch"))
 
     command("help"):
         nohelpflag()
@@ -76,7 +85,7 @@ proc handleConsoleCommand*(cq: Conquest, args: varargs[string]) =
             of "list":
                 cq.listenerList()
             of "start": 
-                cq.listenerStart(opts.listener.get.start.get.host, opts.listener.get.start.get.port)
+                cq.listenerStart(opts.listener.get.start.get.ip, opts.listener.get.start.get.port)
             of "stop": 
                 cq.listenerStop(opts.listener.get.stop.get.name)
             else: 
@@ -92,6 +101,8 @@ proc handleConsoleCommand*(cq: Conquest, args: varargs[string]) =
                 cq.agentKill(opts.agent.get.kill.get.name)
             of "interact":
                 cq.agentInteract(opts.agent.get.interact.get.name) 
+            of "build": 
+                cq.agentBuild(opts.agent.get.build.get.listener, opts.agent.get.build.get.sleep, opts.agent.get.build.get.payload)
             else: 
                 cq.agentUsage()
 
@@ -101,7 +112,7 @@ proc handleConsoleCommand*(cq: Conquest, args: varargs[string]) =
             cq.writeLine(err.help)
     
     # Handle invalid arguments
-    except UsageError: 
+    except CatchableError: 
         cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
     
     cq.writeLine("")

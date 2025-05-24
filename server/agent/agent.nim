@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, sequtils, tables, json, times, base64
+import terminal, strformat, strutils, sequtils, tables, json, times, base64, system, osproc, streams
 import ./interact
 import ../[types, globals, utils]
 import ../db/database
@@ -107,6 +107,56 @@ proc agentInteract*(cq: Conquest, name: string) =
         cq.withOutput(handleAgentCommand, command)
 
     cq.interactAgent = nil 
+
+# Agent generation 
+proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
+
+    # Verify that listener exists
+    if not cq.dbListenerExists(listener.toUpperAscii): 
+        cq.writeLine(fgRed, styleBright, fmt"[-] Listener {listener.toUpperAscii} does not exist.")
+        return
+
+    let listener = cq.listeners[listener.toUpperAscii] 
+
+    # Create/overwrite nim.cfg file to set agent configuration 
+    let agentConfigFile = fmt"../agents/{payload}/nim.cfg"    
+
+    # The following shows the format of the agent configuration file that defines compile-time variables 
+    let config = fmt"""
+    # Agent configuration 
+    -d:ListenerUuid="{listener.name}"
+    -d:ListenerIp="{listener.address}"
+    -d:ListenerPort={listener.port}
+    -d:SleepDelay={sleep}
+    """.replace("    ", "")
+    writeFile(agentConfigFile, config)
+
+    cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Configuration file created.")
+
+    # Build agent by executing the ./build.sh script on the system.
+    let agentBuildScript = fmt"../agents/{payload}/build.sh"    
+
+    cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Building agent...")
+    
+    try:
+        # Using the startProcess function from the 'osproc' module, it is possible to retrieve the output as it is received, line-by-line instead of all at once
+        let process = startProcess(agentBuildScript, options={poUsePath, poStdErrToStdOut})
+        let outputStream = process.outputStream
+
+        var line: string
+        while outputStream.readLine(line):
+            cq.writeLine(line) 
+
+        let exitCode = process.waitForExit()
+
+        # Check if the build succeeded or not
+        if exitCode == 0:
+            cq.writeLine(fgGreen, "[+] ", resetStyle, "Agent payload generated successfully.")
+        else:
+            cq.writeLine(fgRed, styleBright, "[-] ", resetStyle, "Build script exited with code ", $exitCode)
+
+    except CatchableError as err:
+        cq.writeLine(fgRed, styleBright, "[-] ", resetStyle, "An error occurred: ", err.msg)
 
 #[
   Agent API
