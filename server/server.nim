@@ -52,7 +52,7 @@ var parser = newParser:
             help("Generate a new agent to connect to an active listener.")
             option("-l", "--listener", help="Name of the listener.", required=true)
             option("-s", "--sleep", help="Sleep delay in seconds.", default=some("10") )
-            option("-p", "--payload", help="Agent type", choices = @["monarch"], default=some("monarch"))
+            option("-p", "--payload", help="Agent type.\n\t\t\t    ", default=some("monarch"), choices = @["monarch"],)
 
     command("help"):
         nohelpflag()

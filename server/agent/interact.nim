@@ -13,6 +13,10 @@ var parser = newParser:
         arg("command", help="Command", nargs = 1)
         arg("arguments", help="Arguments.", nargs = -1) # Handle 0 or more command-line arguments (seq[string])
 
+    command("sleep"): 
+        help("Update sleep delay configuration.")
+        arg("delay", help="Delay in seconds.", nargs = 1)
+
     command("help"):
         nohelpflag()
 
@@ -44,7 +48,9 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
                 arguments: seq[string] = opts.shell.get.arguments
             arguments.insert(command, 0)
             cq.taskExecuteShell(arguments)
-            
+
+        of "sleep": 
+            cq.taskExecuteSleep(parseInt(opts.sleep.get.delay))
 
     # Handle help flag
     except ShortCircuit as err:
@@ -52,6 +58,6 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
             cq.writeLine(err.help)
     
     # Handle invalid arguments
-    except UsageError: 
+    except CatchableError: 
         cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg(), "\n")
 

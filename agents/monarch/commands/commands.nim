@@ -1,3 +1,3 @@
-import ./[shell]
+import ./[shell, sleep]
 
-export shell
+export shell, sleep

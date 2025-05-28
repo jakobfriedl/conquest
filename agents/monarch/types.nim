@@ -1,28 +1,6 @@
 import winim 
-
-type 
-    TaskCommand* = enum 
-        ExecuteShell = "shell"
-        ExecuteBof = "bof"
-        ExecuteAssembly = "dotnet"
-        ExecutePe = "pe"
-
-    TaskStatus* = enum 
-        Created = "created"
-        Completed = "completed"
-        Pending = "pending"
-        Failed = "failed"
-        Cancelled = "cancelled"
-
-    TaskResult* = string 
-
-    Task* = ref object 
-        id*: string 
-        agent*: string
-        command*: TaskCommand
-        args*: seq[string]
-        result*: TaskResult
-        status*: TaskStatus 
+import ../../server/types
+export Task, TaskCommand, TaskResult, TaskStatus
 
 type 
     ProductType* = enum
@@ -47,7 +25,7 @@ type OSVersionInfoExW* {.importc: "OSVERSIONINFOEXW", header: "<windows.h>".} = 
   wReserved*: UCHAR
 
 type 
-    AgentConfig* = object 
+    AgentConfig* = ref object 
         listener*: string 
         ip*: string 
         port*: int 
