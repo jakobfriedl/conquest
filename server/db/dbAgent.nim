@@ -127,3 +127,15 @@ proc dbUpdateCheckin*(cq: Conquest, agentName: string, timestamp: string): bool 
     except:
         cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
         return false
+
+proc dbUpdateSleep*(cq: Conquest, agentName: string, delay: int): bool =
+    try:
+        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
+
+        conquestDb.exec("UPDATE agents SET sleep = ? WHERE name = ?", delay, agentName)
+
+        conquestDb.close()
+        return true
+    except:
+        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
+        return false

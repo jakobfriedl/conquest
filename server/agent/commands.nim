@@ -11,7 +11,7 @@ export shell, sleep
     [ ] cd          : Change directory
     [ ] ls/dir      : List all files in directory (including hidden ones)
     [ ] cat/type    : Display contents of a file
-    [ ] sleep       : Set sleep obfuscation duration to a different value and persist that value in the agent
+    [~] sleep       : Set sleep obfuscation duration to a different value and persist that value in the agent
     
     Post-exploitation
     -----------------

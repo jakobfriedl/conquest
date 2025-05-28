@@ -101,7 +101,7 @@ proc drawTable*(cq: Conquest, listeners: seq[Listener]) =
     cq.writeLine(border(botLeft, botMid, botRight, widths)) 
 
 # Calculate time since latest checking in format: Xd Xh Xm Xs
-proc timeSince*(timestamp: DateTime): Cell = 
+proc timeSince*(agent: Agent, timestamp: DateTime): Cell = 
     
     let 
         now = now()
@@ -127,8 +127,8 @@ proc timeSince*(timestamp: DateTime): Cell =
     return Cell(
         text: text.strip(),
         # When the agent is 'dead', meaning that the latest checkin occured 
-        # more than 15 seconds ago, dim the text of the cell
-        style: if totalSeconds > 15: styleDim else: styleBright
+        # more than the agents sleep configuration, dim the text style
+        style: if totalSeconds > agent.sleep: styleDim else: styleBright
     )
 
 proc drawTable*(cq: Conquest, agents: seq[Agent]) = 
@@ -154,7 +154,7 @@ proc drawTable*(cq: Conquest, agents: seq[Agent]) =
             Cell(text: a.os),
             Cell(text: a.process, fg: if a.elevated: fgRed else: fgWhite),
             Cell(text: $a.pid, fg: if a.elevated: fgRed else: fgWhite),
-            timeSince(a.latestCheckin)
+            a.timeSince(a.latestCheckin)
         ]
 
         # Highlight agents running within elevated processes

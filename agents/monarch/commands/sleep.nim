@@ -8,7 +8,7 @@ proc taskSleep*(delay: int): tuple[output: TaskResult, status: TaskStatus] =
 
     try: 
         sleep(delay * 1000) 
-        return ("\n", Completed) 
+        return ("", Completed) 
 
     except CatchableError as err: 
         return (fmt"An error occured: {err.msg}" & "\n", Failed) 

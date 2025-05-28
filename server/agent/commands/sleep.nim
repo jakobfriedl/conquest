@@ -1,7 +1,12 @@
 import nanoid, sequtils, strutils, strformat, terminal, times
 import ../../types
+import ../../db/database
 
 proc taskExecuteSleep*(cq: Conquest, delay: int) = 
+
+    # Update 'sleep' value in database 
+    if not cq.dbUpdateSleep(cq.interactAgent.name, delay): 
+        return 
 
     # Create a new task 
     let 
