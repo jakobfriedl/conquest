@@ -101,7 +101,7 @@ proc postResults*(ctx: Context) {.async.} =
     try: 
         let 
             taskResultJson: JsonNode = parseJson(ctx.request.body)
-            taskResult: Task = taskResultJson.to(Task)
+            taskResult: TaskResult = taskResultJson.to(TaskResult)
         
         # Handle and display task result
         handleResult(listener, agent, task, taskResult)

@@ -20,8 +20,6 @@ proc taskExecuteSleep*(cq: Conquest, delay: int) =
             agent: cq.interactAgent.name, 
             command: Sleep,
             args: @[$delay],
-            result: "",
-            status: Created
         )
 
     # Add new task to the agent's task queue

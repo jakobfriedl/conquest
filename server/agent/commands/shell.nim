@@ -11,8 +11,6 @@ proc taskExecuteShell*(cq: Conquest, arguments: seq[string]) =
             agent: cq.interactAgent.name, 
             command: ExecuteShell,
             args: arguments,
-            result: "",
-            status: Created
         )
 
     # Add new task to the agent's task queue

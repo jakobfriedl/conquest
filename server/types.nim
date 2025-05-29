@@ -17,34 +17,23 @@ type
         Sleep = "sleep"
 
     TaskStatus* = enum 
-        Created = "created"
         Completed = "completed"
+        Created = "created"
         Pending = "pending"
         Failed = "failed"
         Cancelled = "cancelled"
 
-    TaskResult* = string 
-
-    #[
-    TaskResult*[T] = ref object
-        data*: T
-
-    Task*[T] = ref object 
-        id*: string 
-        agent*: string
-        command*: TaskCommand
-        args*: seq[string]
-        result*: TaskResult[T]
-        status*: TaskStatus   
-    ]#
+    TaskResult* = ref object
+        task*: string 
+        agent*: string 
+        data*: string
+        status*: TaskStatus
 
     Task* = ref object 
         id*: string 
         agent*: string
         command*: TaskCommand
-        args*: seq[string]
-        result*: TaskResult
-        status*: TaskStatus        
+        args*: seq[string]     
 
     AgentRegistrationData* = object
         username*: string

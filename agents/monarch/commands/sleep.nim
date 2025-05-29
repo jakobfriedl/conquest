@@ -1,14 +1,24 @@
-import os, strutils, strformat
+import os, strutils, strformat, base64
 
 import ../types
 
-proc taskSleep*(delay: int): tuple[output: TaskResult, status: TaskStatus] = 
+proc taskSleep*(task: Task): TaskResult = 
 
-    echo fmt"Sleeping for {$delay} seconds."
+    echo fmt"Sleeping for {task.args[0]} seconds."
 
     try: 
-        sleep(delay * 1000) 
-        return ("", Completed) 
+        sleep(parseInt(task.args[0]) * 1000) 
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(""),
+            status: Completed
+        )
 
     except CatchableError as err: 
-        return (fmt"An error occured: {err.msg}" & "\n", Failed) 
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(fmt"An error occured: {err.msg}" & "\n"),
+            status: Failed 
+        )

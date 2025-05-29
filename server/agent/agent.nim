@@ -208,19 +208,19 @@ proc getTasks*(listener, agent: string): JsonNode =
         #    return nil
 
         # Return tasks in JSON format    
-        return %cq.agents[agent.toUpperAscii].tasks.filterIt(it.status != Completed)
+        return %cq.agents[agent.toUpperAscii].tasks
 
-proc handleResult*(listener, agent, task: string, taskResult: Task) = 
+proc handleResult*(listener, agent, task: string, taskResult: TaskResult) = 
 
     {.cast(gcsafe).}:
 
         cq.writeLine(fgBlack, styleBright, fmt"[*] [{task}] ", resetStyle, "Task execution finished.")
         
-        if taskResult.result != "": 
+        if taskResult.data != "": 
             cq.writeLine(fgBlack, styleBright, fmt"[*] [{task}] ", resetStyle, "Output:")
 
             # Split result string on newline to keep formatting
-            for line in decode(taskResult.result).split("\n"):
+            for line in decode(taskResult.data).split("\n"):
                 cq.writeLine(line)
         
         # Update task queue to include all tasks, except the one that was just completed
