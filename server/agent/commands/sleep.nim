@@ -4,9 +4,13 @@ import ../../db/database
 
 proc taskExecuteSleep*(cq: Conquest, delay: int) = 
 
+    if delay < 0: 
+        cq.writeLine(fgRed, styleBright, "[-] Invalid sleep delay value.")
+        return
+
     # Update 'sleep' value in database 
     if not cq.dbUpdateSleep(cq.interactAgent.name, delay): 
-        return 
+        return
 
     # Create a new task 
     let 

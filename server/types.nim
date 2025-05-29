@@ -1,6 +1,6 @@
 import prompt
 import prologue
-import tables
+import tables, sequtils
 import times
 import terminal
 
@@ -25,6 +25,19 @@ type
 
     TaskResult* = string 
 
+    #[
+    TaskResult*[T] = ref object
+        data*: T
+
+    Task*[T] = ref object 
+        id*: string 
+        agent*: string
+        command*: TaskCommand
+        args*: seq[string]
+        result*: TaskResult[T]
+        status*: TaskStatus   
+    ]#
+
     Task* = ref object 
         id*: string 
         agent*: string
@@ -42,6 +55,7 @@ type
         process*: string
         pid*: int 
         elevated*: bool
+        sleep*: int 
 
     Agent* = ref object 
         name*: string
@@ -60,6 +74,7 @@ type
         firstCheckin*: DateTime
         latestCheckin*: DateTime
 
+# TODO: Take sleep value from agent registration data (set via nim.cfg file)
 proc newAgent*(name, listener: string, firstCheckin: DateTime, postData: AgentRegistrationData): Agent = 
     var agent = new Agent
     agent.name = name 
@@ -72,7 +87,7 @@ proc newAgent*(name, listener: string, firstCheckin: DateTime, postData: AgentRe
     agent.ip = postData.ip 
     agent.os = postData.os
     agent.elevated = postData.elevated 
-    agent.sleep = 10
+    agent.sleep = postData.sleep
     agent.jitter = 0.2
     agent.tasks = @[]
     agent.firstCheckin = firstCheckin
@@ -135,6 +150,12 @@ proc delListener*(cq: Conquest, listenerName: string) =
 
 proc delAgent*(cq: Conquest, agentName: string) = 
     cq.agents.del(agentName)
+
+proc getAgentsAsSeq*(cq: Conquest): seq[Agent] = 
+    var agents: seq[Agent] = @[]
+    for agent in cq.agents.values:
+        agents.add(agent)
+    return agents
 
 proc initConquest*(dbPath: string): Conquest = 
     var cq = new Conquest

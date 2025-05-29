@@ -18,7 +18,8 @@ proc register*(config: AgentConfig): string =
         "os": getOSVersion(),
         "process": getProcessExe(),
         "pid":  getProcessId(),
-        "elevated": isElevated()
+        "elevated": isElevated(),
+        "sleep": config.sleep
     }
     echo $body
 

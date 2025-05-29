@@ -71,7 +71,7 @@ proc drawTable*(cq: Conquest, listeners: seq[Listener]) =
 
     # Column headers and widths
     let headers = @["Name", "Address", "Port", "Protocol", "Agents"]
-    let widths = @[10, 17, 7, 10, 8]
+    let widths = @[8, 15, 5, 8, 6]
     let headerCells = headers.mapIt(Cell(text: it, fg: fgWhite, bg: bgDefault))    
 
     cq.writeLine(border(topLeft, topMid, topRight, widths))
@@ -134,7 +134,7 @@ proc timeSince*(agent: Agent, timestamp: DateTime): Cell =
 proc drawTable*(cq: Conquest, agents: seq[Agent]) = 
     
     let headers: seq[string] = @["Name", "Address", "Username", "Hostname", "Operating System", "Process", "PID", "Activity"]
-    let widths = @[10, 17, 15, 15, 18, 15, 7, 10]
+    let widths = @[8, 15, 15, 15, 16, 15, 5, 13]
     let headerCells = headers.mapIt(Cell(text: it, fg: fgWhite, bg: bgDefault))
 
     cq.writeLine(border(topLeft, topMid, topRight, widths))
@@ -154,7 +154,7 @@ proc drawTable*(cq: Conquest, agents: seq[Agent]) =
             Cell(text: a.os),
             Cell(text: a.process, fg: if a.elevated: fgRed else: fgWhite),
             Cell(text: $a.pid, fg: if a.elevated: fgRed else: fgWhite),
-            a.timeSince(a.latestCheckin)
+            a.timeSince(cq.agents[a.name].latestCheckin)
         ]
 
         # Highlight agents running within elevated processes

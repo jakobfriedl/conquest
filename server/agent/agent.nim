@@ -30,6 +30,7 @@ proc agentList*(cq: Conquest, listener: string) =
     # If no argument is passed via -n, list all agents, otherwise only display agents connected to a specific listener
     if listener == "": 
         cq.drawTable(cq.dbGetAllAgents())
+
     else: 
         # Check if listener exists
         if not cq.dbListenerExists(listener.toUpperAscii): 
@@ -37,6 +38,7 @@ proc agentList*(cq: Conquest, listener: string) =
             return
 
         cq.drawTable(cq.dbGetAllAgentsByListener(listener.toUpperAscii))
+
 
 # Display agent properties and details
 proc agentInfo*(cq: Conquest, name: string) = 
@@ -202,8 +204,8 @@ proc getTasks*(listener, agent: string): JsonNode =
 
         # Update the last check-in date for the accessed agent
         cq.agents[agent.toUpperAscii].latestCheckin = now()
-        if not cq.dbUpdateCheckin(agent.toUpperAscii, now().format("dd-MM-yyyy HH:mm:ss")):
-            return nil
+        # if not cq.dbUpdateCheckin(agent.toUpperAscii, now().format("dd-MM-yyyy HH:mm:ss")):
+        #    return nil
 
         # Return tasks in JSON format    
         return %cq.agents[agent.toUpperAscii].tasks.filterIt(it.status != Completed)

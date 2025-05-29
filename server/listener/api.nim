@@ -29,7 +29,8 @@ proc register*(ctx: Context) {.async.} =
             "os": "operating-system",
             "process": "agent.exe",
             "pid":  1234,
-            "elevated": false
+            "elevated": false.
+            "sleep": 10
         }
     ]#  
 
