@@ -1,6 +1,6 @@
 import argparse, times, strformat, terminal, nanoid
+import ./commands/commands
 import ../[types]
-import ./commands
 
 #[
     Agent Argument parsing
@@ -16,6 +16,9 @@ var parser = newParser:
     command("sleep"): 
         help("Update sleep delay configuration.")
         arg("delay", help="Delay in seconds.", nargs = 1)
+
+    command("info"): 
+        help("Display agent information and current settings.")
 
     command("help"):
         nohelpflag()
@@ -51,6 +54,9 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
 
         of "sleep": 
             cq.taskExecuteSleep(parseInt(opts.sleep.get.delay))
+
+        of "info":
+            discard 
 
     # Handle help flag
     except ShortCircuit as err:

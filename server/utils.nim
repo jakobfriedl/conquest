@@ -134,7 +134,7 @@ proc timeSince*(agent: Agent, timestamp: DateTime): Cell =
 proc drawTable*(cq: Conquest, agents: seq[Agent]) = 
     
     let headers: seq[string] = @["Name", "Address", "Username", "Hostname", "Operating System", "Process", "PID", "Activity"]
-    let widths = @[8, 15, 15, 15, 16, 15, 5, 13]
+    let widths = @[8, 15, 15, 15, 16, 15, 5, 8]
     let headerCells = headers.mapIt(Cell(text: it, fg: fgWhite, bg: bgDefault))
 
     cq.writeLine(border(topLeft, topMid, topRight, widths))

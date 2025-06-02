@@ -1,4 +1,4 @@
-import ./commands/[shell, sleep]
+import ./[shell, sleep]
 export shell, sleep
 
 #[

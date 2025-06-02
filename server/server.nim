@@ -18,7 +18,7 @@ var parser = newParser:
             help("List all active listeners.")
         command("start"): 
             help("Starts a new HTTP listener.")
-            option("-i", "--ip", default=some("localhost"), help="IPv4 address to listen on.", required=false)
+            option("-i", "--ip", default=some("127.0.0.1"), help="IPv4 address to listen on.", required=false)
             option("-p", "--port", help="Port to listen on.", required=true)
             
             # TODO: Future features:

@@ -16,4 +16,4 @@ proc taskExecuteShell*(cq: Conquest, arguments: seq[string]) =
     # Add new task to the agent's task queue
     cq.interactAgent.tasks.add(task)
 
-    cq.writeLine(fgBlack, styleBright, fmt"[*] [{task.id}] ", resetStyle, "Tasked agent to execute shell command.")
+    cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, "Tasked agent to execute shell command.")

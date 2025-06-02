@@ -18,7 +18,7 @@ proc handleTask*(task: Task, config: AgentConfig): TaskResult =
         
         # Update sleep delay in agent config
         if taskResult.status == Completed: 
-            config.sleep = delay
+            config.sleep = parseInt(task.args[0])
 
         # Return result
         return taskResult

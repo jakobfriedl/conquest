@@ -214,14 +214,22 @@ proc handleResult*(listener, agent, task: string, taskResult: TaskResult) =
 
     {.cast(gcsafe).}:
 
-        cq.writeLine(fgBlack, styleBright, fmt"[*] [{task}] ", resetStyle, "Task execution finished.")
+        let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         
-        if taskResult.data != "": 
-            cq.writeLine(fgBlack, styleBright, fmt"[*] [{task}] ", resetStyle, "Output:")
+        if taskResult.status == Failed: 
+            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, fmt"Task {task} failed.", "\n")
 
-            # Split result string on newline to keep formatting
-            for line in decode(taskResult.data).split("\n"):
-                cq.writeLine(line)
+        else:  
+            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, fmt"Task {task} finished.")
+            
+            if taskResult.data != "": 
+                cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, "Output:")
+
+                # Split result string on newline to keep formatting
+                for line in decode(taskResult.data).split("\n"):
+                    cq.writeLine(line)
+            else: 
+                cq.writeLine()
         
         # Update task queue to include all tasks, except the one that was just completed
         cq.agents[agent].tasks = cq.agents[agent].tasks.filterIt(it.id != task)
