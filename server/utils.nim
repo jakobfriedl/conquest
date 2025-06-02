@@ -3,6 +3,11 @@ import std/wordwrap
 
 import ./[types]
 
+proc parseOctets*(ip: string): tuple[first, second, third, fourth: int] = 
+    # TODO: Verify that address is in correct, expected format
+    let octets = ip.split('.')
+    return (parseInt(octets[0]), parseInt(octets[1]), parseInt(octets[2]), parseInt(octets[3]))
+
 proc validatePort*(portStr: string): bool = 
     try:
         let port: int = portStr.parseInt

