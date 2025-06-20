@@ -1,5 +1,5 @@
-import ./[shell, sleep]
-export shell, sleep
+import ./[shell, sleep, pwd]
+export shell, sleep, pwd
 
 #[
     "Monarch" Agent commands:

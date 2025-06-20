@@ -20,6 +20,9 @@ var parser = newParser:
     command("info"): 
         help("Display agent information and current settings.")
 
+    command("pwd"):
+        help("Retrieve current working directory")
+
     command("help"):
         nohelpflag()
 
@@ -57,6 +60,9 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
 
         of "info":
             discard 
+
+        of "pwd":
+            cq.taskGetWorkingDirectory()
 
     # Handle help flag
     except ShortCircuit as err:

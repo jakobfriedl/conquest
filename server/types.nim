@@ -15,6 +15,7 @@ type
         ExecuteAssembly = "dotnet"
         ExecutePe = "pe"
         Sleep = "sleep"
+        GetWorkingDirectory = "pwd"
 
     TaskStatus* = enum 
         Completed = "completed"

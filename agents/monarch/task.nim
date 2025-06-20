@@ -23,6 +23,11 @@ proc handleTask*(task: Task, config: AgentConfig): TaskResult =
         # Return result
         return taskResult
 
+    of GetWorkingDirectory: 
+        let taskResult = taskPwd(task)
+        echo taskResult.data 
+        return taskResult
+
     else: 
         echo "Not implemented"
         return nil 
