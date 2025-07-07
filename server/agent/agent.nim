@@ -223,7 +223,16 @@ proc handleResult*(listener, agent, task: string, taskResult: TaskResult) =
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         
         if taskResult.status == Failed: 
-            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, fmt"Task {task} failed.", "\n")
+            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, fmt"Task {task} failed.")
+
+            if taskResult.data != "": 
+                cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, "Output:")
+
+                # Split result string on newline to keep formatting
+                for line in decode(taskResult.data).split("\n"):
+                    cq.writeLine(line)
+            else: 
+                cq.writeLine()
 
         else:  
             cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, fmt"Task {task} finished.")

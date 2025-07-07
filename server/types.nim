@@ -16,6 +16,8 @@ type
         ExecutePe = "pe"
         Sleep = "sleep"
         GetWorkingDirectory = "pwd"
+        SetWorkingDirectory = "cd"
+        ListDirectory = "ls"
 
     TaskStatus* = enum 
         Completed = "completed"

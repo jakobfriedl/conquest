@@ -28,6 +28,16 @@ proc handleTask*(task: Task, config: AgentConfig): TaskResult =
         echo taskResult.data 
         return taskResult
 
+    of SetWorkingDirectory:
+        let taskResult = taskCd(task)
+        echo taskResult.data
+        return taskResult
+
+    of ListDirectory:
+        let taskResult = taskDir(task)
+        echo taskResult.data
+        return taskResult
+
     else: 
         echo "Not implemented"
         return nil 

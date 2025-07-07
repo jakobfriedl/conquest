@@ -14,7 +14,7 @@ proc taskPwd*(task: Task): TaskResult =
             length = GetCurrentDirectoryW(MAX_PATH, &buffer)
         
         if length == 0:
-            raise newException(OSError, "Failed to get working directory.")
+            raise newException(OSError, fmt"Failed to get working directory ({GetLastError()}).")
 
         return TaskResult(
             task: task.id, 

@@ -21,7 +21,15 @@ var parser = newParser:
         help("Display agent information and current settings.")
 
     command("pwd"):
-        help("Retrieve current working directory")
+        help("Retrieve current working directory.")
+
+    command("cd"): 
+        help("Change current working directory.")
+        arg("directory", help="Relative or absolute path of the directory to change to.", nargs = -1)
+
+    command("ls"):
+        help("List files and directories.")
+        arg("directory", help="Relative or absolute path. Default: current working directory.", nargs = -1)
 
     command("help"):
         nohelpflag()
@@ -63,6 +71,12 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
 
         of "pwd":
             cq.taskGetWorkingDirectory()
+
+        of "cd": 
+            cq.taskSetWorkingDirectory(opts.cd.get.directory)
+
+        of "ls":
+            cq.taskListDirectory(opts.ls.get.directory)
 
     # Handle help flag
     except ShortCircuit as err:
