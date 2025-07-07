@@ -6,22 +6,23 @@ export shell, sleep, pwd, cd, ls
 
     House-keeping
     -------------
-    [~] sleep       : Set sleep obfuscation duration to a different value and persist that value in the agent
+    [X] sleep       : Set sleep obfuscation duration to a different value and persist that value in the agent
     
     Basic API-only Commands
     -----------------------
-    [~] pwd         : Get current working directory
-    [~] cd          : Change directory
-    [ ] ls/dir      : List all files in directory (including hidden ones)
+    [X] pwd         : Get current working directory
+    [X] cd          : Change directory
+    [X] ls/dir      : List all files in directory (including hidden ones)
     [ ] cat/type    : Display contents of a file
     [ ] env         : Display environment variables
     [ ] ps          : List processes
     [ ] whoami      : Get UID and privileges, etc. 
     
     [ ] token       : Token impersonation
-        [ ] make    : Create a token from a user's plaintext password
-        [ ] steal   : Steal the access token from a process 
-        [ ] use     : Impersonate a token from the token vault
+        [ ] make    : Create a token from a user's plaintext password (LogonUserA, ImpersonateLoggedOnUser)
+        [ ] steal   : Steal the access token from a process (OpenProcess, OpenProcessToken, DuplicateToken, ImpersonateLoggedOnUser)
+        [ ] use     : Impersonate a token from the token vault (ImpersonateLoggedOnUser) -> update username like in Cobalt Strike
+    [ ] rev2self    : Revert to original logon session (RevertToSelf)
     
     Execution Commands
     ------------------
