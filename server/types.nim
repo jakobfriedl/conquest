@@ -18,6 +18,8 @@ type
         GetWorkingDirectory = "pwd"
         SetWorkingDirectory = "cd"
         ListDirectory = "ls"
+        RemoveFile = "rm"
+        RemoveDirectory = "rmdir"
 
     TaskStatus* = enum 
         Completed = "completed"

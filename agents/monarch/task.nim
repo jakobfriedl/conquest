@@ -38,6 +38,16 @@ proc handleTask*(task: Task, config: AgentConfig): TaskResult =
         echo taskResult.data
         return taskResult
 
+    of RemoveFile:
+        let taskResult = taskRm(task)
+        echo taskResult.data
+        return taskResult
+
+    of RemoveDirectory:
+        let taskResult = taskRmdir(task)
+        echo taskResult.data
+        return taskResult
+
     else: 
         echo "Not implemented"
         return nil 

@@ -31,6 +31,14 @@ var parser = newParser:
         help("List files and directories.")
         arg("directory", help="Relative or absolute path. Default: current working directory.", nargs = -1)
 
+    command("rm"): 
+        help("Remove file.")
+        arg("file", help="Relative or absolute path to the file to delete.", nargs = -1)
+
+    command("rmdir"): 
+        help("Remove directory.")
+        arg("directory", help="Relative or absolute path to the directory to delete.", nargs = -1)
+
     command("help"):
         nohelpflag()
 
@@ -77,6 +85,12 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
 
         of "ls":
             cq.taskListDirectory(opts.ls.get.directory)
+
+        of "rm":
+            cq.taskRemoveFile(opts.rm.get.file)
+
+        of "rmdir":
+            cq.taskRemoveDirectory(opts.rmdir.get.directory)
 
     # Handle help flag
     except ShortCircuit as err:

