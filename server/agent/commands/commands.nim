@@ -1,5 +1,5 @@
-import ./[shell, sleep, pwd, cd, ls]
-export shell, sleep, pwd, cd, ls
+import ./[shell, sleep, filesystem]
+export shell, sleep, filesystem
 
 #[
     "Monarch" Agent commands:

