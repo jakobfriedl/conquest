@@ -1,4 +1,4 @@
-import winim 
+import winim, tables
 import ../../server/types
 export Task, TaskCommand, TaskResult, TaskStatus
 
@@ -24,9 +24,9 @@ type OSVersionInfoExW* {.importc: "OSVERSIONINFOEXW", header: "<windows.h>".} = 
   wProductType*: UCHAR
   wReserved*: UCHAR
 
-type 
-    AgentConfig* = ref object 
-        listener*: string 
-        ip*: string 
-        port*: int 
-        sleep*: int 
+type
+    AgentConfig* = ref object
+        listener*: string
+        ip*: string
+        port*: int
+        sleep*: int
