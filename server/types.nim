@@ -38,7 +38,8 @@ type
         id*: string 
         agent*: string
         command*: TaskCommand
-        args*: seq[string]     
+        args*: string           # Json string containing all the positional arguments  
+                                # Example: """{"command": "whoami", "arguments": "/all"}"""
 
     AgentRegistrationData* = object
         username*: string

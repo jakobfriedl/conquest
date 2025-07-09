@@ -1,7 +1,7 @@
 import strformat, os, times
 import winim
 
-import ./[types, http, task]
+import ./[types, http, taskHandler]
 
 const ListenerUuid {.strdefine.}: string = ""
 const Octet1 {.intdefine.}: int = 0

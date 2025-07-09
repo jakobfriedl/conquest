@@ -1,5 +1,5 @@
 import argparse, times, strformat, terminal, nanoid
-import ./task
+import ./taskDispatcher
 import ../[types]
 
 #[
@@ -10,8 +10,8 @@ var parser = newParser:
 
     command("shell"):
         help("Execute a shell command and retrieve the output.")
-        arg("command", help="Command", nargs = 1)
-        arg("arguments", help="Arguments.", nargs = -1) # Handle 0 or more command-line arguments (seq[string])
+        arg("command", help="Command to be executed.", nargs = 1)
+        arg("arguments", help="Arguments to be passed to the command.", nargs = -1) # Handle 0 or more command-line arguments (seq[string])
 
     command("sleep"): 
         help("Update sleep delay configuration.")
@@ -39,6 +39,11 @@ var parser = newParser:
         help("Remove directory.")
         arg("directory", help="Relative or absolute path to the directory to delete.", nargs = -1)
 
+    command("bof"):
+        help("Execute COFF or BOF file (.o) in memory.")
+        arg("file", help="Local path to object file.", nargs = 1)
+        arg("arguments", help="Arguments to be passed to the BOF.", nargs = -1)
+
     command("help"):
         nohelpflag()
 
@@ -65,11 +70,7 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
             cq.writeLine(parser.help())
 
         of "shell":
-            var 
-                command: string = opts.shell.get.command 
-                arguments: seq[string] = opts.shell.get.arguments
-            arguments.insert(command, 0)
-            cq.taskExecuteShell(arguments)
+            cq.taskExecuteShell(opts.shell.get.command, opts.shell.get.arguments)
 
         of "sleep": 
             cq.taskExecuteSleep(parseInt(opts.sleep.get.delay))
@@ -91,6 +92,9 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
 
         of "rmdir":
             cq.taskRemoveDirectory(opts.rmdir.get.directory)
+
+        of "bof": 
+            cq.taskExecuteBof(opts.bof.get.file, opts.bof.get.arguments)
 
     # Handle help flag
     except ShortCircuit as err:

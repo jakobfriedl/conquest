@@ -1,4 +1,4 @@
-import os, strutils, strformat, base64, winim, times, algorithm
+import os, strutils, strformat, base64, winim, times, algorithm, json
 
 import ../types
 
@@ -35,7 +35,9 @@ proc taskPwd*(task: Task): TaskResult =
 # Change working directory
 proc taskCd*(task: Task): TaskResult = 
 
-    let targetDirectory = task.args.join(" ").replace("\"", "").replace("'", "")
+    # Parse arguments
+    let targetDirectory = parseJson(task.args)["directory"].getStr()
+
     echo fmt"Changing current working directory to {targetDirectory}."
 
     try: 
@@ -61,11 +63,13 @@ proc taskCd*(task: Task): TaskResult =
 # List files and directories at a specific or at the current path
 proc taskDir*(task: Task): TaskResult = 
 
+    # Parse arguments
+    var targetDirectory = parseJson(task.args)["directory"].getStr()
+
     echo fmt"Listing files and directories."
 
     try: 
         # Check if users wants to list files in the current working directory or at another path
-        var targetDirectory = task.args.join(" ").replace("\"", "").replace("'", "")
 
         if targetDirectory == "": 
             # Get current working directory using GetCurrentDirectory
@@ -214,8 +218,10 @@ proc taskDir*(task: Task): TaskResult =
 # Remove file 
 proc taskRm*(task: Task): TaskResult = 
 
-    let target = task.args.join(" ").replace("\"", "").replace("'", "")
-    echo fmt"Deleting {target}."
+    # Parse arguments
+    let target = parseJson(task.args)["file"].getStr()
+
+    echo fmt"Deleting file {target}."
 
     try: 
         # Get current working directory using GetCurrentDirectory
@@ -240,8 +246,10 @@ proc taskRm*(task: Task): TaskResult =
 # Remove directory
 proc taskRmdir*(task: Task): TaskResult = 
 
-    let target = task.args.join(" ").replace("\"", "").replace("'", "")
-    echo fmt"Deleting {target}."
+    # Parse arguments
+    let target = parseJson(task.args)["directory"].getStr()
+
+    echo fmt"Deleting directory {target}."
 
     try: 
         # Get current working directory using GetCurrentDirectory

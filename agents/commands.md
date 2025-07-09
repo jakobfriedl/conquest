@@ -11,6 +11,8 @@ Basic API-only Commands
 - [x] ls/dir      : List all files in directory (including hidden ones)
 - [x] rm          : Remove a file
 - [x] rmdir       : Remove a empty directory
+- [ ] mv          : Move a file 
+- [ ] cp          : Copy a file
 - [ ] cat/type    : Display contents of a file
 - [ ] env         : Display environment variables
 - [ ] ps          : List processes

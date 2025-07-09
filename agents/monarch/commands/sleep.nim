@@ -1,13 +1,16 @@
-import os, strutils, strformat, base64
+import os, strutils, strformat, base64, json
 
 import ../types
 
 proc taskSleep*(task: Task): TaskResult = 
 
-    echo fmt"Sleeping for {task.args[0]} seconds."
+    # Parse task parameter
+    let delay = parseJson(task.args)["delay"].getInt()
+
+    echo fmt"Sleeping for {delay} seconds."
 
     try: 
-        sleep(parseInt(task.args[0]) * 1000) 
+        sleep(delay * 1000) 
         return TaskResult(
             task: task.id, 
             agent: task.agent, 

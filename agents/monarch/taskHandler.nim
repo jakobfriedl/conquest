@@ -1,4 +1,4 @@
-import strutils, tables
+import strutils, tables, json
 import ./types 
 import ./commands/commands
 
@@ -24,7 +24,7 @@ proc handleTask*(task: Task, config: AgentConfig): TaskResult =
     case task.command:
     of Sleep:         
         if taskResult.status == Completed: 
-            config.sleep = parseInt(task.args[0])
+            config.sleep = parseJson(task.args)["delay"].getInt() 
     else: 
         discard
 
