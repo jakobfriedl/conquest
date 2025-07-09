@@ -20,6 +20,8 @@ type
         ListDirectory = "ls"
         RemoveFile = "rm"
         RemoveDirectory = "rmdir"
+        Move = "move"
+        Copy = "copy"
 
     TaskStatus* = enum 
         Completed = "completed"

@@ -13,7 +13,9 @@ proc handleTask*(task: Task, config: AgentConfig): TaskResult =
         SetWorkingDirectory: taskCd,
         ListDirectory: taskDir,
         RemoveFile: taskRm,
-        RemoveDirectory: taskRmdir
+        RemoveDirectory: taskRmdir,
+        Move: taskMove, 
+        Copy: taskCopy
     }.toTable
 
     # Handle task command

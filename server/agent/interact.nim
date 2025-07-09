@@ -39,6 +39,16 @@ var parser = newParser:
         help("Remove directory.")
         arg("directory", help="Relative or absolute path to the directory to delete.", nargs = -1)
 
+    command("move"): 
+        help("Move a file or directory.")
+        option("-f", "--from", help="Original file name.", required=true)
+        option("-t", "--to", help="New file name.", required=true)
+
+    command("copy"): 
+        help("Copy a file or directory.")
+        option("-f", "--from", help="Original file name.", required=true)
+        option("-t", "--to", help="New file name.", required=true)
+
     command("bof"):
         help("Execute COFF or BOF file (.o) in memory.")
         arg("file", help="Local path to object file.", nargs = 1)
@@ -92,6 +102,12 @@ proc handleAgentCommand*(cq: Conquest, args: varargs[string]) =
 
         of "rmdir":
             cq.taskRemoveDirectory(opts.rmdir.get.directory)
+
+        of "move": 
+            cq.taskMove(opts.move.get.from, opts.move.get.to)
+
+        of "copy": 
+            cq.taskCopy(opts.copy.get.from, opts.copy.get.to)
 
         of "bof": 
             cq.taskExecuteBof(opts.bof.get.file, opts.bof.get.arguments)

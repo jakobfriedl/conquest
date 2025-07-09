@@ -55,6 +55,14 @@ proc taskRemoveDirectory*(cq: Conquest, arguments: seq[string]) =
     let payload = %*{ "directory": arguments.join(" ").replace("\"").replace("'")}
     cq.createTask(RemoveDirectory, $payload, "Tasked agent to remove directory.")
 
+proc taskMove*(cq: Conquest, oldPath, newPath: string) =
+    let payload = %*{ "from": oldPath, "to": newPath}
+    cq.createTask(Move, $payload, "Tasked agent to move a file or directory.")
+
+proc taskCopy*(cq: Conquest, oldPath, newPath: string) =
+    let payload = %*{ "from": oldPath, "to": newPath}
+    cq.createTask(Copy, $payload, "Tasked agent to copy a file or directory.")
+
 proc taskExecuteBof*(cq: Conquest, file: string, arguments: seq[string]) = 
     
     # Verify that the object file exists 
