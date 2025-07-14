@@ -3,7 +3,7 @@ import ../types
 import ../db/database
 
 # Generic task creation procedure
-proc createTask(cq: Conquest, command: TaskCommand, args: string, message: string) =
+proc createTask*(cq: Conquest, command: CommandType, args: string, message: string) =
     let
         date = now().format("dd-MM-yyyy HH:mm:ss")
         task = Task(
@@ -32,36 +32,6 @@ proc taskExecuteSleep*(cq: Conquest, delay: int) =
     # Use the generic createTask function
     createTask(cq, Sleep, $payload, "Tasked agent to update sleep settings.")
 
-proc taskExecuteShell*(cq: Conquest, command: string, arguments: seq[string]) = 
-    let payload = %*{ "command": command, "arguments": arguments.join(" ")}
-    cq.createTask(ExecuteShell, $payload, "Tasked agent to execute shell command.")
-
-proc taskGetWorkingDirectory*(cq: Conquest) =
-    cq.createTask(GetWorkingDirectory, "", "Tasked agent to get current working directory.")
-
-proc taskSetWorkingDirectory*(cq: Conquest, arguments: seq[string]) =
-    let payload = %*{ "directory": arguments.join(" ").replace("\"").replace("'")}
-    cq.createTask(SetWorkingDirectory, $payload, "Tasked agent to change current working directory.")
-
-proc taskListDirectory*(cq: Conquest, arguments: seq[string]) =
-    let payload = %*{ "directory": arguments.join(" ").replace("\"").replace("'")}
-    cq.createTask(ListDirectory, $payload, "Tasked agent to list files and directories.")
-
-proc taskRemoveFile*(cq: Conquest, arguments: seq[string]) =
-    let payload = %*{ "file": arguments.join(" ").replace("\"").replace("'")}
-    cq.createTask(RemoveFile, $payload, "Tasked agent to remove file.")
-
-proc taskRemoveDirectory*(cq: Conquest, arguments: seq[string]) =
-    let payload = %*{ "directory": arguments.join(" ").replace("\"").replace("'")}
-    cq.createTask(RemoveDirectory, $payload, "Tasked agent to remove directory.")
-
-proc taskMove*(cq: Conquest, oldPath, newPath: string) =
-    let payload = %*{ "from": oldPath, "to": newPath}
-    cq.createTask(Move, $payload, "Tasked agent to move a file or directory.")
-
-proc taskCopy*(cq: Conquest, oldPath, newPath: string) =
-    let payload = %*{ "from": oldPath, "to": newPath}
-    cq.createTask(Copy, $payload, "Tasked agent to copy a file or directory.")
 
 proc taskExecuteBof*(cq: Conquest, file: string, arguments: seq[string]) = 
     

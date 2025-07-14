@@ -8,8 +8,7 @@ import terminal
     Agent types & procs
 ]#
 type 
-
-    TaskCommand* = enum 
+    CommandType* = enum 
         ExecuteShell = "shell"
         ExecuteBof = "bof"
         ExecuteAssembly = "dotnet"
@@ -22,6 +21,27 @@ type
         RemoveDirectory = "rmdir"
         Move = "move"
         Copy = "copy"
+
+    ArgumentType* = enum 
+        String = 0
+        Int = 1 
+        Long = 2
+        Bool = 3 
+        Binary = 4
+
+    Argument* = object 
+        name*: string 
+        description*: string 
+        argumentType*: ArgumentType
+        isRequired*: bool
+
+    Command* = object 
+        name*: string
+        commandType*: CommandType
+        description*: string 
+        example*: string 
+        arguments*: seq[Argument]
+        dispatchMessage*: string
 
     TaskStatus* = enum 
         Completed = "completed"
@@ -39,7 +59,7 @@ type
     Task* = ref object 
         id*: string 
         agent*: string
-        command*: TaskCommand
+        command*: CommandType
         args*: string           # Json string containing all the positional arguments  
                                 # Example: """{"command": "whoami", "arguments": "/all"}"""
 
@@ -181,7 +201,7 @@ template clear*(cq: Conquest) =
     cq.prompt.clear()
 
 # Overwrite withOutput function to handle function arguments
-proc withOutput*(cq: Conquest, outputFunction: proc(cq: Conquest, args: varargs[string]), args: varargs[string]) =
+proc withOutput*(cq: Conquest, outputFunction: proc(cq: Conquest, args: string), args: string) =
     cq.hidePrompt()
     outputFunction(cq, args)
     cq.showPrompt()

@@ -60,16 +60,16 @@ var parser = newParser:
     command("exit"):
         nohelpflag()
 
-proc handleConsoleCommand*(cq: Conquest, args: varargs[string]) = 
+proc handleConsoleCommand*(cq: Conquest, args: string) = 
 
     # Return if no command (or just whitespace) is entered
-    if args[0].replace(" ", "").len == 0: return
+    if args.replace(" ", "").len == 0: return
 
     let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-    cq.writeLine(fgBlue, styleBright, fmt"[{date}] ", resetStyle, styleBright, args[0])
+    cq.writeLine(fgBlue, styleBright, fmt"[{date}] ", resetStyle, styleBright, args)
 
     try:
-        let opts = parser.parse(args[0].split(" ").filterIt(it.len > 0))
+        let opts = parser.parse(args.split(" ").filterIt(it.len > 0))
 
         case opts.command
         

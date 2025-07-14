@@ -1,6 +1,6 @@
 import winim, tables
 import ../../server/types
-export Task, TaskCommand, TaskResult, TaskStatus
+export Task, CommandType, TaskResult, TaskStatus
 
 type 
     ProductType* = enum
