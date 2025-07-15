@@ -1,6 +1,6 @@
 import argparse, times, strformat, terminal, nanoid, tables, json, sequtils
 import ./taskDispatcher
-import ../[types]
+import ../types
 
 #[
     Agent Argument parsing
@@ -101,8 +101,48 @@ proc initAgentCommands*(): Table[CommandType, Command] =
 
     return commands 
 
+let commands = initAgentCommands() 
+
+proc getCommandFromTable(cmd: string, commands: Table[CommandType, Command]): (CommandType, Command) =
+    let commandType = parseEnum[CommandType](cmd.toLowerAscii())
+    let command = commands[commandType]
+    (commandType, command)
+    
+proc parseAgentCommand(input: string): seq[string] = 
+    var i = 0
+    while i < input.len:
+
+        # Skip whitespaces/tabs
+        while i < input.len and input[i] in {' ', '\t'}: 
+            inc i
+        if i >= input.len: 
+            break
+        
+        var arg = ""
+        if input[i] == '"':
+            # Parse quoted argument
+            inc i # Skip opening quote
+
+            # Add parsed argument when quotation is closed
+            while i < input.len and input[i] != '"': 
+                arg.add(input[i]) 
+                inc i
+            
+            if i < input.len: 
+                inc i # Skip closing quote
+        
+        else:
+            while i < input.len and input[i] notin {' ', '\t'}: 
+                arg.add(input[i])
+                inc i
+        
+        # Add argument to returned result
+        if arg.len > 0: result.add(arg)
+
+
 proc displayHelp(cq: Conquest, commands: Table[CommandType, Command]) = 
     cq.writeLine("Available commands:")
+    cq.writeLine(" * back")
     for key, cmd in commands: 
         cq.writeLine(fmt" * {cmd.name:<15}{cmd.description}")
     cq.writeLine()
@@ -123,122 +163,90 @@ Usage   : {usage}
 
     if command.arguments.len > 0:
         cq.writeLine("Arguments:")
+
+        let header = @["Name", "Type", "", "Description"]
+        cq.writeLine(fmt"   {header[0]:<15} {header[1]:<8}{header[2]:<10} {header[3]}")
+        cq.writeLine(fmt"   {'-'.repeat(15)} {'-'.repeat(18)} {'-'.repeat(20)}")
+        
         for arg in command.arguments: 
-            let requirement = if arg.isRequired: "REQUIRED" else: "OPTIONAL"
-            cq.writeLine(fmt" * {arg.name:<15} {requirement}    {arg.description}")
+            let requirement = if arg.isRequired: "(REQUIRED)" else: "(OPTIONAL)"
+            cq.writeLine(fmt" * {arg.name:<15} {($arg.argumentType).toUpperAscii():<8}{requirement:<10} {arg.description}")
 
         cq.writeLine()
 
-proc parseAgentCommand(input: string): seq[string] = 
-    var i = 0
+proc handleHelp(cq: Conquest, parsed: seq[string], commands: Table[CommandType, Command]) = 
+    try: 
+        # Try parsing the first argument passed to 'help' as a command
+        let (commandType, command) = getCommandFromTable(parsed[1],  commands)
+        cq.displayCommandHelp(command)
+    except IndexDefect:
+        # 'help' command is called without additional parameters
+        cq.displayHelp(commands)
+    except ValueError: 
+        # Command was not found
+        cq.writeLine(fgRed, styleBright, fmt"[-] The command '{parsed[1]}' does not exist." & '\n')
 
-    while i < input.len:
-        # Skip whitespaces/tabs
-        while i < input.len and input[i] in {' ', '\t'}: 
-            inc i
-        if i >= input.len: 
-            break
-        
-        var arg = ""
-        if input[i] == '"':
-            # Parse quoted argument
-            inc i # (Skip opening quote)
+proc packageArguments(cq: Conquest, command: Command, arguments: seq[string]): JsonNode = 
 
-            while i < input.len and input[i] != '"': 
-                # Add parsed argument when quotation is closed
-                arg.add(input[i]) 
-                inc i
-            
-            if i < input.len: 
-                inc i # (Skip closing quote)
+    # Construct a JSON payload with argument names and values 
+    result = newJObject()
+    let parsedArgs = if arguments.len > 1: arguments[1..^1] else: @[] # Remove first element from sequence to only handle arguments
+
+    # Check if the correct amount of parameters are passed
+    if parsedArgs.len < command.arguments.filterIt(it.isRequired).len: 
+        cq.displayCommandHelp(command)
+        raise newException(ValueError, "Missing required arguments.")
+
+    for i, argument in command.arguments: 
         
+        # Argument provided - convert to the corresponding data type
+        if i < parsedArgs.len:
+            case argument.argumentType:
+            of Int:
+                result[argument.name] = %parseUInt(parsedArgs[i])
+            of Binary: 
+                # Read file into memory and convert it into a base64 string
+                result[argument.name] = %""
+            else:
+                # The last optional argument is joined together
+                # This is required for non-quoted input with infinite length, such as `shell mv arg1 arg2`
+                if i == command.arguments.len - 1 and not argument.isRequired:
+                    result[argument.name] = %parsedArgs[i..^1].join(" ")
+                else:
+                    result[argument.name] = %parsedArgs[i]
+        
+        # Argument not provided - set to empty string for optional args
         else:
-            while i < input.len and input[i] notin {' ', '\t'}: 
-                arg.add(input[i])
-                inc i
-        
-        # Add argument to returned result
-        if arg.len > 0: result.add(arg)
+            # If a required argument is not provided, display the help text
+            if argument.isRequired:
+                cq.displayCommandHelp(command)
+                return
+            else:
+                result[argument.name] = %""
 
 proc handleAgentCommand*(cq: Conquest, input: string) = 
-
-    let commands = initAgentCommands() 
-    var 
-        commandType: CommandType
-        command: Command
-
     # Return if no command (or just whitespace) is entered
     if input.replace(" ", "").len == 0: return
 
     let date: string = now().format("dd-MM-yyyy HH:mm:ss")
     cq.writeLine(fgBlue, styleBright, fmt"[{date}] ", fgYellow, fmt"[{cq.interactAgent.name}] ", resetStyle, styleBright, input)
 
-    # Split the user input, taking quotes into consideration 
-    let parsed = parseAgentCommand(input)
+    let parsedArgs = parseAgentCommand(input)
     
     # Handle 'back' command
-    if parsed[0] == "back": 
+    if parsedArgs[0] == "back": 
         return
 
     # Handle 'help' command 
-    if parsed[0] == "help": 
-        try: 
-            # Try parsing the first argument passed to 'help' as a command
-            commandType = parseEnum[CommandType](parsed[1].toLowerAscii())
-            command = commands[commandType]
-        except IndexDefect:
-            # 'help' command is called without additional parameters
-            cq.displayHelp(commands)
-            return
-        except ValueError: 
-            # Command was not found
-            cq.writeLine(fgRed, styleBright, fmt"[-] The command {parsed[1]} does not exist." & '\n')
-            return 
-
-        cq.displayCommandHelp(command)
+    if parsedArgs[0] == "help": 
+        cq.handleHelp(parsedArgs, commands)
         return
 
-    # Following this, commands require actions on the agent and thus a task needs to be created
-    # Determine the command used by checking the first positional argument
+    # Handle commands with actions on the agent
     try: 
-        commandType = parseEnum[CommandType](parsed[0].toLowerAscii())
-        command = commands[commandType]
-    except ValueError: 
-        cq.writeLine(fgRed, styleBright, "[-] Unknown command.\n")
-        return 
-
-    # TODO: Client/Server-side command specific actions (e.g. updating sleep, ...)
-
-    # Construct a JSON payload with argument names and values 
-    var payload = newJObject()
-    let parsedArgs = if parsed.len > 1: parsed[1..^1] else: @[] # Remove first element from sequence to only handle arguments
-
-    try: 
-        for i, argument in command.arguments: 
-            
-            if i < parsedArgs.len:
-                # Argument provided - convert to the corresponding data type
-                case argument.argumentType:
-                of Int:
-                    payload[argument.name] = %parseInt(parsedArgs[i])
-                of Binary: 
-                    # Read file into memory and convert it into a base64 string
-                    discard
-                else:
-                    payload[argument.name] = %parsedArgs[i]
-            
-            else:
-                # Argument not provided - set to empty string for optional args
-                # If a required argument is not provided, display the help text
-                if argument.isRequired:
-                    cq.displayCommandHelp(command)
-                    return
-                else:
-                    payload[argument.name] = %""
-
-    except CatchableError:
-        cq.writeLine(fgRed, styleBright, "[-] Invalid syntax.\n")
+        let (commandType, command) = getCommandFromTable(parsedArgs[0], commands)
+        let payload = cq.packageArguments(command, parsedArgs)
+        cq.createTask(commandType, $payload, fmt"Tasked agent to {command.description.toLowerAscii()}")
+    except ValueError as err: 
+        cq.writeLine(fgRed, styleBright, fmt"[-] {err.msg}" & "\n")
         return
-
-    # Task creation
-    cq.createTask(commandType, $payload, fmt"Tasked agent to {command.description.toLowerAscii()}")

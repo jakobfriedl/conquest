@@ -23,11 +23,11 @@ type
         Copy = "copy"
 
     ArgumentType* = enum 
-        String = 0
-        Int = 1 
-        Long = 2
-        Bool = 3 
-        Binary = 4
+        String = "string"
+        Int = "int"
+        Long = "long"
+        Bool = "bool"
+        Binary = "binary"
 
     Argument* = object 
         name*: string 
