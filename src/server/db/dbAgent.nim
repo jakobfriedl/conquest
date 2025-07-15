@@ -1,5 +1,5 @@
 import system, terminal, tiny_sqlite, times
-import ../types
+import ../../types
 
 #[
     Agent database functions

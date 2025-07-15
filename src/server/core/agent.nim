@@ -1,8 +1,9 @@
 import terminal, strformat, strutils, sequtils, tables, json, times, base64, system, osproc, streams
-import ./interact
-import ../[types, globals, utils]
-import ../db/database
 
+import ./taskDispatcher
+import ../utils
+import ../db/database
+import ../../types
 
 #[ 
     Agent management mode
@@ -121,7 +122,7 @@ proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
     let listener = cq.listeners[listener.toUpperAscii] 
 
     # Create/overwrite nim.cfg file to set agent configuration 
-    let agentConfigFile = fmt"../agents/{payload}/nim.cfg"   
+    let agentConfigFile = fmt"../src/agents/{payload}/nim.cfg"   
 
     # Parse IP Address and store as compile-time integer to hide hardcoded-strings in binary from `strings` command
     let (first, second, third, fourth) = parseOctets(listener.address)
@@ -142,7 +143,7 @@ proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
     cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Configuration file created.")
 
     # Build agent by executing the ./build.sh script on the system.
-    let agentBuildScript = fmt"../agents/{payload}/build.sh"    
+    let agentBuildScript = fmt"../src/agents/{payload}/build.sh"    
 
     cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Building agent...")
     
@@ -166,87 +167,3 @@ proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
     except CatchableError as err:
         cq.writeLine(fgRed, styleBright, "[-] ", resetStyle, "An error occurred: ", err.msg)
 
-#[
-  Agent API
-  Functions relevant for dealing with the agent API, such as registering new agents, querying tasks and posting results
-]#
-proc register*(agent: Agent): bool = 
-
-    # The following line is required to be able to use the `cq` global variable for console output
-    {.cast(gcsafe).}:
-
-        # Check if listener that is requested exists
-        # TODO: Verify that the listener accessed is also the listener specified in the URL
-        # This can be achieved by extracting the port number from the `Host` header and matching it to the one queried from the database
-        if not cq.dbListenerExists(agent.listener.toUpperAscii): 
-            cq.writeLine(fgRed, styleBright, fmt"[-] {agent.ip} attempted to register to non-existent listener: {agent.listener}.", "\n")
-            return false
-
-        # Store agent in database
-        if not cq.dbStoreAgent(agent): 
-            cq.writeLine(fgRed, styleBright, fmt"[-] Failed to insert agent {agent.name} into database.", "\n")
-            return false
-
-        cq.add(agent)
-
-        let date = agent.firstCheckin.format("dd-MM-yyyy HH:mm:ss")
-        cq.writeLine(fgYellow, styleBright, fmt"[{date}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.name, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listener, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
-
-    return true
-
-proc getTasks*(listener, agent: string): JsonNode = 
-
-    {.cast(gcsafe).}:
-
-        # Check if listener exists
-        if not cq.dbListenerExists(listener.toUpperAscii): 
-            cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent listener: {listener}.", "\n")
-            return nil
-
-        # Check if agent exists
-        if not cq.dbAgentExists(agent.toUpperAscii): 
-            cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent agent: {agent}.", "\n")
-            return nil
-
-        # Update the last check-in date for the accessed agent
-        cq.agents[agent.toUpperAscii].latestCheckin = now()
-        # if not cq.dbUpdateCheckin(agent.toUpperAscii, now().format("dd-MM-yyyy HH:mm:ss")):
-        #    return nil
-
-        # Return tasks in JSON format    
-        return %cq.agents[agent.toUpperAscii].tasks
-
-proc handleResult*(listener, agent, task: string, taskResult: TaskResult) = 
-
-    {.cast(gcsafe).}:
-
-        let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-        
-        if taskResult.status == Failed: 
-            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, fmt"Task {task} failed.")
-
-            if taskResult.data != "": 
-                cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, "Output:")
-
-                # Split result string on newline to keep formatting
-                for line in decode(taskResult.data).split("\n"):
-                    cq.writeLine(line)
-            else: 
-                cq.writeLine()
-
-        else:  
-            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, fmt"Task {task} finished.")
-            
-            if taskResult.data != "": 
-                cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, "Output:")
-
-                # Split result string on newline to keep formatting
-                for line in decode(taskResult.data).split("\n"):
-                    cq.writeLine(line)
-            else: 
-                cq.writeLine()
-        
-        # Update task queue to include all tasks, except the one that was just completed
-        cq.agents[agent].tasks = cq.agents[agent].tasks.filterIt(it.id != task)
-
-        return 

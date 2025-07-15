@@ -1,5 +1,5 @@
 import winim, tables
-import ../../server/types
+import ../../types
 export Task, CommandType, TaskResult, TaskStatus
 
 type 

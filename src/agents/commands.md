@@ -11,8 +11,8 @@ Basic API-only Commands
 - [x] ls/dir      : List all files in directory (including hidden ones)
 - [x] rm          : Remove a file
 - [x] rmdir       : Remove a empty directory
-- [ ] mv          : Move a file 
-- [ ] cp          : Copy a file
+- [x] mv          : Move a file 
+- [x] cp          : Copy a file
 - [ ] cat/type    : Display contents of a file
 - [ ] env         : Display environment variables
 - [ ] ps          : List processes
@@ -26,7 +26,7 @@ Basic API-only Commands
 
 Execution Commands
 ------------------
-- [~] shell       : Execute shell command (to be implemented using Windows APIs instead of execCmdEx)
+- [x] shell       : Execute shell command (to be implemented using Windows APIs instead of execCmdEx)
 - [ ] bof         : Execute Beacon Object File in memory and retrieve output (bof /local/path/file.o)
         - Read from listener endpoint directly to memory
         - Base for all kinds of BOFs (Situational Awareness, ...)

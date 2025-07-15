@@ -1,6 +1,5 @@
 import argparse, times, strformat, terminal, nanoid, tables, json, sequtils
-import ./taskDispatcher
-import ../types
+import ../../types
 
 #[
     Agent Argument parsing
@@ -223,6 +222,19 @@ proc packageArguments(cq: Conquest, command: Command, arguments: seq[string]): J
                 return
             else:
                 result[argument.name] = %""
+
+proc createTask*(cq: Conquest, command: CommandType, args: string, message: string) =
+    let
+        date = now().format("dd-MM-yyyy HH:mm:ss")
+        task = Task(
+            id: generate(alphabet=join(toSeq('A'..'Z'), ""), size=8),
+            agent: cq.interactAgent.name,
+            command: command,
+            args: args,
+        )
+    
+    cq.interactAgent.tasks.add(task)
+    cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, message)
 
 proc handleAgentCommand*(cq: Conquest, input: string) = 
     # Return if no command (or just whitespace) is entered

@@ -1,8 +1,9 @@
 import prompt, terminal, argparse
 import strutils, strformat, times, system, tables
 
-import ./[types, globals]
-import agent/agent, listener/listener, db/database
+import ./globals
+import core/agent, core/listener, db/database
+import ../types
 
 #[
     Argument parsing
@@ -136,7 +137,7 @@ proc main() =
     setControlCHook(exit)
 
     # Initialize framework
-    let dbPath: string = "../server/db/conquest.db"
+    let dbPath: string = "../src/server/db/conquest.db"
     cq = initConquest(dbPath) 
 
     # Print header

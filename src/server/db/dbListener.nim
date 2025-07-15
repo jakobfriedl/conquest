@@ -1,5 +1,5 @@
 import system, terminal, tiny_sqlite
-import ../types
+import ../../types
 
 #[
     Listener database functions

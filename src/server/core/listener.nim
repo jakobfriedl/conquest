@@ -1,9 +1,10 @@
 import strformat, strutils, sequtils, nanoid, terminal
 import prologue
 
-import ./api
-import ../[types, utils]
+import ./endpoints
+import ../utils
 import ../db/database
+import ../../types
 
 proc listenerUsage*(cq: Conquest) = 
     cq.writeLine("""Manage, start and stop listeners.
@@ -46,10 +47,10 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
     var listener = newApp(settings = listenerSettings)
 
     # Define API endpoints
-    listener.post("{listener}/register", api.register)
-    listener.get("{listener}/{agent}/tasks", api.getTasks)
-    listener.post("{listener}/{agent}/{task}/results", api.postResults)
-    listener.registerErrorHandler(Http404, api.error404)
+    listener.post("{listener}/register", endpoints.register)
+    listener.get("{listener}/{agent}/tasks", endpoints.getTasks)
+    listener.post("{listener}/{agent}/{task}/results", endpoints.postResults)
+    listener.registerErrorHandler(Http404, endpoints.error404)
 
     # Store listener in database
     var listenerInstance = newListener(name, host, port)
@@ -79,10 +80,10 @@ proc restartListeners*(cq: Conquest) =
             listener = newApp(settings = settings)
 
         # Define API endpoints
-        listener.post("{listener}/register", api.register)
-        listener.get("{listener}/{agent}/tasks", api.getTasks)
-        listener.post("{listener}/{agent}/{task}/results", api.postResults)
-        listener.registerErrorHandler(Http404, api.error404)
+        listener.post("{listener}/register", endpoints.register)
+        listener.get("{listener}/{agent}/tasks", endpoints.getTasks)
+        listener.post("{listener}/{agent}/{task}/results", endpoints.postResults)
+        listener.registerErrorHandler(Http404, endpoints.error404)
         
         try:
             discard listener.runAsync() 

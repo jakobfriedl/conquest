@@ -1,8 +1,8 @@
 import prologue, nanoid, json
 import sequtils, strutils, times
 
-import ../[types]
-import ../agent/agent
+import ./agentApi
+import ../../types
 
 proc error404*(ctx: Context) {.async.} = 
     resp "", Http404

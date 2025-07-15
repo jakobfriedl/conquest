@@ -1,8 +1,7 @@
 import prompt
 import prologue
-import tables, sequtils
+import tables
 import times
-import terminal
 
 #[
     Agent types & procs
@@ -139,7 +138,6 @@ proc stringToProtocol*(protocol: string): Protocol =
     of "http": 
         return HTTP
     else: discard
-
 
 #[
     Conquest framework types & procs

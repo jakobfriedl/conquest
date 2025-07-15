@@ -1,7 +1,7 @@
 import strutils, terminal, tables, sequtils, times, strformat
 import std/wordwrap
 
-import ./[types]
+import ../types
 
 proc parseOctets*(ip: string): tuple[first, second, third, fourth: int] = 
     # TODO: Verify that address is in correct, expected format
