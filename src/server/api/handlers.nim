@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, sequtils, tables, json, times, base64, system, osproc, streams
+import terminal, strformat, strutils, sequtils, tables, json, times, base64, system
 
 import ../globals
 import ../db/database
