@@ -1,8 +1,8 @@
 import strformat, strutils, sequtils, nanoid, terminal
 import prologue
 
-import ./endpoints
 import ../utils
+import ../api/routes
 import ../db/database
 import ../../types
 
@@ -47,10 +47,10 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
     var listener = newApp(settings = listenerSettings)
 
     # Define API endpoints
-    listener.post("{listener}/register", endpoints.register)
-    listener.get("{listener}/{agent}/tasks", endpoints.getTasks)
-    listener.post("{listener}/{agent}/{task}/results", endpoints.postResults)
-    listener.registerErrorHandler(Http404, endpoints.error404)
+    listener.post("{listener}/register", routes.register)
+    listener.get("{listener}/{agent}/tasks", routes.getTasks)
+    listener.post("{listener}/{agent}/{task}/results", routes.postResults)
+    listener.registerErrorHandler(Http404, routes.error404)
 
     # Store listener in database
     var listenerInstance = newListener(name, host, port)
@@ -80,10 +80,10 @@ proc restartListeners*(cq: Conquest) =
             listener = newApp(settings = settings)
 
         # Define API endpoints
-        listener.post("{listener}/register", endpoints.register)
-        listener.get("{listener}/{agent}/tasks", endpoints.getTasks)
-        listener.post("{listener}/{agent}/{task}/results", endpoints.postResults)
-        listener.registerErrorHandler(Http404, endpoints.error404)
+        listener.post("{listener}/register", routes.register)
+        listener.get("{listener}/{agent}/tasks", routes.getTasks)
+        listener.post("{listener}/{agent}/{task}/results", routes.postResults)
+        listener.registerErrorHandler(Http404, routes.error404)
         
         try:
             discard listener.runAsync() 

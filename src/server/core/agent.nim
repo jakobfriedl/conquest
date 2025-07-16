@@ -1,7 +1,7 @@
 import terminal, strformat, strutils, sequtils, tables, json, times, base64, system, osproc, streams
 
-import ./taskDispatcher
 import ../utils
+import ../task/dispatcher
 import ../db/database
 import ../../types
 

@@ -1,9 +1,10 @@
 import prompt, terminal, argparse
 import strutils, strformat, times, system, tables
 
-import ./globals
-import core/agent, core/listener, db/database
-import ../types
+import ./[agent, listener]
+import ../db/database
+import ../globals
+import ../../types
 
 #[
     Argument parsing
@@ -61,7 +62,7 @@ var parser = newParser:
     command("exit"):
         nohelpflag()
 
-proc handleConsoleCommand*(cq: Conquest, args: string) = 
+proc handleConsoleCommand(cq: Conquest, args: string) = 
 
     # Return if no command (or just whitespace) is entered
     if args.replace(" ", "").len == 0: return
@@ -125,11 +126,8 @@ proc header(cq: Conquest) =
     cq.writeLine("      ┗  @jakobfriedl")  
     cq.writeLine("─".repeat(21))
     cq.writeLine("")
-    
-#[
-    Conquest framework entry point
-]#
-proc main() =
+
+proc startServer*() =
     # Handle CTRL+C,  
     proc exit() {.noconv.} = 
         echo "Received CTRL+C. Type \"exit\" to close the application.\n"    
@@ -137,7 +135,7 @@ proc main() =
     setControlCHook(exit)
 
     # Initialize framework
-    let dbPath: string = "../src/server/db/conquest.db"
+    let dbPath: string = "../data/conquest.db"
     cq = initConquest(dbPath) 
 
     # Print header
@@ -156,6 +154,3 @@ proc main() =
  
         var command: string = cq.readLine()
         cq.withOutput(handleConsoleCommand, command)
-
-when isMainModule:
-    main()
