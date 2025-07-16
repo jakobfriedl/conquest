@@ -1,8 +1,9 @@
-import strutils, terminal, tables, sequtils, times, strformat
+import strutils, terminal, tables, sequtils, times, strformat, random, prompt
 import std/wordwrap
 
 import ../types
 
+# Utility functions
 proc parseOctets*(ip: string): tuple[first, second, third, fourth: int] = 
     # TODO: Verify that address is in correct, expected format
     let octets = ip.split('.')
@@ -15,8 +16,33 @@ proc validatePort*(portStr: string): bool =
     except ValueError:
         return false
 
-# Table border characters
+proc generateUUID*(): string = 
+    # Create a 4-byte HEX UUID string (8 characters)
+    (0..<4).mapIt(rand(255)).mapIt(fmt"{it:02X}").join()
 
+# Function templates and overwrites
+template writeLine*(cq: Conquest, args: varargs[untyped]) = 
+    cq.prompt.writeLine(args)
+proc readLine*(cq: Conquest): string =
+    return cq.prompt.readLine()
+template setIndicator*(cq: Conquest, indicator: string) = 
+    cq.prompt.setIndicator(indicator)
+template showPrompt*(cq: Conquest) = 
+    cq.prompt.showPrompt()
+template hidePrompt*(cq: Conquest) = 
+    cq.prompt.hidePrompt()
+template setStatusBar*(cq: Conquest, statusBar: seq[StatusBarItem]) = 
+    cq.prompt.setStatusBar(statusBar) 
+template clear*(cq: Conquest) = 
+    cq.prompt.clear()
+
+# Overwrite withOutput function to handle function arguments
+proc withOutput*(cq: Conquest, outputFunction: proc(cq: Conquest, args: string), args: string) =
+    cq.hidePrompt()
+    outputFunction(cq, args)
+    cq.showPrompt()
+
+# Table border characters
 type
   Cell = object
     text: string

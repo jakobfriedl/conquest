@@ -1,5 +1,14 @@
 import system, terminal, tiny_sqlite
+
+import ../utils
 import ../../types
+
+# Utility functions 
+proc stringToProtocol*(protocol: string): Protocol = 
+    case protocol
+    of "http": 
+        return HTTP
+    else: discard
 
 #[
     Listener database functions

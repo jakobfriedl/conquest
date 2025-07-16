@@ -1,7 +1,8 @@
-import prologue, nanoid, json
+import prologue, json
 import sequtils, strutils, times
 
 import ./handlers
+import ../utils
 import ../../types
 
 proc error404*(ctx: Context) {.async.} = 
@@ -38,12 +39,28 @@ proc register*(ctx: Context) {.async.} =
         let 
             postData: JsonNode = parseJson(ctx.request.body)
             agentRegistrationData: AgentRegistrationData = postData.to(AgentRegistrationData)
-            agentUuid: string = generate(alphabet=join(toSeq('A'..'Z'), ""), size=8)
+            agentUuid: string = generateUUID()
             listenerUuid: string = ctx.getPathParams("listener")
             date: DateTime = now()
 
-        let agent: Agent = newAgent(agentUuid, listenerUuid, date, agentRegistrationData) 
-        
+        let agent: Agent = Agent(
+            name: agentUuid, 
+            listener: listenerUuid,
+            username: agentRegistrationData.username,
+            hostname: agentRegistrationData.hostname,
+            domain: agentRegistrationData.domain,
+            process: agentRegistrationData.process,
+            pid: agentRegistrationData.pid,
+            ip: agentRegistrationData.ip,
+            os: agentRegistrationData.os,
+            elevated: agentRegistrationData.elevated, 
+            sleep: agentRegistrationData.sleep,
+            jitter: 0.2,
+            tasks: @[],
+            firstCheckin: date,
+            latestCheckin: date
+        )
+
         # Fully register agent and add it to database
         if not agent.register(): 
             # Either the listener the agent tries to connect to does not exist in the database, or the insertion of the agent failed

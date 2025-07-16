@@ -1,4 +1,4 @@
-import strformat, strutils, sequtils, nanoid, terminal
+import strformat, strutils, sequtils, terminal
 import prologue
 
 import ../utils
@@ -6,6 +6,25 @@ import ../api/routes
 import ../db/database
 import ../../types
 
+# Utility functions
+proc delListener(cq: Conquest, listenerName: string) = 
+    cq.listeners.del(listenerName)
+
+proc add(cq: Conquest, listener: Listener) = 
+    cq.listeners[listener.name] = listener
+
+proc newListener*(name: string, address: string, port: int): Listener = 
+    var listener = new Listener
+    listener.name = name 
+    listener.address = address 
+    listener.port = port 
+    listener.protocol = HTTP
+
+    return listener
+
+#[
+    Listener management
+]#
 proc listenerUsage*(cq: Conquest) = 
     cq.writeLine("""Manage, start and stop listeners.
 
@@ -36,7 +55,7 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
 
     # Create new listener
     let 
-        name: string = generate(alphabet=join(toSeq('A'..'Z'), ""), size=8)
+        name: string = generateUUID() 
         listenerSettings = newSettings(
             appName = name,
             debug = false,

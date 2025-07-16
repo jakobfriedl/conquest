@@ -1,8 +1,12 @@
 import terminal, strformat, strutils, sequtils, tables, json, times, base64, system
 
-import ../globals
+import ../[utils, globals]
 import ../db/database
 import ../../types
+
+# Utility functions 
+proc add*(cq: Conquest, agent: Agent) = 
+    cq.agents[agent.name] = agent
 
 #[
   Agent API

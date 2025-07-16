@@ -2,8 +2,8 @@ import prompt, terminal, argparse
 import strutils, strformat, times, system, tables
 
 import ./[agent, listener]
+import ../[globals, utils]
 import ../db/database
-import ../globals
 import ../../types
 
 #[
@@ -126,6 +126,17 @@ proc header(cq: Conquest) =
     cq.writeLine("      ┗  @jakobfriedl")  
     cq.writeLine("─".repeat(21))
     cq.writeLine("")
+
+proc initConquest*(dbPath: string): Conquest = 
+    var cq = new Conquest
+    var prompt = Prompt.init()
+    cq.prompt = prompt
+    cq.dbPath = dbPath
+    cq.listeners = initTable[string, Listener]()
+    cq.agents = initTable[string, Agent]() 
+    cq.interactAgent = nil 
+
+    return cq
 
 proc startServer*() =
     # Handle CTRL+C,  

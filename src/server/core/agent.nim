@@ -5,10 +5,23 @@ import ../task/handler
 import ../db/database
 import ../../types
 
-#[ 
-    Agent management mode
-    These console commands allow dealing with agents from the Conquest framework's prompt interface
-]#
+# Utility functions
+proc addMultiple*(cq: Conquest, agents: seq[Agent]) = 
+    for a in agents: 
+        cq.agents[a.name] = a
+
+proc delAgent*(cq: Conquest, agentName: string) = 
+    cq.agents.del(agentName)
+
+proc getAgentsAsSeq*(cq: Conquest): seq[Agent] = 
+    var agents: seq[Agent] = @[]
+    for agent in cq.agents.values:
+        agents.add(agent)
+    return agents
+
+#[
+    Agent management
+]# 
 proc agentUsage*(cq: Conquest) = 
     cq.writeLine("""Manage, build and interact with agents.
 

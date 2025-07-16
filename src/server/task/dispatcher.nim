@@ -1,11 +1,12 @@
-import argparse, times, strformat, terminal, nanoid, sequtils
+import argparse, times, strformat, terminal, sequtils
 import ../../types
+import ../utils
 
 proc createTask*(cq: Conquest, command: CommandType, args: string, message: string) =
     let
         date = now().format("dd-MM-yyyy HH:mm:ss")
         task = Task(
-            id: generate(alphabet=join(toSeq('A'..'Z'), ""), size=8),
+            id: generateUUID(),
             agent: cq.interactAgent.name,
             command: command,
             args: args,

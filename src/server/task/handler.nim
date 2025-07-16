@@ -1,5 +1,6 @@
 import times, strformat, terminal, tables, json, sequtils, strutils
 import ./[parser, packer, dispatcher]
+import ../utils
 import ../../types
 
 proc initAgentCommands*(): Table[CommandType, Command] = 
