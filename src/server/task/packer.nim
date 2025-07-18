@@ -1,34 +1,40 @@
-import strutils, json
-import ../../types
+import strutils, strformat, streams
+import ../utils
+import ../../common/types
+import ../../common/serialize
 
-proc packageArguments*(cq: Conquest, command: Command, arguments: seq[string]): JsonNode = 
+proc serializeTask*(cq: Conquest, task: Task): seq[byte] = 
 
-    # Construct a JSON payload with argument names and values 
-    result = newJObject()
-    let parsedArgs = if arguments.len > 1: arguments[1..^1] else: @[] # Remove first element from sequence to only handle arguments
+    var packer = initTaskPacker() 
 
-    for i, argument in command.arguments: 
-        
-        # Argument provided - convert to the corresponding data type
-        if i < parsedArgs.len:
-            case argument.argumentType:
-            of Int:
-                result[argument.name] = %parseUInt(parsedArgs[i])
-            of Binary: 
-                # Read file into memory and convert it into a base64 string
-                result[argument.name] = %""
-            else:
-                # The last optional argument is joined together
-                # This is required for non-quoted input with infinite length, such as `shell mv arg1 arg2`
-                if i == command.arguments.len - 1 and not argument.isRequired:
-                    result[argument.name] = %parsedArgs[i..^1].join(" ")
-                else:
-                    result[argument.name] = %parsedArgs[i]
-        
-        # Argument not provided - set to empty string for optional args
-        else:
-            # If a required argument is not provided, display the help text
-            if argument.isRequired:
-                raise newException(ValueError, "Missing required arguments.")
-            else:
-                result[argument.name] = %""
+    # Serialize payload
+    packer
+        .addToPayload(task.taskId)
+        .addToPayload(task.agentId)
+        .addToPayload(task.listenerId)
+        .addToPayload(task.timestamp)
+        .addToPayload(task.command)
+        .addToPayload(task.argCount)
+
+    for arg in task.args:
+        packer.addArgument(arg)
+
+    let payload = packer.packPayload() 
+
+    # TODO: Encrypt payload body
+
+    # Serialize header 
+    packer
+        .addToHeader(task.header.magic)
+        .addToHeader(task.header.version)
+        .addToHeader(task.header.packetType)
+        .addToHeader(task.header.flags)
+        .addToHeader(task.header.seqNr)
+        .addToHeader(cast[uint32](payload.len))
+        .addDataToHeader(task.header.hmac)
+
+    let header = packer.packHeader() 
+
+    # TODO: Calculate and patch HMAC
+
+    return header & payload

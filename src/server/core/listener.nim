@@ -4,7 +4,7 @@ import prologue
 import ../utils
 import ../api/routes
 import ../db/database
-import ../../types
+import ../../common/types
 
 # Utility functions
 proc delListener(cq: Conquest, listenerName: string) = 

@@ -1,34 +1,35 @@
 import strutils, tables, json
-import ./types 
+import ./common/types 
 import ./commands/commands
 
 proc handleTask*(task: Task, config: AgentConfig): TaskResult = 
     
     var taskResult: TaskResult
 
-    let handlers = {
-        ExecuteShell: taskShell,
-        Sleep: taskSleep,
-        GetWorkingDirectory: taskPwd,
-        SetWorkingDirectory: taskCd,
-        ListDirectory: taskDir,
-        RemoveFile: taskRm,
-        RemoveDirectory: taskRmdir,
-        Move: taskMove, 
-        Copy: taskCopy
-    }.toTable
+    # let handlers = {
+    #     CMD_SLEEP: taskSleep,
+    #     CMD_SHELL: taskShell,
+    #     CMD_PWD: taskPwd,
+    #     CMD_CD: taskCd,
+    #     CMD_LS: taskDir,
+    #     CMD_RM: taskRm,
+    #     CMD_RMDIR: taskRmdir,
+    #     CMD_MOVE: taskMove, 
+    #     CMD_COPY: taskCopy
+    # }.toTable
 
     # Handle task command
-    taskResult = handlers[task.command](task)
-    echo taskResult.data
+    # taskResult = handlers[task.command](task)
+    # echo taskResult.data
 
     # Handle actions on specific commands
-    case task.command:
-    of Sleep:         
-        if taskResult.status == Completed: 
-            config.sleep = parseJson(task.args)["delay"].getInt() 
-    else: 
-        discard
+    # case task.command:
+    # of CMD_SLEEP:         
+    #     if taskResult.status == STATUS_COMPLETED: 
+    #         # config.sleep = parseJson(task.args)["delay"].getInt() 
+    #         discard
+    # else: 
+    #     discard
 
-    # Return the result
-    return taskResult
+    # # Return the result
+    # return taskResult

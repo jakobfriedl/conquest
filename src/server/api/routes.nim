@@ -3,7 +3,7 @@ import sequtils, strutils, times
 
 import ./handlers
 import ../utils
-import ../../types
+import ../../common/types
 
 proc error404*(ctx: Context) {.async.} = 
     resp "", Http404
@@ -86,15 +86,12 @@ proc getTasks*(ctx: Context) {.async.} =
     let 
         listener = ctx.getPathParams("listener")
         agent = ctx.getPathParams("agent")
-    
-    let tasksJson = getTasks(listener, agent)
-    
-    # If agent/listener is invalid, return a 404 Not Found error code 
-    if tasksJson == nil: 
+        
+    try: 
+        let tasks = getTasks(listener, agent)
+        resp $tasks
+    except CatchableError:
         resp "", Http404
-
-    # Return all currently active tasks as a JsonObject
-    resp jsonResponse(tasksJson)
 
 
 #[

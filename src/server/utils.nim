@@ -1,7 +1,7 @@
 import strutils, terminal, tables, sequtils, times, strformat, random, prompt
 import std/wordwrap
 
-import ../types
+import ../common/types
 
 # Utility functions
 proc parseOctets*(ip: string): tuple[first, second, third, fourth: int] = 
@@ -19,6 +19,21 @@ proc validatePort*(portStr: string): bool =
 proc generateUUID*(): string = 
     # Create a 4-byte HEX UUID string (8 characters)
     (0..<4).mapIt(rand(255)).mapIt(fmt"{it:02X}").join()
+
+proc uuidToUint32*(uuid: string): uint32 = 
+    return fromHex[uint32](uuid)
+
+proc uuidToString*(uuid: uint32): string = 
+    return uuid.toHex(8)
+
+proc toHexDump*(data: seq[byte]): string =
+   for i, b in data:
+       result.add(b.toHex(2))
+       if i < data.len - 1:
+           if (i + 1) mod 4 == 0:
+               result.add(" | ")  # Add | every 4 bytes
+           else:
+               result.add(" ")    # Regular space
 
 # Function templates and overwrites
 template writeLine*(cq: Conquest, args: varargs[untyped]) = 

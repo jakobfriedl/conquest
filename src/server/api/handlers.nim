@@ -2,7 +2,7 @@ import terminal, strformat, strutils, sequtils, tables, json, times, base64, sys
 
 import ../[utils, globals]
 import ../db/database
-import ../../types
+import ../../common/types
 
 # Utility functions 
 proc add*(cq: Conquest, agent: Agent) = 
@@ -36,27 +36,27 @@ proc register*(agent: Agent): bool =
 
     return true
 
-proc getTasks*(listener, agent: string): JsonNode = 
+proc getTasks*(listener, agent: string): seq[seq[byte]] = 
 
     {.cast(gcsafe).}:
 
         # Check if listener exists
         if not cq.dbListenerExists(listener.toUpperAscii): 
             cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent listener: {listener}.", "\n")
-            return nil
+            raise newException(ValueError, "Invalid listener.")
 
         # Check if agent exists
         if not cq.dbAgentExists(agent.toUpperAscii): 
             cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent agent: {agent}.", "\n")
-            return nil
+            raise newException(ValueError, "Invalid agent.")
 
         # Update the last check-in date for the accessed agent
         cq.agents[agent.toUpperAscii].latestCheckin = now()
         # if not cq.dbUpdateCheckin(agent.toUpperAscii, now().format("dd-MM-yyyy HH:mm:ss")):
         #    return nil
 
-        # Return tasks in JSON format    
-        return %cq.agents[agent.toUpperAscii].tasks
+        # Return tasks  
+        return cq.agents[agent.toUpperAscii].tasks
 
 proc handleResult*(listener, agent, task: string, taskResult: TaskResult) = 
 
@@ -64,31 +64,31 @@ proc handleResult*(listener, agent, task: string, taskResult: TaskResult) =
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         
-        if taskResult.status == Failed: 
+        if taskResult.status == cast[uint8](STATUS_FAILED): 
             cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, fmt"Task {task} failed.")
 
-            if taskResult.data != "": 
+            if taskResult.data.len != 0: 
                 cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, "Output:")
 
                 # Split result string on newline to keep formatting
-                for line in decode(taskResult.data).split("\n"):
-                    cq.writeLine(line)
+                # for line in decode(taskResult.data).split("\n"):
+                #     cq.writeLine(line)
             else: 
                 cq.writeLine()
 
         else:  
             cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, fmt"Task {task} finished.")
             
-            if taskResult.data != "": 
+            if taskResult.data.len != 0: 
                 cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, "Output:")
 
                 # Split result string on newline to keep formatting
-                for line in decode(taskResult.data).split("\n"):
-                    cq.writeLine(line)
+                # for line in decode(taskResult.data).split("\n"):
+                #     cq.writeLine(line)
             else: 
                 cq.writeLine()
         
         # Update task queue to include all tasks, except the one that was just completed
-        cq.agents[agent].tasks = cq.agents[agent].tasks.filterIt(it.id != task)
+        # cq.agents[agent].tasks = cq.agents[agent].tasks.filterIt(it.id != task)
 
         return 

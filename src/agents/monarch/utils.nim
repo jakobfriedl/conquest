@@ -1,5 +1,5 @@
 import strformat
-import ./types
+import ./common/types
 
 proc getWindowsVersion*(info: OSVersionInfoExW, productType: ProductType): string =
     let

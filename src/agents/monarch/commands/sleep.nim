@@ -1,27 +1,27 @@
-import os, strutils, strformat, base64, json
+# import os, strutils, strformat, base64, json
 
-import ../types
+# import ../common/types
 
-proc taskSleep*(task: Task): TaskResult = 
+# proc taskSleep*(task: Task): TaskResult = 
 
-    # Parse task parameter
-    let delay = parseJson(task.args)["delay"].getInt()
+#     # Parse task parameter
+#     let delay = parseJson(task.args)["delay"].getInt()
 
-    echo fmt"Sleeping for {delay} seconds."
+#     echo fmt"Sleeping for {delay} seconds."
 
-    try: 
-        sleep(delay * 1000) 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(""),
-            status: Completed
-        )
+#     try: 
+#         sleep(delay * 1000) 
+#         return TaskResult(
+#             task: task.id, 
+#             agent: task.agent, 
+#             data: encode(""),
+#             status: Completed
+#         )
 
-    except CatchableError as err: 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(fmt"An error occured: {err.msg}" & "\n"),
-            status: Failed 
-        )
+#     except CatchableError as err: 
+#         return TaskResult(
+#             task: task.id, 
+#             agent: task.agent, 
+#             data: encode(fmt"An error occured: {err.msg}" & "\n"),
+#             status: Failed 
+#         )
