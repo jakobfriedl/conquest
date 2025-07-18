@@ -9,31 +9,32 @@ proc serializeTask*(cq: Conquest, task: Task): seq[byte] =
 
     # Serialize payload
     packer
-        .addToPayload(task.taskId)
-        .addToPayload(task.agentId)
-        .addToPayload(task.listenerId)
-        .addToPayload(task.timestamp)
-        .addToPayload(task.command)
-        .addToPayload(task.argCount)
+        .add(task.taskId)
+        .add(task.agentId)
+        .add(task.listenerId)
+        .add(task.timestamp)
+        .add(task.command)
+        .add(task.argCount)
 
     for arg in task.args:
         packer.addArgument(arg)
 
-    let payload = packer.packPayload() 
+    let payload = packer.pack() 
+    packer.reset()
 
     # TODO: Encrypt payload body
 
     # Serialize header 
     packer
-        .addToHeader(task.header.magic)
-        .addToHeader(task.header.version)
-        .addToHeader(task.header.packetType)
-        .addToHeader(task.header.flags)
-        .addToHeader(task.header.seqNr)
-        .addToHeader(cast[uint32](payload.len))
-        .addDataToHeader(task.header.hmac)
+        .add(task.header.magic)
+        .add(task.header.version)
+        .add(task.header.packetType)
+        .add(task.header.flags)
+        .add(task.header.seqNr) 
+        .add(cast[uint32](payload.len))
+        .addData(task.header.hmac)
 
-    let header = packer.packHeader() 
+    let header = packer.pack() 
 
     # TODO: Calculate and patch HMAC
 

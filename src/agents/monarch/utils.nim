@@ -1,5 +1,5 @@
 import strformat
-import ./common/types
+import ./types
 
 proc getWindowsVersion*(info: OSVersionInfoExW, productType: ProductType): string =
     let
@@ -63,3 +63,8 @@ proc getWindowsVersion*(info: OSVersionInfoExW, productType: ProductType): strin
         discard 
 
     return "Unknown Windows Version"
+
+proc toString*(data: seq[byte]): string =
+    result = newString(data.len)
+    for i, b in data:
+        result[i] = char(b)

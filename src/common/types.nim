@@ -5,9 +5,9 @@ import streams
 
 # Custom Binary Task structure
 const   
-    MAGIC* = 0x514E3043'u32 # Magic value: C0NQ
-    VERSION* = 1'u8         # Version 1l
-    HEADER_SIZE* = 32'u8    # 32 bytes fixed packet header size
+    MAGIC* = 0x514E3043'u32     # Magic value: C0NQ
+    VERSION* = 1'u8             # Version 1
+    HEADER_SIZE* = 32'u8        # 32 bytes fixed packet header size
 
 type 
     PacketType* = enum 
