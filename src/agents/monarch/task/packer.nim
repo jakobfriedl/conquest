@@ -1,9 +1,7 @@
 import strutils, strformat
 
-import ../types
-import ../utils
-import ../../../common/types
-import ../../../common/serialize
+import ../[agentTypes, utils]
+import ../../../common/[types, serialize]
 
 proc deserializeTask*(bytes: seq[byte]): Task = 
 
@@ -41,12 +39,13 @@ proc deserializeTask*(bytes: seq[byte]): Task =
         command = unpacker.getUint16()
     
     var argCount = unpacker.getUint8()
-    var args = newSeq[TaskArg](argCount) 
+    var args = newSeq[TaskArg]() 
 
     # Parse arguments
-    while argCount > 0: 
+    var i = 0
+    while i < int(argCount): 
         args.add(unpacker.getArgument())
-        dec argCount
+        inc i
 
     return Task(
         header: Header(
@@ -88,3 +87,46 @@ proc deserializePacket*(packet: string): seq[Task] =
         result.add(deserializeTask(taskBytes))
         
         dec taskCount
+
+proc serializeTaskResult*(taskResult: TaskResult): seq[byte] = 
+    
+    var packer = initPacker()
+
+    # Serialize result body
+    packer 
+        .add(taskResult.taskId)
+        .add(taskResult.agentId)
+        .add(taskResult.listenerId)
+        .add(taskResult.timestamp)
+        .add(taskResult.command)
+        .add(taskResult.status)
+        .add(taskResult.resultType)
+        .add(taskResult.length)
+
+    if cast[ResultType](taskResult.resultType) != RESULT_NO_OUTPUT:
+        packer.addData(taskResult.data)
+
+    let body = packer.pack()
+    packer.reset()
+
+    # TODO: Encrypt result body 
+
+    # Serialize header 
+    packer
+        .add(taskResult.header.magic)
+        .add(taskResult.header.version)
+        .add(taskResult.header.packetType)
+        .add(taskResult.header.flags)
+        .add(taskResult.header.seqNr) 
+        .add(cast[uint32](body.len))
+        .addData(taskResult.header.hmac)
+
+    let header = packer.pack()
+
+    # TODO: Calculate and patch HMAC
+
+    return header & body 
+
+
+
+

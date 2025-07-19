@@ -5,7 +5,7 @@ type
     Packer* = ref object 
         stream: StringStream
 
-proc initTaskPacker*(): Packer = 
+proc initPacker*(): Packer = 
     result = new Packer 
     result.stream = newStringStream()
 
@@ -25,8 +25,8 @@ proc addArgument*(packer: Packer, arg: TaskArg): Packer {.discardable.} =
 
     packer.add(arg.argType)
 
-    case arg.argType: 
-    of cast[uint8](STRING), cast[uint8](BINARY): 
+    case cast[ArgType](arg.argType): 
+    of STRING, BINARY: 
         # Add length for variable-length data types
         packer.add(cast[uint32](arg.data.len)) 
         packer.addData(arg.data)
@@ -76,6 +76,10 @@ proc getUint64*(unpacker: Unpacker): uint64 =
     unpacker.position += 8
 
 proc getBytes*(unpacker: Unpacker, length: int): seq[byte] = 
+    
+    if length <= 0:
+        return @[]
+
     result = newSeq[byte](length)
     let bytesRead = unpacker.stream.readData(result[0].addr, length)
     unpacker.position += bytesRead
@@ -86,16 +90,16 @@ proc getBytes*(unpacker: Unpacker, length: int): seq[byte] =
 proc getArgument*(unpacker: Unpacker): TaskArg = 
     result.argType = unpacker.getUint8()
     
-    case result.argType:
-    of cast[uint8](STRING), cast[uint8](BINARY):
+    case cast[ArgType](result.argType):
+    of STRING, BINARY:
         # Variable-length fields are prefixed with the content-length
         let length = unpacker.getUint32()
         result.data = unpacker.getBytes(int(length))
-    of cast[uint8](INT):
+    of INT:
         result.data = unpacker.getBytes(4)
-    of cast[uint8](LONG):
+    of LONG:
         result.data = unpacker.getBytes(8)
-    of cast[uint8](BOOL):
+    of BOOL:
         result.data = unpacker.getBytes(1)
     else: 
         discard

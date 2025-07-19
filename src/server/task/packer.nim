@@ -3,9 +3,9 @@ import ../utils
 import ../../common/types
 import ../../common/serialize
 
-proc serializeTask*(cq: Conquest, task: Task): seq[byte] = 
+proc serializeTask*(task: Task): seq[byte] = 
 
-    var packer = initTaskPacker() 
+    var packer = initPacker() 
 
     # Serialize payload
     packer
@@ -39,3 +39,63 @@ proc serializeTask*(cq: Conquest, task: Task): seq[byte] =
     # TODO: Calculate and patch HMAC
 
     return header & payload
+
+proc deserializeTaskResult*(resultData: seq[byte]): TaskResult = 
+
+    var unpacker = initUnpacker(resultData.toString)
+
+    let 
+        magic = unpacker.getUint32()
+        version = unpacker.getUint8()
+        packetType = unpacker.getUint8()
+        flags = unpacker.getUint16()
+        seqNr = unpacker.getUint32()
+        size = unpacker.getUint32()
+        hmacBytes  = unpacker.getBytes(16) 
+
+        # Explicit conversion from seq[byte] to array[16, byte]
+    var hmac: array[16, byte]
+    copyMem(hmac.addr, hmacBytes[0].unsafeAddr, 16)
+
+    # Packet Validation
+    if magic != MAGIC: 
+        raise newException(CatchableError, "Invalid magic bytes.")
+
+    # TODO: Validate sequence number 
+
+    # TODO: Validate HMAC
+
+    # TODO: Decrypt payload 
+    # let payload = unpacker.getBytes(size)
+
+    let 
+        taskId = unpacker.getUint32()
+        agentId = unpacker.getUint32()
+        listenerId = unpacker.getUint32()
+        timestamp = unpacker.getUint32()
+        command = unpacker.getUint16()
+        status = unpacker.getUint8()
+        resultType = unpacker.getUint8()
+        length = unpacker.getUint32()
+        data = unpacker.getBytes(int(length))
+    
+    return TaskResult(
+        header: Header(
+            magic: magic,
+            version: version,
+            packetType: packetType, 
+            flags: flags,
+            seqNr: seqNr,
+            size: size,
+            hmac: hmac 
+        ),
+        taskId: taskId,
+        agentId: agentId,
+        listenerId: listenerId, 
+        timestamp: timestamp,
+        command: command,
+        status: status,
+        resultType: resultType,
+        length: length,
+        data: data
+    )

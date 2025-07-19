@@ -1,6 +1,6 @@
 import winim, os, net, strformat, strutils, registry
 
-import ./[types, utils]
+import ./[agentTypes, utils]
 
 # Hostname/Computername
 proc getHostname*(): string = 
@@ -88,11 +88,11 @@ proc getProductType(): ProductType =
 
 proc getOSVersion*(): string = 
     
-    proc rtlGetVersion(lpVersionInformation: var types.OSVersionInfoExW): NTSTATUS
+    proc rtlGetVersion(lpVersionInformation: var agentTypes.OSVersionInfoExW): NTSTATUS
         {.cdecl, importc: "RtlGetVersion", dynlib: "ntdll.dll".}
 
     when defined(windows):
-        var osInfo: types.OSVersionInfoExW
+        var osInfo: agentTypes.OSVersionInfoExW
         discard rtlGetVersion(osInfo)
         # echo $int(osInfo.dwMajorVersion)
         # echo $int(osInfo.dwMinorVersion)

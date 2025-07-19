@@ -31,6 +31,11 @@ proc toString*(data: seq[byte]): string =
     for i, b in data:
         result[i] = char(b)
 
+proc toBytes*(data: string): seq[byte] =
+    result = newSeq[byte](data.len)
+    for i, c in data:
+        result[i] = byte(c.ord)
+
 proc toHexDump*(data: seq[byte]): string =
    for i, b in data:
        result.add(b.toHex(2))

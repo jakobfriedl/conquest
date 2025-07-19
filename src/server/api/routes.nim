@@ -94,7 +94,7 @@ proc getTasks*(ctx: Context) {.async.} =
         
     try: 
         var response: seq[byte]
-        let tasks = getTasks(listener, agent)
+        let tasks: seq[seq[byte]] = getTasks(listener, agent)
 
         if tasks.len <= 0: 
             resp "", Http200
@@ -134,21 +134,15 @@ proc postResults*(ctx: Context) {.async.} =
         task = ctx.getPathParams("task")
     
     # Check headers
-    # If POST data is not JSON data, return 404 error code
-    if ctx.request.contentType != "application/json": 
+    # If POST data is not binary data, return 404 error code
+    if ctx.request.contentType != "application/octet-stream": 
         resp "", Http404
         return
 
     try: 
-        let 
-            taskResultJson: JsonNode = parseJson(ctx.request.body)
-            taskResult: TaskResult = taskResultJson.to(TaskResult)
-        
-        # Handle and display task result
-        handleResult(listener, agent, task, taskResult)
+        handleResult(ctx.request.body.toBytes())
 
     except CatchableError:
-        # JSON data is invalid or does not match the expected format (described above)
         resp "", Http404
 
     return

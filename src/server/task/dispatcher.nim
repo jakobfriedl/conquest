@@ -1,5 +1,5 @@
 import times, strformat, terminal, tables, json, sequtils, strutils
-import ./[parser, packer]
+import ./[parser]
 import ../utils
 import ../../common/types
 
@@ -177,12 +177,9 @@ proc handleAgentCommand*(cq: Conquest, input: string) =
         let 
             command = getCommandFromTable(parsedArgs[0], commands)
             task = cq.parseTask(command, parsedArgs[1..^1])
-            taskData: seq[byte] = cq.serializeTask(task)    
-
-        # cq.writeLine(taskData.toHexDump())
 
         # Add task to queue
-        cq.interactAgent.tasks.add(taskData)
+        cq.interactAgent.tasks.add(task)
         cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, fmt"Tasked agent to {command.description.toLowerAscii()}")
 
     except CatchableError: 

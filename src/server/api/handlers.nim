@@ -2,6 +2,7 @@ import terminal, strformat, strutils, sequtils, tables, json, times, base64, sys
 
 import ../[utils, globals]
 import ../db/database
+import ../task/packer
 import ../../common/types
 
 # Utility functions 
@@ -40,6 +41,8 @@ proc getTasks*(listener, agent: string): seq[seq[byte]] =
 
     {.cast(gcsafe).}:
 
+        var result: seq[seq[byte]]
+
         # Check if listener exists
         if not cq.dbListenerExists(listener.toUpperAscii): 
             cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent listener: {listener}.", "\n")
@@ -55,40 +58,47 @@ proc getTasks*(listener, agent: string): seq[seq[byte]] =
         # if not cq.dbUpdateCheckin(agent.toUpperAscii, now().format("dd-MM-yyyy HH:mm:ss")):
         #    return nil
 
-        # Return tasks  
-        return cq.agents[agent.toUpperAscii].tasks
+        # Return tasks
+        for task in cq.agents[agent.toUpperAscii].tasks: 
+            let taskData = serializeTask(task)
+            result.add(taskData)
+        
+        return result
 
-proc handleResult*(listener, agent, task: string, taskResult: TaskResult) = 
+proc handleResult*(resultData: seq[byte]) = 
 
     {.cast(gcsafe).}:
 
+        let
+            taskResult = deserializeTaskResult(resultData) 
+            taskId = uuidToString(taskResult.taskId)
+            agentId = uuidToString(taskResult.agentId)
+            listenerId = uuidToString(taskResult.listenerId)
+
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
+        cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, fmt"{$resultData.len} bytes received.")
         
-        if taskResult.status == cast[uint8](STATUS_FAILED): 
-            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, fmt"Task {task} failed.")
+        case cast[StatusType](taskResult.status):
+        of STATUS_COMPLETED:
+            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, fmt"Task {taskId} completed.")
 
-            if taskResult.data.len != 0: 
-                cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, "Output:")
+        of STATUS_FAILED: 
+            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, fmt"Task {taskId} failed.")
 
+        case cast[ResultType](taskResult.resultType):
+        of RESULT_STRING:
+            if int(taskResult.length) > 0: 
+                cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, "Output:")
                 # Split result string on newline to keep formatting
-                # for line in decode(taskResult.data).split("\n"):
-                #     cq.writeLine(line)
-            else: 
-                cq.writeLine()
+                for line in taskResult.data.toString().split("\n"):
+                    cq.writeLine(line)
 
-        else:  
-            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, fmt"Task {task} finished.")
-            
-            if taskResult.data.len != 0: 
-                cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, "Output:")
+        of RESULT_BINARY:
+            # Write binary data to a file 
+            cq.writeLine()
 
-                # Split result string on newline to keep formatting
-                # for line in decode(taskResult.data).split("\n"):
-                #     cq.writeLine(line)
-            else: 
-                cq.writeLine()
+        of RESULT_NO_OUTPUT:
+            cq.writeLine()
         
         # Update task queue to include all tasks, except the one that was just completed
-        # cq.agents[agent].tasks = cq.agents[agent].tasks.filterIt(it.id != task)
-
-        return 
+        cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)

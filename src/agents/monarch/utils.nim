@@ -1,5 +1,5 @@
-import strformat
-import ./types
+import strformat, strutils
+import ./agentTypes
 
 proc getWindowsVersion*(info: OSVersionInfoExW, productType: ProductType): string =
     let
@@ -68,3 +68,23 @@ proc toString*(data: seq[byte]): string =
     result = newString(data.len)
     for i, b in data:
         result[i] = char(b)
+
+proc toBytes*(data: string): seq[byte] =
+    result = newSeq[byte](data.len)
+    for i, c in data:
+        result[i] = byte(c.ord)
+
+proc uuidToUint32*(uuid: string): uint32 = 
+    return fromHex[uint32](uuid)
+
+proc uuidToString*(uuid: uint32): string = 
+    return uuid.toHex(8)
+
+proc toUint32*(data: seq[byte]): uint32 =
+    if data.len != 4:
+        raise newException(ValueError, "Expected 4 bytes for uint32")
+    
+    return uint32(data[0]) or 
+           (uint32(data[1]) shl 8) or 
+           (uint32(data[2]) shl 16) or 
+           (uint32(data[3]) shl 24)

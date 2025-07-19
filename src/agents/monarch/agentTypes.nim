@@ -1,6 +1,4 @@
 import winim
-import ../../common/types
-export PacketType, ArgType, HeaderFlags, CommandType, StatusType, ResultType, Header, TaskArg, Task, TaskResult
 
 type 
     ProductType* = enum
