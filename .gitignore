@@ -3,6 +3,7 @@
 *.db
 # Ignore binaries
 bin/*
+!bin/.gitkeep
 *.exe
 
 # Nim
