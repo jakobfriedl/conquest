@@ -1,7 +1,6 @@
 import strutils, strformat
 
-import ../[agentTypes, utils]
-import ../../../common/[types, serialize]
+import ../../../common/[types, utils, serialize]
 
 proc deserializeTask*(bytes: seq[byte]): Task = 
 
@@ -127,6 +126,39 @@ proc serializeTaskResult*(taskResult: TaskResult): seq[byte] =
 
     return header & body 
 
+proc serializeRegistrationData*(data: AgentRegistrationData): seq[byte] = 
 
+    var packer = initPacker()
 
+    # Serialize registration data
+    packer 
+        .add(data.metadata.agentId)
+        .add(data.metadata.listenerId)
+        .addVarLengthMetadata(data.metadata.username)
+        .addVarLengthMetadata(data.metadata.hostname)
+        .addVarLengthMetadata(data.metadata.domain)
+        .addVarLengthMetadata(data.metadata.ip)
+        .addVarLengthMetadata(data.metadata.os)
+        .addVarLengthMetadata(data.metadata.process)
+        .add(data.metadata.pid)
+        .add(data.metadata.isElevated)
+        .add(data.metadata.sleep)
 
+    let metadata = packer.pack()
+    packer.reset()
+
+    # TODO: Encrypt metadata
+
+    # Serialize header
+    packer
+        .add(data.header.magic)
+        .add(data.header.version)
+        .add(data.header.packetType)
+        .add(data.header.flags)
+        .add(data.header.seqNr) 
+        .add(cast[uint32](metadata.len))
+        .addData(data.header.hmac)
+
+    let header = packer.pack()
+
+    return header & metadata

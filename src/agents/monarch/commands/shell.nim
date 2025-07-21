@@ -1,8 +1,8 @@
 import winim, osproc, strutils, strformat
 
-import ../task/result
-import ../[utils, agentTypes]
-import ../../../common/types
+import ../core/taskresult
+import ../agentTypes
+import ../../../common/[types, utils]
 
 proc taskShell*(config: AgentConfig, task: Task): TaskResult = 
 

@@ -1,5 +1,5 @@
-import times
-import ../../../common/types
+import times 
+import ../../../common/[types, utils]
 
 proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, resultData: seq[byte]): TaskResult = 
 

@@ -1,7 +1,7 @@
 import strutils, terminal, tables, sequtils, times, strformat, random, prompt
 import std/wordwrap
 
-import ../common/types
+import ../common/[types, utils]
 
 # Utility functions
 proc parseOctets*(ip: string): tuple[first, second, third, fourth: int] = 
@@ -15,49 +15,6 @@ proc validatePort*(portStr: string): bool =
         return port >= 1 and port <= 65535
     except ValueError:
         return false
-
-proc generateUUID*(): string = 
-    # Create a 4-byte HEX UUID string (8 characters)
-    (0..<4).mapIt(rand(255)).mapIt(fmt"{it:02X}").join()
-
-proc uuidToUint32*(uuid: string): uint32 = 
-    return fromHex[uint32](uuid)
-
-proc uuidToString*(uuid: uint32): string = 
-    return uuid.toHex(8)
-
-proc toString*(data: seq[byte]): string =
-    result = newString(data.len)
-    for i, b in data:
-        result[i] = char(b)
-
-proc toBytes*(data: string): seq[byte] =
-    result = newSeq[byte](data.len)
-    for i, c in data:
-        result[i] = byte(c.ord)
-
-proc toHexDump*(data: seq[byte]): string =
-   for i, b in data:
-       result.add(b.toHex(2))
-       if i < data.len - 1:
-           if (i + 1) mod 4 == 0:
-               result.add(" | ")  # Add | every 4 bytes
-           else:
-               result.add(" ")    # Regular space
-
-proc toBytes*(value: uint16): seq[byte] =
-    return @[
-        byte(value and 0xFF),
-        byte((value shr 8) and 0xFF)
-    ]
-
-proc toBytes*(value: uint32): seq[byte] =
-    return @[
-        byte(value and 0xFF),
-        byte((value shr 8) and 0xFF),
-        byte((value shr 16) and 0xFF),
-        byte((value shr 24) and 0xFF)
-    ]
 
 # Function templates and overwrites
 template writeLine*(cq: Conquest, args: varargs[untyped]) = 
@@ -153,7 +110,7 @@ proc drawTable*(cq: Conquest, listeners: seq[Listener]) =
 
     for l in listeners:
         # Get number of agents connected to the listener
-        let connectedAgents = cq.agents.values.countIt(it.listener == l.name)
+        let connectedAgents = cq.agents.values.countIt(it.listenerId == l.name)
 
         let rowCells = @[
             Cell(text: l.name, fg: fgGreen),
@@ -217,14 +174,14 @@ proc drawTable*(cq: Conquest, agents: seq[Agent]) =
     for a in agents:
 
         var cells = @[
-            Cell(text: a.name, fg: fgYellow, style: styleBright),
+            Cell(text: a.agentId, fg: fgYellow, style: styleBright),
             Cell(text: a.ip),
             Cell(text: a.username),
             Cell(text: a.hostname),
             Cell(text: a.os),
             Cell(text: a.process, fg: if a.elevated: fgRed else: fgWhite),
             Cell(text: $a.pid, fg: if a.elevated: fgRed else: fgWhite),
-            a.timeSince(cq.agents[a.name].latestCheckin)
+            a.timeSince(cq.agents[a.agentId].latestCheckin)
         ]
 
         # Highlight agents running within elevated processes

@@ -3,12 +3,12 @@ import terminal, strformat, strutils, tables, times, system, osproc, streams
 import ../utils
 import ../task/dispatcher
 import ../db/database
-import ../../common/types
+import ../../common/[types, utils]
 
 # Utility functions
 proc addMultiple*(cq: Conquest, agents: seq[Agent]) = 
     for a in agents: 
-        cq.agents[a.name] = a
+        cq.agents[a.agentId] = a
 
 proc delAgent*(cq: Conquest, agentName: string) = 
     cq.agents.del(agentName)
@@ -65,8 +65,8 @@ proc agentInfo*(cq: Conquest, name: string) =
 
     # TODO: Improve formatting
     cq.writeLine(fmt"""
-Agent name (UUID):     {agent.name}
-Connected to listener: {agent.listener}
+Agent name (UUID):     {agent.agentId}
+Connected to listener: {agent.listenerId}
 ──────────────────────────────────────────
 Username:              {agent.username}
 Hostname:              {agent.hostname}
@@ -113,9 +113,9 @@ proc agentInteract*(cq: Conquest, name: string) =
     var command: string = ""
 
     # Change prompt indicator to show agent interaction
-    cq.setIndicator(fmt"[{agent.name}]> ")
+    cq.setIndicator(fmt"[{agent.agentId}]> ")
     cq.setStatusBar(@[("[mode]", "interact"), ("[username]", fmt"{agent.username}"), ("[hostname]", fmt"{agent.hostname}"), ("[ip]", fmt"{agent.ip}"), ("[domain]", fmt"{agent.domain}")])    
-    cq.writeLine(fgYellow, styleBright, "[+] ", resetStyle, fmt"Started interacting with agent ", fgYellow, styleBright, agent.name, resetStyle, ". Type 'help' to list available commands.\n")
+    cq.writeLine(fgYellow, styleBright, "[+] ", resetStyle, fmt"Started interacting with agent ", fgYellow, styleBright, agent.agentId, resetStyle, ". Type 'help' to list available commands.\n")
     cq.interactAgent = agent
 
     while command.replace(" ", "") != "back": 

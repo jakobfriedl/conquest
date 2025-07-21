@@ -23,7 +23,8 @@ type OSVersionInfoExW* {.importc: "OSVERSIONINFOEXW", header: "<windows.h>".} = 
 
 type
     AgentConfig* = ref object
-        listener*: string
+        agentId*: string
+        listenerId*: string
         ip*: string
         port*: int
         sleep*: int

@@ -1,7 +1,8 @@
 import strutils, tables, json
+
 import ../agentTypes 
 import ../commands/commands
-import ../../../common/types
+import ../../../common/[types, utils]
 import sugar
 
 proc handleTask*(config: AgentConfig, task: Task): TaskResult = 
@@ -20,3 +21,4 @@ proc handleTask*(config: AgentConfig, task: Task): TaskResult =
 
     # Handle task command
     return handlers[cast[CommandType](task.command)](config, task)
+

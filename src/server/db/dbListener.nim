@@ -1,7 +1,7 @@
 import system, terminal, tiny_sqlite
 
 import ../utils
-import ../../common/types
+import ../../common/[types, utils]
 
 # Utility functions 
 proc stringToProtocol*(protocol: string): Protocol = 

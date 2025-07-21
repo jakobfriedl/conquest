@@ -4,7 +4,7 @@ import strutils, strformat, times, system, tables
 import ./[agent, listener]
 import ../[globals, utils]
 import ../db/database
-import ../../common/types
+import ../../common/[types, utils]
 
 #[
     Argument parsing

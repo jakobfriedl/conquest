@@ -1,6 +1,5 @@
 import streams, strutils
-import ./types
-
+import ./[types, utils]
 type 
     Packer* = ref object 
         stream: StringStream
@@ -32,6 +31,19 @@ proc addArgument*(packer: Packer, arg: TaskArg): Packer {.discardable.} =
         packer.addData(arg.data)
     else: 
         packer.addData(arg.data)
+    return packer
+
+proc addVarLengthMetadata*(packer: Packer, metadata: seq[byte]): Packer {.discardable.} = 
+
+    # Add length of metadata field
+    packer.add(cast[uint32](metadata.len))
+
+    if metadata.len <= 0: 
+        # Field is empty (e.g. not domain joined)
+        return packer
+
+    # Add content
+    packer.addData(metadata)
     return packer
 
 proc pack*(packer: Packer): seq[byte] = 
@@ -103,3 +115,14 @@ proc getArgument*(unpacker: Unpacker): TaskArg =
         result.data = unpacker.getBytes(1)
     else: 
         discard
+
+proc getVarLengthMetadata*(unpacker: Unpacker): string = 
+
+    # Read length of metadata field
+    let length = unpacker.getUint32()
+    
+    if length <= 0: 
+        return ""
+
+    # Read content
+    return unpacker.getBytes(int(length)).toString()

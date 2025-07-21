@@ -4,7 +4,7 @@ import prologue
 import ../utils
 import ../api/routes
 import ../db/database
-import ../../common/types
+import ../../common/[types, utils]
 
 # Utility functions
 proc delListener(cq: Conquest, listenerName: string) = 
@@ -66,9 +66,9 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
     var listener = newApp(settings = listenerSettings)
 
     # Define API endpoints
-    listener.post("{listener}/register", routes.register)
+    listener.post("register", routes.register)
     listener.get("{listener}/{agent}/tasks", routes.getTasks)
-    listener.post("{listener}/{agent}/{task}/results", routes.postResults)
+    listener.post("results", routes.postResults)
     listener.registerErrorHandler(Http404, routes.error404)
 
     # Store listener in database
@@ -99,9 +99,9 @@ proc restartListeners*(cq: Conquest) =
             listener = newApp(settings = settings)
 
         # Define API endpoints
-        listener.post("{listener}/register", routes.register)
+        listener.post("register", routes.register)
         listener.get("{listener}/{agent}/tasks", routes.getTasks)
-        listener.post("{listener}/{agent}/{task}/results", routes.postResults)
+        listener.post("results", routes.postResults)
         listener.registerErrorHandler(Http404, routes.error404)
         
         try:

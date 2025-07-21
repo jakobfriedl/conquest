@@ -3,37 +3,39 @@ import terminal, strformat, strutils, sequtils, tables, json, times, base64, sys
 import ../[utils, globals]
 import ../db/database
 import ../task/packer
-import ../../common/types
+import ../../common/[types, utils]
+
+import sugar 
 
 # Utility functions 
 proc add*(cq: Conquest, agent: Agent) = 
-    cq.agents[agent.name] = agent
+    cq.agents[agent.agentId] = agent
 
 #[
   Agent API
   Functions relevant for dealing with the agent API, such as registering new agents, querying tasks and posting results
 ]#
-proc register*(agent: Agent): bool = 
+proc register*(registrationData: seq[byte]): bool = 
 
     # The following line is required to be able to use the `cq` global variable for console output
     {.cast(gcsafe).}:
 
-        # Check if listener that is requested exists
-        # TODO: Verify that the listener accessed is also the listener specified in the URL
-        # This can be achieved by extracting the port number from the `Host` header and matching it to the one queried from the database
-        if not cq.dbListenerExists(agent.listener.toUpperAscii): 
-            cq.writeLine(fgRed, styleBright, fmt"[-] {agent.ip} attempted to register to non-existent listener: {agent.listener}.", "\n")
+        let agent: Agent = deserializeNewAgent(registrationData)
+
+        # Validate that listener exists        
+        if not cq.dbListenerExists(agent.listenerId.toUpperAscii): 
+            cq.writeLine(fgRed, styleBright, fmt"[-] {agent.ip} attempted to register to non-existent listener: {agent.listenerId}.", "\n")
             return false
 
-        # Store agent in database
+        # # Store agent in database
         if not cq.dbStoreAgent(agent): 
-            cq.writeLine(fgRed, styleBright, fmt"[-] Failed to insert agent {agent.name} into database.", "\n")
+            cq.writeLine(fgRed, styleBright, fmt"[-] Failed to insert agent {agent.agentId} into database.", "\n")
             return false
 
         cq.add(agent)
 
         let date = agent.firstCheckin.format("dd-MM-yyyy HH:mm:ss")
-        cq.writeLine(fgYellow, styleBright, fmt"[{date}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.name, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listener, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
+        cq.writeLine(fgYellow, styleBright, fmt"[{date}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
 
     return true
 

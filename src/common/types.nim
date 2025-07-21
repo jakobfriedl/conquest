@@ -13,7 +13,8 @@ type
     PacketType* = enum 
         MSG_TASK = 0'u8
         MSG_RESPONSE = 1'u8 
-        MSG_REGISTER = 100'u8
+        MSG_REGISTER = 2'u8
+        MSG_CHECKIN = 100'u8
 
     ArgType* = enum 
         STRING = 0'u8
@@ -101,27 +102,36 @@ type
 
 # Agent structure 
 type 
+
+    # All variable length fields are stored as seq[byte], prefixed with 4 bytes indicating the length of the following data
+    AgentMetadata* = object 
+        agentId*: uint32
+        listenerId*: uint32
+        username*: seq[byte]
+        hostname*: seq[byte]
+        domain*: seq[byte]
+        ip*: seq[byte]
+        os*: seq[byte]
+        process*: seq[byte]
+        pid*: uint32
+        isElevated*: uint8
+        sleep*: uint32
+
     AgentRegistrationData* = object
-        username*: string
-        hostname*: string
-        domain*: string
-        ip*: string
-        os*: string 
-        process*: string
-        pid*: int 
-        elevated*: bool
-        sleep*: int 
+        header*: Header
+        # encMaterial*: seq[byte] # Encryption material for the agent registration
+        metadata*: AgentMetadata
 
     Agent* = ref object 
-        name*: string
-        listener*: string 
+        agentId*: string
+        listenerId*: string 
         username*: string 
         hostname*: string
         domain*: string
-        process*: string
-        pid*: int
         ip*: string
         os*: string
+        process*: string
+        pid*: int
         elevated*: bool 
         sleep*: int 
         jitter*: float 

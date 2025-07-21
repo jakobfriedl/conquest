@@ -1,8 +1,8 @@
 import os, strutils, strformat, winim, times, algorithm
 
-import ../[agentTypes, utils]
-import ../task/result
-import ../../../common/types
+import ../agentTypes
+import ../core/taskresult
+import ../../../common/[types, utils]
 
 # Retrieve current working directory
 proc taskPwd*(config: AgentConfig, task: Task): TaskResult = 

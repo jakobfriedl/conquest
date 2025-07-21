@@ -1,8 +1,8 @@
 import os, strutils, strformat
 
-import ../[agentTypes, utils]
-import ../task/result
-import ../../../common/[types, serialize]
+import ../[agentTypes]
+import ../core/taskresult
+import ../../../common/[types, utils, serialize]
 
 proc taskSleep*(config: AgentConfig, task: Task): TaskResult = 
 
@@ -16,7 +16,6 @@ proc taskSleep*(config: AgentConfig, task: Task): TaskResult =
     
         # Updating sleep in agent config
         config.sleep = delay
-        
         return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
     except CatchableError as err: 

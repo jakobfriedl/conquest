@@ -1,6 +1,6 @@
 import strutils, strformat, times
 import ../utils
-import ../../common/types
+import ../../common/[types, utils]
 
 proc parseInput*(input: string): seq[string] = 
     var i = 0
@@ -77,8 +77,8 @@ proc parseTask*(cq: Conquest, command: Command, arguments: seq[string]): Task =
     # Construct the task payload prefix
     var task: Task
     task.taskId = uuidToUint32(generateUUID()) 
-    task.agentId = uuidToUint32(cq.interactAgent.name)
-    task.listenerId = uuidToUint32(cq.interactAgent.listener)
+    task.agentId = uuidToUint32(cq.interactAgent.agentId)
+    task.listenerId = uuidToUint32(cq.interactAgent.listenerId)
     task.timestamp = uint32(now().toTime().toUnix())
     task.command = cast[uint16](command.commandType) 
     task.argCount = uint8(arguments.len)

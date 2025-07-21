@@ -1,7 +1,7 @@
 import times, strformat, terminal, tables, json, sequtils, strutils
 import ./[parser]
 import ../utils
-import ../../common/types
+import ../../common/[types, utils]
 
 proc initAgentCommands*(): Table[string, Command] = 
     var commands = initTable[string, Command]()
@@ -158,7 +158,7 @@ proc handleAgentCommand*(cq: Conquest, input: string) =
     if input.replace(" ", "").len == 0: return
 
     let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-    cq.writeLine(fgBlue, styleBright, fmt"[{date}] ", fgYellow, fmt"[{cq.interactAgent.name}] ", resetStyle, styleBright, input)
+    cq.writeLine(fgBlue, styleBright, fmt"[{date}] ", fgYellow, fmt"[{cq.interactAgent.agentId}] ", resetStyle, styleBright, input)
 
     # Convert user input into sequence of string arguments
     let parsedArgs = parseInput(input)
