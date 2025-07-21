@@ -1,6 +1,8 @@
-import ../../types
+import strutils, strformat, times
+import ../utils
+import ../../common/[types, utils]
 
-proc parseAgentCommand*(input: string): seq[string] = 
+proc parseInput*(input: string): seq[string] = 
     var i = 0
     while i < input.len:
 
@@ -30,3 +32,83 @@ proc parseAgentCommand*(input: string): seq[string] =
         
         # Add argument to returned result
         if arg.len > 0: result.add(arg)
+
+proc parseArgument*(argument: Argument, value: string): TaskArg = 
+    
+    var result: TaskArg
+    result.argType = cast[uint8](argument.argumentType)  
+
+    case argument.argumentType:
+
+    of INT: 
+        # Length: 4 bytes        
+        let intValue = cast[uint32](parseUInt(value))
+        result.data = @[byte(intValue and 0xFF), byte((intValue shr 8) and 0xFF), byte((intValue shr 16) and 0xFF), byte((intValue shr 24) and 0xFF)]
+
+    of LONG: 
+        # Length: 8 bytes
+        var data = newSeq[byte](8)
+        let intValue = cast[uint64](parseUInt(value))
+        for i in 0..7:
+            data[i] = byte((intValue shr (i * 8)) and 0xFF)
+        result.data = data
+
+    of BOOL: 
+        # Length: 1 byte
+        if value == "true": 
+            result.data = @[1'u8] 
+        elif value == "false": 
+            result.data = @[0'u8] 
+        else: 
+            raise newException(ValueError, "Invalid value for boolean argument.")
+
+    of STRING:
+        result.data = cast[seq[byte]](value)
+
+    of BINARY: 
+        # Read file as binary stream 
+
+        discard 
+    
+    return result
+
+proc parseTask*(cq: Conquest, command: Command, arguments: seq[string]): Task = 
+
+    # Construct the task payload prefix
+    var task: Task
+    task.taskId = uuidToUint32(generateUUID()) 
+    task.agentId = uuidToUint32(cq.interactAgent.agentId)
+    task.listenerId = uuidToUint32(cq.interactAgent.listenerId)
+    task.timestamp = uint32(now().toTime().toUnix())
+    task.command = cast[uint16](command.commandType) 
+    task.argCount = uint8(arguments.len)
+
+    var taskArgs: seq[TaskArg]
+
+    # Add the task arguments
+    for i, arg in command.arguments:        
+        if i < arguments.len: 
+            taskArgs.add(parseArgument(arg, arguments[i]))
+        else: 
+            if arg.isRequired: 
+                raise newException(ValueError, "Missing required argument.")
+            else: 
+                # Handle optional argument
+                taskArgs.add(parseArgument(arg, ""))
+
+    task.args = taskArgs   
+
+    # Construct the header
+    var taskHeader: Header
+    taskHeader.magic = MAGIC
+    taskHeader.version = VERSION 
+    taskHeader.packetType = cast[uint8](MSG_TASK)
+    taskHeader.flags = cast[uint16](FLAG_PLAINTEXT)
+    taskHeader.seqNr = 1'u32 # TODO: Implement sequence tracking
+    taskHeader.size = 0'u32
+    taskHeader.hmac = default(array[16, byte])
+
+    task.header = taskHeader
+
+    # Return the task object for serialization
+    return task

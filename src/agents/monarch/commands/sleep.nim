@@ -1,27 +1,22 @@
-import os, strutils, strformat, base64, json
+import os, strutils, strformat
 
-import ../types
+import ../[agentTypes]
+import ../core/taskresult
+import ../../../common/[types, utils, serialize]
 
-proc taskSleep*(task: Task): TaskResult = 
-
-    # Parse task parameter
-    let delay = parseJson(task.args)["delay"].getInt()
-
-    echo fmt"Sleeping for {delay} seconds."
+proc taskSleep*(config: AgentConfig, task: Task): TaskResult = 
 
     try: 
+        # Parse task parameter
+        let delay = int(task.args[0].data.toUint32())
+
+        echo fmt"   [>] Sleeping for {delay} seconds."
+        
         sleep(delay * 1000) 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(""),
-            status: Completed
-        )
+    
+        # Updating sleep in agent config
+        config.sleep = delay
+        return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
     except CatchableError as err: 
-        return TaskResult(
-            task: task.id, 
-            agent: task.agent, 
-            data: encode(fmt"An error occured: {err.msg}" & "\n"),
-            status: Failed 
-        )
+        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
