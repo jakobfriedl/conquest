@@ -143,7 +143,7 @@ proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
     # The following shows the format of the agent configuration file that defines compile-time variables 
     let config = fmt"""
     # Agent configuration 
-    -d:ListenerUuid="{listener.name}"
+    -d:ListenerUuid="{listener.listenerId}"
     -d:Octet1="{first}"
     -d:Octet2="{second}"
     -d:Octet3="{third}"

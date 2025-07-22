@@ -126,3 +126,15 @@ proc getVarLengthMetadata*(unpacker: Unpacker): string =
 
     # Read content
     return unpacker.getBytes(int(length)).toString()
+
+proc packHeader*(packer: Packer, header: Header, bodySize: uint32): seq[byte] = 
+    packer
+        .add(header.magic)
+        .add(header.version)
+        .add(header.packetType)
+        .add(header.flags)
+        .add(header.seqNr) 
+        .add(bodySize)
+        .addData(header.hmac)
+
+    return packer.pack()

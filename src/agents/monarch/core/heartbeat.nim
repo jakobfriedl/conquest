@@ -34,15 +34,6 @@ proc serializeHeartbeat*(request: Heartbeat): seq[byte] =
     # TODO: Encrypt check-in / heartbeat request body 
 
     # Serialize header
-    packer
-        .add(request.header.magic)
-        .add(request.header.version)
-        .add(request.header.packetType)
-        .add(request.header.flags)
-        .add(request.header.seqNr) 
-        .add(cast[uint32](body.len))
-        .addData(request.header.hmac)
-
-    let header = packer.pack()
+    let header = packer.packHeader(request.header, uint32(body.len))
 
     return header & body

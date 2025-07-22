@@ -243,15 +243,6 @@ proc serializeRegistrationData*(data: AgentRegistrationData): seq[byte] =
     # TODO: Encrypt metadata
 
     # Serialize header
-    packer
-        .add(data.header.magic)
-        .add(data.header.version)
-        .add(data.header.packetType)
-        .add(data.header.flags)
-        .add(data.header.seqNr) 
-        .add(cast[uint32](metadata.len))
-        .addData(data.header.hmac)
-
-    let header = packer.pack()
+    let header = packer.packHeader(data.header, uint32(metadata.len))
 
     return header & metadata

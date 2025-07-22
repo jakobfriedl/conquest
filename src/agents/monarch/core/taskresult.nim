@@ -48,16 +48,7 @@ proc serializeTaskResult*(taskResult: TaskResult): seq[byte] =
     # TODO: Encrypt result body 
 
     # Serialize header 
-    packer
-        .add(taskResult.header.magic)
-        .add(taskResult.header.version)
-        .add(taskResult.header.packetType)
-        .add(taskResult.header.flags)
-        .add(taskResult.header.seqNr) 
-        .add(cast[uint32](body.len))
-        .addData(taskResult.header.hmac)
-
-    let header = packer.pack()
+    let header = packer.packHeader(taskResult.header, uint32(body.len))
 
     # TODO: Calculate and patch HMAC
 

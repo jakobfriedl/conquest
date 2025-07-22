@@ -21,7 +21,7 @@ proc dbStoreListener*(cq: Conquest, listener: Listener): bool =
         conquestDb.exec("""
         INSERT INTO listeners (name, address, port, protocol)
         VALUES (?, ?, ?, ?);
-        """, listener.name, listener.address, listener.port, $listener.protocol)
+        """, listener.listenerId, listener.address, listener.port, $listener.protocol)
 
         conquestDb.close() 
     except: 
@@ -38,10 +38,10 @@ proc dbGetAllListeners*(cq: Conquest): seq[Listener] =
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
         for row in conquestDb.iterate("SELECT name, address, port, protocol FROM listeners;"):
-            let (name, address, port, protocol) = row.unpack((string, string, int, string))
+            let (listenerId, address, port, protocol) = row.unpack((string, string, int, string))
             
             let l = Listener(
-                name: name,
+                listenerId: listenerId,
                 address: address,
                 port: port,
                 protocol: stringToProtocol(protocol),

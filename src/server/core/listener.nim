@@ -11,11 +11,11 @@ proc delListener(cq: Conquest, listenerName: string) =
     cq.listeners.del(listenerName)
 
 proc add(cq: Conquest, listener: Listener) = 
-    cq.listeners[listener.name] = listener
+    cq.listeners[listener.listenerId] = listener
 
-proc newListener*(name: string, address: string, port: int): Listener = 
+proc newListener*(listenerId: string, address: string, port: int): Listener = 
     var listener = new Listener
-    listener.name = name 
+    listener.listenerId = listenerId 
     listener.address = address 
     listener.port = port 
     listener.protocol = HTTP
@@ -91,7 +91,7 @@ proc restartListeners*(cq: Conquest) =
     for l in listeners: 
         let 
             settings = newSettings(
-                appName = l.name,
+                appName = l.listenerId,
                 debug = false,
                 address = "",
                 port = Port(l.port)
@@ -107,7 +107,7 @@ proc restartListeners*(cq: Conquest) =
         try:
             discard listener.runAsync() 
             cq.add(l)
-            cq.writeLine(fgGreen, "[+] ", resetStyle, "Restarted listener", fgGreen, fmt" {l.name} ", resetStyle, fmt"on port {$l.port}.")
+            cq.writeLine(fgGreen, "[+] ", resetStyle, "Restarted listener", fgGreen, fmt" {l.listenerId} ", resetStyle, fmt"on port {$l.port}.")
         except CatchableError as err: 
             cq.writeLine(fgRed, styleBright, "[-] Failed to restart listener: ", err.msg)
         

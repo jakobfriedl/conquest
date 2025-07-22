@@ -97,7 +97,7 @@ proc writeRow(cq: Conquest, row: seq[Cell]) =
 proc drawTable*(cq: Conquest, listeners: seq[Listener]) = 
 
     # Column headers and widths
-    let headers = @["Name", "Address", "Port", "Protocol", "Agents"]
+    let headers = @["UUID", "Address", "Port", "Protocol", "Agents"]
     let widths = @[8, 15, 5, 8, 6]
     let headerCells = headers.mapIt(Cell(text: it, fg: fgWhite, bg: bgDefault))    
 
@@ -110,10 +110,10 @@ proc drawTable*(cq: Conquest, listeners: seq[Listener]) =
 
     for l in listeners:
         # Get number of agents connected to the listener
-        let connectedAgents = cq.agents.values.countIt(it.listenerId == l.name)
+        let connectedAgents = cq.agents.values.countIt(it.listenerId == l.listenerId)
 
         let rowCells = @[
-            Cell(text: l.name, fg: fgGreen),
+            Cell(text: l.listenerId, fg: fgGreen),
             Cell(text: l.address),
             Cell(text: $l.port),
             Cell(text: $l.protocol),
@@ -160,7 +160,7 @@ proc timeSince*(agent: Agent, timestamp: DateTime): Cell =
 
 proc drawTable*(cq: Conquest, agents: seq[Agent]) = 
     
-    let headers: seq[string] = @["Name", "Address", "Username", "Hostname", "Operating System", "Process", "PID", "Activity"]
+    let headers: seq[string] = @["UUID", "Address", "Username", "Hostname", "Operating System", "Process", "PID", "Activity"]
     let widths = @[8, 15, 15, 15, 16, 13, 5, 8]
     let headerCells = headers.mapIt(Cell(text: it, fg: fgWhite, bg: bgDefault))
 

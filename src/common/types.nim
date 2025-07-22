@@ -27,6 +27,7 @@ type
         # Flags should be powers of 2 so they can be connected with or operators
         FLAG_PLAINTEXT = 0'u16
         FLAG_ENCRYPTED = 1'u16
+        FLAG_COMPRESSED = 2'u16
 
     CommandType* = enum 
         CMD_SLEEP = 0'u16
@@ -154,7 +155,7 @@ type
         HTTP = "http"
 
     Listener* = ref object
-        name*: string
+        listenerId*: string
         address*: string
         port*: int
         protocol*: Protocol
