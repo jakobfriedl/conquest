@@ -1,6 +1,5 @@
 import os, strutils, strformat
 
-import ../[agentTypes]
 import ../core/taskresult
 import ../../../common/[types, utils, serialize]
 

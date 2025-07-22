@@ -60,6 +60,9 @@ proc deserializeTaskResult*(resultData: seq[byte]): TaskResult =
     if magic != MAGIC: 
         raise newException(CatchableError, "Invalid magic bytes.")
 
+    if packetType != cast[uint8](MSG_RESPONSE): 
+        raise newException(CatchableError, "Invalid packet type for task result, expected MSG_RESPONSE.")
+
     # TODO: Validate sequence number 
 
     # TODO: Validate HMAC
@@ -120,6 +123,9 @@ proc deserializeNewAgent*(data: seq[byte]): Agent =
     if magic != MAGIC: 
         raise newException(CatchableError, "Invalid magic bytes.")
 
+    if packetType != cast[uint8](MSG_REGISTER): 
+        raise newException(CatchableError, "Invalid packet type for agent registration, expected MSG_REGISTER.")
+
     # TODO: Validate sequence number 
 
     # TODO: Validate HMAC
@@ -158,5 +164,48 @@ proc deserializeNewAgent*(data: seq[byte]): Agent =
         latestCheckin: now()
     )
 
+proc deserializeHeartbeat*(data: seq[byte]): Heartbeat = 
 
-        
+    var unpacker = initUnpacker(data.toString)
+
+    let 
+        magic = unpacker.getUint32()
+        version = unpacker.getUint8()
+        packetType = unpacker.getUint8()
+        flags = unpacker.getUint16()
+        seqNr = unpacker.getUint32()
+        size = unpacker.getUint32()
+        hmacBytes  = unpacker.getBytes(16) 
+
+    # Explicit conversion from seq[byte] to array[16, byte]
+    var hmac: array[16, byte]
+    copyMem(hmac.addr, hmacBytes[0].unsafeAddr, 16)
+
+    # Packet Validation
+    if magic != MAGIC: 
+        raise newException(CatchableError, "Invalid magic bytes.")
+
+    if packetType != cast[uint8](MSG_HEARTBEAT):
+        raise newException(CatchableError, "Invalid packet type for checkin request, expected MSG_HEARTBEAT.")
+
+    # TODO: Validate sequence number 
+
+    # TODO: Validate HMAC
+
+    # TODO: Decrypt payload 
+    # let payload = unpacker.getBytes(size)
+
+    return Heartbeat(
+        header: Header(
+            magic: magic,
+            version: version,
+            packetType: packetType, 
+            flags: flags,
+            seqNr: seqNr,
+            size: size,
+            hmac: hmac 
+        ),
+        agentId: unpacker.getUint32(),
+        listenerId: unpacker.getUint32(),
+        timestamp: unpacker.getUint32()
+    )

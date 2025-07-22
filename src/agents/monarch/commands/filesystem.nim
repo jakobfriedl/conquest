@@ -1,6 +1,5 @@
 import os, strutils, strformat, winim, times, algorithm
 
-import ../agentTypes
 import ../core/taskresult
 import ../../../common/[types, utils]
 

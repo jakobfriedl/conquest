@@ -39,29 +39,36 @@ proc register*(registrationData: seq[byte]): bool =
 
     return true
 
-proc getTasks*(listener, agent: string): seq[seq[byte]] = 
+proc getTasks*(checkinData: seq[byte]): seq[seq[byte]] = 
 
     {.cast(gcsafe).}:
+
+        # Deserialize checkin request to obtain agentId and listenerId 
+        let 
+            request: Heartbeat = deserializeHeartbeat(checkinData)
+            agentId = uuidToString(request.agentId)
+            listenerId = uuidToString(request.listenerId)
+            timestamp = request.timestamp
 
         var result: seq[seq[byte]]
 
         # Check if listener exists
-        if not cq.dbListenerExists(listener.toUpperAscii): 
-            cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent listener: {listener}.", "\n")
+        if not cq.dbListenerExists(listenerId): 
+            cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent listener: {listenerId}.", "\n")
             raise newException(ValueError, "Invalid listener.")
 
         # Check if agent exists
-        if not cq.dbAgentExists(agent.toUpperAscii): 
-            cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent agent: {agent}.", "\n")
+        if not cq.dbAgentExists(agentId): 
+            cq.writeLine(fgRed, styleBright, fmt"[-] Task-retrieval request made to non-existent agent: {agentId}.", "\n")
             raise newException(ValueError, "Invalid agent.")
 
         # Update the last check-in date for the accessed agent
-        cq.agents[agent.toUpperAscii].latestCheckin = now()
+        cq.agents[agentId].latestCheckin = cast[int64](timestamp).fromUnix().local()
         # if not cq.dbUpdateCheckin(agent.toUpperAscii, now().format("dd-MM-yyyy HH:mm:ss")):
         #    return nil
 
         # Return tasks
-        for task in cq.agents[agent.toUpperAscii].tasks: 
+        for task in cq.agents[agentId].tasks: 
             let taskData = serializeTask(task)
             result.add(taskData)
         

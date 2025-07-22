@@ -67,7 +67,7 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
 
     # Define API endpoints
     listener.post("register", routes.register)
-    listener.get("{listener}/{agent}/tasks", routes.getTasks)
+    listener.post("tasks", routes.getTasks)
     listener.post("results", routes.postResults)
     listener.registerErrorHandler(Http404, routes.error404)
 
@@ -100,7 +100,7 @@ proc restartListeners*(cq: Conquest) =
 
         # Define API endpoints
         listener.post("register", routes.register)
-        listener.get("{listener}/{agent}/tasks", routes.getTasks)
+        listener.post("tasks", routes.getTasks)
         listener.post("results", routes.postResults)
         listener.registerErrorHandler(Http404, routes.error404)
         
