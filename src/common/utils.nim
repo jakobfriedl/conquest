@@ -51,3 +51,15 @@ proc toBytes*(value: uint32): seq[byte] =
         byte((value shr 16) and 0xFF),
         byte((value shr 24) and 0xFF)
     ]
+
+proc toBytes*(value: uint64): seq[byte] =
+    return @[
+        byte(value and 0xFF),
+        byte((value shr 8) and 0xFF),
+        byte((value shr 16) and 0xFF),
+        byte((value shr 24) and 0xFF),
+        byte((value shr 32) and 0xFF),
+        byte((value shr 40) and 0xFF),
+        byte((value shr 48) and 0xFF),
+        byte((value shr 56) and 0xFF)
+    ]

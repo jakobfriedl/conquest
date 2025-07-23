@@ -20,7 +20,7 @@ proc register*(registrationData: seq[byte]): bool =
     # The following line is required to be able to use the `cq` global variable for console output
     {.cast(gcsafe).}:
 
-        let agent: Agent = deserializeNewAgent(registrationData)
+        let agent: Agent = cq.deserializeNewAgent(registrationData)
 
         # Validate that listener exists        
         if not cq.dbListenerExists(agent.listenerId.toUpperAscii): 
@@ -45,8 +45,8 @@ proc getTasks*(checkinData: seq[byte]): seq[seq[byte]] =
 
         # Deserialize checkin request to obtain agentId and listenerId 
         let 
-            request: Heartbeat = deserializeHeartbeat(checkinData)
-            agentId = uuidToString(request.agentId)
+            request: Heartbeat = cq.deserializeHeartbeat(checkinData)
+            agentId = uuidToString(request.header.agentId)
             listenerId = uuidToString(request.listenerId)
             timestamp = request.timestamp
 
@@ -68,8 +68,8 @@ proc getTasks*(checkinData: seq[byte]): seq[seq[byte]] =
         #    return nil
 
         # Return tasks
-        for task in cq.agents[agentId].tasks: 
-            let taskData = serializeTask(task)
+        for task in cq.agents[agentId].tasks.mitems: # Iterate over mutable items in order to modify GMAC
+            let taskData = cq.serializeTask(task)
             result.add(taskData)
         
         return result
@@ -79,9 +79,9 @@ proc handleResult*(resultData: seq[byte]) =
     {.cast(gcsafe).}:
 
         let
-            taskResult = deserializeTaskResult(resultData) 
+            taskResult = cq.deserializeTaskResult(resultData) 
             taskId = uuidToString(taskResult.taskId)
-            agentId = uuidToString(taskResult.agentId)
+            agentId = uuidToString(taskResult.header.agentId)
             listenerId = uuidToString(taskResult.listenerId)
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")

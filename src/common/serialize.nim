@@ -99,6 +99,39 @@ proc getBytes*(unpacker: Unpacker, length: int): seq[byte] =
     if bytesRead != length:
         raise newException(IOError, "Not enough data to read")
 
+proc getKey*(unpacker: Unpacker): Key = 
+    var key: Key
+
+    let bytesRead = unpacker.stream.readData(key[0].unsafeAddr, 32)
+    unpacker.position += bytesRead
+    
+    if bytesRead != 32:
+        raise newException(IOError, "Not enough data to read key")
+    
+    return key
+
+proc getIv*(unpacker: Unpacker): Iv = 
+    var iv: Iv
+
+    let bytesRead = unpacker.stream.readData(iv[0].unsafeAddr, 12)
+    unpacker.position += bytesRead
+    
+    if bytesRead != 12:
+        raise newException(IOError, "Not enough data to read IV")
+    
+    return iv
+
+proc getAuthenticationTag*(unpacker: Unpacker): AuthenticationTag = 
+    var tag: AuthenticationTag
+    
+    let bytesRead = unpacker.stream.readData(tag[0].unsafeAddr, 16)
+    unpacker.position += bytesRead
+    
+    if bytesRead != 16:
+        raise newException(IOError, "Not enough data to read authentication tag")
+    
+    return tag
+
 proc getArgument*(unpacker: Unpacker): TaskArg = 
     result.argType = unpacker.getUint8()
     
@@ -133,8 +166,23 @@ proc packHeader*(packer: Packer, header: Header, bodySize: uint32): seq[byte] =
         .add(header.version)
         .add(header.packetType)
         .add(header.flags)
-        .add(header.seqNr) 
         .add(bodySize)
-        .addData(header.hmac)
+        .add(header.agentId)
+        .add(header.seqNr) 
+        .addData(header.iv) 
+        .addData(header.gmac)
 
     return packer.pack()
+
+proc unpackHeader*(unpacker: Unpacker): Header=
+    return Header(
+        magic: unpacker.getUint32(),
+        version: unpacker.getUint8(),
+        packetType: unpacker.getUint8(),
+        flags: unpacker.getUint16(),
+        size: unpacker.getUint32(),
+        agentId: unpacker.getUint32(),
+        seqNr: unpacker.getUint64(),
+        iv: unpacker.getIv(),
+        gmac: unpacker.getAuthenticationTag()
+    )

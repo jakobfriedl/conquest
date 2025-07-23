@@ -156,7 +156,7 @@ proc startServer*() =
     cq.dbInit()
     cq.restartListeners()
     cq.addMultiple(cq.dbGetAllAgents())
-
+    
     # Main loop
     while true: 
         cq.setIndicator("[conquest]> ")

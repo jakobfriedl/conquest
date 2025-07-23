@@ -1,6 +1,6 @@
 import strutils, strformat, times
 import ../utils
-import ../../common/[types, utils]
+import ../../common/[types, utils, crypto]
 
 proc parseInput*(input: string): seq[string] = 
     var i = 0
@@ -77,7 +77,6 @@ proc parseTask*(cq: Conquest, command: Command, arguments: seq[string]): Task =
     # Construct the task payload prefix
     var task: Task
     task.taskId = uuidToUint32(generateUUID()) 
-    task.agentId = uuidToUint32(cq.interactAgent.agentId)
     task.listenerId = uuidToUint32(cq.interactAgent.listenerId)
     task.timestamp = uint32(now().toTime().toUnix())
     task.command = cast[uint16](command.commandType) 
@@ -104,9 +103,11 @@ proc parseTask*(cq: Conquest, command: Command, arguments: seq[string]): Task =
     taskHeader.version = VERSION 
     taskHeader.packetType = cast[uint8](MSG_TASK)
     taskHeader.flags = cast[uint16](FLAG_PLAINTEXT)
-    taskHeader.seqNr = 1'u32 # TODO: Implement sequence tracking
     taskHeader.size = 0'u32
-    taskHeader.hmac = default(array[16, byte])
+    taskHeader.agentId = uuidtoUint32(cq.interactAgent.agentId)
+    taskHeader.seqNr = 1'u64 # TODO: Implement sequence tracking
+    taskHeader.iv = generateIV() # Generate a random IV for AES-256 GCM
+    taskHeader.gmac = default(AuthenticationTag)
 
     task.header = taskHeader
 

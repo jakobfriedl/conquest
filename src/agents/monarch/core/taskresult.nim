@@ -1,7 +1,9 @@
-import times 
-import ../../../common/[types, serialize, utils]
+import times, sugar
+import ../../../common/[types, serialize, crypto, utils]
 
 proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, resultData: seq[byte]): TaskResult = 
+
+    # TODO: Implement sequence tracking
 
     return TaskResult(
         header: Header(
@@ -9,12 +11,13 @@ proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, r
             version: VERSION, 
             packetType: cast[uint8](MSG_RESPONSE),
             flags: cast[uint16](FLAG_PLAINTEXT),
-            seqNr: 1'u32, # TODO: Implement sequence tracking
             size: 0'u32,
-            hmac: default(array[16, byte])
+            agentId: task.header.agentId,
+            seqNr: 1'u64, 
+            iv: generateIV(),
+            gmac: default(array[16, byte])
         ), 
         taskId: task.taskId,
-        agentId: task.agentId,
         listenerId: task.listenerId,
         timestamp: uint32(now().toTime().toUnix()),
         command: task.command,
@@ -24,14 +27,13 @@ proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, r
         data: resultData,
     )
 
-proc serializeTaskResult*(taskResult: TaskResult): seq[byte] = 
+proc serializeTaskResult*(config: AgentConfig, taskResult: var TaskResult): seq[byte] = 
     
     var packer = initPacker()
 
     # Serialize result body
     packer 
         .add(taskResult.taskId)
-        .add(taskResult.agentId)
         .add(taskResult.listenerId)
         .add(taskResult.timestamp)
         .add(taskResult.command)
@@ -45,11 +47,13 @@ proc serializeTaskResult*(taskResult: TaskResult): seq[byte] =
     let body = packer.pack()
     packer.reset()
 
-    # TODO: Encrypt result body 
+    # Encrypt result body 
+    let (encData, gmac) = encrypt(config.sessionKey, taskResult.header.iv, body, taskResult.header.seqNr)
+
+    # Set authentication tag (GMAC)
+    taskResult.header.gmac = gmac
 
     # Serialize header 
-    let header = packer.packHeader(taskResult.header, uint32(body.len))
+    let header = packer.packHeader(taskResult.header, uint32(encData.len))
 
-    # TODO: Calculate and patch HMAC
-
-    return header & body 
+    return header & encData 

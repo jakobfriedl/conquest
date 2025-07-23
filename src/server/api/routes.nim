@@ -21,7 +21,10 @@ proc register*(ctx: Context) {.async.} =
         return
 
     try: 
-        let agentId = register(ctx.request.body.toBytes())
+        if not register(ctx.request.body.toBytes()):
+            resp "", Http400
+            return
+
         resp "", Http200
 
     except CatchableError:

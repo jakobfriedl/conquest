@@ -7,7 +7,7 @@ import streams
 const   
     MAGIC* = 0x514E3043'u32     # Magic value: C0NQ
     VERSION* = 1'u8             # Version 1
-    HEADER_SIZE* = 32'u8        # 32 bytes fixed packet header size
+    HEADER_SIZE* = 52'u8        # 48 bytes fixed packet header size
 
 type 
     PacketType* = enum 
@@ -49,14 +49,24 @@ type
         RESULT_BINARY = 1'u8
         RESULT_NO_OUTPUT = 2'u8
 
+# Encryption 
+type     
+    Key* = array[32, byte]
+    Iv* = array[12, byte]
+    AuthenticationTag* = array[16, byte]
+
+# Packet structure
+type 
     Header* = object
-        magic*: uint32          # [4 bytes ] magic value 
-        version*: uint8         # [1 byte  ] protocol version
-        packetType*: uint8      # [1 byte  ] message type 
-        flags*: uint16          # [2 bytes ] message flags
-        seqNr*: uint32          # [4 bytes ] sequence number / nonce 
-        size*: uint32           # [4 bytes ] size of the payload body
-        hmac*: array[16, byte]  # [16 bytes] hmac for message integrity
+        magic*: uint32              # [4 bytes ] magic value 
+        version*: uint8             # [1 byte  ] protocol version
+        packetType*: uint8          # [1 byte  ] message type 
+        flags*: uint16              # [2 bytes ] message flags
+        size*: uint32               # [4 bytes ] size of the payload body
+        agentId*: uint32            # [4 bytes ] agent id, used as AAD for encryptio
+        seqNr*: uint64              # [8 bytes ] sequence number, used as AAD for encryption
+        iv*: Iv                     # [12 bytes] random IV for AES256 GCM encryption
+        gmac*: AuthenticationTag    # [16 bytes] authentication tag for AES256 GCM encryption
 
     TaskArg* = object 
         argType*: uint8         # [1 byte  ] argument type
@@ -66,7 +76,6 @@ type
         header*: Header
 
         taskId*: uint32         # [4 bytes ] task id
-        agentId*: uint32        # [4 bytes ] agent id 
         listenerId*: uint32     # [4 bytes ] listener id
         timestamp*: uint32      # [4 bytes ] unix timestamp
         command*: uint16        # [2 bytes ] command id 
@@ -77,7 +86,6 @@ type
         header*: Header 
 
         taskId*: uint32         # [4 bytes ] task id
-        agentId*: uint32        # [4 bytes ] agent id 
         listenerId*: uint32     # [4 bytes ] listener id
         timestamp*: uint32      # [4 bytes ] unix timestamp
         command*: uint16        # [2 bytes ] command id 
@@ -104,16 +112,14 @@ type
 # Checkin binary structure
 type
     Heartbeat* = object 
-        header*: Header
-        agentId*: uint32         # [4 bytes ] agent id
-        listenerId*: uint32      # [4 bytes ] listener id
-        timestamp*: uint32
+        header*: Header         # [48 bytes ] fixed header
+        listenerId*: uint32     # [4 bytes  ] listener id
+        timestamp*: uint32      # [4 bytes  ] unix timestamp
 
 # Registration binary structure 
 type 
     # All variable length fields are stored as seq[byte], prefixed with 4 bytes indicating the length of the following data
     AgentMetadata* = object 
-        agentId*: uint32
         listenerId*: uint32
         username*: seq[byte]
         hostname*: seq[byte]
@@ -127,7 +133,7 @@ type
 
     AgentRegistrationData* = object
         header*: Header
-        # encMaterial*: seq[byte] # Encryption material for the agent registration
+        sessionKey*: Key        # [32 bytes ] AES 256 session key
         metadata*: AgentMetadata
 
 # Agent structure
@@ -148,6 +154,7 @@ type
         tasks*: seq[Task]
         firstCheckin*: DateTime
         latestCheckin*: DateTime
+        sessionKey*: Key
 
 # Listener structure
 type 
@@ -177,3 +184,4 @@ type
         ip*: string
         port*: int
         sleep*: int
+        sessionKey*: Key
