@@ -199,7 +199,7 @@ proc collectAgentMetadata*(config: AgentConfig): AgentRegistrationData =
             magic: MAGIC,
             version: VERSION, 
             packetType: cast[uint8](MSG_REGISTER),
-            flags: cast[uint16](FLAG_PLAINTEXT),
+            flags: cast[uint16](FLAG_ENCRYPTED),
             size: 0'u32,
             agentId: uuidToUint32(config.agentId),
             seqNr: 1'u64, # TODO: Implement sequence tracking

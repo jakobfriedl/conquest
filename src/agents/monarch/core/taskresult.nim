@@ -10,7 +10,7 @@ proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, r
             magic: MAGIC,
             version: VERSION, 
             packetType: cast[uint8](MSG_RESPONSE),
-            flags: cast[uint16](FLAG_PLAINTEXT),
+            flags: cast[uint16](FLAG_ENCRYPTED),
             size: 0'u32,
             agentId: task.header.agentId,
             seqNr: 1'u64, 
