@@ -45,4 +45,5 @@ proc decrypt*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint64): (se
     ctx.getTag(tag)
     ctx.clear()
     
-    return (data, tag)  
+    return (data, tag)
+

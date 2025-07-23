@@ -150,7 +150,6 @@ type
         pid*: int
         elevated*: bool 
         sleep*: int 
-        jitter*: float 
         tasks*: seq[Task]
         firstCheckin*: DateTime
         latestCheckin*: DateTime

@@ -1,6 +1,8 @@
 # Ignore agents
 # agents/
 *.db
+data/*
+!data/.gitkeep
 # Ignore binaries
 bin/*
 !bin/.gitkeep

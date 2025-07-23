@@ -33,9 +33,9 @@ proc dbInit*(cq: Conquest) =
             os TEXT NOT NULL,
             elevated BOOLEAN NOT NULL,
             sleep INTEGER DEFAULT 10,
-            jitter REAL DEFAULT 0.1,
             firstCheckin DATETIME NOT NULL,
             latestCheckin DATETIME NOT NULL,
+            sessionKey BLOB NOT NULL, 
             FOREIGN KEY (listener) REFERENCES listeners(name)
         );
 

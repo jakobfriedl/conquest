@@ -132,7 +132,6 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent =
         pid: int(pid),
         elevated: isElevated != 0,
         sleep: int(sleep),
-        jitter: 0.0,  # TODO: Remove jitter 
         tasks: @[],  
         firstCheckin: now(),
         latestCheckin: now(),
