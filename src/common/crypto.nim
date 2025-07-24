@@ -1,8 +1,5 @@
 import system
 import nimcrypto
-import nimcrypto/blake2
-from ed25519 import keyExchange, createKeyPair, seed
-# from monocypher import crypto_key_exchange_public_key, crypto_key_exchange, crypto_blake2b, crypto_wipe
 
 import ./[utils, types]
 
@@ -10,14 +7,6 @@ import ./[utils, types]
     Symmetric AES256 GCM encryption for secure C2 traffic
     Ensures both confidentiality and integrity of the packet 
 ]#
-proc generateKeyPair*(): KeyPair =
-    let keyPair = createKeyPair(seed())
-
-    return KeyPair(
-        privateKey: keyPair.privateKey,
-        publicKey: keyPair.publicKey
-    )
-
 proc generateIV*(): Iv =
     # Generate a random 98-bit (12-byte) initialization vector for AES-256 GCM mode
     var iv: Iv
@@ -56,41 +45,54 @@ proc decrypt*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint64): (se
     return (data, tag)
 
 #[
-    ECDHE key exchange using ed25519
-]# 
-proc loadKeys*(privateKeyFile, publicKeyFile: string): KeyPair = 
-    let filePrivate = open(privateKeyFile, fmRead)
-    defer: filePrivate.close()
+    Key exchange using X25519 and Blake2b
+    Elliptic curve cryptography ensures that the actual session key is never sent over the network
+    Private keys and shared secrets are wiped from agent memory as soon as possible 
+]#
+{.compile: "monocypher/monocypher.c".}
+{.passc: "-Imonocypher".}
 
-    var privateKey: PrivateKey
-    var bytesRead = filePrivate.readBytes(privateKey, 0, sizeof(PrivateKey))
+# C function imports from (monocypher/monocypher.c)
+proc crypto_x25519*(shared_secret: ptr byte, your_secret_key: ptr byte, their_public_key: ptr byte) {.importc, cdecl.}
+proc crypto_x25519_public_key*(public_key: ptr byte, secret_key: ptr byte) {.importc, cdecl.}
+proc crypto_blake2b_keyed*(hash: ptr byte, hash_size: csize_t, key: ptr byte, key_size: csize_t, message: ptr byte, message_size: csize_t) {.importc, cdecl.}
+proc crypto_wipe*(data: ptr byte, size: csize_t) {.importc, cdecl.}
 
-    if bytesRead != sizeof(PrivateKey):
-        raise newException(ValueError, "Invalid private key length.")
+# Generate X25519 public key from private key
+proc getPublicKey*(privateKey: Key): Key =
+    crypto_x25519_public_key(result[0].addr, privateKey[0].addr)
 
-    let filePublic = open(publicKeyFile, fmRead)
-    defer: filePublic.close()
+# Perform X25519 key exchange
+proc keyExchange*(privateKey: Key, publicKey: Key): Key =
+    crypto_x25519(result[0].addr, privateKey[0].addr, publicKey[0].addr)
 
-    var publicKey: PublicKey
-    bytesRead = filePublic.readBytes(publicKey, 0, sizeof(PublicKey))
+# Calculate Blake2b hash
+func pointerAndLength*(bytes: openArray[byte]): (ptr[byte], uint) =
+    result = (cast[ptr[byte]](unsafeAddr bytes), uint(len(bytes)))
 
-    if bytesRead != sizeof(PublicKey):
-        raise newException(ValueError, "Invalid public key length.")
+func blake2b*(message: openArray[byte], key: openArray[byte] = []): array[64, byte] =
+    let (messagePtr, messageLen) = pointerAndLength(message)
+    let (keyPtr, keyLen) = pointerAndLength(key)
+    
+    crypto_blake2b_keyed(addr result[0], 64, keyPtr, keyLen, messagePtr, messageLen)
+
+# Secure memory wiping
+proc wipeKey*(data: var openArray[byte]) =
+    if data.len > 0:
+        crypto_wipe(data[0].addr, data.len.csize_t)
+
+# Key pair generation
+proc generateKeyPair*(): KeyPair = 
+    var privateKey: Key
+    if randomBytes(privateKey) != sizeof(Key): 
+        raise newException(ValueError, "Failed to generate key.")
 
     return KeyPair(
-        privateKey: privateKey,
-        publicKey: publicKey
+        privateKey: privateKey, 
+        publicKey: getPublicKey(privateKey)
     )
 
-proc writeKey*[T: PublicKey | PrivateKey](keyFile: string, key: T) = 
-    let file = open(keyFile, fmWrite)
-    defer: file.close()
-
-    let bytesWritten = file.writeBytes(key, 0, sizeof(T))
-
-    if bytesWritten != sizeof(T):
-        raise newException(ValueError, "Invalid key length.")
-
+# Key derivation
 proc combineKeys(publicKey, otherPublicKey: Key): Key = 
     # XOR is a commutative operation, that ensures that the order of the public keys does not matter
     for i in 0..<32:
@@ -98,24 +100,44 @@ proc combineKeys(publicKey, otherPublicKey: Key): Key =
 
 proc deriveSessionKey*(keyPair: KeyPair, publicKey: Key): Key =
     var key: Key
-
+    
     # Calculate shared secret (https://monocypher.org/manual/x25519)
-    let sharedSecret = keyExchange(publicKey, keyPair.privateKey)
+    var sharedSecret = keyExchange(keyPair.privateKey, publicKey)
 
     # Add combined public keys to hash
     let combinedKeys: Key = combineKeys(keyPair.publicKey, publicKey)
+    let hashMessage: seq[byte] = "CONQUEST".toBytes() & @combinedKeys 
 
-    # Calculate Blake2b hash to derive session key
-    var ctx: blake2_512
-    ctx.init()
-    ctx.update(sharedSecret)
-    ctx.update("CONQUEST".toBytes() & @combinedKeys)
-
-    let hash = ctx.finish
-    let bytes = hash.data[0..<sizeof(Key)]
-    copyMem(key[0].addr, bytes[0].addr, sizeof(Key))
+    # Calculate Blake2b hash and extract the first 32 bytes for the AES key (https://monocypher.org/manual/blake2b)
+    let hash = blake2b(hashMessage, sharedSecret)
+    copyMem(key[0].addr, hash[0].addr, sizeof(Key))
 
     # Cleanup 
-    zeroMem(sharedSecret[0].addr, sharedSecret.len)
+    wipeKey(sharedSecret)
 
     return key
+
+# Key management
+proc loadKeyPair*(keyFile: string): KeyPair = 
+    let file = open(keyFile, fmRead)
+    defer: file.close()
+
+    var privateKey: Key
+    let bytesRead = file.readBytes(privateKey, 0, sizeof(Key))
+
+    if bytesRead != sizeof(Key):
+        raise newException(ValueError, "Invalid key length.")
+
+    return KeyPair(
+        privateKey: privateKey,
+        publicKey: getPublicKey(privateKey)
+    )
+
+proc writeKeyToDisk*(keyFile: string, key: Key) = 
+    let file = open(keyFile, fmWrite)
+    defer: file.close()
+
+    let bytesWritten = file.writeBytes(key, 0, sizeof(Key))
+
+    if bytesWritten != sizeof(Key):
+        raise newException(ValueError, "Invalid key length.")

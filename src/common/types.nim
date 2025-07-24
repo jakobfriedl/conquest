@@ -52,8 +52,6 @@ type
 # Encryption 
 type     
     Key* = array[32, byte]
-    PublicKey* = array[32, byte]
-    PrivateKey* = array[64, byte]
     Iv* = array[12, byte]
     AuthenticationTag* = array[16, byte]
 
@@ -171,7 +169,7 @@ type
 # Server structure
 type 
     KeyPair* = object 
-        privateKey*: PrivateKey 
+        privateKey*: Key 
         publicKey*: Key
 
     Conquest* = ref object
@@ -191,4 +189,4 @@ type
         port*: int
         sleep*: int
         sessionKey*: Key
-        agentPublicKey*: PublicKey
+        agentPublicKey*: Key

@@ -136,7 +136,7 @@ proc initConquest*(): Conquest =
     cq.listeners = initTable[string, Listener]()
     cq.agents = initTable[string, Agent]() 
     cq.interactAgent = nil 
-    cq.keyPair = loadKeys("../data/keys/conquest-server_ed25519_private.key", "../data/keys/conquest-server_ed25519_public.key")
+    cq.keyPair = loadKeyPair("../data/keys/conquest-server_x25519_private.key")
 
     return cq
 

