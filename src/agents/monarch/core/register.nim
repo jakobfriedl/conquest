@@ -206,7 +206,7 @@ proc collectAgentMetadata*(config: AgentConfig): AgentRegistrationData =
             iv: generateIV(),
             gmac: default(AuthenticationTag)
         ), 
-        sessionKey: config.sessionKey,
+        agentPublicKey: config.agentPublicKey,
         metadata: AgentMetadata(
             listenerId: uuidToUint32(config.listenerId),
             username: getUsername().toBytes(),
@@ -251,8 +251,8 @@ proc serializeRegistrationData*(config: AgentConfig, data: var AgentRegistration
     let header = packer.packHeader(data.header, uint32(encData.len))
     packer.reset()
 
-    # Serialize session key
-    packer.addData(data.sessionKey)
-    let key = packer.pack()
+    # Serialize the agent's public key to add it to the header
+    packer.addData(data.agentPublicKey)
+    let publicKey = packer.pack()
 
-    return header & key & encData
+    return header & publicKey & encData

@@ -4,7 +4,7 @@ import strutils, strformat, times, system, tables
 import ./[agent, listener]
 import ../[globals, utils]
 import ../db/database
-import ../../common/[types, utils]
+import ../../common/[types, utils, crypto]
 
 #[
     Argument parsing
@@ -127,14 +127,16 @@ proc header(cq: Conquest) =
     cq.writeLine("─".repeat(21))
     cq.writeLine("")
 
-proc initConquest*(dbPath: string): Conquest = 
+# TODO: Add profile support instead of hardcoded paths, etc.
+proc initConquest*(): Conquest = 
     var cq = new Conquest
     var prompt = Prompt.init()
     cq.prompt = prompt
-    cq.dbPath = dbPath
+    cq.dbPath = "../data/conquest.db"
     cq.listeners = initTable[string, Listener]()
     cq.agents = initTable[string, Agent]() 
     cq.interactAgent = nil 
+    cq.keyPair = loadKeys("../data/keys/conquest-server_ed25519_private.key", "../data/keys/conquest-server_ed25519_public.key")
 
     return cq
 
@@ -146,8 +148,12 @@ proc startServer*() =
     setControlCHook(exit)
 
     # Initialize framework
-    let dbPath: string = "../data/conquest.db"
-    cq = initConquest(dbPath) 
+    try:
+        cq = initConquest()
+
+    except CatchableError as err:
+        echo err.msg
+        quit(0)
 
     # Print header
     cq.header()
@@ -156,7 +162,7 @@ proc startServer*() =
     cq.dbInit()
     cq.restartListeners()
     cq.addMultiple(cq.dbGetAllAgents())
-    
+
     # Main loop
     while true: 
         cq.setIndicator("[conquest]> ")

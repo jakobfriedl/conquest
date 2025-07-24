@@ -95,10 +95,12 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent =
 
     # TODO: Validate sequence number 
 
+    # Key exchange
+    let agentPublicKey = unpacker.getKey()
+    let sessionKey = deriveSessionKey(cq.keyPair, agentPublicKey)
+    
     # Decrypt payload 
-    let sessionKey = unpacker.getKey()
     let payload = unpacker.getBytes(int(header.size)) 
-
     let (decData, gmac) = decrypt(sessionKey, header.iv, payload, header.seqNr)
 
     # Verify that the authentication tags match, which ensures the integrity of the decrypted data and AAD
