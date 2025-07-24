@@ -150,7 +150,7 @@ proc startServer*() =
     # Initialize framework
     try:
         cq = initConquest()
-
+        
     except CatchableError as err:
         echo err.msg
         quit(0)

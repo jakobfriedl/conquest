@@ -1,12 +1,6 @@
 # Conquest Agents
 
-For cross-compilation from UNIX to Windows, use the following command: 
-
-```bash
-nim --os:windows --cpu:amd64 --gcc.exe:x86_64-w64-mingw32-gcc --gcc.linkerexe:x86_64-w64-mingw32-gcc -d:release c client.nim
-```
-
-or 
+For cross-compilation from UNIX to Windows, use:  
 
 ```
 ./build.sh

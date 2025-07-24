@@ -118,21 +118,6 @@ proc deriveSessionKey*(keyPair: KeyPair, publicKey: Key): Key =
     return key
 
 # Key management
-proc loadKeyPair*(keyFile: string): KeyPair = 
-    let file = open(keyFile, fmRead)
-    defer: file.close()
-
-    var privateKey: Key
-    let bytesRead = file.readBytes(privateKey, 0, sizeof(Key))
-
-    if bytesRead != sizeof(Key):
-        raise newException(ValueError, "Invalid key length.")
-
-    return KeyPair(
-        privateKey: privateKey,
-        publicKey: getPublicKey(privateKey)
-    )
-
 proc writeKeyToDisk*(keyFile: string, key: Key) = 
     let file = open(keyFile, fmWrite)
     defer: file.close()
@@ -141,3 +126,26 @@ proc writeKeyToDisk*(keyFile: string, key: Key) =
 
     if bytesWritten != sizeof(Key):
         raise newException(ValueError, "Invalid key length.")
+
+proc loadKeyPair*(keyFile: string): KeyPair = 
+    try: 
+        let file = open(keyFile, fmRead)
+        defer: file.close()
+
+        var privateKey: Key
+        let bytesRead = file.readBytes(privateKey, 0, sizeof(Key))
+
+        if bytesRead != sizeof(Key):
+            raise newException(ValueError, "Invalid key length.")
+
+        return KeyPair(
+            privateKey: privateKey,
+            publicKey: getPublicKey(privateKey)
+        )
+
+    # Create a new key pair if the private key file is not found 
+    except IOError: 
+        let keyPair = generateKeyPair() 
+        writeKeyToDisk(keyFile, keyPair.privateKey)
+        return keyPair
+
