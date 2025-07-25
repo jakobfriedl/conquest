@@ -1,117 +1,13 @@
 import times, strformat, terminal, tables, json, sequtils, strutils
 import ./[parser]
 import ../utils
+import ../../modules/manager
 import ../../common/[types, utils]
 
-proc initAgentCommands*(): Table[string, Command] = 
-    var commands = initTable[string, Command]()
-
-    commands["shell"] = Command(
-        name: "shell",
-        commandType: CMD_SHELL,
-        description: "Execute a shell command and retrieve the output.",
-        example: "shell whoami /all",
-        arguments: @[
-            Argument(name: "command", description: "Command to be executed.", argumentType: STRING, isRequired: true),
-            Argument(name: "arguments", description: "Arguments to be passed to the command.", argumentType: STRING, isRequired: false)
-        ]
-    )
-
-    commands["sleep"] = Command(
-        name: "sleep",
-        commandType: CMD_SLEEP,
-        description: "Update sleep delay configuration.",
-        example: "sleep 5",
-        arguments: @[
-            Argument(name: "delay", description: "Delay in seconds.", argumentType: INT, isRequired: true)
-        ]
-    )
-
-    commands["pwd"] = Command(
-        name: "pwd",
-        commandType: CMD_PWD,
-        description: "Retrieve current working directory.",
-        example: "pwd",
-        arguments: @[]
-    )
-
-    commands["cd"] = Command(
-        name: "cd",
-        commandType: CMD_CD,
-        description: "Change current working directory.",
-        example: "cd C:\\Windows\\Tasks",
-        arguments: @[
-            Argument(name: "directory", description: "Relative or absolute path of the directory to change to.", argumentType: STRING, isRequired: true)
-        ]
-    )
-
-    commands["ls"] = Command(
-        name: "ls",
-        commandType: CMD_LS,
-        description: "List files and directories.",
-        example: "ls C:\\Users\\Administrator\\Desktop",
-        arguments: @[
-            Argument(name: "directory", description: "Relative or absolute path. Default: current working directory.", argumentType: STRING, isRequired: false)
-        ]
-    )
-
-    commands["rm"] = Command(
-        name: "rm", 
-        commandType: CMD_RM,
-        description: "Remove a file.",
-        example: "rm C:\\Windows\\Tasks\\payload.exe",
-        arguments: @[
-            Argument(name: "file", description: "Relative or absolute path to the file to delete.", argumentType: STRING, isRequired: true)
-        ]
-    )
-
-    commands["rmdir"] = Command(
-        name: "rmdir",
-        commandType: CMD_RMDIR,
-        description: "Remove a directory.",
-        example: "rm C:\\Payloads",
-        arguments: @[
-            Argument(name: "directory", description: "Relative or absolute path to the directory to delete.", argumentType: STRING, isRequired: true)
-        ]
-    )
-
-    commands["move"] = Command(
-        name: "move",
-        commandType: CMD_MOVE,
-        description: "Move a file or directory.",
-        example: "move source.exe C:\\Windows\\Tasks\\destination.exe",
-        arguments: @[
-            Argument(name: "source", description: "Source file path.", argumentType: STRING, isRequired: true),
-            Argument(name: "destination", description: "Destination file path.", argumentType: STRING, isRequired: true)
-        ]
-    )
-
-    commands["copy"] = Command(
-        name: "copy",
-        commandType: CMD_COPY,
-        description: "Copy a file or directory.",
-        example: "copy source.exe C:\\Windows\\Tasks\\destination.exe",
-        arguments: @[
-            Argument(name: "source", description: "Source file path.", argumentType: STRING, isRequired: true),
-            Argument(name: "destination", description: "Destination file path.", argumentType: STRING, isRequired: true)
-        ]
-    )
-
-    return commands 
-
-let commands = initAgentCommands() 
-
-proc getCommandFromTable(input: string, commands: Table[string, Command]): Command =
-    try:
-        let command = commands[input]
-        return command
-    except ValueError: 
-        raise newException(ValueError, fmt"The command '{input}' does not exist.")
-
-proc displayHelp(cq: Conquest, commands: Table[string, Command]) = 
+proc displayHelp(cq: Conquest) = 
     cq.writeLine("Available commands:")
     cq.writeLine(" * back")
-    for key, cmd in commands: 
+    for key, cmd in getAvailableCommands(): 
         cq.writeLine(fmt" * {cmd.name:<15}{cmd.description}")
     cq.writeLine()
 
@@ -142,13 +38,13 @@ Usage   : {usage}
 
         cq.writeLine()
 
-proc handleHelp(cq: Conquest, parsed: seq[string], commands: Table[string, Command]) = 
+proc handleHelp(cq: Conquest, parsed: seq[string]) = 
     try: 
         # Try parsing the first argument passed to 'help' as a command
-        cq.displayCommandHelp(getCommandFromTable(parsed[1],  commands))
+        cq.displayCommandHelp(getCommandByName(parsed[1]))
     except IndexDefect:
         # 'help' command is called without additional parameters
-        cq.displayHelp(commands)
+        cq.displayHelp()
     except ValueError: 
         # Command was not found
         cq.writeLine(fgRed, styleBright, fmt"[-] The command '{parsed[1]}' does not exist." & '\n')
@@ -169,13 +65,13 @@ proc handleAgentCommand*(cq: Conquest, input: string) =
 
     # Handle 'help' command 
     if parsedArgs[0] == "help": 
-        cq.handleHelp(parsedArgs, commands)
+        cq.handleHelp(parsedArgs)
         return
 
     # Handle commands with actions on the agent
     try: 
         let 
-            command = getCommandFromTable(parsedArgs[0], commands)
+            command = getCommandByName(parsedArgs[0])
             task = cq.parseTask(command, parsedArgs[1..^1])
 
         # Add task to queue

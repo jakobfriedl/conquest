@@ -1,24 +1,13 @@
 import strutils, tables, json, strformat, sugar
 
-import ../commands/commands
-import ../../../common/[types, serialize, crypto, utils]
+import ../../modules/manager
+import ../../common/[types, serialize, crypto, utils]
 
 proc handleTask*(config: AgentConfig, task: Task): TaskResult = 
-
-    let handlers = {
-        CMD_SLEEP: taskSleep,
-        CMD_SHELL: taskShell,
-        CMD_PWD: taskPwd,
-        CMD_CD: taskCd,
-        CMD_LS: taskDir,
-        CMD_RM: taskRm,
-        CMD_RMDIR: taskRmdir,
-        CMD_MOVE: taskMove, 
-        CMD_COPY: taskCopy
-    }.toTable
-
-    # Handle task command
-    return handlers[cast[CommandType](task.command)](config, task)
+    try: 
+        return getCommandByType(cast[CommandType](task.command)).execute(config, task)
+    except CatchableError: 
+        echo "[-] Command not found."
 
 proc deserializeTask*(config: AgentConfig, bytes: seq[byte]): Task = 
 

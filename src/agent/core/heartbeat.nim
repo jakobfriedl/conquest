@@ -1,6 +1,6 @@
 import times 
 
-import ../../../common/[types, serialize, utils, crypto]
+import ../../common/[types, serialize, utils, crypto]
 
 proc createHeartbeat*(config: AgentConfig): Heartbeat = 
     return Heartbeat(

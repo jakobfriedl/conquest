@@ -8,4 +8,5 @@ nim --os:windows \
     -d:release \
     --outdir:"$CONQUEST_ROOT/bin" \
     -o:"monarch.x64.exe" \
-    c $CONQUEST_ROOT/src/agents/monarch/main.nim
+    -d:agent \
+    c $CONQUEST_ROOT/src/agent/main.nim

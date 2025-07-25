@@ -94,21 +94,6 @@ type
         length*: uint32         # [4 bytes ] result length
         data*: seq[byte]        # variable length result
 
-# Structure for command module definitions 
-    Argument* = object 
-        name*: string 
-        description*: string 
-        argumentType*: ArgType
-        isRequired*: bool
-
-    Command* = object 
-        name*: string
-        commandType*: CommandType
-        description*: string 
-        example*: string 
-        arguments*: seq[Argument]
-        dispatchMessage*: string
-
 # Checkin binary structure
 type
     Heartbeat* = object 
@@ -190,3 +175,20 @@ type
         sleep*: int
         sessionKey*: Key
         agentPublicKey*: Key
+        
+# Structure for command module definitions 
+type
+    Argument* = object 
+        name*: string 
+        description*: string 
+        argumentType*: ArgType
+        isRequired*: bool
+
+    Command* = object 
+        name*: string
+        commandType*: CommandType
+        description*: string 
+        example*: string 
+        arguments*: seq[Argument]
+        dispatchMessage*: string
+        execute*: proc(config: AgentConfig, task: Task): TaskResult {.nimcall.}

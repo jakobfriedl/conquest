@@ -1,6 +1,6 @@
 import winim, os, net, strformat, strutils, registry, sugar
 
-import ../../../common/[types, serialize, crypto, utils]
+import ../../common/[types, serialize, crypto, utils]
 
 # Hostname/Computername
 proc getHostname(): string = 

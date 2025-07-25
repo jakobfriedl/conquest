@@ -135,7 +135,7 @@ proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
     let listener = cq.listeners[listener.toUpperAscii] 
 
     # Create/overwrite nim.cfg file to set agent configuration 
-    let agentConfigFile = fmt"../src/agents/{payload}/nim.cfg"   
+    let agentConfigFile = fmt"../src/agent/nim.cfg"   
 
     # Parse IP Address and store as compile-time integer to hide hardcoded-strings in binary from `strings` command
     let (first, second, third, fourth) = parseOctets(listener.address)
@@ -160,7 +160,7 @@ proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
     cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Configuration file created.")
 
     # Build agent by executing the ./build.sh script on the system.
-    let agentBuildScript = fmt"../src/agents/{payload}/build.sh"    
+    let agentBuildScript = fmt"../src/agent/build.sh"    
 
     cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Building agent...")
     

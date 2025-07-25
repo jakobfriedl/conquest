@@ -1,5 +1,5 @@
 import times, sugar
-import ../../../common/[types, serialize, crypto, utils]
+import ../../common/[types, serialize, crypto, utils]
 
 proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, resultData: seq[byte]): TaskResult = 
 
