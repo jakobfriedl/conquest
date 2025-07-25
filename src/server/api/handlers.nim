@@ -5,12 +5,6 @@ import ../db/database
 import ../task/packer
 import ../../common/[types, utils]
 
-import sugar 
-
-# Utility functions 
-proc add*(cq: Conquest, agent: Agent) = 
-    cq.agents[agent.agentId] = agent
-
 #[
   Agent API
   Functions relevant for dealing with the agent API, such as registering new agents, querying tasks and posting results
@@ -32,7 +26,7 @@ proc register*(registrationData: seq[byte]): bool =
             cq.writeLine(fgRed, styleBright, fmt"[-] Failed to insert agent {agent.agentId} into database.", "\n")
             return false
 
-        cq.add(agent)
+        cq.agents[agent.agentId] = agent
 
         let date = agent.firstCheckin.format("dd-MM-yyyy HH:mm:ss")
         cq.writeLine(fgYellow, styleBright, fmt"[{date}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
