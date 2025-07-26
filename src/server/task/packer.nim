@@ -1,6 +1,6 @@
 import strutils, strformat, streams, times, tables
 import ../utils
-import ../../common/[types, utils, serialize, crypto]
+import ../../common/[types, utils, serialize, sequence, crypto]
 
 proc serializeTask*(cq: Conquest, task: var Task): seq[byte] = 
 
@@ -44,7 +44,9 @@ proc deserializeTaskResult*(cq: Conquest, resultData: seq[byte]): TaskResult =
     if header.packetType != cast[uint8](MSG_RESPONSE): 
         raise newException(CatchableError, "Invalid packet type for task result, expected MSG_RESPONSE.")
 
-    # TODO: Validate sequence number 
+    # Validate sequence number 
+    if not validateSequence(header.agentId, header.seqNr, header.packetType): 
+        raise newException(CatchableError, "Invalid sequence number.")
 
     # Decrypt payload 
     let payload = unpacker.getBytes(int(header.size))
@@ -93,7 +95,9 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent =
     if header.packetType != cast[uint8](MSG_REGISTER): 
         raise newException(CatchableError, "Invalid packet type for agent registration, expected MSG_REGISTER.")
 
-    # TODO: Validate sequence number 
+    # Validate sequence number 
+    if not validateSequence(header.agentId, header.seqNr, header.packetType): 
+        raise newException(CatchableError, "Invalid sequence number.")
 
     # Key exchange
     let agentPublicKey = unpacker.getKey()
@@ -153,9 +157,11 @@ proc deserializeHeartbeat*(cq: Conquest, data: seq[byte]): Heartbeat =
     if header.packetType != cast[uint8](MSG_HEARTBEAT):
         raise newException(CatchableError, "Invalid packet type for checkin request, expected MSG_HEARTBEAT.")
 
-    # TODO: Validate sequence number 
+    # Validate sequence number 
+    if not validateSequence(header.agentId, header.seqNr, header.packetType): 
+        raise newException(CatchableError, "Invalid sequence number.")
 
-    # Decrypt payload 
+    # Decrypt payload
     let payload = unpacker.getBytes(int(header.size))
     let (decData, gmac) = decrypt(cq.agents[uuidToString(header.agentId)].sessionKey, header.iv, payload, header.seqNr)
 

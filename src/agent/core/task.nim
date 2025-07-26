@@ -1,7 +1,7 @@
 import strutils, tables, json, strformat, sugar
 
 import ../../modules/manager
-import ../../common/[types, serialize, crypto, utils]
+import ../../common/[types, serialize, sequence, crypto, utils]
 
 proc handleTask*(config: AgentConfig, task: Task): TaskResult = 
     try: 
@@ -22,7 +22,9 @@ proc deserializeTask*(config: AgentConfig, bytes: seq[byte]): Task =
     if header.packetType != cast[uint8](MSG_TASK): 
         raise newException(CatchableError, "Invalid packet type.")
 
-    # TODO: Validate sequence number 
+    # Validate sequence number
+    if not validateSequence(header.agentId, header.seqNr, header.packetType): 
+        raise newException(CatchableError, "Invalid sequence number.")
 
     # Decrypt payload 
     let payload = unpacker.getBytes(int(header.size))

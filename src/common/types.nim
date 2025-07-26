@@ -74,7 +74,6 @@ type
 
     Task* = object 
         header*: Header
-
         taskId*: uint32         # [4 bytes ] task id
         listenerId*: uint32     # [4 bytes ] listener id
         timestamp*: uint32      # [4 bytes ] unix timestamp
@@ -84,7 +83,6 @@ type
 
     TaskResult* = object 
         header*: Header 
-
         taskId*: uint32         # [4 bytes ] task id
         listenerId*: uint32     # [4 bytes ] listener id
         timestamp*: uint32      # [4 bytes ] unix timestamp
@@ -103,6 +101,7 @@ type
 
 # Registration binary structure 
 type 
+
     # All variable length fields are stored as seq[byte], prefixed with 4 bytes indicating the length of the following data
     AgentMetadata* = object 
         listenerId*: uint32
@@ -151,7 +150,7 @@ type
         port*: int
         protocol*: Protocol
 
-# Server structure
+# Server context structure
 type 
     KeyPair* = object 
         privateKey*: Key 
@@ -165,7 +164,7 @@ type
         interactAgent*: Agent
         keyPair*: KeyPair
 
-# Agent Config
+# Agent config
 type
     AgentConfig* = ref object
         agentId*: string

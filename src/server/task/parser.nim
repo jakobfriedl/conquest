@@ -1,6 +1,6 @@
 import strutils, strformat, times
 import ../utils
-import ../../common/[types, utils, crypto]
+import ../../common/[types, utils, sequence, crypto]
 
 proc parseInput*(input: string): seq[string] = 
     var i = 0
@@ -105,7 +105,7 @@ proc parseTask*(cq: Conquest, command: Command, arguments: seq[string]): Task =
     taskHeader.flags = cast[uint16](FLAG_ENCRYPTED)
     taskHeader.size = 0'u32
     taskHeader.agentId = uuidtoUint32(cq.interactAgent.agentId)
-    taskHeader.seqNr = 1'u64 # TODO: Implement sequence tracking
+    taskHeader.seqNr = nextSequence(taskHeader.agentId)
     taskHeader.iv = generateIV() # Generate a random IV for AES-256 GCM
     taskHeader.gmac = default(AuthenticationTag)
 

@@ -1,6 +1,6 @@
 import times 
 
-import ../../common/[types, serialize, utils, crypto]
+import ../../common/[types, serialize, sequence, utils, crypto]
 
 proc createHeartbeat*(config: AgentConfig): Heartbeat = 
     return Heartbeat(
@@ -11,7 +11,7 @@ proc createHeartbeat*(config: AgentConfig): Heartbeat =
             flags: cast[uint16](FLAG_ENCRYPTED),
             size: 0'u32,
             agentId: uuidToUint32(config.agentId),
-            seqNr: 0'u64,
+            seqNr: 0'u64,  
             iv: generateIV(),
             gmac: default(AuthenticationTag)
         ), 
