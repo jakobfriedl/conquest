@@ -51,6 +51,6 @@ proc serializeTaskResult*(config: AgentConfig, taskResult: var TaskResult): seq[
     taskResult.header.gmac = gmac
 
     # Serialize header 
-    let header = packer.packHeader(taskResult.header, uint32(encData.len))
+    let header = packer.serializeHeader(taskResult.header, uint32(encData.len))
 
     return header & encData 

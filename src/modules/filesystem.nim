@@ -1,6 +1,90 @@
 import ./manager
 import ../common/[types, utils]
 
+# Define function prototypes
+proc executePwd(config: AgentConfig, task: Task): TaskResult
+proc executeCd(config: AgentConfig, task: Task): TaskResult
+proc executeDir(config: AgentConfig, task: Task): TaskResult
+proc executeRm(config: AgentConfig, task: Task): TaskResult
+proc executeRmdir(config: AgentConfig, task: Task): TaskResult
+proc executeMove(config: AgentConfig, task: Task): TaskResult 
+proc executeCopy(config: AgentConfig, task: Task): TaskResult 
+
+# Command definitions
+let commands* = @[
+    Command(
+        name: "pwd",
+        commandType: CMD_PWD,
+        description: "Retrieve current working directory.",
+        example: "pwd",
+        arguments: @[],
+        execute: executePwd
+    ),
+    Command(
+        name: "cd",
+        commandType: CMD_CD,
+        description: "Change current working directory.",
+        example: "cd C:\\Windows\\Tasks",
+        arguments: @[
+            Argument(name: "directory", description: "Relative or absolute path of the directory to change to.", argumentType: STRING, isRequired: true)
+        ],
+        execute: executeCd
+    ),
+    Command(
+        name: "ls",
+        commandType: CMD_LS,
+        description: "List files and directories.",
+        example: "ls C:\\Users\\Administrator\\Desktop",
+        arguments: @[
+            Argument(name: "directory", description: "Relative or absolute path. Default: current working directory.", argumentType: STRING, isRequired: false)
+        ],
+        execute: executeDir
+    ),
+    Command(
+        name: "rm", 
+        commandType: CMD_RM,
+        description: "Remove a file.",
+        example: "rm C:\\Windows\\Tasks\\payload.exe",
+        arguments: @[
+            Argument(name: "file", description: "Relative or absolute path to the file to delete.", argumentType: STRING, isRequired: true)
+        ],
+        execute: executeRm
+    ),
+    Command(
+        name: "rmdir",
+        commandType: CMD_RMDIR,
+        description: "Remove a directory.",
+        example: "rm C:\\Payloads",
+        arguments: @[
+            Argument(name: "directory", description: "Relative or absolute path to the directory to delete.", argumentType: STRING, isRequired: true)
+        ],
+        execute: executeRmdir
+    ),
+    Command(
+        name: "move",
+        commandType: CMD_MOVE,
+        description: "Move a file or directory.",
+        example: "move source.exe C:\\Windows\\Tasks\\destination.exe",
+        arguments: @[
+            Argument(name: "source", description: "Source file path.", argumentType: STRING, isRequired: true),
+            Argument(name: "destination", description: "Destination file path.", argumentType: STRING, isRequired: true)
+        ],
+        execute: executeMove
+    ),
+    Command(
+        name: "copy",
+        commandType: CMD_COPY,
+        description: "Copy a file or directory.",
+        example: "copy source.exe C:\\Windows\\Tasks\\destination.exe",
+        arguments: @[
+            Argument(name: "source", description: "Source file path.", argumentType: STRING, isRequired: true),
+            Argument(name: "destination", description: "Destination file path.", argumentType: STRING, isRequired: true)
+        ],
+        execute: executeCopy
+    )
+]
+
+# Implementation of the execution functions
 when defined(server):
     proc executePwd(config: AgentConfig, task: Task): TaskResult = nil
     proc executeCd(config: AgentConfig, task: Task): TaskResult = nil
@@ -10,7 +94,6 @@ when defined(server):
     proc executeMove(config: AgentConfig, task: Task): TaskResult = nil
     proc executeCopy(config: AgentConfig, task: Task): TaskResult = nil
 
-# Implementation of the execution functions
 when defined(agent):
 
     import os, strutils, strformat, times, algorithm, winim
@@ -280,78 +363,3 @@ when defined(agent):
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
-
-
-# Command definitions
-let commands* = @[
-    Command(
-        name: "pwd",
-        commandType: CMD_PWD,
-        description: "Retrieve current working directory.",
-        example: "pwd",
-        arguments: @[],
-        execute: executePwd
-    ),
-    Command(
-        name: "cd",
-        commandType: CMD_CD,
-        description: "Change current working directory.",
-        example: "cd C:\\Windows\\Tasks",
-        arguments: @[
-            Argument(name: "directory", description: "Relative or absolute path of the directory to change to.", argumentType: STRING, isRequired: true)
-        ],
-        execute: executeCd
-    ),
-    Command(
-        name: "ls",
-        commandType: CMD_LS,
-        description: "List files and directories.",
-        example: "ls C:\\Users\\Administrator\\Desktop",
-        arguments: @[
-            Argument(name: "directory", description: "Relative or absolute path. Default: current working directory.", argumentType: STRING, isRequired: false)
-        ],
-        execute: executeDir
-    ),
-    Command(
-        name: "rm", 
-        commandType: CMD_RM,
-        description: "Remove a file.",
-        example: "rm C:\\Windows\\Tasks\\payload.exe",
-        arguments: @[
-            Argument(name: "file", description: "Relative or absolute path to the file to delete.", argumentType: STRING, isRequired: true)
-        ],
-        execute: executeRm
-    ),
-    Command(
-        name: "rmdir",
-        commandType: CMD_RMDIR,
-        description: "Remove a directory.",
-        example: "rm C:\\Payloads",
-        arguments: @[
-            Argument(name: "directory", description: "Relative or absolute path to the directory to delete.", argumentType: STRING, isRequired: true)
-        ],
-        execute: executeRmdir
-    ),
-    Command(
-        name: "move",
-        commandType: CMD_MOVE,
-        description: "Move a file or directory.",
-        example: "move source.exe C:\\Windows\\Tasks\\destination.exe",
-        arguments: @[
-            Argument(name: "source", description: "Source file path.", argumentType: STRING, isRequired: true),
-            Argument(name: "destination", description: "Destination file path.", argumentType: STRING, isRequired: true)
-        ],
-        execute: executeMove
-    ),
-    Command(
-        name: "copy",
-        commandType: CMD_COPY,
-        description: "Copy a file or directory.",
-        example: "copy source.exe C:\\Windows\\Tasks\\destination.exe",
-        arguments: @[
-            Argument(name: "source", description: "Source file path.", argumentType: STRING, isRequired: true),
-            Argument(name: "destination", description: "Destination file path.", argumentType: STRING, isRequired: true)
-        ],
-        execute: executeCopy
-    )
-]

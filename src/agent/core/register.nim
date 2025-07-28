@@ -248,7 +248,7 @@ proc serializeRegistrationData*(config: AgentConfig, data: var AgentRegistration
     data.header.gmac = gmac
 
     # Serialize header
-    let header = packer.packHeader(data.header, uint32(encData.len))
+    let header = packer.serializeHeader(data.header, uint32(encData.len))
     packer.reset()
 
     # Serialize the agent's public key to add it to the header

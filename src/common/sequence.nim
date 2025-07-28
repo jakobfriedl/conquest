@@ -7,7 +7,7 @@ proc nextSequence*(agentId: uint32): uint64 =
     sequenceTable[agentId] = sequenceTable.getOrDefault(agentId, 0'u64) + 1
     return sequenceTable[agentId]
 
-proc validateSequence*(agentId: uint32, seqNr: uint64, packetType: uint8): bool = 
+proc validateSequence(agentId: uint32, seqNr: uint64, packetType: uint8): bool = 
     let lastSeqNr = sequenceTable.getOrDefault(agentId, 0'u64)
 
     # Heartbeat messages are not used for sequence tracking
@@ -26,3 +26,17 @@ proc validateSequence*(agentId: uint32, seqNr: uint64, packetType: uint8): bool 
     # Update sequence number
     sequenceTable[agentId] = seqNr
     return true
+
+proc validatePacket*(header: Header, expectedType: uint8) = 
+    
+    # Validate magic number
+    if header.magic != MAGIC:
+        raise newException(CatchableError, "Invalid magic bytes.")
+
+    # Validate packet type
+    if header.packetType != expectedType: 
+        raise newException(CatchableError, "Invalid packet type.")
+
+    # Validate sequence number 
+    if not validateSequence(header.agentId, header.seqNr, header.packetType): 
+        raise newException(CatchableError, "Invalid sequence number.")

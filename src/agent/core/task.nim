@@ -13,26 +13,14 @@ proc deserializeTask*(config: AgentConfig, bytes: seq[byte]): Task =
 
     var unpacker = initUnpacker(bytes.toString)
 
-    let header = unpacker.unpackHeader()
+    let header = unpacker.deserializeHeader()
 
     # Packet Validation
-    if header.magic != MAGIC: 
-        raise newException(CatchableError, "Invalid magic bytes.")
-
-    if header.packetType != cast[uint8](MSG_TASK): 
-        raise newException(CatchableError, "Invalid packet type.")
-
-    # Validate sequence number
-    if not validateSequence(header.agentId, header.seqNr, header.packetType): 
-        raise newException(CatchableError, "Invalid sequence number.")
+    validatePacket(header, cast[uint8](MSG_TASK)) 
 
     # Decrypt payload 
     let payload = unpacker.getBytes(int(header.size))
-
-    let (decData, gmac) = decrypt(config.sessionKey, header.iv, payload, header.seqNr)
-
-    if gmac != header.gmac:
-        raise newException(CatchableError, "Invalid authentication tag (GMAC) for task.")
+    let decData= validateDecryption(config.sessionKey, header.iv, payload, header.seqNr, header)
 
     # Deserialize decrypted data
     unpacker = initUnpacker(decData.toString)

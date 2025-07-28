@@ -44,6 +44,15 @@ proc decrypt*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint64): (se
     
     return (data, tag)
 
+proc validateDecryption*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint64, header: Header): seq[byte] = 
+
+    let (decData, gmac) = decrypt(key, iv, encData, sequenceNumber)
+
+    if gmac != header.gmac: 
+        raise newException(CatchableError, "Invalid authentication tag.")
+
+    return decData
+
 #[
     Key exchange using X25519 and Blake2b
     Elliptic curve cryptography ensures that the actual session key is never sent over the network
@@ -148,4 +157,3 @@ proc loadKeyPair*(keyFile: string): KeyPair =
         let keyPair = generateKeyPair() 
         writeKeyToDisk(keyFile, keyPair.privateKey)
         return keyPair
-

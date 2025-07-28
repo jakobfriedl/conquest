@@ -2,7 +2,7 @@ import terminal, strformat, strutils, sequtils, tables, json, times, base64, sys
 
 import ../[utils, globals]
 import ../db/database
-import ../task/packer
+import ../message/packer
 import ../../common/[types, utils]
 
 #[
@@ -58,11 +58,9 @@ proc getTasks*(checkinData: seq[byte]): seq[seq[byte]] =
 
         # Update the last check-in date for the accessed agent
         cq.agents[agentId].latestCheckin = cast[int64](timestamp).fromUnix().local()
-        # if not cq.dbUpdateCheckin(agent.toUpperAscii, now().format("dd-MM-yyyy HH:mm:ss")):
-        #    return nil
 
         # Return tasks
-        for task in cq.agents[agentId].tasks.mitems: # Iterate over mutable items in order to modify GMAC
+        for task in cq.agents[agentId].tasks.mitems: # Iterate over agents as mutable items in order to modify GMAC tag
             let taskData = cq.serializeTask(task)
             result.add(taskData)
         

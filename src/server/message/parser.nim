@@ -1,4 +1,5 @@
 import strutils, strformat, times
+
 import ../utils
 import ../../common/[types, utils, sequence, crypto]
 
@@ -72,7 +73,7 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
     
     return result
 
-proc parseTask*(cq: Conquest, command: Command, arguments: seq[string]): Task = 
+proc createTask*(cq: Conquest, command: Command, arguments: seq[string]): Task = 
 
     # Construct the task payload prefix
     var task: Task

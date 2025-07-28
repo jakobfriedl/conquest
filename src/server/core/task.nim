@@ -1,6 +1,7 @@
 import times, strformat, terminal, tables, json, sequtils, strutils
-import ./[parser]
+
 import ../utils
+import ../message/parser
 import ../../modules/manager
 import ../../common/[types, utils]
 
@@ -72,7 +73,7 @@ proc handleAgentCommand*(cq: Conquest, input: string) =
     try: 
         let 
             command = getCommandByName(parsedArgs[0])
-            task = cq.parseTask(command, parsedArgs[1..^1])
+            task = cq.createTask(command, parsedArgs[1..^1])
 
         # Add task to queue
         cq.interactAgent.tasks.add(task)

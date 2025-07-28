@@ -38,6 +38,6 @@ proc serializeHeartbeat*(config: AgentConfig, request: var Heartbeat): seq[byte]
     request.header.gmac = gmac
 
     # Serialize header
-    let header = packer.packHeader(request.header, uint32(encData.len))
+    let header = packer.serializeHeader(request.header, uint32(encData.len))
 
     return header & encData

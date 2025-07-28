@@ -1,5 +1,5 @@
-import streams, strutils
-import ./[types, utils]
+import streams, strutils, tables
+import ./[types, utils, crypto, sequence]
 type 
     Packer* = ref object 
         stream: StringStream
@@ -17,9 +17,8 @@ proc addData*(packer: Packer, data: openArray[byte]): Packer {.discardable.} =
     return packer
 
 proc addArgument*(packer: Packer, arg: TaskArg): Packer {.discardable.} = 
-    
+    # Optional argument was passed as "", ignore
     if arg.data.len <= 0: 
-        # Optional argument was passed as "", ignore
         return
 
     packer.add(arg.argType)
@@ -34,7 +33,6 @@ proc addArgument*(packer: Packer, arg: TaskArg): Packer {.discardable.} =
     return packer
 
 proc addVarLengthMetadata*(packer: Packer, metadata: seq[byte]): Packer {.discardable.} = 
-
     # Add length of metadata field
     packer.add(cast[uint32](metadata.len))
 
@@ -160,7 +158,8 @@ proc getVarLengthMetadata*(unpacker: Unpacker): string =
     # Read content
     return unpacker.getBytes(int(length)).toString()
 
-proc packHeader*(packer: Packer, header: Header, bodySize: uint32): seq[byte] = 
+# Serialization & Deserialization functions
+proc serializeHeader*(packer: Packer, header: Header, bodySize: uint32): seq[byte] = 
     packer
         .add(header.magic)
         .add(header.version)
@@ -174,7 +173,7 @@ proc packHeader*(packer: Packer, header: Header, bodySize: uint32): seq[byte] =
 
     return packer.pack()
 
-proc unpackHeader*(unpacker: Unpacker): Header=
+proc deserializeHeader*(unpacker: Unpacker): Header=
     return Header(
         magic: unpacker.getUint32(),
         version: unpacker.getUint8(),
@@ -186,3 +185,4 @@ proc unpackHeader*(unpacker: Unpacker): Header=
         iv: unpacker.getIv(),
         gmac: unpacker.getAuthenticationTag()
     )
+    
