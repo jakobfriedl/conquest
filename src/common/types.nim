@@ -28,6 +28,7 @@ type
         FLAG_PLAINTEXT = 0'u16
         FLAG_ENCRYPTED = 1'u16
         FLAG_COMPRESSED = 2'u16
+        FLAG_FRAGMENTED = 4'u16 
 
     CommandType* = enum 
         CMD_SLEEP = 0'u16
@@ -39,10 +40,14 @@ type
         CMD_RMDIR = 6'u16
         CMD_MOVE = 7'u16
         CMD_COPY = 8'u16
+        CMD_PS = 9'u16
+        CMD_ENV = 10'u16 
+        CMD_WHOAMI = 11'u16
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
         STATUS_FAILED = 1'u8
+        STATUS_IN_PROGRESS = 2'u8
 
     ResultType* = enum 
         RESULT_STRING = 0'u8 

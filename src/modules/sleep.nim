@@ -1,4 +1,3 @@
-import ./manager
 import ../common/[types, utils]
 
 # Define function prototype

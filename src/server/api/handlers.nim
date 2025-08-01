@@ -82,9 +82,11 @@ proc handleResult*(resultData: seq[byte]) =
         case cast[StatusType](taskResult.status):
         of STATUS_COMPLETED:
             cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, fmt"Task {taskId} completed.")
-
         of STATUS_FAILED: 
             cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, fmt"Task {taskId} failed.")
+        of STATUS_IN_PROGRESS: 
+            discard
+
 
         case cast[ResultType](taskResult.resultType):
         of RESULT_STRING:
