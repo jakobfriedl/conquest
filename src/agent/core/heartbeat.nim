@@ -11,7 +11,7 @@ proc createHeartbeat*(config: AgentConfig): Heartbeat =
             flags: cast[uint16](FLAG_ENCRYPTED),
             size: 0'u32,
             agentId: uuidToUint32(config.agentId),
-            seqNr: 0'u64,  
+            seqNr: 0'u32,  
             iv: generateIV(),
             gmac: default(AuthenticationTag)
         ), 

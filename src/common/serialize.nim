@@ -181,7 +181,7 @@ proc deserializeHeader*(unpacker: Unpacker): Header=
         flags: unpacker.getUint16(),
         size: unpacker.getUint32(),
         agentId: unpacker.getUint32(),
-        seqNr: unpacker.getUint64(),
+        seqNr: unpacker.getUint32(),
         iv: unpacker.getIv(),
         gmac: unpacker.getAuthenticationTag()
     )

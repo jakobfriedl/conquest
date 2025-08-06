@@ -7,7 +7,7 @@ import streams
 const   
     MAGIC* = 0x514E3043'u32     # Magic value: C0NQ
     VERSION* = 1'u8             # Version 1
-    HEADER_SIZE* = 52'u8        # 48 bytes fixed packet header size
+    HEADER_SIZE* = 48'u8        # 48 bytes fixed packet header size
 
 type 
     PacketType* = enum 
@@ -69,33 +69,33 @@ type
         flags*: uint16              # [2 bytes ] message flags
         size*: uint32               # [4 bytes ] size of the payload body
         agentId*: uint32            # [4 bytes ] agent id, used as AAD for encryptio
-        seqNr*: uint64              # [8 bytes ] sequence number, used as AAD for encryption
+        seqNr*: uint32              # [4 bytes ] sequence number, used as AAD for encryption
         iv*: Iv                     # [12 bytes] random IV for AES256 GCM encryption
         gmac*: AuthenticationTag    # [16 bytes] authentication tag for AES256 GCM encryption
 
     TaskArg* = object 
-        argType*: uint8         # [1 byte  ] argument type
-        data*: seq[byte]        # variable length data (for variable data types (STRING, BINARY), the first 4 bytes indicate data length)
+        argType*: uint8             # [1 byte  ] argument type
+        data*: seq[byte]            # variable length data (for variable data types (STRING, BINARY), the first 4 bytes indicate data length)
 
     Task* = object 
         header*: Header
-        taskId*: uint32         # [4 bytes ] task id
-        listenerId*: uint32     # [4 bytes ] listener id
-        timestamp*: uint32      # [4 bytes ] unix timestamp
-        command*: uint16        # [2 bytes ] command id 
-        argCount*: uint8        # [1 byte  ] number of arguments
-        args*: seq[TaskArg]     # variable length arguments
+        taskId*: uint32             # [4 bytes ] task id
+        listenerId*: uint32         # [4 bytes ] listener id
+        timestamp*: uint32          # [4 bytes ] unix timestamp
+        command*: uint16            # [2 bytes ] command id 
+        argCount*: uint8            # [1 byte  ] number of arguments
+        args*: seq[TaskArg]         # variable length arguments
 
     TaskResult* = object 
         header*: Header 
-        taskId*: uint32         # [4 bytes ] task id
-        listenerId*: uint32     # [4 bytes ] listener id
-        timestamp*: uint32      # [4 bytes ] unix timestamp
-        command*: uint16        # [2 bytes ] command id 
-        status*: uint8          # [1 byte  ] success flag 
-        resultType*: uint8      # [1 byte  ] result data type (string, binary)
-        length*: uint32         # [4 bytes ] result length
-        data*: seq[byte]        # variable length result
+        taskId*: uint32             # [4 bytes ] task id
+        listenerId*: uint32         # [4 bytes ] listener id
+        timestamp*: uint32          # [4 bytes ] unix timestamp
+        command*: uint16            # [2 bytes ] command id 
+        status*: uint8              # [1 byte  ] success flag 
+        resultType*: uint8          # [1 byte  ] result data type (string, binary)
+        length*: uint32             # [4 bytes ] result length
+        data*: seq[byte]            # variable length result
 
 # Checkin binary structure
 type
