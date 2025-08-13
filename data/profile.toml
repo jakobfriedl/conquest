@@ -1,37 +1,78 @@
 # Conquest default configuration file 
+# https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics/malleable-c2_profile-language.htm#_Toc65482837
 
-name = "cq-default-config"
+name = "cq-default-profile"
 
+# Important file paths and locations
 conquest_directory = "/mnt/c/Users/jakob/Documents/Projects/conquest"
 private_key_file = "/mnt/c/Users/jakob/Documents/Projects/conquest/data/keys/conquest-server_x25519_private.key"
 database_file = "/mnt/c/Users/jakob/Documents/Projects/conquest/data/conquest.db"
 
+# General agent settings 
 [agent]
 sleep = 5
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 
+# ----------------------------------------------------------
+# HTTP GET 
+# ----------------------------------------------------------
+# Defines URI endpoints for HTTP GET requests
 [http-get]
 uri = [
     "/tasks",
     "/api/v1.2/status.js"
 ]
 
-[http-get.agent.headers]
-Content-Type = "text/plain"
-Authorization = { encoding = "base64url", prepend = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.", append = ".KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30" }
+# Defines where the heartbeat is placed within the HTTP GET request
+# Allows for data transformation using encoding (base64, base64url, ...), appending and prepending of strings
+# Metadata can be stored in a Header (e.g. JWT Token, Session Cookie), URI parameter, appended to the URI or request body 
+[http-get.agent.heartbeat]
+encoding = "base64url"
+prepend = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+append = ".KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30"
+placement = { type = "header", name = "Authorization" }
+# placement = { type = "header", name = "Cookie" }
+# placement = { type = "parameter", name = "id" }
+# placement = { type = "uri-append" }                   
+# placement = { type = "body" }
 
+# Defines arbitrary URI parameters that are added to the request
+[http-get.agent.parameters]
+
+# Defines arbitrary headers that are added by the agent when performing a HTTP GET request 
+[http-get.agent.headers]
+Cache-Control = "no-cache"
+
+# Defines arbitrary headers that are added by the server 
 [http-get.server.headers]
 Server = "nginx"
+X-CONQUEST-VERSION = "0.1"
 
+# Defines how the server's response to the task retrieval request is rendered
+# Allows same data transformation options as the agent metadata, allowing it to be embedded in benign content 
+[http-get.server.output]
+placement = { type = "body" }
+
+# ----------------------------------------------------------
+# HTTP POST 
+# ----------------------------------------------------------
+# Defines URI endpoints for HTTP POST requests
 [http-post]
 uri = [
     "/results",
     "/api/v2/get.js"
 ]
+request_methods = [ 
+    "POST", 
+    "PUT"
+]
 
 [http-post.agent.headers]
-Content-Type = "application/octet-stream"
+Cache-Control = "no-cache"
 
 [http-post.server.headers]
 Server = "nginx"
-Accept = "application/octet-stream"
+X-CONQUEST-VERSION = "0.1"
+
+[http-post.server.output]
+placement = { type = "body" }

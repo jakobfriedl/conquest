@@ -119,13 +119,13 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
     
     cq.writeLine("")
 
-proc header(cq: Conquest) = 
-    cq.writeLine("")
-    cq.writeLine("┏┏┓┏┓┏┓┓┏┏┓┏╋")
-    cq.writeLine("┗┗┛┛┗┗┫┗┻┗ ┛┗ V0.1")
-    cq.writeLine("      ┗  @jakobfriedl")  
-    cq.writeLine("─".repeat(21))
-    cq.writeLine("")
+proc header() = 
+    echo ""
+    echo "┏┏┓┏┓┏┓┓┏┏┓┏╋"
+    echo "┗┗┛┛┗┗┫┗┻┗ ┛┗ V0.1"
+    echo "      ┗  @jakobfriedl"  
+    echo "─".repeat(21) 
+    echo ""
 
 proc init*(T: type Conquest, profile: Profile): Conquest = 
     var cq = new Conquest
@@ -141,33 +141,36 @@ proc init*(T: type Conquest, profile: Profile): Conquest =
 
     return cq
 
-proc startServer*(profile: string) =
+proc startServer*(profilePath: string) =
 
     # Handle CTRL+C,  
     proc exit() {.noconv.} = 
         echo "Received CTRL+C. Type \"exit\" to close the application.\n"    
     setControlCHook(exit)
 
-    let profile = parseFile(profile).getTable
-    # # dump table.getTable()
-    # let headers =  table["http-get"]["agent"]["headers"].getTable()
-    # for key, value in headers:
-    #     if value.kind == TomlValueKind.Table: 
-    #         echo value["encoding"]
-    #         echo value["append"]
-    #         echo value["prepend"]
-    #         echo key
+    header()
     
-    # Initialize framework
     try:
+        # Load and parse profile 
+        let profile = parseFile(profilePath).getTable
+        styledEcho(fgGreen, styleBright, "[+] Using profile \"", profile["name"].getStr(), "\" (", profilePath ,").")
+        styledEcho(fgGreen, styleBright, "[+] ", profile["private_key_file"].getStr(), ": Private key found.")
+
+        # # dump table.getTable()
+        # let headers =  table["http-get"]["agent"]["headers"].getTable()
+        # for key, value in headers:
+        #     if value.kind == TomlValueKind.Table: 
+        #         echo value["encoding"]
+        #         echo value["append"]
+        #         echo value["prepend"]
+        #         echo key
+        
+        # Initialize framework context
         cq = Conquest.init(profile)
         
     except CatchableError as err:
         echo err.msg
         quit(0)
-
-    # Print header
-    cq.header()
     
     # Initialize database
     cq.dbInit()
