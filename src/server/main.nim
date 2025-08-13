@@ -4,4 +4,4 @@ import ../modules/manager
 # Conquest framework entry point
 when isMainModule:
     loadModules()
-    startServer()
+    import cligen; dispatch startServer

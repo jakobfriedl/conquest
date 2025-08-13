@@ -2,6 +2,7 @@ import prompt
 import tables
 import times
 import streams
+import parsetoml
 
 # Custom Binary Task structure
 const   
@@ -149,17 +150,24 @@ type
     Protocol* = enum
         HTTP = "http"
 
-    Listener* = ref object
+    Listener* = ref object of RootObj
         listenerId*: string
         address*: string
         port*: int
         protocol*: Protocol
+
+    HttpListener* = ref object of Listener
+        register_endpoint*: string 
+        get_endpoint*: string 
+        post_endpoint*: string 
 
 # Server context structure
 type 
     KeyPair* = object 
         privateKey*: Key 
         publicKey*: Key
+
+    Profile* = TomlTableRef
 
     Conquest* = ref object
         prompt*: Prompt
@@ -168,6 +176,7 @@ type
         agents*: Table[string, Agent]
         interactAgent*: Agent
         keyPair*: KeyPair
+        profile*: Profile
 
 # Agent config
 type

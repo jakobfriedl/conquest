@@ -1,4 +1,4 @@
-import prompt, terminal, argparse
+import prompt, terminal, argparse, parsetoml
 import strutils, strformat, times, system, tables
 
 import ./[agent, listener]
@@ -127,29 +127,40 @@ proc header(cq: Conquest) =
     cq.writeLine("─".repeat(21))
     cq.writeLine("")
 
-# TODO: Add profile support instead of hardcoded paths, etc.
-proc initConquest*(): Conquest = 
+proc init*(T: type Conquest, profile: Profile): Conquest = 
     var cq = new Conquest
     var prompt = Prompt.init()
     cq.prompt = prompt
-    cq.dbPath = "../data/conquest.db"
     cq.listeners = initTable[string, Listener]()
     cq.agents = initTable[string, Agent]() 
     cq.interactAgent = nil 
-    cq.keyPair = loadKeyPair("../data/keys/conquest-server_x25519_private.key")
+
+    cq.keyPair = loadKeyPair(profile["private_key_file"].getStr())
+    cq.dbPath = profile["database_file"].getStr()
+    cq.profile = profile
 
     return cq
 
-proc startServer*() =
+proc startServer*(profile: string) =
+
     # Handle CTRL+C,  
     proc exit() {.noconv.} = 
         echo "Received CTRL+C. Type \"exit\" to close the application.\n"    
-
     setControlCHook(exit)
 
+    let profile = parseFile(profile).getTable
+    # # dump table.getTable()
+    # let headers =  table["http-get"]["agent"]["headers"].getTable()
+    # for key, value in headers:
+    #     if value.kind == TomlValueKind.Table: 
+    #         echo value["encoding"]
+    #         echo value["append"]
+    #         echo value["prepend"]
+    #         echo key
+    
     # Initialize framework
     try:
-        cq = initConquest()
+        cq = Conquest.init(profile)
         
     except CatchableError as err:
         echo err.msg

@@ -87,7 +87,6 @@ proc handleResult*(resultData: seq[byte]) =
         of STATUS_IN_PROGRESS: 
             discard
 
-
         case cast[ResultType](taskResult.resultType):
         of RESULT_STRING:
             if int(taskResult.length) > 0: 

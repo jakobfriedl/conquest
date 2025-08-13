@@ -1,0 +1,37 @@
+# Conquest default configuration file 
+
+name = "cq-default-config"
+
+conquest_directory = "/mnt/c/Users/jakob/Documents/Projects/conquest"
+private_key_file = "/mnt/c/Users/jakob/Documents/Projects/conquest/data/keys/conquest-server_x25519_private.key"
+database_file = "/mnt/c/Users/jakob/Documents/Projects/conquest/data/conquest.db"
+
+[agent]
+sleep = 5
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+
+[http-get]
+uri = [
+    "/tasks",
+    "/api/v1.2/status.js"
+]
+
+[http-get.agent.headers]
+Content-Type = "text/plain"
+Authorization = { encoding = "base64url", prepend = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.", append = ".KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30" }
+
+[http-get.server.headers]
+Server = "nginx"
+
+[http-post]
+uri = [
+    "/results",
+    "/api/v2/get.js"
+]
+
+[http-post.agent.headers]
+Content-Type = "application/octet-stream"
+
+[http-post.server.headers]
+Server = "nginx"
+Accept = "application/octet-stream"
