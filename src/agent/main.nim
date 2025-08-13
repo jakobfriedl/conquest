@@ -25,7 +25,7 @@ proc main() =
     # The agent configuration is read at compile time using define/-d statements in nim.cfg
     # This configuration file can be dynamically generated from the teamserver management interface
     # Downside to this is obviously that readable strings, such as the listener UUID can be found in the binary
-    when not defined(ListenerUuid) or not defined(Octet1) or not defined(Octet2) or not defined(Octet3) or not defined(Octet4) or not defined(ListenerPort) or not defined(SleepDelay):
+    when not defined(ListenerUuid) or not defined(Octet1) or not defined(Octet2) or not defined(Octet3) or not defined(Octet4) or not defined(ListenerPort) or not defined(SleepDelay) or not defined(ServerPublicKey):
         echo "Missing agent configuration."
         quit(0)
 

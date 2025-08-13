@@ -67,7 +67,7 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
 
     # Define API endpoints
     listener.post("register", routes.register)
-    listener.post("tasks", routes.getTasks)
+    listener.get("tasks", routes.getTasks)
     listener.post("results", routes.postResults)
     listener.registerErrorHandler(Http404, routes.error404)
 
@@ -80,7 +80,7 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
     try:
         discard listener.runAsync() 
         cq.add(listenerInstance)
-        cq.writeLine(fgGreen, "[+] ", resetStyle, "Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on port {portStr}.")
+        cq.writeLine(fgGreen, "[+] ", resetStyle, "Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on {host}:{portStr}.")
     except CatchableError as err: 
         cq.writeLine(fgRed, styleBright, "[-] Failed to start listener: ", err.msg)
 
@@ -100,14 +100,14 @@ proc restartListeners*(cq: Conquest) =
 
         # Define API endpoints
         listener.post("register", routes.register)
-        listener.post("tasks", routes.getTasks)
+        listener.get("tasks", routes.getTasks)
         listener.post("results", routes.postResults)
         listener.registerErrorHandler(Http404, routes.error404)
         
         try:
             discard listener.runAsync() 
             cq.add(l)
-            cq.writeLine(fgGreen, "[+] ", resetStyle, "Restarted listener", fgGreen, fmt" {l.listenerId} ", resetStyle, fmt"on port {$l.port}.")
+            cq.writeLine(fgGreen, "[+] ", resetStyle, "Restarted listener", fgGreen, fmt" {l.listenerId} ", resetStyle, fmt"on {l.address}:{$l.port}.")
         except CatchableError as err: 
             cq.writeLine(fgRed, styleBright, "[-] Failed to restart listener: ", err.msg)
         

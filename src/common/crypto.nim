@@ -14,7 +14,7 @@ proc generateIV*(): Iv =
         raise newException(CatchableError, "Failed to generate IV.")
     return iv 
 
-proc encrypt*(key: Key, iv: Iv, data: seq[byte], sequenceNumber: uint64): (seq[byte], AuthenticationTag) =
+proc encrypt*(key: Key, iv: Iv, data: seq[byte], sequenceNumber: uint32): (seq[byte], AuthenticationTag) =
     
     # Encrypt data using AES-256 GCM
     var encData = newSeq[byte](data.len)
@@ -29,7 +29,7 @@ proc encrypt*(key: Key, iv: Iv, data: seq[byte], sequenceNumber: uint64): (seq[b
     
     return (encData, tag)
 
-proc decrypt*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint64): (seq[byte], AuthenticationTag) =
+proc decrypt*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint32): (seq[byte], AuthenticationTag) =
     
     # Decrypt data using AES-256 GCM
     var data = newSeq[byte](encData.len)
@@ -44,7 +44,7 @@ proc decrypt*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint64): (se
     
     return (data, tag)
 
-proc validateDecryption*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint64, header: Header): seq[byte] = 
+proc validateDecryption*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint32, header: Header): seq[byte] = 
 
     let (decData, gmac) = decrypt(key, iv, encData, sequenceNumber)
 
@@ -59,7 +59,6 @@ proc validateDecryption*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: u
     Private keys and shared secrets are wiped from agent memory as soon as possible 
 ]#
 {.compile: "monocypher/monocypher.c".}
-{.passc: "-Imonocypher".}
 
 # C function imports from (monocypher/monocypher.c)
 proc crypto_x25519*(shared_secret: ptr byte, your_secret_key: ptr byte, their_public_key: ptr byte) {.importc, cdecl.}

