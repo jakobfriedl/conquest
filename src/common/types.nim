@@ -157,11 +157,6 @@ type
         port*: int
         protocol*: Protocol
 
-    HttpListener* = ref object of Listener
-        register_endpoint*: string 
-        get_endpoint*: string 
-        post_endpoint*: string 
-
 # Server context structure
 type 
     KeyPair* = object 

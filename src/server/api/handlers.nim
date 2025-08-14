@@ -33,13 +33,13 @@ proc register*(registrationData: seq[byte]): bool =
 
     return true
 
-proc getTasks*(checkinData: seq[byte]): seq[seq[byte]] = 
+proc getTasks*(heartbeat: seq[byte]): seq[seq[byte]] = 
 
     {.cast(gcsafe).}:
 
         # Deserialize checkin request to obtain agentId and listenerId 
         let 
-            request: Heartbeat = cq.deserializeHeartbeat(checkinData)
+            request: Heartbeat = cq.deserializeHeartbeat(heartbeat)
             agentId = uuidToString(request.header.agentId)
             listenerId = uuidToString(request.listenerId)
             timestamp = request.timestamp

@@ -18,20 +18,28 @@ user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 # ----------------------------------------------------------
 # Defines URI endpoints for HTTP GET requests
 [http-get]
-uri = [
-    "/tasks",
+endpoints = [
+    "/get",
     "/api/v1.2/status.js"
 ]
 
 # Defines where the heartbeat is placed within the HTTP GET request
 # Allows for data transformation using encoding (base64, base64url, ...), appending and prepending of strings
 # Metadata can be stored in a Header (e.g. JWT Token, Session Cookie), URI parameter, appended to the URI or request body 
+# Encoding is only applied to the payload and not the prepended or appended strings
 [http-get.agent.heartbeat]
-encoding = "base64url"
-prepend = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-append = ".KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30"
 placement = { type = "header", name = "Authorization" }
+encoding = { type = "base64", url-safe = true }
+prefix = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+suffix = ".KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30"
+
+# Example: PHP session cookie 
 # placement = { type = "header", name = "Cookie" }
+# prefix = "PHPSESSID="
+# suffix = ", path=/"
+# encoding = { type = "base64", url-safe = true }
+
+# Other examples
 # placement = { type = "parameter", name = "id" }
 # placement = { type = "uri" }                   
 # placement = { type = "body" }
@@ -41,12 +49,13 @@ placement = { type = "header", name = "Authorization" }
 
 # Defines arbitrary headers that are added by the agent when performing a HTTP GET request 
 [http-get.agent.headers]
-"Cache-Control" = "no-cache"
+Cache-Control = "no-cache"
 
 # Defines arbitrary headers that are added to the server's response
 [http-get.server.headers]
-"Server" = "nginx"
-"X-CONQUEST-VERSION" = "0.1"
+Server = "nginx"
+Content-Type = "application/octet-stream" 
+Connection = "Keep-Alive"
 
 # Defines how the server's response to the task retrieval request is rendered
 # Allows same data transformation options as the agent metadata, allowing it to be embedded in benign content 
@@ -58,24 +67,21 @@ placement = { type = "body" }
 # ----------------------------------------------------------
 # Defines URI endpoints for HTTP POST requests
 [http-post]
-uri = [
-    "/results",
+endpoints = [
+    "/post",
     "/api/v2/get.js"
-]
-request_methods = [ 
-    "POST", 
-    "PUT"
 ]
 
 [http-post.agent.headers]
+Content-Type = "application/octet-stream" 
+Connection = "Keep-Alive"
 Cache-Control = "no-cache"
 
 [http-post.agent.output]
 placement = { type = "body" }
 
 [http-post.server.headers]
-"Server" = "nginx"
-"X-CONQUEST-VERSION" = "0.1"
+Server = "nginx"
 
 [http-post.server.output]
 placement = { type = "body" }

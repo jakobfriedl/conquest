@@ -1,5 +1,7 @@
 import strformat, strutils, sequtils, terminal
-import prologue
+import prologue, parsetoml
+import sugar
+
 
 import ../utils
 import ../api/routes
@@ -12,15 +14,6 @@ proc delListener(cq: Conquest, listenerName: string) =
 
 proc add(cq: Conquest, listener: Listener) = 
     cq.listeners[listener.listenerId] = listener
-
-proc newListener*(listenerId: string, address: string, port: int): Listener = 
-    var listener = new Listener
-    listener.listenerId = listenerId 
-    listener.address = address 
-    listener.port = port 
-    listener.protocol = HTTP
-
-    return listener
 
 #[
     Listener management
@@ -65,13 +58,24 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
     
     var listener = newApp(settings = listenerSettings)
 
-    # Define API endpoints
-    listener.get("get", routes.httpGet)
-    listener.post("post", routes.httpPost)
+    # Define API endpoints based on C2 profile
+    # GET requests
+    for endpoint in cq.profile["http-get"]["endpoints"].getElems(): 
+        listener.get(endpoint.getStr(), routes.httpGet)
+    
+    # POST requests
+    for endpoint in cq.profile["http-post"]["endpoints"].getElems(): 
+        listener.post(endpoint.getStr(), routes.httpPost)
+ 
     listener.registerErrorHandler(Http404, routes.error404)
 
     # Store listener in database
-    var listenerInstance = newListener(name, host, port)
+    var listenerInstance = Listener(
+        listenerId: name,
+        address: host,
+        port: port,
+        protocol: HTTP
+    )
     if not cq.dbStoreListener(listenerInstance):
         return
 
@@ -97,11 +101,18 @@ proc restartListeners*(cq: Conquest) =
             )
             listener = newApp(settings = settings)
 
-        # Define API endpoints
-        listener.get("get", routes.httpGet)
-        listener.post("post", routes.httpPost)
-        listener.registerErrorHandler(Http404, routes.error404)
+        # Define API endpoints based on C2 profile
+        # TODO: Store endpoints for already running listeners is DB (comma-separated) and use those values for restarts
+        # GET requests
+        for endpoint in cq.profile["http-get"]["endpoints"].getElems(): 
+            listener.get(endpoint.getStr(), routes.httpGet)
         
+        # POST requests
+        for endpoint in cq.profile["http-post"]["endpoints"].getElems(): 
+            listener.post(endpoint.getStr(), routes.httpPost)
+    
+        listener.registerErrorHandler(Http404, routes.error404)
+            
         try:
             discard listener.runAsync() 
             cq.add(l)
