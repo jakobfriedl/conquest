@@ -152,19 +152,10 @@ proc startServer*(profilePath: string) =
     
     try:
         # Load and parse profile 
-        let profile = parseFile(profilePath).getTable
+        let profile = parseFile(profilePath)
         styledEcho(fgGreen, styleBright, "[+] Using profile \"", profile["name"].getStr(), "\" (", profilePath ,").")
         styledEcho(fgGreen, styleBright, "[+] ", profile["private_key_file"].getStr(), ": Private key found.")
 
-        # # dump table.getTable()
-        # let headers =  table["http-get"]["agent"]["headers"].getTable()
-        # for key, value in headers:
-        #     if value.kind == TomlValueKind.Table: 
-        #         echo value["encoding"]
-        #         echo value["append"]
-        #         echo value["prepend"]
-        #         echo key
-        
         # Initialize framework context
         cq = Conquest.init(profile)
         

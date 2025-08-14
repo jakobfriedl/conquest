@@ -59,6 +59,7 @@ Connection = "Keep-Alive"
 
 # Defines how the server's response to the task retrieval request is rendered
 # Allows same data transformation options as the agent metadata, allowing it to be embedded in benign content 
+# e.g base64-encoded in a svg/img
 [http-get.server.output]
 placement = { type = "body" }
 

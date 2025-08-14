@@ -163,7 +163,7 @@ type
         privateKey*: Key 
         publicKey*: Key
 
-    Profile* = TomlTableRef
+    Profile* = TomlValueRef
 
     Conquest* = ref object
         prompt*: Prompt
