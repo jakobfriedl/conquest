@@ -4,7 +4,7 @@ import ../../common/[types, utils, serialize, sequence, crypto]
 
 proc serializeTask*(cq: Conquest, task: var Task): seq[byte] = 
 
-    var packer = initPacker() 
+    var packer = Packer.init() 
 
     # Serialize payload
     packer
@@ -33,19 +33,19 @@ proc serializeTask*(cq: Conquest, task: var Task): seq[byte] =
 
 proc deserializeTaskResult*(cq: Conquest, resultData: seq[byte]): TaskResult = 
 
-    var unpacker = initUnpacker(resultData.toString)
+    var unpacker = Unpacker.init(Bytes.toString(resultData))
 
     let header = unpacker.deserializeHeader()
 
     # Packet Validation
-    validatePacket(header, cast[uint8](MSG_RESPONSE)) 
+    validatePacket(header, cast[uint8](MSG_RESULT)) 
 
     # Decrypt payload 
     let payload = unpacker.getBytes(int(header.size))
     let decData= validateDecryption(cq.agents[uuidToString(header.agentId)].sessionKey, header.iv, payload, header.seqNr, header)
 
     # Deserialize decrypted data
-    unpacker = initUnpacker(decData.toString)
+    unpacker = Unpacker.init(Bytes.toString(decData))
 
     let 
         taskId = unpacker.getUint32()
@@ -71,7 +71,7 @@ proc deserializeTaskResult*(cq: Conquest, resultData: seq[byte]): TaskResult =
 
 proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent = 
 
-    var unpacker = initUnpacker(data.toString)
+    var unpacker = Unpacker.init(Bytes.toString(data))
 
     let header= unpacker.deserializeHeader()
 
@@ -87,7 +87,7 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent =
     let decData= validateDecryption(sessionKey, header.iv, payload, header.seqNr, header)
 
     # Deserialize decrypted data
-    unpacker = initUnpacker(decData.toString)
+    unpacker = Unpacker.init(Bytes.toString(decData))
 
     let 
         listenerId = unpacker.getUint32()
@@ -121,7 +121,7 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent =
 
 proc deserializeHeartbeat*(cq: Conquest, data: seq[byte]): Heartbeat = 
 
-    var unpacker = initUnpacker(data.toString)
+    var unpacker = Unpacker.init(Bytes.toString(data))
 
     let header = unpacker.deserializeHeader()
 
@@ -133,7 +133,7 @@ proc deserializeHeartbeat*(cq: Conquest, data: seq[byte]): Heartbeat =
     let decData= validateDecryption(cq.agents[uuidToString(header.agentId)].sessionKey, header.iv, payload, header.seqNr, header)
 
     # Deserialize decrypted data
-    unpacker = initUnpacker(decData.toString)
+    unpacker = Unpacker.init(Bytes.toString(decData))
 
     return Heartbeat(
         header: header,

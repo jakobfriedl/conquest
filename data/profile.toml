@@ -33,7 +33,7 @@ append = ".KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30"
 placement = { type = "header", name = "Authorization" }
 # placement = { type = "header", name = "Cookie" }
 # placement = { type = "parameter", name = "id" }
-# placement = { type = "uri-append" }                   
+# placement = { type = "uri" }                   
 # placement = { type = "body" }
 
 # Defines arbitrary URI parameters that are added to the request
@@ -41,12 +41,12 @@ placement = { type = "header", name = "Authorization" }
 
 # Defines arbitrary headers that are added by the agent when performing a HTTP GET request 
 [http-get.agent.headers]
-Cache-Control = "no-cache"
+"Cache-Control" = "no-cache"
 
-# Defines arbitrary headers that are added by the server 
+# Defines arbitrary headers that are added to the server's response
 [http-get.server.headers]
-Server = "nginx"
-X-CONQUEST-VERSION = "0.1"
+"Server" = "nginx"
+"X-CONQUEST-VERSION" = "0.1"
 
 # Defines how the server's response to the task retrieval request is rendered
 # Allows same data transformation options as the agent metadata, allowing it to be embedded in benign content 
@@ -70,9 +70,12 @@ request_methods = [
 [http-post.agent.headers]
 Cache-Control = "no-cache"
 
+[http-post.agent.output]
+placement = { type = "body" }
+
 [http-post.server.headers]
-Server = "nginx"
-X-CONQUEST-VERSION = "0.1"
+"Server" = "nginx"
+"X-CONQUEST-VERSION" = "0.1"
 
 [http-post.server.output]
 placement = { type = "body" }

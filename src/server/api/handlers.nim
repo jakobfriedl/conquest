@@ -92,7 +92,7 @@ proc handleResult*(resultData: seq[byte]) =
             if int(taskResult.length) > 0: 
                 cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, "Output:")
                 # Split result string on newline to keep formatting
-                for line in taskResult.data.toString().split("\n"):
+                for line in Bytes.toString(taskResult.data).split("\n"):
                     cq.writeLine(line)
 
         of RESULT_BINARY:

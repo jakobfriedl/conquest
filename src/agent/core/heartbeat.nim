@@ -21,7 +21,7 @@ proc createHeartbeat*(config: AgentConfig): Heartbeat =
 
 proc serializeHeartbeat*(config: AgentConfig, request: var Heartbeat): seq[byte] =
 
-    var packer = initPacker()
+    var packer = Packer.init()
 
     # Serialize check-in / heartbeat request
     packer 

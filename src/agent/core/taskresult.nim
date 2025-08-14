@@ -6,7 +6,7 @@ proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, r
         header: Header(
             magic: MAGIC,
             version: VERSION, 
-            packetType: cast[uint8](MSG_RESPONSE),
+            packetType: cast[uint8](MSG_RESULT),
             flags: cast[uint16](FLAG_ENCRYPTED),
             size: 0'u32,
             agentId: task.header.agentId,
@@ -26,7 +26,7 @@ proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, r
 
 proc serializeTaskResult*(config: AgentConfig, taskResult: var TaskResult): seq[byte] = 
     
-    var packer = initPacker()
+    var packer = Packer.init()
 
     # Serialize result body
     packer 

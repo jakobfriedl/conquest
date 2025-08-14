@@ -16,17 +16,17 @@ proc uuidToUint32*(uuid: string): uint32 =
 proc uuidToString*(uuid: uint32): string = 
     return uuid.toHex(8)
 
-proc toString*(data: seq[byte]): string =
+proc toString*(T: type Bytes, data: seq[byte]): string =
     result = newString(data.len)
     for i, b in data:
         result[i] = char(b)
 
-proc toBytes*(data: string): seq[byte] =
+proc toBytes*(T: type string, data: string): seq[byte] =
     result = newSeq[byte](data.len)
     for i, c in data:
         result[i] = byte(c.ord)
 
-proc toUint32*(data: seq[byte]): uint32 =
+proc toUint32*(T: type Bytes, data: seq[byte]): uint32 =
     if data.len != 4:
         raise newException(ValueError, "Expected 4 bytes for uint32")
     
@@ -44,13 +44,13 @@ proc toHexDump*(data: seq[byte]): string =
            else:
                result.add(" ")    # Regular space
 
-proc toBytes*(value: uint16): seq[byte] =
+proc toBytes*(T: type uint16, value: uint16): seq[byte] =
     return @[
         byte(value and 0xFF),
         byte((value shr 8) and 0xFF)
     ]
 
-proc toBytes*(value: uint32): seq[byte] =
+proc toBytes*(T: type uint32, value: uint32): seq[byte] =
     return @[
         byte(value and 0xFF),
         byte((value shr 8) and 0xFF),
@@ -58,7 +58,7 @@ proc toBytes*(value: uint32): seq[byte] =
         byte((value shr 24) and 0xFF)
     ]
 
-proc toBytes*(value: uint64): seq[byte] =
+proc toBytes*(T: type uint64, value: uint64): seq[byte] =
     return @[
         byte(value and 0xFF),
         byte((value shr 8) and 0xFF),

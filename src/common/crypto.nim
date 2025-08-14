@@ -21,7 +21,7 @@ proc encrypt*(key: Key, iv: Iv, data: seq[byte], sequenceNumber: uint32): (seq[b
     var tag: AuthenticationTag
     
     var ctx: GCM[aes256]
-    ctx.init(key, iv, sequenceNumber.toBytes())    
+    ctx.init(key, iv, uint32.toBytes(sequenceNumber))    
     
     ctx.encrypt(data, encData)
     ctx.getTag(tag)
@@ -36,7 +36,7 @@ proc decrypt*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint32): (se
     var tag: AuthenticationTag
     
     var ctx: GCM[aes256]
-    ctx.init(key, iv, sequenceNumber.toBytes())
+    ctx.init(key, iv, uint32.toBytes(sequenceNumber))
     
     ctx.decrypt(encData, data)
     ctx.getTag(tag)
@@ -114,7 +114,7 @@ proc deriveSessionKey*(keyPair: KeyPair, publicKey: Key): Key =
 
     # Add combined public keys to hash
     let combinedKeys: Key = combineKeys(keyPair.publicKey, publicKey)
-    let hashMessage: seq[byte] = "CONQUEST".toBytes() & @combinedKeys 
+    let hashMessage: seq[byte] = string.toBytes("CONQUEST") & @combinedKeys 
 
     # Calculate Blake2b hash and extract the first 32 bytes for the AES key (https://monocypher.org/manual/blake2b)
     let hash = blake2b(hashMessage, sharedSecret)

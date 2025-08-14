@@ -4,7 +4,7 @@ type
     Packer* = ref object 
         stream: StringStream
 
-proc initPacker*(): Packer = 
+proc init*(T: type Packer): Packer = 
     result = new Packer 
     result.stream = newStringStream()
 
@@ -64,7 +64,7 @@ type
         stream: StringStream
         position: int 
 
-proc initUnpacker*(data: string): Unpacker = 
+proc init*(T: type Unpacker, data: string): Unpacker = 
     result = new Unpacker
     result.stream = newStringStream(data)
     result.position = 0
@@ -156,7 +156,7 @@ proc getVarLengthMetadata*(unpacker: Unpacker): string =
         return ""
 
     # Read content
-    return unpacker.getBytes(int(length)).toString()
+    return Bytes.toString(unpacker.getBytes(int(length)))
 
 # Serialization & Deserialization functions
 proc serializeHeader*(packer: Packer, header: Header, bodySize: uint32): seq[byte] = 

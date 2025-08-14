@@ -66,9 +66,8 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
     var listener = newApp(settings = listenerSettings)
 
     # Define API endpoints
-    listener.post("register", routes.register)
-    listener.get("tasks", routes.getTasks)
-    listener.post("results", routes.postResults)
+    listener.get("get", routes.httpGet)
+    listener.post("post", routes.httpPost)
     listener.registerErrorHandler(Http404, routes.error404)
 
     # Store listener in database
@@ -99,9 +98,8 @@ proc restartListeners*(cq: Conquest) =
             listener = newApp(settings = settings)
 
         # Define API endpoints
-        listener.post("register", routes.register)
-        listener.get("tasks", routes.getTasks)
-        listener.post("results", routes.postResults)
+        listener.get("get", routes.httpGet)
+        listener.post("post", routes.httpPost)
         listener.registerErrorHandler(Http404, routes.error404)
         
         try:

