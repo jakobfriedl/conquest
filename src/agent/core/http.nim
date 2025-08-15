@@ -34,16 +34,16 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
 
     # Define request headers, as defined in profile
     for header, value in ctx.profile.getTable("http-get.agent.headers"): 
-        client.headers.add(header, value.getStr())
+        client.headers.add(header, value.getStringValue())
 
     # Define additional request parameters
     var params = ""
     for param, value in ctx.profile.getTable("http-get.agent.parameters"): 
-        params &= fmt"&{param}={value.getStr}"
+        params &= fmt"&{param}={value.getStringValue()}"
     params[0] = '?'
 
     # Select a random endpoint to make the request to
-    var endpoint = ctx.profile.getArray("http-get.endpoints").getRandom().getStr()
+    var endpoint = ctx.profile.getArray("http-get.endpoints").getRandom().getStringValue()
     if endpoint[0] == '/': 
         endpoint = endpoint[1..^1]
 
@@ -66,14 +66,14 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
 
     # Define request headers, as defined in profile
     for header, value in ctx.profile.getTable("http-post.agent.headers"): 
-        client.headers.add(header, value.getStr())
+        client.headers.add(header, value.getStringValue())
     
     # Select a random endpoint to make the request to
-    var endpoint = ctx.profile.getArray("http-post.endpoints").getRandom().getStr()
+    var endpoint = ctx.profile.getArray("http-post.endpoints").getRandom().getStringValue()
     if endpoint[0] == '/': 
         endpoint = endpoint[1..^1]
     
-    let requestMethod = parseEnum[HttpMethod](ctx.profile.getArray("http-post.request-methods").getRandom().getStr("POST"))
+    let requestMethod = parseEnum[HttpMethod](ctx.profile.getArray("http-post.request-methods").getRandom().getStringValue("POST"))
 
     let body = Bytes.toString(data)
 

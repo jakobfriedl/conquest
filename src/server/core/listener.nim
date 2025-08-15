@@ -61,19 +61,19 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
     # Define API endpoints based on C2 profile
     # GET requests
     for endpoint in cq.profile.getArray("http-get.endpoints"): 
-        listener.addRoute(endpoint.getStr(), routes.httpGet)
+        listener.addRoute(endpoint.getStringValue(), routes.httpGet)
     
     # POST requests
     var postMethods: seq[HttpMethod]
     for reqMethod in cq.profile.getArray("http-post.request-methods"): 
-        postMethods.add(parseEnum[HttpMethod](reqMethod.getStr()))
+        postMethods.add(parseEnum[HttpMethod](reqMethod.getStringValue()))
 
     # Default method is POST
     if postMethods.len == 0: 
         postMethods = @[HttpPost]
 
     for endpoint in cq.profile.getArray("http-post.endpoints"): 
-        listener.addRoute(endpoint.getStr(), routes.httpPost, postMethods)
+        listener.addRoute(endpoint.getStringValue(), routes.httpPost, postMethods)
     
     listener.registerErrorHandler(Http404, routes.error404)
 
@@ -113,19 +113,19 @@ proc restartListeners*(cq: Conquest) =
         # TODO: Store endpoints for already running listeners is DB (comma-separated) and use those values for restarts
         # GET requests
         for endpoint in cq.profile.getArray("http-get.endpoints"): 
-            listener.get(endpoint.getStr(), routes.httpGet)
+            listener.get(endpoint.getStringValue(), routes.httpGet)
         
         # POST requests
         var postMethods: seq[HttpMethod]
         for reqMethod in cq.profile.getArray("http-post.request-methods"): 
-            postMethods.add(parseEnum[HttpMethod](reqMethod.getStr()))
+            postMethods.add(parseEnum[HttpMethod](reqMethod.getStringValue()))
 
         # Default method is POST
         if postMethods.len == 0: 
             postMethods = @[HttpPost]
 
         for endpoint in cq.profile.getArray("http-post.endpoints"): 
-            listener.addRoute(endpoint.getStr(), routes.httpPost, postMethods)
+            listener.addRoute(endpoint.getStringValue(), routes.httpPost, postMethods)
     
         listener.registerErrorHandler(Http404, routes.error404)
             

@@ -30,7 +30,7 @@ endpoints = [
 placement = { type = "header", name = "Authorization" }
 encoding = { type = "base64", url-safe = true }
 prefix = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-suffix = ".KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30"
+suffix = ".######################################-####"
 
 # Example: PHP session cookie 
 # placement = { type = "header", name = "Cookie" }
@@ -45,7 +45,7 @@ suffix = ".KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30"
 
 # Defines arbitrary URI parameters that are added to the request
 [http-get.agent.parameters]
-id = "bd5a-c65176a7ac5c"
+id = "#####-#####"
 lang = "en-US"
 
 # Defines arbitrary headers that are added by the agent when performing a HTTP GET request 

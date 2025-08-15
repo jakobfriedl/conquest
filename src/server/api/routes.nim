@@ -80,7 +80,7 @@ proc httpGet*(ctx: Context) {.async.} =
 
             # Add headers, as defined in the team server profile 
             for header, value in cq.profile.getTable("http-get.server.headers"):
-                ctx.response.setHeader(header, value.getStr())
+                ctx.response.setHeader(header, value.getStringValue())
 
             await ctx.respond(Http200, prefix & response & suffix, ctx.response.headers)
             ctx.handled = true # Ensure that HTTP response is sent only once 
@@ -113,7 +113,7 @@ proc httpPost*(ctx: Context) {.async.} =
 
             # Add response headers, as defined in team server profile
             for header, value in cq.profile.getTable("http-post.server.headers"):
-                ctx.response.setHeader(header, value.getStr())
+                ctx.response.setHeader(header, value.getStringValue())
 
             if cast[PacketType](header.packetType) == MSG_REGISTER: 
                 if not register(string.toBytes(ctx.request.body)):

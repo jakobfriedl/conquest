@@ -1,4 +1,4 @@
-import parsetoml, strutils, random
+import parsetoml, strutils, sequtils, random
 import ./[types, utils]
 
 proc findKey(profile: Profile, path: string): TomlValueRef =
@@ -16,13 +16,23 @@ proc findKey(profile: Profile, path: string): TomlValueRef =
 
 # Takes a specific "."-separated path as input and returns a default value if the key does not exits 
 # Example: cq.profile.getString("http-get.agent.heartbeat.prefix", "not found") returns the string value of the 
-# prefix key, or "not found" if the target key or any sub-tables don't exist 
+#          prefix key, or "not found" if the target key or any sub-tables don't exist 
+# '#' characters represent wildcard characters and are replaced with a random alphanumerical character
+
+proc randomChar(): char = 
+    let alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    return alphabet[rand(alphabet.len - 1)]
+
+proc getStringValue*(key: TomlValueRef, default: string = ""): string = 
+    let value = key.getStr(default)
+    # Replace '#' with a random alphanumerical character and return the resulting string
+    return value.mapIt(if it == '#': randomChar() else: it).join("")
 
 proc getString*(profile: Profile, path: string, default: string = ""): string =  
     let key = profile.findKey(path)
     if key == nil:
         return default 
-    return key.getStr(default)
+    return key.getStringValue(default)
 
 proc getBool*(profile: Profile, path: string, default: bool = false): bool = 
     let key = profile.findKey(path)

@@ -153,8 +153,8 @@ proc startServer*(profilePath: string) =
     try:
         # Load and parse profile 
         let profile = parseFile(profilePath)
-        styledEcho(fgGreen, styleBright, "[+] Using profile \"", profile["name"].getStr(), "\" (", profilePath ,").")
-        styledEcho(fgGreen, styleBright, "[+] ", profile["private_key_file"].getStr(), ": Private key found.")
+        styledEcho(fgGreen, styleBright, "[+] Using profile \"", profile.getString("name"), "\" (", profilePath ,").")
+        styledEcho(fgGreen, styleBright, "[+] ", profile.getString("private_key_file"), ": Private key found.")
 
         # Initialize framework context
         cq = Conquest.init(profile)
