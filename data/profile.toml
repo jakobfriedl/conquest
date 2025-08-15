@@ -1,5 +1,4 @@
 # Conquest default configuration file 
-# https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics/malleable-c2_profile-language.htm#_Toc65482837
 
 name = "cq-default-profile"
 
@@ -11,7 +10,7 @@ database_file = "/mnt/c/Users/jakob/Documents/Projects/conquest/data/conquest.db
 # General agent settings 
 [agent]
 sleep = 5
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+user-agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 
 # ----------------------------------------------------------
 # HTTP GET 
@@ -46,9 +45,13 @@ suffix = ".KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30"
 
 # Defines arbitrary URI parameters that are added to the request
 [http-get.agent.parameters]
+id = "bd5a-c65176a7ac5c"
+lang = "en-US"
 
 # Defines arbitrary headers that are added by the agent when performing a HTTP GET request 
 [http-get.agent.headers]
+Host = "wikipedia.org"
+Connection = "Keep-Alive"
 Cache-Control = "no-cache"
 
 # Defines arbitrary headers that are added to the server's response
@@ -66,14 +69,21 @@ placement = { type = "body" }
 # ----------------------------------------------------------
 # HTTP POST 
 # ----------------------------------------------------------
-# Defines URI endpoints for HTTP POST requests
 [http-post]
+# Defines URI endpoints for HTTP POST requests
 endpoints = [
     "/post",
     "/api/v2/get.js"
 ]
 
+# Post request can also be sent with the HTTP verb PUT instead
+request-methods = [
+    "POST",
+    "PUT"
+]
+
 [http-post.agent.headers]
+Host = "wikipedia.org"
 Content-Type = "application/octet-stream" 
 Connection = "Keep-Alive"
 Cache-Control = "no-cache"

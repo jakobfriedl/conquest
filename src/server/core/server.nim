@@ -4,7 +4,7 @@ import strutils, strformat, times, system, tables
 import ./[agent, listener]
 import ../[globals, utils]
 import ../db/database
-import ../../common/[types, utils, crypto]
+import ../../common/[types, utils, crypto, profile]
 
 #[
     Argument parsing
@@ -135,8 +135,8 @@ proc init*(T: type Conquest, profile: Profile): Conquest =
     cq.agents = initTable[string, Agent]() 
     cq.interactAgent = nil 
 
-    cq.keyPair = loadKeyPair(profile["private_key_file"].getStr())
-    cq.dbPath = profile["database_file"].getStr()
+    cq.keyPair = loadKeyPair(profile.getString("private_key_file"))
+    cq.dbPath = profile.getString("database_file")
     cq.profile = profile
 
     return cq

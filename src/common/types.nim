@@ -176,7 +176,7 @@ type
 
 # Agent config
 type
-    AgentConfig* = ref object
+    AgentCtx* = ref object
         agentId*: string
         listenerId*: string
         ip*: string
@@ -184,6 +184,7 @@ type
         sleep*: int
         sessionKey*: Key
         agentPublicKey*: Key
+        profile*: Profile
         
 # Structure for command module definitions 
 type
@@ -200,4 +201,4 @@ type
         example*: string 
         arguments*: seq[Argument]
         dispatchMessage*: string
-        execute*: proc(config: AgentConfig, task: Task): TaskResult {.nimcall.}
+        execute*: proc(config: AgentCtx, task: Task): TaskResult {.nimcall.}

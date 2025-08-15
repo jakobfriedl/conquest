@@ -24,7 +24,7 @@ proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, r
         data: resultData,
     )
 
-proc serializeTaskResult*(config: AgentConfig, taskResult: var TaskResult): seq[byte] = 
+proc serializeTaskResult*(ctx: AgentCtx, taskResult: var TaskResult): seq[byte] = 
     
     var packer = Packer.init()
 
@@ -45,7 +45,7 @@ proc serializeTaskResult*(config: AgentConfig, taskResult: var TaskResult): seq[
     packer.reset()
 
     # Encrypt result body 
-    let (encData, gmac) = encrypt(config.sessionKey, taskResult.header.iv, body, taskResult.header.seqNr)
+    let (encData, gmac) = encrypt(ctx.sessionKey, taskResult.header.iv, body, taskResult.header.seqNr)
 
     # Set authentication tag (GMAC)
     taskResult.header.gmac = gmac

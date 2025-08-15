@@ -19,9 +19,8 @@ proc httpGet*(ctx: Context) {.async.} =
         # Check heartbeat metadata placement
         var heartbeat: seq[byte]
         var heartbeatString: string
-        let heartbeatPlacement = cq.profile.getString("http-get.agent.heartbeat.placement.type")
 
-        case heartbeatPlacement: 
+        case cq.profile.getString("http-get.agent.heartbeat.placement.type"): 
         of "header": 
             let heartbeatHeader = cq.profile.getString("http-get.agent.heartbeat.placement.name")
             if not ctx.request.hasHeader(heartbeatHeader): 
@@ -39,14 +38,12 @@ proc httpGet*(ctx: Context) {.async.} =
         else: discard 
 
         # Retrieve and apply data transformation to get raw heartbeat packet
-        let 
-            encoding = cq.profile.getString("http-get.agent.heartbeat.encoding.type", default = "none")
-            prefix = cq.profile.getString("http-get.agent.heartbeat.prefix")
-            suffix = cq.profile.getString("http-get.agent.heartbeat.suffix")
+        let prefix = cq.profile.getString("http-get.agent.heartbeat.prefix")
+        let suffix = cq.profile.getString("http-get.agent.heartbeat.suffix")
 
         let encHeartbeat = heartbeatString[len(prefix) ..^ len(suffix) + 1]
 
-        case encoding: 
+        case cq.profile.getString("http-get.agent.heartbeat.encoding.type", default = "none"): 
         of "base64":
             heartbeat = string.toBytes(decode(encHeartbeat)) 
         of "none":
@@ -70,17 +67,16 @@ proc httpGet*(ctx: Context) {.async.} =
             
             # Apply data transformation to the response
             var response: string
-            let 
-                encoding = cq.profile.getString("http-get.server.output.encoding.type", default = "none")
-                prefix = cq.profile.getString("http-get.server.output.prefix")
-                suffix = cq.profile.getString("http-get.server.output.suffix")
 
-            case encoding: 
+            case cq.profile.getString("http-get.server.output.encoding.type", default = "none"): 
             of "none": 
                 response = Bytes.toString(responseBytes)
             of "base64":
                 response = encode(responseBytes, safe = cq.profile.getBool("http-get.server.output.encoding.url-safe"))
             else: discard
+
+            let prefix = cq.profile.getString("http-get.server.output.prefix")
+            let suffix = cq.profile.getString("http-get.server.output.suffix")
 
             # Add headers, as defined in the team server profile 
             for header, value in cq.profile.getTable("http-get.server.headers"):

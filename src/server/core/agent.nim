@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, tables, times, system, osproc, streams, base64
+import terminal, strformat, strutils, tables, times, system, osproc, streams, base64, parsetoml
 
 import ./task
 import ../utils
@@ -135,13 +135,14 @@ proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
     let listener = cq.listeners[listener.toUpperAscii] 
 
     # Create/overwrite nim.cfg file to set agent configuration 
-    let agentConfigFile = fmt"../src/agent/nim.cfg"   
+    let AgentCtxFile = fmt"../src/agent/nim.cfg"   
 
     # Parse IP Address and store as compile-time integer to hide hardcoded-strings in binary from `strings` command
     let (first, second, third, fourth) = parseOctets(listener.address)
 
     # Covert the servers's public X25519 key to as base64 string 
     let publicKey = encode(cq.keyPair.publicKey)
+    let profileString = encode(cq.profile.toTomlString())
 
     # The following shows the format of the agent configuration file that defines compile-time variables 
     let config = fmt"""
@@ -154,8 +155,9 @@ proc agentBuild*(cq: Conquest, listener, sleep, payload: string) =
     -d:ListenerPort={listener.port}
     -d:SleepDelay={sleep}
     -d:ServerPublicKey="{publicKey}"
+    -d:ProfileString="{profileString}"
     """.replace("    ", "")
-    writeFile(agentConfigFile, config)
+    writeFile(AgentCtxFile, config)
 
     cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Configuration file created.")
 

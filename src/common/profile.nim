@@ -1,4 +1,4 @@
-import parsetoml, strutils
+import parsetoml, strutils, random
 import ./[types, utils]
 
 proc findKey(profile: Profile, path: string): TomlValueRef =
@@ -41,3 +41,14 @@ proc getTable*(profile: Profile, path: string): TomlTableRef =
     if key == nil: 
         return new TomlTableRef
     return key.getTable()
+
+proc getArray*(profile: Profile, path: string): seq[TomlValueRef] = 
+    let key = profile.findKey(path)
+    if key == nil: 
+        return @[]
+    return key.getElems() 
+
+proc getRandom*(values: seq[TomlValueRef]): TomlValueRef = 
+    if values.len == 0: 
+        return nil
+    return values[rand(values.len - 1)]

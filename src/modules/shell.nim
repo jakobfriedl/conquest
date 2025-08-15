@@ -1,7 +1,7 @@
 import ../common/[types, utils]
 
 # Define function prototype
-proc executeShell(config: AgentConfig, task: Task): TaskResult 
+proc executeShell(ctx: AgentCtx, task: Task): TaskResult 
 
 # Command definition (as seq[Command])
 let commands*: seq[Command] =  @[
@@ -20,14 +20,14 @@ let commands*: seq[Command] =  @[
 
 # Implement execution functions
 when defined(server):
-    proc executeShell(config: AgentConfig, task: Task): TaskResult = nil
+    proc executeShell(ctx: AgentCtx, task: Task): TaskResult = nil
 
 when defined(agent):
 
-    import ../agent/core/taskresult
+    import ../agent/protocol/result
     import osproc, strutils, strformat
     
-    proc executeShell(config: AgentConfig, task: Task): TaskResult = 
+    proc executeShell(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
             var 
                 command: string 

