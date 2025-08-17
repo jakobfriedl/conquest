@@ -43,10 +43,10 @@ proc httpGet*(ctx: Context) {.async.} =
         else: discard 
 
         # Retrieve and apply data transformation to get raw heartbeat packet
-        let prefix = cq.profile.getString("http-get.agent.heartbeat.prefix")
-        let suffix = cq.profile.getString("http-get.agent.heartbeat.suffix")
-
-        let encHeartbeat = heartbeatString[len(prefix) ..^ len(suffix) + 1]
+        let 
+            prefix = cq.profile.getString("http-get.agent.heartbeat.prefix")
+            suffix = cq.profile.getString("http-get.agent.heartbeat.suffix")
+            encHeartbeat = heartbeatString[len(prefix) ..^ len(suffix) + 1]
 
         case cq.profile.getString("http-get.agent.heartbeat.encoding.type", default = "none"): 
         of "base64":

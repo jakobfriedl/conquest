@@ -41,7 +41,6 @@ suffix = ".######################################-####"
 # Other examples
 # placement = { type = "parameter", name = "id" }
 # placement = { type = "uri" }                   
-# placement = { type = "body" }
 
 # Defines arbitrary URI parameters that are added to the request
 [http-get.agent.parameters]
@@ -69,6 +68,9 @@ Connection = "Keep-Alive"
 # e.g base64-encoded in a svg/img
 [http-get.server.output]
 placement = { type = "body" }
+# encoding = { type = "base64" }
+# prefix = "<!DOCTYPE html><html class=client-nojs lang=en dir=ltr><head><meta charset=UTF-8/><title>Wikipedia</title><script>document.documentElement.className = document.documentElement.className.replace( /(^|s)client-nojs(s|$)/, $1client-js$2 );</script><script>(window.RLQ=window.RLQ||[]).push(function(){mw.config.set({wgCanonicalNamespace:,wgCanonicalSpecialPageName:false,wgNamespaceNumber:0,,wgBetaFeaturesFeatures:[],wgMediaViewerOnClick:true,wgMediaViewerEnabledByDefault:true,wgVisualEditor:{pageLanguageCode:en,pageLanguageDir:ltr,usePageImages:true,usePageDescriptions:true},wgPreferredVariant:en,wgMFDisplayWikibaseDescriptions:{search:true,nearby:true,watchlist:true,tagline:false},wgRelatedArticles:null,wgRelatedArticlesUseCirrusSearch:true,wgRelatedArticlesOnlyUseCirrusSearch:false,wgULSCurrentAutonym:English,wgNoticeProject:wikipedia,wgCentralNoticeCookiesToDelete:[],wgCentralNoticeCategoriesUsingLegacy:[Fundraising,fundraising],wgCategoryTreePageCategoryOptions:{mode:0,hideprefix:20,showcount:true,namespaces:false},wgWikibaseItemId:"
+# suffix = ",wgCentralAuthMobileDomain:false,wgVisualEditorToolbarScrollOffset:0,wgEditSubmitButtonLabelPublish:false});mw.loader.state({ext.globalCssJs.user.styles:ready,ext.globalCssJs.site.styles:ready,site.styles:ready,noscript:ready,user.styles:ready,user:ready,user.options:loading,user.tokens:loading,wikibase.client.init:ready,ext.visualEditor.desktopArticleTarget.noscript:ready,ext.uls.interlanguage:ready,ext.wikimediaBadges:ready,mediawiki.legacy.shared:ready,mediawiki.legacy.commonPrint:ready,mediawiki.sectionAnchor:ready,mediawiki.skinning.interface:ready,skins.vector.styles:ready,ext.globalCssJs.user:ready,ext.globalCssJs.site:ready});mw.loader.implement(user.options@0j3lz3q,function($,jQuery,require,module){mw.user.options.set({variant:en});});mw.loader.implement(user.tokens@1dqfd7l,function ( $, jQuery, require, module )</script><link rel=stylesheet href=/w/load.php?debug=false&amp;lang=en&amp;modules=ext.uls.interlanguage%7Cext.visualEditor.desktopArticleTarget.noscript%7Cext.wikimediaBadges%7Cmediawiki.legacy.commonPrint%2Cshared%7Cmediawiki.sectionAnchor%7Cmediawiki.skinning.interface%7Cskins.vector.styles%7Cwikibase.client.init&amp;only=styles&amp;skin=vector/><script async= src=/w/load.php?debug=false&amp;lang=en&amp;modules=startup&amp;only=scripts&amp;skin=vector></script><meta name=ResourceLoaderDynamicStyles content=/><link rel=stylesheet href=/w/load.php?debug=false&amp;lang=en&amp;modules=site.styles&amp;only=styles&amp;skin=vector/>"
 
 # ----------------------------------------------------------
 # HTTP POST 
