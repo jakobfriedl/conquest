@@ -30,7 +30,12 @@ proc httpGet*(ctx: Context) {.async.} =
             heartbeatString = ctx.request.getHeader(heartbeatHeader)[0]
 
         of "parameter": 
-            discard 
+            let param = cq.profile.getString("http-get.agent.heartbeat.placement.name")
+            heartbeatString = ctx.getQueryParams(param)  
+            if heartbeatString.len <= 0: 
+                resp "", Http404
+                return
+
         of "uri": 
             discard 
         of "body": 

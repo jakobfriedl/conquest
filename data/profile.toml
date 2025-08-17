@@ -50,7 +50,11 @@ lang = "en-US"
 
 # Defines arbitrary headers that are added by the agent when performing a HTTP GET request 
 [http-get.agent.headers]
-Host = "wikipedia.org"
+Host = [ 
+    "wikipedia.org", 
+    "google.com",
+    "127.0.0.1"
+]
 Connection = "Keep-Alive"
 Cache-Control = "no-cache"
 
@@ -83,7 +87,11 @@ request-methods = [
 ]
 
 [http-post.agent.headers]
-Host = "wikipedia.org"
+Host = [ 
+    "wikipedia.org", 
+    "google.com",
+    "127.0.0.1"
+]
 Content-Type = "application/octet-stream" 
 Connection = "Keep-Alive"
 Cache-Control = "no-cache"

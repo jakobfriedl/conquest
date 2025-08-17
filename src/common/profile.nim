@@ -23,8 +23,21 @@ proc randomChar(): char =
     let alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     return alphabet[rand(alphabet.len - 1)]
 
+proc getRandom*(values: seq[TomlValueRef]): TomlValueRef = 
+    if values.len == 0: 
+        return nil
+    return values[rand(values.len - 1)]
+
 proc getStringValue*(key: TomlValueRef, default: string = ""): string = 
-    let value = key.getStr(default)
+
+    # In some cases, the profile can define multiple values for a key, e.g. for HTTP headers
+    # A random entry is selected from these specifications
+    var value: string = ""
+    if key.kind == TomlValueKind.String: 
+        value = key.getStr(default)
+    elif key.kind == TomlValueKind.Array:
+        value = key.getElems().getRandom().getStr(default)
+    
     # Replace '#' with a random alphanumerical character and return the resulting string
     return value.mapIt(if it == '#': randomChar() else: it).join("")
 
@@ -57,8 +70,3 @@ proc getArray*(profile: Profile, path: string): seq[TomlValueRef] =
     if key == nil: 
         return @[]
     return key.getElems() 
-
-proc getRandom*(values: seq[TomlValueRef]): TomlValueRef = 
-    if values.len == 0: 
-        return nil
-    return values[rand(values.len - 1)]
