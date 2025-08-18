@@ -2,7 +2,7 @@ import terminal, strformat, strutils, sequtils, tables, json, times, base64, sys
 
 import ../[utils, globals]
 import ../db/database
-import ../message/packer
+import ../protocol/packer
 import ../../common/[types, utils]
 
 #[
@@ -40,8 +40,8 @@ proc getTasks*(heartbeat: seq[byte]): seq[seq[byte]] =
         # Deserialize checkin request to obtain agentId and listenerId 
         let 
             request: Heartbeat = cq.deserializeHeartbeat(heartbeat)
-            agentId = uuidToString(request.header.agentId)
-            listenerId = uuidToString(request.listenerId)
+            agentId = Uuid.toString(request.header.agentId)
+            listenerId = Uuid.toString(request.listenerId)
             timestamp = request.timestamp
 
         var result: seq[seq[byte]]
@@ -72,9 +72,9 @@ proc handleResult*(resultData: seq[byte]) =
 
         let
             taskResult = cq.deserializeTaskResult(resultData) 
-            taskId = uuidToString(taskResult.taskId)
-            agentId = uuidToString(taskResult.header.agentId)
-            listenerId = uuidToString(taskResult.listenerId)
+            taskId = Uuid.toString(taskResult.taskId)
+            agentId = Uuid.toString(taskResult.header.agentId)
+            listenerId = Uuid.toString(taskResult.listenerId)
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, fmt"{$resultData.len} bytes received.")

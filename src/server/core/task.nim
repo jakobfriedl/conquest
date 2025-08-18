@@ -1,7 +1,7 @@
 import times, strformat, terminal, tables, json, sequtils, strutils
 
 import ../utils
-import ../message/parser
+import ../protocol/parser
 import ../../modules/manager
 import ../../common/[types, utils]
 
@@ -62,6 +62,7 @@ proc handleAgentCommand*(cq: Conquest, input: string) =
     
     # Handle 'back' command
     if parsedArgs[0] == "back": 
+        cq.interactAgent = nil 
         return
 
     # Handle 'help' command 

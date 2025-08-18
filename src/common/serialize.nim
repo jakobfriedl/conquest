@@ -69,6 +69,9 @@ proc init*(T: type Unpacker, data: string): Unpacker =
     result.stream = newStringStream(data)
     result.position = 0
 
+proc getPosition*(unpacker: Unpacker): int = 
+    return unpacker.position
+
 proc getUint8*(unpacker: Unpacker): uint8 =
     result = unpacker.stream.readUint8()
     unpacker.position += 1

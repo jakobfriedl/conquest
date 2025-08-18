@@ -6,7 +6,5 @@ nim --os:windows \
     --gcc.exe:x86_64-w64-mingw32-gcc \
     --gcc.linkerexe:x86_64-w64-mingw32-gcc \
     -d:release \
-    --outdir:"$CONQUEST_ROOT/bin" \
-    -o:"monarch.x64.exe" \
     -d:agent \
     c $CONQUEST_ROOT/src/agent/main.nim

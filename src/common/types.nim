@@ -55,8 +55,17 @@ type
         RESULT_BINARY = 1'u8
         RESULT_NO_OUTPUT = 2'u8
 
+    ConfigType* = enum 
+        CONFIG_LISTENER_UUID = 0'u8
+        CONFIG_LISTENER_IP = 1'u8 
+        CONFIG_LISTENER_PORT = 2'u8
+        CONFIG_SLEEP_DELAY = 3'u8  
+        CONFIG_PUBLIC_KEY = 4'u8
+        CONFIG_PROFILE = 5'u8
+
 # Encryption 
 type    
+    Uuid* = uint32
     Bytes* = seq[byte]
     Key* = array[32, byte]
     Iv* = array[12, byte]
@@ -70,7 +79,7 @@ type
         packetType*: uint8          # [1 byte  ] message type 
         flags*: uint16              # [2 bytes ] message flags
         size*: uint32               # [4 bytes ] size of the payload body
-        agentId*: uint32            # [4 bytes ] agent id, used as AAD for encryptio
+        agentId*: Uuid              # [4 bytes ] agent id, used as AAD for encryptio
         seqNr*: uint32              # [4 bytes ] sequence number, used as AAD for encryption
         iv*: Iv                     # [12 bytes] random IV for AES256 GCM encryption
         gmac*: AuthenticationTag    # [16 bytes] authentication tag for AES256 GCM encryption
@@ -81,8 +90,8 @@ type
 
     Task* = object 
         header*: Header
-        taskId*: uint32             # [4 bytes ] task id
-        listenerId*: uint32         # [4 bytes ] listener id
+        taskId*: Uuid               # [4 bytes ] task id
+        listenerId*: Uuid           # [4 bytes ] listener id
         timestamp*: uint32          # [4 bytes ] unix timestamp
         command*: uint16            # [2 bytes ] command id 
         argCount*: uint8            # [1 byte  ] number of arguments
@@ -90,8 +99,8 @@ type
 
     TaskResult* = object 
         header*: Header 
-        taskId*: uint32             # [4 bytes ] task id
-        listenerId*: uint32         # [4 bytes ] listener id
+        taskId*: Uuid               # [4 bytes ] task id
+        listenerId*: Uuid           # [4 bytes ] listener id
         timestamp*: uint32          # [4 bytes ] unix timestamp
         command*: uint16            # [2 bytes ] command id 
         status*: uint8              # [1 byte  ] success flag 
@@ -102,16 +111,16 @@ type
 # Checkin binary structure
 type
     Heartbeat* = object 
-        header*: Header         # [48 bytes ] fixed header
-        listenerId*: uint32     # [4 bytes  ] listener id
-        timestamp*: uint32      # [4 bytes  ] unix timestamp
+        header*: Header            # [48 bytes ] fixed header
+        listenerId*: Uuid          # [4 bytes  ] listener id
+        timestamp*: uint32         # [4 bytes  ] unix timestamp
 
 # Registration binary structure 
 type 
 
     # All variable length fields are stored as seq[byte], prefixed with 4 bytes indicating the length of the following data
     AgentMetadata* = object 
-        listenerId*: uint32
+        listenerId*: Uuid
         username*: seq[byte]
         hostname*: seq[byte]
         domain*: seq[byte]
@@ -157,7 +166,7 @@ type
         port*: int
         protocol*: Protocol
 
-# Server context structure
+# Server context structures
 type 
     KeyPair* = object 
         privateKey*: Key 
@@ -174,8 +183,6 @@ type
         keyPair*: KeyPair
         profile*: Profile
 
-# Agent config
-type
     AgentCtx* = ref object
         agentId*: string
         listenerId*: string

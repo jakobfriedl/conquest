@@ -10,10 +10,10 @@ proc generateUUID*(): string =
         raise newException(CatchableError, "Failed to generate UUID.")
     return uuid.toHex().toUpperAscii()
 
-proc uuidToUint32*(uuid: string): uint32 = 
+proc toUuid*(T: type string, uuid: string): Uuid = 
     return fromHex[uint32](uuid)
 
-proc uuidToString*(uuid: uint32): string = 
+proc toString*(T: type Uuid, uuid: Uuid): string = 
     return uuid.toHex(8)
 
 proc toString*(T: type Bytes, data: seq[byte]): string =

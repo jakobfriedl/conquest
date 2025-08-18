@@ -201,14 +201,14 @@ proc collectAgentMetadata*(ctx: AgentCtx): AgentRegistrationData =
             packetType: cast[uint8](MSG_REGISTER),
             flags: cast[uint16](FLAG_ENCRYPTED),
             size: 0'u32,
-            agentId: uuidToUint32(ctx.agentId),
-            seqNr: nextSequence(uuidToUint32(ctx.agentId)),                              
+            agentId: string.toUuid(ctx.agentId),
+            seqNr: nextSequence(string.toUuid(ctx.agentId)),                              
             iv: generateIV(),
             gmac: default(AuthenticationTag)
         ), 
         agentPublicKey: ctx.agentPublicKey,
         metadata: AgentMetadata(
-            listenerId: uuidToUint32(ctx.listenerId),
+            listenerId: string.toUuid(ctx.listenerId),
             username: string.toBytes(getUsername()),
             hostname: string.toBytes(getHostname()),
             domain: string.toBytes(getDomain()),

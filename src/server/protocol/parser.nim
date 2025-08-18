@@ -77,8 +77,8 @@ proc createTask*(cq: Conquest, command: Command, arguments: seq[string]): Task =
 
     # Construct the task payload prefix
     var task: Task
-    task.taskId = uuidToUint32(generateUUID()) 
-    task.listenerId = uuidToUint32(cq.interactAgent.listenerId)
+    task.taskId = string.toUuid(generateUUID()) 
+    task.listenerId = string.toUuid(cq.interactAgent.listenerId)
     task.timestamp = uint32(now().toTime().toUnix())
     task.command = cast[uint16](command.commandType) 
     task.argCount = uint8(arguments.len)
@@ -105,7 +105,7 @@ proc createTask*(cq: Conquest, command: Command, arguments: seq[string]): Task =
     taskHeader.packetType = cast[uint8](MSG_TASK)
     taskHeader.flags = cast[uint16](FLAG_ENCRYPTED)
     taskHeader.size = 0'u32
-    taskHeader.agentId = uuidtoUint32(cq.interactAgent.agentId)
+    taskHeader.agentId = string.toUuid(cq.interactAgent.agentId)
     taskHeader.seqNr = nextSequence(taskHeader.agentId)
     taskHeader.iv = generateIV() # Generate a random IV for AES-256 GCM
     taskHeader.gmac = default(AuthenticationTag)

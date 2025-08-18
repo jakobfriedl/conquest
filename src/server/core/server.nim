@@ -1,7 +1,7 @@
 import prompt, terminal, argparse, parsetoml
 import strutils, strformat, times, system, tables
 
-import ./[agent, listener]
+import ./[agent, listener, builder]
 import ../[globals, utils]
 import ../db/database
 import ../../common/[types, utils, crypto, profile]
@@ -53,8 +53,8 @@ var parser = newParser:
         command("build"): 
             help("Generate a new agent to connect to an active listener.")
             option("-l", "--listener", help="Name of the listener.", required=true)
-            option("-s", "--sleep", help="Sleep delay in seconds.", default=some("10") )
-            option("-p", "--payload", help="Agent type.\n\t\t\t    ", default=some("monarch"), choices = @["monarch"],)
+            option("-s", "--sleep", help="Sleep delay in seconds." )
+            # option("-p", "--payload", help="Agent type.\n\t\t\t    ", default=some("monarch"), choices = @["monarch"],)
 
     command("help"):
         nohelpflag()
@@ -104,7 +104,7 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
             of "interact":
                 cq.agentInteract(opts.agent.get.interact.get.name) 
             of "build": 
-                cq.agentBuild(opts.agent.get.build.get.listener, opts.agent.get.build.get.sleep, opts.agent.get.build.get.payload)
+                cq.agentBuild(opts.agent.get.build.get.listener, opts.agent.get.build.get.sleep)
             else: 
                 cq.agentUsage()
 
@@ -129,16 +129,13 @@ proc header() =
 
 proc init*(T: type Conquest, profile: Profile): Conquest = 
     var cq = new Conquest
-    var prompt = Prompt.init()
-    cq.prompt = prompt
+    cq.prompt = Prompt.init() 
     cq.listeners = initTable[string, Listener]()
     cq.agents = initTable[string, Agent]() 
     cq.interactAgent = nil 
-
+    cq.profile = profile
     cq.keyPair = loadKeyPair(profile.getString("private_key_file"))
     cq.dbPath = profile.getString("database_file")
-    cq.profile = profile
-
     return cq
 
 proc startServer*(profilePath: string) =

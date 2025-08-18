@@ -10,12 +10,12 @@ proc createHeartbeat*(ctx: AgentCtx): Heartbeat =
             packetType: cast[uint8](MSG_HEARTBEAT),
             flags: cast[uint16](FLAG_ENCRYPTED),
             size: 0'u32,
-            agentId: uuidToUint32(ctx.agentId),
+            agentId: string.toUuid(ctx.agentId),
             seqNr: 0'u32,  
             iv: generateIV(),
             gmac: default(AuthenticationTag)
         ), 
-        listenerId: uuidToUint32(ctx.listenerId),
+        listenerId: string.toUuid(ctx.listenerId),
         timestamp: uint32(now().toTime().toUnix())
     )
 

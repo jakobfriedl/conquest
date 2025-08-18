@@ -21,7 +21,7 @@ proc serializeTask*(cq: Conquest, task: var Task): seq[byte] =
     packer.reset()
 
     # Encrypt payload body
-    let (encData, gmac) = encrypt(cq.agents[uuidToString(task.header.agentId)].sessionKey, task.header.iv, payload, task.header.seqNr)
+    let (encData, gmac) = encrypt(cq.agents[Uuid.toString(task.header.agentId)].sessionKey, task.header.iv, payload, task.header.seqNr)
 
     # Set authentication tag (GMAC)
     task.header.gmac = gmac
@@ -42,7 +42,7 @@ proc deserializeTaskResult*(cq: Conquest, resultData: seq[byte]): TaskResult =
 
     # Decrypt payload 
     let payload = unpacker.getBytes(int(header.size))
-    let decData= validateDecryption(cq.agents[uuidToString(header.agentId)].sessionKey, header.iv, payload, header.seqNr, header)
+    let decData= validateDecryption(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.iv, payload, header.seqNr, header)
 
     # Deserialize decrypted data
     unpacker = Unpacker.init(Bytes.toString(decData))
@@ -102,8 +102,8 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent =
         sleep = unpacker.getUint32()
 
     return Agent(
-        agentId: uuidToString(header.agentId),
-        listenerId: uuidToString(listenerId),
+        agentId: Uuid.toString(header.agentId),
+        listenerId: Uuid.toString(listenerId),
         username: username, 
         hostname: hostname,
         domain: domain,
@@ -130,7 +130,7 @@ proc deserializeHeartbeat*(cq: Conquest, data: seq[byte]): Heartbeat =
 
     # Decrypt payload
     let payload = unpacker.getBytes(int(header.size))
-    let decData= validateDecryption(cq.agents[uuidToString(header.agentId)].sessionKey, header.iv, payload, header.seqNr, header)
+    let decData= validateDecryption(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.iv, payload, header.seqNr, header)
 
     # Deserialize decrypted data
     unpacker = Unpacker.init(Bytes.toString(decData))
