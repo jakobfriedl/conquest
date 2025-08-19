@@ -100,46 +100,47 @@ proc restartListeners*(cq: Conquest) =
     
     # Restart all active listeners that are stored in the database
     for l in listeners: 
-        let 
-            settings = newSettings(
-                appName = l.listenerId,
-                debug = false,
-                address = "",
-                port = Port(l.port)
-            )
-            listener = newApp(settings = settings)
-
-        # Define API endpoints based on C2 profile
-        # TODO: Store endpoints for already running listeners is DB (comma-separated) and use those values for restarts
-        # GET requests
-        for endpoint in cq.profile.getArray("http-get.endpoints"): 
-            listener.get(endpoint.getStringValue(), routes.httpGet)
-        
-        # POST requests
-        var postMethods: seq[HttpMethod]
-        for reqMethod in cq.profile.getArray("http-post.request-methods"): 
-            postMethods.add(parseEnum[HttpMethod](reqMethod.getStringValue()))
-
-        # Default method is POST
-        if postMethods.len == 0: 
-            postMethods = @[HttpPost]
-
-        for endpoint in cq.profile.getArray("http-post.endpoints"): 
-            listener.addRoute(endpoint.getStringValue(), routes.httpPost, postMethods)
-    
-        listener.registerErrorHandler(Http404, routes.error404)
-            
         try:
+            let 
+                settings = newSettings(
+                    appName = l.listenerId,
+                    debug = false,
+                    address = "",
+                    port = Port(l.port)
+                )
+                listener = newApp(settings = settings)
+
+            # Define API endpoints based on C2 profile
+            # GET requests
+            for endpoint in cq.profile.getArray("http-get.endpoints"): 
+                listener.get(endpoint.getStringValue(), routes.httpGet)
+            
+            # POST requests
+            var postMethods: seq[HttpMethod]
+            for reqMethod in cq.profile.getArray("http-post.request-methods"): 
+                postMethods.add(parseEnum[HttpMethod](reqMethod.getStringValue()))
+
+            # Default method is POST
+            if postMethods.len == 0: 
+                postMethods = @[HttpPost]
+
+            for endpoint in cq.profile.getArray("http-post.endpoints"): 
+                listener.addRoute(endpoint.getStringValue(), routes.httpPost, postMethods)
+        
+            listener.registerErrorHandler(Http404, routes.error404)
+            
             discard listener.runAsync() 
             cq.add(l)
             cq.writeLine(fgGreen, "[+] ", resetStyle, "Restarted listener", fgGreen, fmt" {l.listenerId} ", resetStyle, fmt"on {l.address}:{$l.port}.")
+        
+            # Delay before serving another listener to avoid crashing the application
+            waitFor sleepAsync(100)        
+        
         except CatchableError as err: 
             cq.writeLine(fgRed, styleBright, "[-] Failed to restart listener: ", err.msg)
         
-        # Delay before starting serving another listener to avoid crashing the application
-        waitFor sleepAsync(10)
-
     cq.writeLine("")
+
 
 # Remove listener from database, preventing automatic startup on server restart
 proc listenerStop*(cq: Conquest, name: string) = 
