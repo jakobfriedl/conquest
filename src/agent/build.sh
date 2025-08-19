@@ -5,6 +5,4 @@ nim --os:windows \
     --cpu:amd64  \
     --gcc.exe:x86_64-w64-mingw32-gcc \
     --gcc.linkerexe:x86_64-w64-mingw32-gcc \
-    -d:release \
-    -d:agent \
     c $CONQUEST_ROOT/src/agent/main.nim
