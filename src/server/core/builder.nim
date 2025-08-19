@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, tables, system, osproc, streams, parsetoml
+import terminal, strformat, strutils, sequtils, tables, system, osproc, streams, parsetoml
 
 import ../utils
 import ../../common/[types, utils, profile, serialize, crypto]
@@ -40,6 +40,14 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int): seq[b
     cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Profile configuration serialized.")
     return encMaterial & encData 
 
+proc replaceAfterPrefix(content, prefix, value: string): string = 
+    result = content.splitLines().mapIt(
+        if it.startsWith(prefix):
+            prefix & '"' & value & '"' 
+        else: 
+            it
+    ).join("\n")
+    
 proc compile(cq: Conquest, placeholderLength: int): string = 
     
     let 
@@ -48,15 +56,14 @@ proc compile(cq: Conquest, placeholderLength: int): string =
         exeFile = fmt"{cqDir}/bin/monarch.x64.exe" 
         agentBuildScript = fmt"{cqDir}/src/agent/build.sh"    
 
-    # Create/overwrite nim.cfg file to set placeholder for agent configuration 
-    let config = fmt"""
-        # Agent configuration 
-        -d:CONFIGURATION={PLACEHOLDER & "A".repeat(placeholderLength - (2 * len(PLACEHOLDER))) & PLACEHOLDER}
-        -o:"{exeFile}"
-    """.replace("    ", "")
-
+    # Update placeholder and configuration values 
+    let placeholder = PLACEHOLDER & "A".repeat(placeholderLength - (2 * len(PLACEHOLDER))) & PLACEHOLDER
+    var config = readFile(configFile)
+                    .replaceAfterPrefix("-d:CONFIGURATION=", placeholder)    
+                    .replaceAfterPrefix("-o:", exeFile)
     writeFile(configFile, config)
-    cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Configuration file created.")
+
+    cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, fmt"Placeholder created ({placeholder.len()} bytes).")
     
     # Build agent by executing the ./build.sh script on the system.
     cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Compiling agent.")
@@ -96,8 +103,7 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): bo
         if placeholderPos == -1: 
             raise newException(CatchableError, "Placeholder not found.")
         
-        cq.writeLine(fgBlack, styleBright, "[+] ", resetStyle, fmt"Placeholder found at offset {placeholderPos}.")
-        # cq.writeLine(exeBytes[placeholderPos..placeholderPos + len(configuration)])
+        cq.writeLine(fgBlack, styleBright, "[+] ", resetStyle, fmt"Placeholder found at offset 0x{placeholderPos:08X}.")
 
         # Patch placeholder bytes
         for i, c in Bytes.toString(configuration): 
