@@ -1,7 +1,7 @@
 import terminal, strformat, strutils, tables, system, osproc, streams, parsetoml
 
 import ../utils
-import ../../common/[types, utils, profile, serialize]
+import ../../common/[types, utils, profile, serialize, crypto]
 import ../db/database 
 
 const PLACEHOLDER = "PLACEHOLDER"
@@ -20,9 +20,25 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int): seq[b
     packer.addDataWithLengthPrefix(string.toBytes(cq.profile.toTomlString()))
 
     let data = packer.pack() 
-    cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Profile configuration serialized.")
+    packer.reset() 
 
-    return data 
+    # Encrypt profile configuration data with a newly generated encryption key
+    var aesKey = generateKey() 
+    let iv = generateIV()
+
+    let (encData, gmac) = encrypt(aesKey, iv, data)
+
+    # Add plaintext encryption material in front of the 
+    packer.addData(aesKey)
+    packer.addData(iv)
+    packer.addData(gmac)
+    packer.add(uint32(encData.len()))
+    let encMaterial = packer.pack() 
+
+    wipeKey(aesKey)
+
+    cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Profile configuration serialized.")
+    return encMaterial & encData 
 
 proc compile(cq: Conquest, placeholderLength: int): string = 
     

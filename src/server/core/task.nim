@@ -1,9 +1,9 @@
-import times, strformat, terminal, tables, json, sequtils, strutils
+import times, strformat, terminal, tables, sequtils, strutils
 
 import ../utils
 import ../protocol/parser
 import ../../modules/manager
-import ../../common/[types, utils]
+import ../../common/types
 
 proc displayHelp(cq: Conquest) = 
     cq.writeLine("Available commands:")

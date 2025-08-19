@@ -1,7 +1,7 @@
-import strutils, terminal, tables, sequtils, times, strformat, random, prompt
+import strutils, terminal, tables, sequtils, times, strformat, prompt
 import std/wordwrap
 
-import ../common/[types, utils]
+import ../common/types
 
 # Utility functions
 proc parseOctets*(ip: string): tuple[first, second, third, fourth: int] = 

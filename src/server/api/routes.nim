@@ -1,6 +1,6 @@
-import prologue, json, terminal, strformat, parsetoml, tables
-import sequtils, strutils, times, base64
-import sugar
+import prologue, terminal, strformat, parsetoml, tables
+import strutils, times, base64
+
 import ./handlers
 import ../[utils, globals]
 import ../../common/[types, utils, serialize, profile]

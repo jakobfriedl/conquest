@@ -10,11 +10,17 @@ import ./[utils, types]
 proc generateIV*(): Iv =
     # Generate a random 98-bit (12-byte) initialization vector for AES-256 GCM mode
     var iv: Iv
-    if randomBytes(iv) != 12: 
+    if randomBytes(iv) != sizeof(Iv): 
         raise newException(CatchableError, "Failed to generate IV.")
     return iv 
 
-proc encrypt*(key: Key, iv: Iv, data: seq[byte], sequenceNumber: uint32): (seq[byte], AuthenticationTag) =
+proc generateKey*(): Key = 
+    var key: Key 
+    if randomBytes(key) != sizeof(Key):
+        raise newException(CatchableError, "Failed to generate IV.")
+    return key
+
+proc encrypt*(key: Key, iv: Iv, data: seq[byte], sequenceNumber: uint32 = 0): (seq[byte], AuthenticationTag) =
     
     # Encrypt data using AES-256 GCM
     var encData = newSeq[byte](data.len)
@@ -29,7 +35,7 @@ proc encrypt*(key: Key, iv: Iv, data: seq[byte], sequenceNumber: uint32): (seq[b
     
     return (encData, tag)
 
-proc decrypt*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint32): (seq[byte], AuthenticationTag) =
+proc decrypt*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint32 = 0): (seq[byte], AuthenticationTag) =
     
     # Decrypt data using AES-256 GCM
     var data = newSeq[byte](encData.len)
@@ -91,10 +97,7 @@ proc wipeKey*(data: var openArray[byte]) =
 
 # Key pair generation
 proc generateKeyPair*(): KeyPair = 
-    var privateKey: Key
-    if randomBytes(privateKey) != sizeof(Key): 
-        raise newException(ValueError, "Failed to generate key.")
-
+    let privateKey = generateKey() 
     return KeyPair(
         privateKey: privateKey, 
         publicKey: getPublicKey(privateKey)

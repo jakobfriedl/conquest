@@ -1,4 +1,4 @@
-import strutils, strformat, streams, times, tables
+import strutils, streams, times, tables
 import ../utils
 import ../../common/[types, utils, serialize, sequence, crypto]
 

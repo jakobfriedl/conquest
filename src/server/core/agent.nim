@@ -1,9 +1,9 @@
-import terminal, strformat, strutils, tables, times, system, osproc, streams, base64, parsetoml
+import terminal, strformat, strutils, tables, times, system, parsetoml
 
 import ./task
 import ../utils
 import ../db/database
-import ../../common/[types, utils]
+import ../../common/types
 
 # Utility functions
 proc addMultiple*(cq: Conquest, agents: seq[Agent]) = 

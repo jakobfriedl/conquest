@@ -1,5 +1,5 @@
 import tables 
-import ./[types, utils]
+import ./types
 
 var sequenceTable {.global.}: Table[uint32, uint32]
 

@@ -6,9 +6,24 @@ const CONFIGURATION {.strdefine.}: string = ""
 proc deserializeConfiguration(config: string): AgentCtx = 
     
     var unpacker = Unpacker.init(config) 
+        
+    var aesKey = unpacker.getByteArray(Key)
+    let 
+        iv = unpacker.getByteArray(Iv)
+        authTag = unpacker.getByteArray(AuthenticationTag)
+        length = int(unpacker.getUint32())  
+
+    # Decrypt profile configuration
+    let (decData, gmac) = decrypt(aesKey, iv, unpacker.getBytes(length))
+    wipeKey(aesKey)
+
+    if gmac != authTag: 
+        raise newException(CatchableError, "Invalid authentication tag.")
+
+    # Parse decrypted profile configuration 
+    unpacker = Unpacker.init(Bytes.toString(decData))
 
     var agentKeyPair = generateKeyPair() 
-
     var ctx = AgentCtx(
         agentId: generateUUID(),
         listenerId: Uuid.toString(unpacker.getUint32()),
@@ -19,9 +34,9 @@ proc deserializeConfiguration(config: string): AgentCtx =
         agentPublicKey: agentKeyPair.publicKey,
         profile: parseString(unpacker.getDataWithLengthPrefix())
     ) 
-    
-    wipeKey(agentKeyPair.privateKey)
 
+    wipeKey(agentKeyPair.privateKey)
+    
     echo "[+] Profile configuration deserialized."
     return ctx
 

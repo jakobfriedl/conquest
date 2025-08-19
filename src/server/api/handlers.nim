@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, sequtils, tables, json, times, base64, system
+import terminal, strformat, strutils, sequtils, tables, times, system
 
 import ../[utils, globals]
 import ../db/database
@@ -44,7 +44,7 @@ proc getTasks*(heartbeat: seq[byte]): seq[seq[byte]] =
             listenerId = Uuid.toString(request.listenerId)
             timestamp = request.timestamp
 
-        var result: seq[seq[byte]]
+        var tasks: seq[seq[byte]]
 
         # Check if listener exists
         if not cq.dbListenerExists(listenerId): 
@@ -62,9 +62,9 @@ proc getTasks*(heartbeat: seq[byte]): seq[seq[byte]] =
         # Return tasks
         for task in cq.agents[agentId].tasks.mitems: # Iterate over agents as mutable items in order to modify GMAC tag
             let taskData = cq.serializeTask(task)
-            result.add(taskData)
+            tasks.add(taskData)
         
-        return result
+        return tasks
 
 proc handleResult*(resultData: seq[byte]) = 
 

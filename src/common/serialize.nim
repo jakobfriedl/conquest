@@ -1,5 +1,5 @@
-import streams, strutils, tables
-import ./[types, utils, crypto, sequence]
+import streams, tables
+import ./[types, utils, crypto]
 
 #[
     Packer
@@ -129,8 +129,6 @@ proc getArgument*(unpacker: Unpacker): TaskArg =
         result.data = unpacker.getBytes(8)
     of BOOL:
         result.data = unpacker.getBytes(1)
-    else: 
-        discard
 
 proc getDataWithLengthPrefix*(unpacker: Unpacker): string = 
     # Read length of variable-length field

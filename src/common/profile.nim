@@ -1,5 +1,6 @@
 import parsetoml, strutils, sequtils, random
-import ./[types, utils]
+
+import ./types
 
 proc findKey(profile: Profile, path: string): TomlValueRef =
   let keys = path.split(".")

@@ -1,5 +1,4 @@
-import strutils, sequtils, strformat
-import nimcrypto
+import strutils, nimcrypto
 
 import ./types
 
