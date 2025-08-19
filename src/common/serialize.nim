@@ -1,5 +1,9 @@
 import streams, strutils, tables
 import ./[types, utils, crypto, sequence]
+
+#[
+    Packer
+]#
 type 
     Packer* = ref object 
         stream: StringStream
@@ -32,16 +36,16 @@ proc addArgument*(packer: Packer, arg: TaskArg): Packer {.discardable.} =
         packer.addData(arg.data)
     return packer
 
-proc addVarLengthMetadata*(packer: Packer, metadata: seq[byte]): Packer {.discardable.} = 
-    # Add length of metadata field
-    packer.add(cast[uint32](metadata.len))
+proc addDataWithLengthPrefix*(packer: Packer, data: seq[byte]): Packer {.discardable.} = 
+    # Add length of variable-length data field
+    packer.add(cast[uint32](data.len))
 
-    if metadata.len <= 0: 
+    if data.len <= 0: 
         # Field is empty (e.g. not domain joined)
         return packer
 
     # Add content
-    packer.addData(metadata)
+    packer.addData(data)
     return packer
 
 proc pack*(packer: Packer): seq[byte] = 
@@ -59,6 +63,9 @@ proc reset*(packer: Packer): Packer {.discardable.}  =
     packer.stream = newStringStream()
     return packer
 
+#[
+    Unpacker
+]#
 type 
     Unpacker* = ref object 
         stream: StringStream
@@ -68,10 +75,7 @@ proc init*(T: type Unpacker, data: string): Unpacker =
     result = new Unpacker
     result.stream = newStringStream(data)
     result.position = 0
-
-proc getPosition*(unpacker: Unpacker): int = 
-    return unpacker.position
-
+    
 proc getUint8*(unpacker: Unpacker): uint8 =
     result = unpacker.stream.readUint8()
     unpacker.position += 1
@@ -100,38 +104,16 @@ proc getBytes*(unpacker: Unpacker, length: int): seq[byte] =
     if bytesRead != length:
         raise newException(IOError, "Not enough data to read")
 
-proc getKey*(unpacker: Unpacker): Key = 
-    var key: Key
+proc getByteArray*(unpacker: Unpacker, T: typedesc[Key | Iv | AuthenticationTag]): array = 
+    var bytes: array[sizeof(T), byte]
 
-    let bytesRead = unpacker.stream.readData(key[0].unsafeAddr, 32)
+    let bytesRead = unpacker.stream.readData(bytes[0].unsafeAddr, sizeof(T))
     unpacker.position += bytesRead
     
-    if bytesRead != 32:
-        raise newException(IOError, "Not enough data to read key")
+    if bytesRead != sizeof(T):
+        raise newException(IOError, "Not enough data to read structure.")
     
-    return key
-
-proc getIv*(unpacker: Unpacker): Iv = 
-    var iv: Iv
-
-    let bytesRead = unpacker.stream.readData(iv[0].unsafeAddr, 12)
-    unpacker.position += bytesRead
-    
-    if bytesRead != 12:
-        raise newException(IOError, "Not enough data to read IV")
-    
-    return iv
-
-proc getAuthenticationTag*(unpacker: Unpacker): AuthenticationTag = 
-    var tag: AuthenticationTag
-    
-    let bytesRead = unpacker.stream.readData(tag[0].unsafeAddr, 16)
-    unpacker.position += bytesRead
-    
-    if bytesRead != 16:
-        raise newException(IOError, "Not enough data to read authentication tag")
-    
-    return tag
+    return bytes
 
 proc getArgument*(unpacker: Unpacker): TaskArg = 
     result.argType = unpacker.getUint8()
@@ -150,9 +132,8 @@ proc getArgument*(unpacker: Unpacker): TaskArg =
     else: 
         discard
 
-proc getVarLengthMetadata*(unpacker: Unpacker): string = 
-
-    # Read length of metadata field
+proc getDataWithLengthPrefix*(unpacker: Unpacker): string = 
+    # Read length of variable-length field
     let length = unpacker.getUint32()
     
     if length <= 0: 
@@ -185,7 +166,7 @@ proc deserializeHeader*(unpacker: Unpacker): Header=
         size: unpacker.getUint32(),
         agentId: unpacker.getUint32(),
         seqNr: unpacker.getUint32(),
-        iv: unpacker.getIv(),
-        gmac: unpacker.getAuthenticationTag()
+        iv: unpacker.getByteArray(Iv),
+        gmac: unpacker.getByteArray(AuthenticationTag)
     )
     

@@ -79,7 +79,7 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent =
     validatePacket(header, cast[uint8](MSG_REGISTER)) 
 
     # Key exchange
-    let agentPublicKey = unpacker.getKey()
+    let agentPublicKey = unpacker.getByteArray(Key)
     let sessionKey = deriveSessionKey(cq.keyPair, agentPublicKey)
     
     # Decrypt payload 
@@ -91,12 +91,12 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent =
 
     let 
         listenerId = unpacker.getUint32()
-        username = unpacker.getVarLengthMetadata()
-        hostname = unpacker.getVarLengthMetadata()
-        domain = unpacker.getVarLengthMetadata()
-        ip = unpacker.getVarLengthMetadata()
-        os = unpacker.getVarLengthMetadata()
-        process = unpacker.getVarLengthMetadata()
+        username = unpacker.getDataWithLengthPrefix()
+        hostname = unpacker.getDataWithLengthPrefix()
+        domain = unpacker.getDataWithLengthPrefix()
+        ip = unpacker.getDataWithLengthPrefix()
+        os = unpacker.getDataWithLengthPrefix()
+        process = unpacker.getDataWithLengthPrefix()
         pid = unpacker.getUint32() 
         isElevated = unpacker.getUint8()
         sleep = unpacker.getUint32()

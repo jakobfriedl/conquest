@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, sequtils, tables, times, system, osproc, streams, base64, parsetoml
+import terminal, strformat, strutils, tables, system, osproc, streams, parsetoml
 
 import ../utils
 import ../../common/[types, utils, profile, serialize]
@@ -10,36 +10,18 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int): seq[b
     
     var packer = Packer.init()
 
-    # Add listener configuration 
-    packer.add(uint8(CONFIG_LISTENER_UUID))
-    packer.add(uint32(sizeof(uint32)))
+    # Add listener configuration
+    # Variable length data is prefixed with a 4-byte length indicator
     packer.add(string.toUuid(listener.listenerId))
-
-    packer.add(uint8(CONFIG_LISTENER_IP))
-    packer.add(uint32(listener.address.len))
-    packer.addData(string.toBytes(listener.address))
-
-    packer.add(uint8(CONFIG_LISTENER_PORT))
-    packer.add(uint32(sizeof(uint32)))
+    packer.addDataWithLengthPrefix(string.toBytes(listener.address))
     packer.add(uint32(listener.port))
-
-    packer.add(uint8(CONFIG_SLEEP_DELAY))
-    packer.add(uint32(sizeof(uint32)))
     packer.add(uint32(sleep))
-
-    # Add key exchange information 
-    packer.add(uint8(CONFIG_PUBLIC_KEY))
-    packer.add(uint32(sizeof(Key)))
     packer.addData(cq.keyPair.publicKey)
-
-    # Add C2 profile string
-    let profileString = cq.profile.toTomlString()
-    packer.add(uint8(CONFIG_PROFILE))
-    packer.add(uint32(profileString.len))
-    packer.addData(string.toBytes(profileString))
+    packer.addDataWithLengthPrefix(string.toBytes(cq.profile.toTomlString()))
 
     let data = packer.pack() 
     cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Profile configuration serialized.")
+
     return data 
 
 proc compile(cq: Conquest, placeholderLength: int): string = 
