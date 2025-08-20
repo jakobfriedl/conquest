@@ -1,5 +1,6 @@
 import terminal, strformat, strutils, sequtils, tables, times, system
 
+import ../core/logger
 import ../[utils, globals]
 import ../db/database
 import ../protocol/packer
@@ -24,6 +25,10 @@ proc register*(registrationData: seq[byte]): bool =
         # # Store agent in database
         if not cq.dbStoreAgent(agent): 
             cq.writeLine(fgRed, styleBright, fmt"[-] Failed to insert agent {agent.agentId} into database.", "\n")
+            return false
+
+        if not cq.makeAgentLogDirectory(agent.agentId):
+            cq.writeLine(fgRed, styleBright, "[-] Failed to create log")
             return false
 
         cq.agents[agent.agentId] = agent
@@ -77,23 +82,23 @@ proc handleResult*(resultData: seq[byte]) =
             listenerId = Uuid.toString(taskResult.listenerId)
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-        cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, fmt"{$resultData.len} bytes received.")
+        cq.info(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, fmt"{$resultData.len} bytes received.")
         
         case cast[StatusType](taskResult.status):
         of STATUS_COMPLETED:
-            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, fmt"Task {taskId} completed.")
+            cq.success(fgBlack, styleBright, fmt"[{date}]", fgGreen, " [+] ", resetStyle, fmt"Task {taskId} completed.")
         of STATUS_FAILED: 
-            cq.writeLine(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, fmt"Task {taskId} failed.")
+            cq.error(fgBlack, styleBright, fmt"[{date}]", fgRed, styleBright, " [-] ", resetStyle, fmt"Task {taskId} failed.")
         of STATUS_IN_PROGRESS: 
             discard
 
         case cast[ResultType](taskResult.resultType):
         of RESULT_STRING:
             if int(taskResult.length) > 0: 
-                cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, "Output:")
+                cq.info(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, "Output:")
                 # Split result string on newline to keep formatting
                 for line in Bytes.toString(taskResult.data).split("\n"):
-                    cq.writeLine(line)
+                    cq.output(line)
 
         of RESULT_BINARY:
             # Write binary data to a file 

@@ -2,12 +2,7 @@ import strutils, terminal, tables, sequtils, times, strformat, prompt
 import std/wordwrap
 
 import ../common/types
-
-# Utility functions
-proc parseOctets*(ip: string): tuple[first, second, third, fourth: int] = 
-    # TODO: Verify that address is in correct, expected format
-    let octets = ip.split('.')
-    return (parseInt(octets[0]), parseInt(octets[1]), parseInt(octets[2]), parseInt(octets[3]))
+import core/logger
 
 proc validatePort*(portStr: string): bool = 
     try:
@@ -19,17 +14,18 @@ proc validatePort*(portStr: string): bool =
 # Function templates and overwrites
 template writeLine*(cq: Conquest, args: varargs[untyped]) = 
     cq.prompt.writeLine(args)
+    
 proc readLine*(cq: Conquest): string =
     return cq.prompt.readLine()
-template setIndicator*(cq: Conquest, indicator: string) = 
+proc setIndicator*(cq: Conquest, indicator: string) = 
     cq.prompt.setIndicator(indicator)
-template showPrompt*(cq: Conquest) = 
+proc showPrompt*(cq: Conquest) = 
     cq.prompt.showPrompt()
-template hidePrompt*(cq: Conquest) = 
+proc hidePrompt*(cq: Conquest) = 
     cq.prompt.hidePrompt()
-template setStatusBar*(cq: Conquest, statusBar: seq[StatusBarItem]) = 
+proc setStatusBar*(cq: Conquest, statusBar: seq[StatusBarItem]) = 
     cq.prompt.setStatusBar(statusBar) 
-template clear*(cq: Conquest) = 
+proc clear*(cq: Conquest) = 
     cq.prompt.clear()
 
 # Overwrite withOutput function to handle function arguments

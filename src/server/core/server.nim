@@ -1,7 +1,7 @@
 import prompt, terminal, argparse, parsetoml
 import strutils, strformat, times, system, tables
 
-import ./[agent, listener, builder]
+import ./[agent, listener, builder, logger]
 import ../[globals, utils]
 import ../db/database
 import ../../common/[types, utils, crypto, profile]
@@ -150,8 +150,8 @@ proc startServer*(profilePath: string) =
     try:
         # Load and parse profile 
         let profile = parseFile(profilePath)
-        styledEcho(fgGreen, styleBright, "[+] Using profile \"", profile.getString("name"), "\" (", profilePath ,").")
-        styledEcho(fgGreen, styleBright, "[+] ", profile.getString("private_key_file"), ": Private key found.")
+        styledEcho(fgBlack, styleBright, "[*] ", "Using profile \"", profile.getString("name"), "\" (", profilePath ,").")
+        styledEcho(fgBlack, styleBright, "[*] ", "Using private key \"", profile.getString("private_key_file"), "\".")
 
         # Initialize framework context
         cq = Conquest.init(profile)

@@ -40,58 +40,58 @@ proc listenerList*(cq: Conquest) =
 proc listenerStart*(cq: Conquest, host: string, portStr: string) = 
 
     # Validate arguments
-    if not validatePort(portStr):
-        cq.writeLine(fgRed, styleBright, fmt"[-] Invalid port number: {portStr}")
-        return
-
-    let port = portStr.parseInt
-
-    # Create new listener
-    let 
-        name: string = generateUUID() 
-        listenerSettings = newSettings(
-            appName = name,
-            debug = false,
-            address = "",               # For some reason, the program crashes when the ip parameter is passed to the newSettings function
-            port = Port(port)           # As a result, I will hardcode the listener to be served on all interfaces (0.0.0.0) by default
-        )                               # TODO: fix this issue and start the listener on the address passed as the HOST parameter
-    
-    var listener = newApp(settings = listenerSettings)
-
-    # Define API endpoints based on C2 profile
-    # GET requests
-    for endpoint in cq.profile.getArray("http-get.endpoints"): 
-        listener.addRoute(endpoint.getStringValue(), routes.httpGet)
-    
-    # POST requests
-    var postMethods: seq[HttpMethod]
-    for reqMethod in cq.profile.getArray("http-post.request-methods"): 
-        postMethods.add(parseEnum[HttpMethod](reqMethod.getStringValue()))
-
-    # Default method is POST
-    if postMethods.len == 0: 
-        postMethods = @[HttpPost]
-
-    for endpoint in cq.profile.getArray("http-post.endpoints"): 
-        listener.addRoute(endpoint.getStringValue(), routes.httpPost, postMethods)
-    
-    listener.registerErrorHandler(Http404, routes.error404)
-
-    # Store listener in database
-    var listenerInstance = Listener(
-        listenerId: name,
-        address: host,
-        port: port,
-        protocol: HTTP
-    )
-    if not cq.dbStoreListener(listenerInstance):
-        return
-
-    # Start serving
     try:
+        if not validatePort(portStr):
+            raise newException(CatchableError,fmt"[-] Invalid port number: {portStr}")
+
+        let port = portStr.parseInt
+
+        # Create new listener
+        let 
+            name: string = generateUUID() 
+            listenerSettings = newSettings(
+                appName = name,
+                debug = false,
+                address = "",               # For some reason, the program crashes when the ip parameter is passed to the newSettings function
+                port = Port(port)           # As a result, I will hardcode the listener to be served on all interfaces (0.0.0.0) by default
+            )                               # TODO: fix this issue and start the listener on the address passed as the HOST parameter
+        
+        var listener = newApp(settings = listenerSettings)
+
+        # Define API endpoints based on C2 profile
+        # GET requests
+        for endpoint in cq.profile.getArray("http-get.endpoints"): 
+            listener.addRoute(endpoint.getStringValue(), routes.httpGet)
+        
+        # POST requests
+        var postMethods: seq[HttpMethod]
+        for reqMethod in cq.profile.getArray("http-post.request-methods"): 
+            postMethods.add(parseEnum[HttpMethod](reqMethod.getStringValue()))
+
+        # Default method is POST
+        if postMethods.len == 0: 
+            postMethods = @[HttpPost]
+
+        for endpoint in cq.profile.getArray("http-post.endpoints"): 
+            listener.addRoute(endpoint.getStringValue(), routes.httpPost, postMethods)
+        
+        listener.registerErrorHandler(Http404, routes.error404)
+
+        # Store listener in database
+        var listenerInstance = Listener(
+            listenerId: name,
+            address: host,
+            port: port,
+            protocol: HTTP
+        )
+        if not cq.dbStoreListener(listenerInstance):
+            raise newException(CatchableError, "Failed to store listener in database.")
+
+        # Start serving
         discard listener.runAsync() 
         cq.add(listenerInstance)
         cq.writeLine(fgGreen, "[+] ", resetStyle, "Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on {host}:{portStr}.")
+
     except CatchableError as err: 
         cq.writeLine(fgRed, styleBright, "[-] Failed to start listener: ", err.msg)
 

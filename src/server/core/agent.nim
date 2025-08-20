@@ -1,6 +1,6 @@
 import terminal, strformat, strutils, tables, times, system, parsetoml
 
-import ./task
+import ./[task, logger]
 import ../utils
 import ../db/database
 import ../../common/types
@@ -118,6 +118,8 @@ proc agentInteract*(cq: Conquest, name: string) =
     cq.setStatusBar(@[("[mode]", "interact"), ("[username]", fmt"{agent.username}"), ("[hostname]", fmt"{agent.hostname}"), ("[ip]", fmt"{agent.ip}"), ("[domain]", fmt"{agent.domain}")])    
     cq.writeLine(fgYellow, styleBright, "[+] ", resetStyle, fmt"Started interacting with agent ", fgYellow, styleBright, agent.agentId, resetStyle, ". Type 'help' to list available commands.\n")
     cq.interactAgent = agent
+    
+    cq.log(fmt"Started interacting with agent {agent.agentId}.")
 
     while command.replace(" ", "") != "back": 
         command = cq.readLine()

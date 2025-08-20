@@ -41,7 +41,7 @@ proc dbInit*(cq: Conquest) =
 
         """)
         
-        cq.writeLine(fgGreen, styleBright, "[+] ", cq.dbPath, ": Database created.")
+        cq.writeLine(fgBlack, styleBright, "[*] Using new database: \"", cq.dbPath, "\".\n")
         conquestDb.close()
     except SqliteError as err: 
-        cq.writeLine(fgGreen, styleBright, "[+] ", cq.dbPath, ": Database file found.")
+        cq.writeLine(fgBlack, styleBright, "[*] Using existing database: \"", cq.dbPath, "\".\n")

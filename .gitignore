@@ -3,10 +3,13 @@
 *.db
 *.key
 !data/*/.gitkeep
-# Ignore binaries
+# Ignore binaries 
 bin/*
 !bin/.gitkeep
 *.exe
+
+# Ignore log files
+*.log
 
 .vscode/
 

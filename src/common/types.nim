@@ -165,7 +165,7 @@ type
         port*: int
         protocol*: Protocol
 
-# Server context structures
+# Context structures
 type 
     KeyPair* = object 
         privateKey*: Key 
