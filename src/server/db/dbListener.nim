@@ -1,7 +1,7 @@
 import system, terminal, tiny_sqlite
 
 import ../utils
-import ../../common/[types, utils]
+import ../../common/types
 
 # Utility functions 
 proc stringToProtocol*(protocol: string): Protocol = 
@@ -25,7 +25,7 @@ proc dbStoreListener*(cq: Conquest, listener: Listener): bool =
 
         conquestDb.close() 
     except: 
-        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
+        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
         return false
     
     return true
@@ -50,7 +50,7 @@ proc dbGetAllListeners*(cq: Conquest): seq[Listener] =
 
         conquestDb.close()
     except: 
-        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
+        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
 
     return listeners
 
@@ -76,5 +76,5 @@ proc dbListenerExists*(cq: Conquest, listenerName: string): bool =
 
         return res.isSome
     except:
-        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
+        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
         return false

@@ -1,4 +1,4 @@
-import ../common/[types, utils]
+import ../common/types
 
 # Define function prototype
 proc executeSleep(ctx: AgentCtx, task: Task): TaskResult 
@@ -8,7 +8,7 @@ let commands* = @[
     Command(
         name: "sleep",
         commandType: CMD_SLEEP,
-        description: "Update sleep delay ctxuration.",
+        description: "Update sleep delay configuration.",
         example: "sleep 5",
         arguments: @[
             Argument(name: "delay", description: "Delay in seconds.", argumentType: INT, isRequired: true)
@@ -25,6 +25,7 @@ when defined(agent):
 
     import os, strutils, strformat
     import ../agent/protocol/result
+    import ../common/utils
 
     proc executeSleep(ctx: AgentCtx, task: Task): TaskResult = 
 

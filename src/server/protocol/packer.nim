@@ -1,5 +1,4 @@
 import strutils, streams, times, tables
-import ../utils
 import ../../common/[types, utils, serialize, sequence, crypto]
 
 proc serializeTask*(cq: Conquest, task: var Task): seq[byte] = 

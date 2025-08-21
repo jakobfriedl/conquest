@@ -11,9 +11,14 @@ proc validatePort*(portStr: string): bool =
     except ValueError:
         return false
 
+proc getTimestamp*(): string = 
+    return now().format("dd-MM-yyyy HH:mm:ss")
+
 # Function templates and overwrites
-template writeLine*(cq: Conquest, args: varargs[untyped]) = 
+template writeLine*(cq: Conquest, args: varargs[untyped] = "") = 
     cq.prompt.writeLine(args)
+    if cq.interactAgent != nil: 
+        cq.log(extractStrings($(args)))
     
 proc readLine*(cq: Conquest): string =
     return cq.prompt.readLine()

@@ -1,5 +1,5 @@
 import tables, strformat
-import ../common/[types, utils]
+import ../common/types
 
 # Import modules 
 import 

@@ -1,4 +1,4 @@
-import ../common/[types, utils]
+import ../common/types
 
 # Define function prototype
 proc executeShell(ctx: AgentCtx, task: Task): TaskResult 
@@ -24,8 +24,9 @@ when defined(server):
 
 when defined(agent):
 
-    import ../agent/protocol/result
     import osproc, strutils, strformat
+    import ../agent/protocol/result
+    import ../common/utils
     
     proc executeShell(ctx: AgentCtx, task: Task): TaskResult = 
         try: 

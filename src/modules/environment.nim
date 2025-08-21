@@ -1,4 +1,4 @@
-import ../common/[types, utils]
+import ../common/types
 
 # Declare function prototypes
 proc executePs(ctx: AgentCtx, task: Task): TaskResult
@@ -44,6 +44,7 @@ when defined(agent):
     import winim
     import os, strutils, sequtils, strformat, tables, algorithm
     import ../agent/protocol/result
+    import ../common/utils
 
     # TODO: Add user context to process information
     type 

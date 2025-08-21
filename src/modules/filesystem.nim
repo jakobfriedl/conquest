@@ -1,4 +1,4 @@
-import ../common/[types, utils]
+import ../common/types
 
 # Define function prototypes
 proc executePwd(ctx: AgentCtx, task: Task): TaskResult
@@ -97,6 +97,7 @@ when defined(agent):
 
     import os, strutils, strformat, times, algorithm, winim
     import ../agent/protocol/result
+    import ../common/utils
 
     # Retrieve current working directory
     proc executePwd(ctx: AgentCtx, task: Task): TaskResult = 

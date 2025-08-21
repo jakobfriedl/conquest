@@ -1,10 +1,10 @@
 import prompt, terminal, argparse, parsetoml
 import strutils, strformat, times, system, tables
 
-import ./[agent, listener, builder, logger]
+import ./[agent, listener, builder]
 import ../[globals, utils]
 import ../db/database
-import ../../common/[types, utils, crypto, profile]
+import ../../common/[types, crypto, profile]
 
 #[
     Argument parsing
@@ -67,8 +67,7 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
     # Return if no command (or just whitespace) is entered
     if args.replace(" ", "").len == 0: return
 
-    let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-    cq.writeLine(fgBlue, styleBright, fmt"[{date}] ", resetStyle, styleBright, args)
+    cq.writeLine(fgBlue, styleBright, fmt"[{getTimestamp()}] ", resetStyle, styleBright, args)
 
     try:
         let opts = parser.parse(args.split(" ").filterIt(it.len > 0))
@@ -115,7 +114,7 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
     
     # Handle invalid arguments
     except CatchableError: 
-        cq.writeLine(fgRed, styleBright, "[-] ", getCurrentExceptionMsg())
+        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
     
     cq.writeLine("")
 
@@ -150,8 +149,8 @@ proc startServer*(profilePath: string) =
     try:
         # Load and parse profile 
         let profile = parseFile(profilePath)
-        styledEcho(fgBlack, styleBright, "[*] ", "Using profile \"", profile.getString("name"), "\" (", profilePath ,").")
-        styledEcho(fgBlack, styleBright, "[*] ", "Using private key \"", profile.getString("private_key_file"), "\".")
+        styledEcho(fgBlack, styleBright, "[ * ] ", "Using profile \"", profile.getString("name"), "\" (", profilePath ,").")
+        styledEcho(fgBlack, styleBright, "[ * ] ", "Using private key \"", profile.getString("private_key_file"), "\".")
 
         # Initialize framework context
         cq = Conquest.init(profile)

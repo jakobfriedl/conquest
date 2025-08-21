@@ -91,8 +91,7 @@ proc httpGet*(ctx: Context) {.async.} =
             ctx.handled = true # Ensure that HTTP response is sent only once 
 
             # Notify operator that agent collected tasks
-            let date = now().format("dd-MM-yyyy HH:mm:ss")
-            cq.writeLine(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, fmt"{$response.len} bytes sent.")
+            cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] [ * ] ", resetStyle, fmt"{$response.len} bytes sent.")
 
         except CatchableError:
             resp "", Http404

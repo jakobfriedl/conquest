@@ -37,7 +37,7 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int): seq[b
 
     wipeKey(aesKey)
 
-    cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Profile configuration serialized.")
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] [ * ] ", resetStyle, "Profile configuration serialized.")
     return encMaterial & encData 
 
 proc replaceAfterPrefix(content, prefix, value: string): string = 
@@ -63,10 +63,10 @@ proc compile(cq: Conquest, placeholderLength: int): string =
                     .replaceAfterPrefix("-o:", exeFile)
     writeFile(configFile, config)
 
-    cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, fmt"Placeholder created ({placeholder.len()} bytes).")
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] [ * ] ", resetStyle, fmt"Placeholder created ({placeholder.len()} bytes).")
     
     # Build agent by executing the ./build.sh script on the system.
-    cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Compiling agent.")
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] [ * ] ", resetStyle, "Compiling agent.")
     
     try:
         # Using the startProcess function from the 'osproc' module, it is possible to retrieve the output as it is received, line-by-line instead of all at once
@@ -81,19 +81,19 @@ proc compile(cq: Conquest, placeholderLength: int): string =
 
         # Check if the build succeeded or not
         if exitCode == 0:
-            cq.writeLine(fgGreen, "[*] ", resetStyle, "Agent payload generated successfully.")
+            cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", fgGreen, "[ + ] ", resetStyle, "Agent payload generated successfully.")
             return exeFile
         else:
-            cq.writeLine(fgRed, styleBright, "[-] ", resetStyle, "Build script exited with code ", $exitCode)
+            cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", fgRed, "[ - ] ", resetStyle, "Build script exited with code ", $exitCode)
             return ""
 
     except CatchableError as err:
-        cq.writeLine(fgRed, styleBright, "[-] ", resetStyle, "An error occurred: ", err.msg)
+        cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", fgRed, "[ - ] ", resetStyle, "An error occurred: ", err.msg)
         return ""
     
 proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): bool = 
     
-    cq.writeLine(fgBlack, styleBright, "[*] ", resetStyle, "Patching profile configuration into agent.")
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] [ * ] ", resetStyle, "Patching profile configuration into agent.")
 
     try: 
         var exeBytes = readFile(unpatchedExePath) 
@@ -103,17 +103,17 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): bo
         if placeholderPos == -1: 
             raise newException(CatchableError, "Placeholder not found.")
         
-        cq.writeLine(fgBlack, styleBright, "[+] ", resetStyle, fmt"Placeholder found at offset 0x{placeholderPos:08X}.")
+        cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] [ + ] ", resetStyle, fmt"Placeholder found at offset 0x{placeholderPos:08X}.")
 
         # Patch placeholder bytes
         for i, c in Bytes.toString(configuration): 
             exeBytes[placeholderPos + i] = c 
 
         writeFile(unpatchedExePath, exeBytes)
-        cq.writeLine(fgGreen, "[+] ", resetStyle, fmt"Agent payload patched successfully: {unpatchedExePath}.")
+        cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", fgGreen, "[ + ] ", resetStyle, fmt"Agent payload patched successfully: {unpatchedExePath}.")
 
     except CatchableError as err:
-        cq.writeLine(fgRed, styleBright, "[-] ", resetStyle, "An error occurred: ", err.msg) 
+        cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", fgRed, styleBright, "[ - ] ", resetStyle, "An error occurred: ", err.msg) 
         return false
 
     return true 
@@ -123,7 +123,7 @@ proc agentBuild*(cq: Conquest, listener, sleep: string): bool {.discardable.} =
 
     # Verify that listener exists
     if not cq.dbListenerExists(listener.toUpperAscii): 
-        cq.writeLine(fgRed, styleBright, fmt"[-] Listener {listener.toUpperAscii} does not exist.")
+        cq.writeLine(fgRed, styleBright, fmt"[ - ] Listener {listener.toUpperAscii} does not exist.")
         return false
 
     let listener = cq.listeners[listener.toUpperAscii] 

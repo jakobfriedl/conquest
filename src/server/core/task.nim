@@ -1,6 +1,5 @@
 import times, strformat, terminal, tables, sequtils, strutils
 
-import ./logger
 import ../utils
 import ../protocol/parser
 import ../../modules/manager
@@ -49,15 +48,13 @@ proc handleHelp(cq: Conquest, parsed: seq[string]) =
         cq.displayHelp()
     except ValueError: 
         # Command was not found
-        cq.writeLine(fgRed, styleBright, fmt"[-] The command '{parsed[1]}' does not exist." & '\n')
+        cq.writeLine(fgRed, styleBright, fmt"[ - ] The command '{parsed[1]}' does not exist." & '\n')
 
 proc handleAgentCommand*(cq: Conquest, input: string) = 
     # Return if no command (or just whitespace) is entered
     if input.replace(" ", "").len == 0: return
 
-    let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-    cq.writeLine(fgBlue, styleBright, fmt"[{date}] ", fgYellow, fmt"[{cq.interactAgent.agentId}] ", resetStyle, styleBright, input)
-    cq.log(fmt"Agent command received: {input}")
+    cq.writeLine(fgBlue, styleBright, fmt"[{getTimestamp()}] ", fgYellow, fmt"[{cq.interactAgent.agentId}] ", resetStyle, styleBright, input)
 
     # Convert user input into sequence of string arguments
     let parsedArgs = parseInput(input)
@@ -80,8 +77,8 @@ proc handleAgentCommand*(cq: Conquest, input: string) =
 
         # Add task to queue
         cq.interactAgent.tasks.add(task)
-        cq.info(fgBlack, styleBright, fmt"[{date}] [*] ", resetStyle, fmt"Tasked agent to {command.description.toLowerAscii()}")
+        cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] [ * ] ", resetStyle, fmt"Tasked agent to {command.description.toLowerAscii()}")
 
     except CatchableError: 
-        cq.error(getCurrentExceptionMsg() & "\n")
+        cq.writeLine(getCurrentExceptionMsg() & "\n")
         return
