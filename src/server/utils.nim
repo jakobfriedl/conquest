@@ -11,12 +11,6 @@ proc validatePort*(portStr: string): bool =
     except ValueError:
         return false
 
-# Overwrite withOutput function to handle function arguments
-proc withOutput*(cq: Conquest, outputFunction: proc(cq: Conquest, args: string), args: string) =
-    cq.prompt.hidePrompt()
-    outputFunction(cq, args)
-    cq.prompt.showPrompt()
-
 # Table border characters
 type
   Cell = object

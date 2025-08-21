@@ -123,7 +123,8 @@ proc agentInteract*(cq: Conquest, name: string) =
 
     while command.replace(" ", "") != "back": 
         command = cq.prompt.readLine()
-        cq.withOutput(handleAgentCommand, command)
-
+        cq.handleAgentCommand(command)
+    
+    # Reset interactAgent field after interaction with agent is ended using 'back' command
     cq.interactAgent = nil 
 

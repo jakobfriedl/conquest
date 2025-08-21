@@ -172,4 +172,4 @@ proc startServer*(profilePath: string) =
         cq.prompt.showPrompt() 
  
         var command: string = cq.prompt.readLine()
-        cq.withOutput(handleConsoleCommand, command)
+        cq.handleConsoleCommand(command)
