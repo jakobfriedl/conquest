@@ -1,8 +1,9 @@
 import prologue, terminal, strformat, parsetoml, tables
-import strutils, times, base64
+import strutils, base64
 
 import ./handlers
-import ../[utils, globals]
+import ../globals
+import ../core/logger
 import ../../common/[types, utils, serialize, profile]
 
 proc error404*(ctx: Context) {.async.} = 
@@ -91,7 +92,7 @@ proc httpGet*(ctx: Context) {.async.} =
             ctx.handled = true # Ensure that HTTP response is sent only once 
 
             # Notify operator that agent collected tasks
-            cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] [ * ] ", resetStyle, fmt"{$response.len} bytes sent.")
+            cq.info(fmt"{$response.len} bytes sent.")
 
         except CatchableError:
             resp "", Http404

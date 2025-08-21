@@ -1,6 +1,6 @@
 import system, terminal, tiny_sqlite
 
-import ../utils
+import ../core/logger
 import ../../common/types
 
 # Utility functions 
@@ -25,7 +25,7 @@ proc dbStoreListener*(cq: Conquest, listener: Listener): bool =
 
         conquestDb.close() 
     except: 
-        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
+        cq.error(getCurrentExceptionMsg())
         return false
     
     return true
@@ -50,7 +50,7 @@ proc dbGetAllListeners*(cq: Conquest): seq[Listener] =
 
         conquestDb.close()
     except: 
-        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
+        cq.error(getCurrentExceptionMsg())
 
     return listeners
 
@@ -76,5 +76,5 @@ proc dbListenerExists*(cq: Conquest, listenerName: string): bool =
 
         return res.isSome
     except:
-        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
+        cq.error(getCurrentExceptionMsg())
         return false

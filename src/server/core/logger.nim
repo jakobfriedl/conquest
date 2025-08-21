@@ -1,4 +1,4 @@
-import times, strformat, strutils
+import times, strformat, strutils, prompt, terminal
 import std/[dirs, paths]
 import ../../common/[types, profile]
 
@@ -31,3 +31,34 @@ proc extractStrings*(args: string): string =
         if str.startsWith("\""): 
             message &= str
     return message.replace("\"", "")
+
+proc getTimestamp*(): string = 
+    return now().format("dd-MM-yyyy HH:mm:ss")
+
+# Function templates and overwrites
+template writeLine*(cq: Conquest, args: varargs[untyped] = "") = 
+    cq.prompt.writeLine(args)
+    if cq.interactAgent != nil: 
+        cq.log(extractStrings($(args)))
+
+# Wrapper functions for logging/console output
+template info*(cq: Conquest, args: varargs[untyped] = "") = 
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", $LOG_INFO, resetStyle, args)
+
+template error*(cq: Conquest, args: varargs[untyped] = "") = 
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", fgRed, $LOG_ERROR, resetStyle, args)
+
+template success*(cq: Conquest, args: varargs[untyped] = "") = 
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", fgGreen, $LOG_SUCCESS, resetStyle, args)
+
+template warning*(cq: Conquest, args: varargs[untyped] = "") = 
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", fgYellow, styleDim, $LOG_WARNING, resetStyle, args)
+
+template input*(cq: Conquest, args: varargs[untyped] = "") = 
+    if cq.interactAgent != nil: 
+        cq.writeLine(fgBlue, styleBright, fmt"[{getTimestamp()}] ", fgYellow, fmt"[{cq.interactAgent.agentId}] ", resetStyle, args)
+    else: 
+        cq.writeLine(fgBlue, styleBright, fmt"[{getTimestamp()}] ", resetStyle, args)
+
+template output*(cq: Conquest, args: varargs[untyped] = "") = 
+    cq.writeLine(args)

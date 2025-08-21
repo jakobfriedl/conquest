@@ -1,16 +1,16 @@
-import times, strformat, terminal, tables, sequtils, strutils
+import strformat, terminal, tables, sequtils, strutils
 
-import ../utils
 import ../protocol/parser
+import ../core/logger
 import ../../modules/manager
 import ../../common/types
 
 proc displayHelp(cq: Conquest) = 
-    cq.writeLine("Available commands:")
-    cq.writeLine(" * back")
+    cq.output("Available commands:")
+    cq.output(" * back")
     for key, cmd in getAvailableCommands(): 
-        cq.writeLine(fmt" * {cmd.name:<15}{cmd.description}")
-    cq.writeLine()
+        cq.output(fmt" * {cmd.name:<15}{cmd.description}")
+    cq.output()
 
 proc displayCommandHelp(cq: Conquest, command: Command) = 
     var usage = command.name & " " & command.arguments.mapIt(
@@ -20,24 +20,24 @@ proc displayCommandHelp(cq: Conquest, command: Command) =
     if command.example != "": 
         usage &= "\nExample : " & command.example
 
-    cq.writeLine(fmt"""
+    cq.output(fmt"""
 {command.description}
 
 Usage   : {usage}
 """)
 
     if command.arguments.len > 0:
-        cq.writeLine("Arguments:\n")
+        cq.output("Arguments:\n")
 
         let header = @["Name", "Type", "Required", "Description"]
-        cq.writeLine(fmt"   {header[0]:<15} {header[1]:<6} {header[2]:<8} {header[3]}")
-        cq.writeLine(fmt"   {'-'.repeat(15)} {'-'.repeat(6)} {'-'.repeat(8)} {'-'.repeat(20)}")
+        cq.output(fmt"   {header[0]:<15} {header[1]:<6} {header[2]:<8} {header[3]}")
+        cq.output(fmt"   {'-'.repeat(15)} {'-'.repeat(6)} {'-'.repeat(8)} {'-'.repeat(20)}")
         
         for arg in command.arguments: 
             let isRequired = if arg.isRequired: "YES" else: "NO"
-            cq.writeLine(fmt" * {arg.name:<15} {($arg.argumentType).toUpperAscii():<6} {isRequired:>8} {arg.description}")
+            cq.output(fmt" * {arg.name:<15} {($arg.argumentType).toUpperAscii():<6} {isRequired:>8} {arg.description}")
 
-        cq.writeLine()
+        cq.output()
 
 proc handleHelp(cq: Conquest, parsed: seq[string]) = 
     try: 
@@ -48,13 +48,13 @@ proc handleHelp(cq: Conquest, parsed: seq[string]) =
         cq.displayHelp()
     except ValueError: 
         # Command was not found
-        cq.writeLine(fgRed, styleBright, fmt"[ - ] The command '{parsed[1]}' does not exist." & '\n')
+        cq.error("The command '{parsed[1]}' does not exist." & '\n')
 
 proc handleAgentCommand*(cq: Conquest, input: string) = 
     # Return if no command (or just whitespace) is entered
     if input.replace(" ", "").len == 0: return
 
-    cq.writeLine(fgBlue, styleBright, fmt"[{getTimestamp()}] ", fgYellow, fmt"[{cq.interactAgent.agentId}] ", resetStyle, styleBright, input)
+    cq.input(input)
 
     # Convert user input into sequence of string arguments
     let parsedArgs = parseInput(input)
@@ -77,8 +77,8 @@ proc handleAgentCommand*(cq: Conquest, input: string) =
 
         # Add task to queue
         cq.interactAgent.tasks.add(task)
-        cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] [ * ] ", resetStyle, fmt"Tasked agent to {command.description.toLowerAscii()}")
+        cq.info(fmt"Tasked agent to {command.description.toLowerAscii()}")
 
     except CatchableError: 
-        cq.writeLine(getCurrentExceptionMsg() & "\n")
+        cq.error(getCurrentExceptionMsg() & "\n")
         return

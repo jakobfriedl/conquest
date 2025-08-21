@@ -1,7 +1,7 @@
 import system, terminal, tiny_sqlite
 
 import ./[dbAgent, dbListener]
-import ../utils
+import ../core/logger
 import ../../common/types
 
 # Export functions so that only ./db/database is required to be imported
@@ -41,7 +41,7 @@ proc dbInit*(cq: Conquest) =
 
         """)
         
-        cq.writeLine(fgBlack, styleBright, "[ * ] Using new database: \"", cq.dbPath, "\".\n")
+        cq.info("Using new database: \"", cq.dbPath, "\".\n")
         conquestDb.close()
-    except SqliteError as err: 
-        cq.writeLine(fgBlack, styleBright, "[ * ] Using existing database: \"", cq.dbPath, "\".\n")
+    except SqliteError: 
+        cq.info("Using existing database: \"", cq.dbPath, "\".\n")

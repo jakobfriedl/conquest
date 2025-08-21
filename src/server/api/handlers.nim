@@ -1,6 +1,6 @@
 import terminal, strformat, strutils, sequtils, tables, times, system
 
-import ../[utils, globals]
+import ../globals
 import ../db/database
 import ../protocol/packer
 import ../core/logger
@@ -19,23 +19,22 @@ proc register*(registrationData: seq[byte]): bool =
 
         # Validate that listener exists        
         if not cq.dbListenerExists(agent.listenerId.toUpperAscii): 
-            cq.writeLine(fgRed, styleBright, fmt"[ - ] {agent.ip} attempted to register to non-existent listener: {agent.listenerId}.", "\n")
+            cq.error(fmt"{agent.ip} attempted to register to non-existent listener: {agent.listenerId}.", "\n")
             return false
 
         # Store agent in database
         if not cq.dbStoreAgent(agent): 
-            cq.writeLine(fgRed, styleBright, fmt"[ - ] Failed to insert agent {agent.agentId} into database.", "\n")
+            cq.error(fmt"Failed to insert agent {agent.agentId} into database.", "\n")
             return false
 
         # Create log directory
         if not cq.makeAgentLogDirectory(agent.agentId):
-            cq.writeLine(fgRed, styleBright, "[ - ] Failed to create writeLine")
+            cq.error("Failed to create log directory.", "\n")
             return false
 
         cq.agents[agent.agentId] = agent
 
-        let date = agent.firstCheckin.format("dd-MM-yyyy HH:mm:ss")
-        cq.writeLine(fgYellow, styleBright, fmt"[{date}] ", resetStyle, "Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
+        cq.info("Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
 
     return true
 
@@ -54,12 +53,12 @@ proc getTasks*(heartbeat: seq[byte]): seq[seq[byte]] =
 
         # Check if listener exists
         if not cq.dbListenerExists(listenerId): 
-            cq.writeLine(fgRed, styleBright, fmt"[ - ] Task-retrieval request made to non-existent listener: {listenerId}.", "\n")
+            cq.error(fmt"Task-retrieval request made to non-existent listener: {listenerId}.", "\n")
             raise newException(ValueError, "Invalid listener.")
 
         # Check if agent exists
         if not cq.dbAgentExists(agentId): 
-            cq.writeLine(fgRed, styleBright, fmt"[ - ] Task-retrieval request made to non-existent agent: {agentId}.", "\n")
+            cq.error(fmt"Task-retrieval request made to non-existent agent: {agentId}.", "\n")
             raise newException(ValueError, "Invalid agent.")
 
         # Update the last check-in date for the accessed agent
@@ -80,32 +79,31 @@ proc handleResult*(resultData: seq[byte]) =
             taskResult = cq.deserializeTaskResult(resultData) 
             taskId = Uuid.toString(taskResult.taskId)
             agentId = Uuid.toString(taskResult.header.agentId)
-            listenerId = Uuid.toString(taskResult.listenerId)
 
-        cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] [ * ] ", resetStyle, fmt"{$resultData.len} bytes received.")
+        cq.info(fmt"{$resultData.len} bytes received.")
         
         case cast[StatusType](taskResult.status):
         of STATUS_COMPLETED:
-            cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}]", fgGreen, " [ + ] ", resetStyle, fmt"Task {taskId} completed.")
+            cq.success(fmt"Task {taskId} completed.")
         of STATUS_FAILED: 
-            cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}]", fgRed, styleBright, " [ - ] ", resetStyle, fmt"Task {taskId} failed.")
+            cq.error(fmt"Task {taskId} failed.")
         of STATUS_IN_PROGRESS: 
             discard
 
         case cast[ResultType](taskResult.resultType):
         of RESULT_STRING:
             if int(taskResult.length) > 0: 
-                cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] [ * ] ", resetStyle, "Output:")
+                cq.info("Output:")
                 # Split result string on newline to keep formatting
                 for line in Bytes.toString(taskResult.data).split("\n"):
-                    cq.writeLine(line)
+                    cq.output(line)
 
         of RESULT_BINARY:
             # Write binary data to a file 
-            cq.writeLine()
+            cq.output()
 
         of RESULT_NO_OUTPUT:
-            cq.writeLine()
+            cq.output()
         
         # Update task queue to include all tasks, except the one that was just completed
         cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)

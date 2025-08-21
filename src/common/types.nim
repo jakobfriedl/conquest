@@ -62,6 +62,16 @@ type
         CONFIG_PUBLIC_KEY = 4'u8
         CONFIG_PROFILE = 5'u8
 
+    LogType* = enum 
+        # LOG_INFO = "[ * ] "
+        # LOG_ERROR = "[ - ] "
+        # LOG_SUCCESS = "[ + ] "
+        # LOG_WARNING = "[ ! ] "
+        LOG_INFO = "[INFO] "
+        LOG_ERROR = "[FAIL] "
+        LOG_SUCCESS = "[DONE] "
+        LOG_WARNING = "[WARN] "
+
 # Encryption 
 type    
     Uuid* = uint32

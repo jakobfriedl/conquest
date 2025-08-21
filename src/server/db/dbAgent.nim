@@ -1,6 +1,6 @@
 import system, terminal, tiny_sqlite, times, sequtils
 
-import ../utils
+import ../core/logger
 import ../../common/types
 
 #[
@@ -21,7 +21,7 @@ proc dbStoreAgent*(cq: Conquest, agent: Agent): bool =
 
         conquestDb.close() 
     except: 
-        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
+        cq.error(getCurrentExceptionMsg())
         return false
     
     return true
@@ -41,7 +41,7 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
                 copyMem(sessionKey[0].addr, sessionKeyBlob[0].unsafeAddr, 32)
             else:
                 # Handle invalid session key - log error but continue
-                cq.writeLine(fgYellow, styleBright, "[!] Invalid session key length for agent: ", agentId)
+                cq.warning("Invalid session key length for agent: ", agentId)
 
             let a = Agent(
                 agentId: agentId,
@@ -65,7 +65,7 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
 
         conquestDb.close()
     except: 
-        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
+        cq.error(getCurrentExceptionMsg())
 
     return agents
 
@@ -83,7 +83,7 @@ proc dbGetAllAgentsByListener*(cq: Conquest, listenerName: string): seq[Agent] =
             if sessionKeyBlob.len == 32:
                 copyMem(sessionKey[0].addr, sessionKeyBlob[0].unsafeAddr, 32)
             else:
-                cq.writeLine(fgYellow, styleBright, "[!] Invalid session key length for agent: ", agentId)
+                cq.warning("Invalid session key length for agent: ", agentId)
 
             let a = Agent(
                 agentId: agentId,
@@ -107,7 +107,7 @@ proc dbGetAllAgentsByListener*(cq: Conquest, listenerName: string): seq[Agent] =
 
         conquestDb.close()
     except: 
-        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
+        cq.error(getCurrentExceptionMsg())
 
     return agents
 
@@ -119,7 +119,7 @@ proc dbDeleteAgentByName*(cq: Conquest, name: string): bool =
 
         conquestDb.close()
     except: 
-        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
+        cq.error(getCurrentExceptionMsg())
         return false
     
     return true
@@ -134,7 +134,7 @@ proc dbAgentExists*(cq: Conquest, agentName: string): bool =
 
         return res.isSome
     except:
-        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
+        cq.error(getCurrentExceptionMsg())
         return false
 
 proc dbUpdateCheckin*(cq: Conquest, agentName: string, timestamp: string): bool =
@@ -146,7 +146,7 @@ proc dbUpdateCheckin*(cq: Conquest, agentName: string, timestamp: string): bool 
         conquestDb.close()
         return true
     except:
-        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
+        cq.error(getCurrentExceptionMsg())
         return false
 
 proc dbUpdateSleep*(cq: Conquest, agentName: string, delay: int): bool =
@@ -158,5 +158,5 @@ proc dbUpdateSleep*(cq: Conquest, agentName: string, delay: int): bool =
         conquestDb.close()
         return true
     except:
-        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
+        cq.error(getCurrentExceptionMsg())
         return false

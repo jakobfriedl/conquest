@@ -4,6 +4,7 @@ import prologue, parsetoml
 import ../utils
 import ../api/routes
 import ../db/database
+import ../core/logger
 import ../../common/[types, utils, profile]
 
 # Utility functions
@@ -17,7 +18,7 @@ proc add(cq: Conquest, listener: Listener) =
     Listener management
 ]#
 proc listenerUsage*(cq: Conquest) = 
-    cq.writeLine("""Manage, start and stop listeners.
+    cq.output("""Manage, start and stop listeners.
 
 Usage:
   listener [options] COMMAND
@@ -88,10 +89,10 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
         # Start serving
         discard listener.runAsync() 
         cq.add(listenerInstance)
-        cq.writeLine(fgGreen, "[ + ] ", resetStyle, "Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on {host}:{portStr}.")
+        cq.success("Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on {host}:{portStr}.")
 
     except CatchableError as err: 
-        cq.writeLine(fgRed, styleBright, "[ - ] Failed to start listener: ", err.msg)
+        cq.error("Failed to start listener: ", err.msg)
 
 proc restartListeners*(cq: Conquest) = 
     let listeners: seq[Listener] = cq.dbGetAllListeners()
@@ -129,15 +130,15 @@ proc restartListeners*(cq: Conquest) =
             
             discard listener.runAsync() 
             cq.add(l)
-            cq.writeLine(fgGreen, "[ + ] ", resetStyle, "Restarted listener", fgGreen, fmt" {l.listenerId} ", resetStyle, fmt"on {l.address}:{$l.port}.")
+            cq.success("Restarted listener", fgGreen, fmt" {l.listenerId} ", resetStyle, fmt"on {l.address}:{$l.port}.")
         
             # Delay before serving another listener to avoid crashing the application
             waitFor sleepAsync(100)        
         
         except CatchableError as err: 
-            cq.writeLine(fgRed, styleBright, "[ - ] Failed to restart listener: ", err.msg)
+            cq.error("Failed to restart listener: ", err.msg)
         
-    cq.writeLine("")
+    cq.output()
 
 
 # Remove listener from database, preventing automatic startup on server restart
@@ -145,14 +146,14 @@ proc listenerStop*(cq: Conquest, name: string) =
         
     # Check if listener supplied via -n parameter exists in database
     if not cq.dbListenerExists(name.toUpperAscii): 
-        cq.writeLine(fgRed, styleBright, fmt"[ - ] Listener {name.toUpperAscii} does not exist.")
+        cq.error(fmt"Listener {name.toUpperAscii} does not exist.")
         return
 
     # Remove database entry
     if not cq.dbDeleteListenerByName(name.toUpperAscii): 
-        cq.writeLine(fgRed, styleBright, "[ - ] Failed to stop listener: ", getCurrentExceptionMsg())
+        cq.error("Failed to stop listener: ", getCurrentExceptionMsg())
         return
 
     cq.delListener(name)
-    cq.writeLine(fgGreen, "[ + ] ", resetStyle, "Stopped listener ", fgGreen, name.toUpperAscii, resetStyle, ".")
+    cq.success("Stopped listener ", fgGreen, name.toUpperAscii, resetStyle, ".")
     

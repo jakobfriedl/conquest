@@ -1,9 +1,10 @@
 import prompt, terminal, argparse, parsetoml
-import strutils, strformat, times, system, tables
+import strutils, strformat, system, tables
 
 import ./[agent, listener, builder]
 import ../[globals, utils]
 import ../db/database
+import ../core/logger
 import ../../common/[types, crypto, profile]
 
 #[
@@ -67,7 +68,7 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
     # Return if no command (or just whitespace) is entered
     if args.replace(" ", "").len == 0: return
 
-    cq.writeLine(fgBlue, styleBright, fmt"[{getTimestamp()}] ", resetStyle, styleBright, args)
+    cq.input(args)
 
     try:
         let opts = parser.parse(args.split(" ").filterIt(it.len > 0))
@@ -79,7 +80,7 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
             quit(0) 
 
         of "help": # Display help menu
-            cq.writeLine(parser.help())
+            cq.output(parser.help())
 
         of "listener": 
             case opts.listener.get.command
@@ -110,13 +111,13 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
     # Handle help flag
     except ShortCircuit as err:
         if err.flag == "argparse_help":
-            cq.writeLine(err.help)
+            cq.error(err.help)
     
     # Handle invalid arguments
     except CatchableError: 
-        cq.writeLine(fgRed, styleBright, "[ - ] ", getCurrentExceptionMsg())
+        cq.error(getCurrentExceptionMsg())
     
-    cq.writeLine("")
+    cq.output()
 
 proc header() = 
     echo ""
@@ -147,13 +148,13 @@ proc startServer*(profilePath: string) =
     header()
     
     try:
+        # Initialize framework context
         # Load and parse profile 
         let profile = parseFile(profilePath)
-        styledEcho(fgBlack, styleBright, "[ * ] ", "Using profile \"", profile.getString("name"), "\" (", profilePath ,").")
-        styledEcho(fgBlack, styleBright, "[ * ] ", "Using private key \"", profile.getString("private_key_file"), "\".")
-
-        # Initialize framework context
         cq = Conquest.init(profile)
+
+        cq.info("Using profile \"", profile.getString("name"), "\" (", profilePath ,").")
+        cq.info("Using private key \"", profile.getString("private_key_file"), "\".")
         
     except CatchableError as err:
         echo err.msg
@@ -166,9 +167,9 @@ proc startServer*(profilePath: string) =
 
     # Main loop
     while true: 
-        cq.setIndicator("[conquest]> ")
-        cq.setStatusBar(@[("[mode]", "manage"), ("[listeners]", $len(cq.listeners)), ("[agents]", $len(cq.agents))])    
-        cq.showPrompt() 
+        cq.prompt.setIndicator("[conquest]> ")
+        cq.prompt.setStatusBar(@[("[mode]", "manage"), ("[listeners]", $len(cq.listeners)), ("[agents]", $len(cq.agents))])    
+        cq.prompt.showPrompt() 
  
-        var command: string = cq.readLine()
+        var command: string = cq.prompt.readLine()
         cq.withOutput(handleConsoleCommand, command)

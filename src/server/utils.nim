@@ -11,33 +11,11 @@ proc validatePort*(portStr: string): bool =
     except ValueError:
         return false
 
-proc getTimestamp*(): string = 
-    return now().format("dd-MM-yyyy HH:mm:ss")
-
-# Function templates and overwrites
-template writeLine*(cq: Conquest, args: varargs[untyped] = "") = 
-    cq.prompt.writeLine(args)
-    if cq.interactAgent != nil: 
-        cq.log(extractStrings($(args)))
-    
-proc readLine*(cq: Conquest): string =
-    return cq.prompt.readLine()
-proc setIndicator*(cq: Conquest, indicator: string) = 
-    cq.prompt.setIndicator(indicator)
-proc showPrompt*(cq: Conquest) = 
-    cq.prompt.showPrompt()
-proc hidePrompt*(cq: Conquest) = 
-    cq.prompt.hidePrompt()
-proc setStatusBar*(cq: Conquest, statusBar: seq[StatusBarItem]) = 
-    cq.prompt.setStatusBar(statusBar) 
-proc clear*(cq: Conquest) = 
-    cq.prompt.clear()
-
 # Overwrite withOutput function to handle function arguments
 proc withOutput*(cq: Conquest, outputFunction: proc(cq: Conquest, args: string), args: string) =
-    cq.hidePrompt()
+    cq.prompt.hidePrompt()
     outputFunction(cq, args)
-    cq.showPrompt()
+    cq.prompt.showPrompt()
 
 # Table border characters
 type
@@ -102,12 +80,12 @@ proc drawTable*(cq: Conquest, listeners: seq[Listener]) =
     let widths = @[8, 15, 5, 8, 6]
     let headerCells = headers.mapIt(Cell(text: it, fg: fgWhite, bg: bgDefault))    
 
-    cq.writeLine(border(topLeft, topMid, topRight, widths))
+    cq.output(border(topLeft, topMid, topRight, widths))
     for line in formatRow(headerCells, widths):
-        cq.hidePrompt()
+        cq.prompt.hidePrompt()
         cq.writeRow(line)
-        cq.showPrompt()
-    cq.writeLine(border(midLeft, midMid, midRight, widths))
+        cq.prompt.showPrompt()
+    cq.output(border(midLeft, midMid, midRight, widths))
 
     for l in listeners:
         # Get number of agents connected to the listener
@@ -122,11 +100,11 @@ proc drawTable*(cq: Conquest, listeners: seq[Listener]) =
         ]
 
         for line in formatRow(rowCells, widths):
-            cq.hidePrompt()
+            cq.prompt.hidePrompt()
             cq.writeRow(line)
-            cq.showPrompt() 
+            cq.prompt.showPrompt() 
 
-    cq.writeLine(border(botLeft, botMid, botRight, widths)) 
+    cq.output(border(botLeft, botMid, botRight, widths)) 
 
 # Calculate time since latest checking in format: Xd Xh Xm Xs
 proc timeSince*(agent: Agent, timestamp: DateTime): Cell = 
@@ -165,12 +143,12 @@ proc drawTable*(cq: Conquest, agents: seq[Agent]) =
     let widths = @[8, 15, 15, 15, 16, 13, 5, 8]
     let headerCells = headers.mapIt(Cell(text: it, fg: fgWhite, bg: bgDefault))
 
-    cq.writeLine(border(topLeft, topMid, topRight, widths))
+    cq.output(border(topLeft, topMid, topRight, widths))
     for line in formatRow(headerCells, widths):
-        cq.hidePrompt()
+        cq.prompt.hidePrompt()
         cq.writeRow(line)
-        cq.showPrompt()
-    cq.writeLine(border(midLeft, midMid, midRight, widths))
+        cq.prompt.showPrompt()
+    cq.output(border(midLeft, midMid, midRight, widths))
 
     for a in agents:
 
@@ -187,8 +165,8 @@ proc drawTable*(cq: Conquest, agents: seq[Agent]) =
 
         # Highlight agents running within elevated processes
         for line in formatRow(cells, widths):
-            cq.hidePrompt()
+            cq.prompt.hidePrompt()
             cq.writeRow(line)
-            cq.showPrompt()
+            cq.prompt.showPrompt()
 
-    cq.writeLine(border(botLeft, botMid, botRight, widths)) 
+    cq.output(border(botLeft, botMid, botRight, widths)) 
