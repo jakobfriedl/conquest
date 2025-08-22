@@ -1,11 +1,12 @@
 import times, strformat, strutils, prompt, terminal
 import std/[dirs, paths]
+
+import ../globals
 import ../../common/[types, profile]
 
 proc makeAgentLogDirectory*(cq: Conquest, agentId: string): bool = 
     try: 
-        let cqDir = cq.profile.getString("conquest_directory")
-        createDir(cast[Path](fmt"{cqDir}/data/logs/{agentId}"))
+        createDir(cast[Path](fmt"{CONQUEST_ROOT}/data/logs/{agentId}"))
         return true 
     except OSError:
         return false 
@@ -13,8 +14,7 @@ proc makeAgentLogDirectory*(cq: Conquest, agentId: string): bool =
 proc log*(cq: Conquest, logEntry: string) = 
     let 
         date = now().format("dd-MM-yyyy")
-        cqDir = cq.profile.getString("conquest_directory")
-        agentLogPath = fmt"{cqDir}/data/logs/{cq.interactAgent.agentId}/{date}.session.log"
+        agentLogPath = fmt"{CONQUEST_ROOT}/data/logs/{cq.interactAgent.agentId}/{date}.session.log"
 
     # Write log entry to file 
     let file = open(agentLogPath, fmAppend)

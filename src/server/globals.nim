@@ -1,4 +1,6 @@
+import os 
 import ../common/types
 
-# Global variable for handling listeners, agents and console output
+# Global server context
+const CONQUEST_ROOT* {.strdefine.} = ""
 var cq*: Conquest

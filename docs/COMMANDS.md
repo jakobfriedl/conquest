@@ -14,8 +14,8 @@ Basic API-only Commands
 - [x] mv          : Move a file 
 - [x] cp          : Copy a file
 - [ ] cat/type    : Display contents of a file
-- [ ] env         : Display environment variables
-- [ ] ps          : List processes
+- [x] env         : Display environment variables
+- [x] ps          : List processes
 - [ ] whoami      : Get UID and privileges, etc. 
 
 - [ ] token       : Token impersonation

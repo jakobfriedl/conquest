@@ -3,9 +3,8 @@
 name = "cq-default-profile"
 
 # Important file paths and locations
-conquest_directory = "/mnt/c/Users/jakob/Documents/Projects/conquest"
-private_key_file = "/mnt/c/Users/jakob/Documents/Projects/conquest/data/keys/conquest-server_x25519_private.key"
-database_file = "/mnt/c/Users/jakob/Documents/Projects/conquest/data/conquest.db"
+private-key-file = "data/keys/conquest-server_x25519_private.key"
+database-file = "data/conquest.db"
 
 # General agent settings 
 [agent]

@@ -1,5 +1,6 @@
 import terminal, strformat, strutils, sequtils, tables, system, osproc, streams, parsetoml
 
+import ../globals
 import ../core/logger
 import ../db/database 
 import ../../common/[types, utils, profile, serialize, crypto]
@@ -51,10 +52,13 @@ proc replaceAfterPrefix(content, prefix, value: string): string =
 proc compile(cq: Conquest, placeholderLength: int): string = 
     
     let 
-        cqDir = cq.profile.getString("conquest_directory")
-        configFile = fmt"{cqDir}/src/agent/nim.cfg"  
-        exeFile = fmt"{cqDir}/bin/monarch.x64.exe" 
-        agentBuildScript = fmt"{cqDir}/src/agent/build.sh"    
+        configFile = fmt"{CONQUEST_ROOT}/src/agent/nim.cfg"  
+        exeFile = fmt"{CONQUEST_ROOT}/bin/monarch.x64.exe" 
+        agentBuildScript = fmt"{CONQUEST_ROOT}/src/agent/build.sh"    
+
+    # Update conquest root directory in agent build script
+    var buildScript = readFile(agentBuildScript).replaceAfterPrefix("CONQUEST_ROOT=", CONQUEST_ROOT)
+    writeFile(agentBuildScript, buildScript)
 
     # Update placeholder and configuration values 
     let placeholder = PLACEHOLDER & "A".repeat(placeholderLength - (2 * len(PLACEHOLDER))) & PLACEHOLDER

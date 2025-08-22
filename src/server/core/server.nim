@@ -134,11 +134,15 @@ proc init*(T: type Conquest, profile: Profile): Conquest =
     cq.agents = initTable[string, Agent]() 
     cq.interactAgent = nil 
     cq.profile = profile
-    cq.keyPair = loadKeyPair(profile.getString("private_key_file"))
-    cq.dbPath = profile.getString("database_file")
+    cq.keyPair = loadKeyPair(CONQUEST_ROOT & "/" & profile.getString("private-key-file"))
+    cq.dbPath = CONQUEST_ROOT & "/" & profile.getString("database-file")
     return cq
 
 proc startServer*(profilePath: string) =
+
+    # Ensure that the conquest root directory was passed as a compile-time define 
+    when not defined(CONQUEST_ROOT): 
+        quit(0)
 
     # Handle CTRL+C,  
     proc exit() {.noconv.} = 
@@ -154,7 +158,6 @@ proc startServer*(profilePath: string) =
         cq = Conquest.init(profile)
 
         cq.info("Using profile \"", profile.getString("name"), "\" (", profilePath ,").")
-        cq.info("Using private key \"", profile.getString("private_key_file"), "\".")
         
     except CatchableError as err:
         echo err.msg
