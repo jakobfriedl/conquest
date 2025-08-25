@@ -12,7 +12,7 @@ proc createHeartbeat*(ctx: AgentCtx): Heartbeat =
             size: 0'u32,
             agentId: string.toUuid(ctx.agentId),
             seqNr: 0'u32,  
-            iv: generateIV(),
+            iv: generateBytes(Iv),
             gmac: default(AuthenticationTag)
         ), 
         listenerId: string.toUuid(ctx.listenerId),

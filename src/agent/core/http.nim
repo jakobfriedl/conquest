@@ -1,7 +1,7 @@
 import httpclient, json, strformat, strutils, asyncdispatch, base64, tables, parsetoml, random
 
 import ../../common/[types, utils, profile]
-import sugar
+
 proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string = 
 
     let client = newAsyncHttpClient(userAgent = ctx.profile.getString("agent.user-agent"))

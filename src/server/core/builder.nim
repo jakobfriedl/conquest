@@ -24,8 +24,8 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int): seq[b
     packer.reset() 
 
     # Encrypt profile configuration data with a newly generated encryption key
-    var aesKey = generateKey() 
-    let iv = generateIV()
+    var aesKey = generateBytes(Key) 
+    let iv = generateBytes(Iv)
 
     let (encData, gmac) = encrypt(aesKey, iv, data)
 

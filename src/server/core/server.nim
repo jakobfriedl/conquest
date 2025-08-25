@@ -2,7 +2,7 @@ import prompt, terminal, argparse, parsetoml
 import strutils, strformat, system, tables
 
 import ./[agent, listener, builder]
-import ../[globals, utils]
+import ../globals
 import ../db/database
 import ../core/logger
 import ../../common/[types, crypto, profile]

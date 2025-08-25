@@ -1,4 +1,3 @@
-import os 
 import ../common/types
 
 # Global server context

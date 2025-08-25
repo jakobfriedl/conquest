@@ -106,7 +106,7 @@ proc createTask*(cq: Conquest, command: Command, arguments: seq[string]): Task =
     taskHeader.size = 0'u32
     taskHeader.agentId = string.toUuid(cq.interactAgent.agentId)
     taskHeader.seqNr = nextSequence(taskHeader.agentId)
-    taskHeader.iv = generateIV() # Generate a random IV for AES-256 GCM
+    taskHeader.iv = generateBytes(Iv) # Generate a random IV for AES-256 GCM
     taskHeader.gmac = default(AuthenticationTag)
 
     task.header = taskHeader

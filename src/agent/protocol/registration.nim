@@ -203,7 +203,7 @@ proc collectAgentMetadata*(ctx: AgentCtx): AgentRegistrationData =
             size: 0'u32,
             agentId: string.toUuid(ctx.agentId),
             seqNr: nextSequence(string.toUuid(ctx.agentId)),                              
-            iv: generateIV(),
+            iv: generateBytes(Iv),
             gmac: default(AuthenticationTag)
         ), 
         agentPublicKey: ctx.agentPublicKey,

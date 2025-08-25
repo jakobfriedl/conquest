@@ -1,4 +1,4 @@
-import system
+import macros, system
 import nimcrypto
 
 import ./[utils, types]
@@ -7,18 +7,11 @@ import ./[utils, types]
     Symmetric AES256 GCM encryption for secure C2 traffic
     Ensures both confidentiality and integrity of the packet 
 ]#
-proc generateIV*(): Iv =
-    # Generate a random 98-bit (12-byte) initialization vector for AES-256 GCM mode
-    var iv: Iv
-    if randomBytes(iv) != sizeof(Iv): 
-        raise newException(CatchableError, "Failed to generate IV.")
-    return iv 
-
-proc generateKey*(): Key = 
-    var key: Key 
-    if randomBytes(key) != sizeof(Key):
-        raise newException(CatchableError, "Failed to generate IV.")
-    return key
+proc generateBytes*(T: typedesc[Key | Iv]): array =
+    var bytes: T
+    if randomBytes(bytes) != sizeof(T): 
+        raise newException(CatchableError, "Failed to generate byte array.")
+    return bytes
 
 proc encrypt*(key: Key, iv: Iv, data: seq[byte], sequenceNumber: uint32 = 0): (seq[byte], AuthenticationTag) =
     
@@ -97,7 +90,7 @@ proc wipeKey*(data: var openArray[byte]) =
 
 # Key pair generation
 proc generateKeyPair*(): KeyPair = 
-    let privateKey = generateKey() 
+    let privateKey = generateBytes(Key) 
     return KeyPair(
         privateKey: privateKey, 
         publicKey: getPublicKey(privateKey)

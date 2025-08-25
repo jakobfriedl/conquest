@@ -2,7 +2,7 @@ import times, strformat, strutils, prompt, terminal
 import std/[dirs, paths]
 
 import ../globals
-import ../../common/[types, profile]
+import ../../common/types
 
 proc makeAgentLogDirectory*(cq: Conquest, agentId: string): bool = 
     try: 

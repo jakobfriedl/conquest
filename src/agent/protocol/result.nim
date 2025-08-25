@@ -11,7 +11,7 @@ proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, r
             size: 0'u32,
             agentId: task.header.agentId,
             seqNr: nextSequence(task.header.agentId), 
-            iv: generateIV(),
+            iv: generateBytes(Iv),
             gmac: default(array[16, byte])
         ), 
         taskId: task.taskId,
