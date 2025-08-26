@@ -3,7 +3,7 @@ import strutils, nimcrypto
 
 import ./types
 
-proc toString*(T: type Bytes, data: seq[byte]): string =
+proc toString*(T: type Bytes, data: openArray[byte]): string =
     result = newString(data.len)
     for i, b in data:
         result[i] = char(b)

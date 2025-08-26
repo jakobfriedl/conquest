@@ -8,6 +8,7 @@ const
     MAGIC* = 0x514E3043'u32     # Magic value: C0NQ
     VERSION* = 1'u8             # Version 1
     HEADER_SIZE* = 48'u8        # 48 bytes fixed packet header size
+    STATUS_SUCCESS = 0
 
 type 
     PacketType* = enum 
@@ -79,6 +80,7 @@ type
     Key* = array[32, byte]
     Iv* = array[12, byte]
     AuthenticationTag* = array[16, byte]
+    Key16* = array[16, byte]
 
 # Packet structure
 type 
