@@ -1,5 +1,5 @@
 import streams, tables
-import ./[types, utils, crypto]
+import ./[types, utils]
 
 #[
     Packer
@@ -102,7 +102,7 @@ proc getBytes*(unpacker: Unpacker, length: int): seq[byte] =
     unpacker.position += bytesRead
     
     if bytesRead != length:
-        raise newException(IOError, "Not enough data to read")
+        raise newException(IOError, protect("Not enough data to read"))
 
 proc getByteArray*(unpacker: Unpacker, T: typedesc[Key | Iv | AuthenticationTag]): array = 
     var bytes: array[sizeof(T), byte]
@@ -111,7 +111,7 @@ proc getByteArray*(unpacker: Unpacker, T: typedesc[Key | Iv | AuthenticationTag]
     unpacker.position += bytesRead
     
     if bytesRead != sizeof(T):
-        raise newException(IOError, "Not enough data to read structure.")
+        raise newException(IOError, protect("Not enough data to read structure."))
     
     return bytes
 

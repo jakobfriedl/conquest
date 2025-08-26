@@ -1,4 +1,4 @@
-import ../common/types
+import ../common/[types, utils]
 
 # Define function prototypes
 proc executePwd(ctx: AgentCtx, task: Task): TaskResult
@@ -12,72 +12,72 @@ proc executeCopy(ctx: AgentCtx, task: Task): TaskResult
 # Command definitions
 let commands* = @[
     Command(
-        name: "pwd",
+        name: protect("pwd"),
         commandType: CMD_PWD,
-        description: "Retrieve current working directory.",
-        example: "pwd",
+        description: protect("Retrieve current working directory."),
+        example: protect("pwd"),
         arguments: @[],
         execute: executePwd
     ),
     Command(
-        name: "cd",
+        name: protect("cd"),
         commandType: CMD_CD,
-        description: "Change current working directory.",
-        example: "cd C:\\Windows\\Tasks",
+        description: protect("Change current working directory."),
+        example: protect("cd C:\\Windows\\Tasks"),
         arguments: @[
-            Argument(name: "directory", description: "Relative or absolute path of the directory to change to.", argumentType: STRING, isRequired: true)
+            Argument(name: protect("directory"), description: protect("Relative or absolute path of the directory to change to."), argumentType: STRING, isRequired: true)
         ],
         execute: executeCd
     ),
     Command(
-        name: "ls",
+        name: protect("ls"),
         commandType: CMD_LS,
-        description: "List files and directories.",
-        example: "ls C:\\Users\\Administrator\\Desktop",
+        description: protect("List files and directories."),
+        example: protect("ls C:\\Users\\Administrator\\Desktop"),
         arguments: @[
-            Argument(name: "directory", description: "Relative or absolute path. Default: current working directory.", argumentType: STRING, isRequired: false)
+            Argument(name: protect("directory"), description: protect("Relative or absolute path. Default: current working directory."), argumentType: STRING, isRequired: false)
         ],
         execute: executeDir
     ),
     Command(
-        name: "rm", 
+        name: protect("rm"), 
         commandType: CMD_RM,
-        description: "Remove a file.",
-        example: "rm C:\\Windows\\Tasks\\payload.exe",
+        description: protect("Remove a file."),
+        example: protect("rm C:\\Windows\\Tasks\\payload.exe"),
         arguments: @[
-            Argument(name: "file", description: "Relative or absolute path to the file to delete.", argumentType: STRING, isRequired: true)
+            Argument(name: protect("file"), description: protect("Relative or absolute path to the file to delete."), argumentType: STRING, isRequired: true)
         ],
         execute: executeRm
     ),
     Command(
-        name: "rmdir",
+        name: protect("rmdir"),
         commandType: CMD_RMDIR,
-        description: "Remove a directory.",
-        example: "rm C:\\Payloads",
+        description: protect("Remove a directory."),
+        example: protect("rm C:\\Payloads"),
         arguments: @[
-            Argument(name: "directory", description: "Relative or absolute path to the directory to delete.", argumentType: STRING, isRequired: true)
+            Argument(name: protect("directory"), description: protect("Relative or absolute path to the directory to delete."), argumentType: STRING, isRequired: true)
         ],
         execute: executeRmdir
     ),
     Command(
-        name: "move",
+        name: protect("move"),
         commandType: CMD_MOVE,
-        description: "Move a file or directory.",
-        example: "move source.exe C:\\Windows\\Tasks\\destination.exe",
+        description: protect("Move a file or directory."),
+        example: protect("move source.exe C:\\Windows\\Tasks\\destination.exe"),
         arguments: @[
-            Argument(name: "source", description: "Source file path.", argumentType: STRING, isRequired: true),
-            Argument(name: "destination", description: "Destination file path.", argumentType: STRING, isRequired: true)
+            Argument(name: protect("source"), description: protect("Source file path."), argumentType: STRING, isRequired: true),
+            Argument(name: protect("destination"), description: protect("Destination file path."), argumentType: STRING, isRequired: true)
         ],
         execute: executeMove
     ),
     Command(
-        name: "copy",
+        name: protect("copy"),
         commandType: CMD_COPY,
-        description: "Copy a file or directory.",
-        example: "copy source.exe C:\\Windows\\Tasks\\destination.exe",
+        description: protect("Copy a file or directory."),
+        example: protect("copy source.exe C:\\Windows\\Tasks\\destination.exe"),
         arguments: @[
-            Argument(name: "source", description: "Source file path.", argumentType: STRING, isRequired: true),
-            Argument(name: "destination", description: "Destination file path.", argumentType: STRING, isRequired: true)
+            Argument(name: protect("source"), description: protect("Source file path."), argumentType: STRING, isRequired: true),
+            Argument(name: protect("destination"), description: protect("Destination file path."), argumentType: STRING, isRequired: true)
         ],
         execute: executeCopy
     )
@@ -102,7 +102,7 @@ when defined(agent):
     # Retrieve current working directory
     proc executePwd(ctx: AgentCtx, task: Task): TaskResult = 
 
-        echo fmt"   [>] Retrieving current working directory."
+        echo protect("   [>] Retrieving current working directory.")
 
         try: 
             # Get current working directory using GetCurrentDirectory
@@ -126,7 +126,7 @@ when defined(agent):
         # Parse arguments
         let targetDirectory = Bytes.toString(task.args[0].data)
 
-        echo fmt"   [>] Changing current working directory to {targetDirectory}."
+        echo protect("   [>] Changing current working directory to {targetDirectory}.")
 
         try: 
             # Get current working directory using GetCurrentDirectory
@@ -235,7 +235,7 @@ when defined(agent):
                         var 
                             localTime: FILETIME
                             systemTime: SYSTEMTIME
-                            dateTimeStr = "01/01/1970  00:00:00"
+                            dateTimeStr = protect("01/01/1970  00:00:00")
                         
                         if FileTimeToLocalFileTime(&findData.ftLastWriteTime, &localTime) != 0 and FileTimeToSystemTime(&localTime, &systemTime) != 0:
                             # Format date and time in PowerShell style
@@ -244,7 +244,7 @@ when defined(agent):
                         # Format file size
                         var sizeStr = ""
                         if isDir:
-                            sizeStr = "<DIR>"
+                            sizeStr = protect("<DIR>")
                         else:
                             sizeStr = ($fileSize).replace("-", "")
                         

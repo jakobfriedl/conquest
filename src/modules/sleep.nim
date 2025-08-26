@@ -1,4 +1,4 @@
-import ../common/types
+import ../common/[types, utils]
 
 # Define function prototype
 proc executeSleep(ctx: AgentCtx, task: Task): TaskResult 
@@ -6,12 +6,12 @@ proc executeSleep(ctx: AgentCtx, task: Task): TaskResult
 # Command definition (as seq[Command])
 let commands* = @[
     Command(
-        name: "sleep",
+        name: protect("sleep"),
         commandType: CMD_SLEEP,
-        description: "Update sleep delay configuration.",
-        example: "sleep 5",
+        description: protect("Update sleep delay configuration."),
+        example: protect("sleep 5"),
         arguments: @[
-            Argument(name: "delay", description: "Delay in seconds.", argumentType: INT, isRequired: true)
+            Argument(name: protect("delay"), description: protect("Delay in seconds."), argumentType: INT, isRequired: true)
         ],
         execute: executeSleep
     )

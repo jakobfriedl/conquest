@@ -1,5 +1,5 @@
 import tables 
-import ./types
+import ./[types, utils]
 
 var sequenceTable {.global.}: Table[uint32, uint32]
 
@@ -31,12 +31,12 @@ proc validatePacket*(header: Header, expectedType: uint8) =
     
     # Validate magic number
     if header.magic != MAGIC:
-        raise newException(CatchableError, "Invalid magic bytes.")
+        raise newException(CatchableError, protect("Invalid magic bytes."))
 
     # Validate packet type
     if header.packetType != expectedType: 
-        raise newException(CatchableError, "Invalid packet type.")
+        raise newException(CatchableError, protect("Invalid packet type."))
 
     # Validate sequence number 
     if not validateSequence(header.agentId, header.seqNr, header.packetType): 
-        raise newException(CatchableError, "Invalid sequence number.")
+        raise newException(CatchableError, protect("Invalid sequence number."))

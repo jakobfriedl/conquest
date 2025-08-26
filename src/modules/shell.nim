@@ -1,4 +1,4 @@
-import ../common/types
+import ../common/[types, utils]
 
 # Define function prototype
 proc executeShell(ctx: AgentCtx, task: Task): TaskResult 
@@ -6,13 +6,13 @@ proc executeShell(ctx: AgentCtx, task: Task): TaskResult
 # Command definition (as seq[Command])
 let commands*: seq[Command] =  @[
     Command(
-        name: "shell",
+        name: protect("shell"),
         commandType: CMD_SHELL,
-        description: "Execute a shell command and retrieve the output.",
-        example: "shell whoami /all",
+        description: protect("Execute a shell command and retrieve the output."),
+        example: protect("shell whoami /all"),
         arguments: @[
-            Argument(name: "command", description: "Command to be executed.", argumentType: STRING, isRequired: true),
-            Argument(name: "arguments", description: "Arguments to be passed to the command.", argumentType: STRING, isRequired: false)
+            Argument(name: protect("command"), description: protect("Command to be executed."), argumentType: STRING, isRequired: true),
+            Argument(name: protect("arguments"), description: protect("Arguments to be passed to the command."), argumentType: STRING, isRequired: false)
         ],
         execute: executeShell
     )
