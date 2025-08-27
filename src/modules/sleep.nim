@@ -33,12 +33,10 @@ when defined(agent):
             # Parse task parameter
             let delay = int(Bytes.toUint32(task.args[0].data))
 
-            echo fmt"   [>] Sleeping for {delay} seconds."
-            
-            sleep(delay * 1000) 
-        
             # Updating sleep in agent context
+            echo fmt"   [>] Setting sleep delay to {delay} seconds."
             ctx.sleep = delay
+                    
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
