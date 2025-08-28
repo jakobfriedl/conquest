@@ -3,8 +3,6 @@ import winim/inc/tlhelp32
 import os, system, strformat
 import ../../common/[types, utils, crypto] 
 
-import sugar
-
 # Sleep obfuscation implementation based on Ekko, originally developed by C5pider 
 # The code in this file was taken from the MalDev Academy modules 54, 56 & 59 and translated from C to Nim
 # https://maldevacademy.com/new/modules/54
