@@ -1,9 +1,7 @@
 import winim/lean
 import os, strformat, strutils, ptr_math
 import ./beacon
-import ../../common/[types, utils, crypto]
-
-import sugar 
+import ../../common/[types, utils]
 
 #[
     Object file loading involves the following steps
@@ -128,19 +126,9 @@ proc objectResolveSymbol(symbol: var PSTR): PVOID =
 
     # Check if the symbol is a Beacon API function
     if ($symbol).startsWith(protect("Beacon")): 
-        case $symbol: 
-        of protect("BeaconDataParse"): 
-            resolved = BeaconDataParse
-        of protect("BeaconDataInt"):
-            resolved = BeaconDataInt
-        of protect("BeaconDataShort"):
-            resolved = BeaconDataInt
-        of protect("BeaconDataExtract"):
-            resolved = BeaconDataExtract
-        of protect("BeaconOutput"):
-            resolved = BeaconOutput
-        of protect("BeaconPrintf"):
-            resolved = BeaconPrintf
+        for i in 0 ..< beaconApiAddresses.len(): 
+            if $symbol == beaconApiAddresses[i].name: 
+                resolved = beaconApiAddresses[i].address
     
     else:
         # Resolve a external Win32 API function
@@ -277,7 +265,7 @@ proc objectProcessSection(objCtx: POBJECT_CTX): bool =
     - args: Pointer to the address of the arguments passed to the object file
     - argc: Size of the arguments passed to the object file 
 ]#
-proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: PBYTE, argc: ULONG): bool = 
+proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]): bool = 
 
     var 
         objSym: PIMAGE_SYMBOL
@@ -312,7 +300,7 @@ proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: PBYTE, argc: ULONG): 
 
             # Execute BOF entry point 
             var entryPoint = cast[EntryPoint](cast[uint](secBase) + cast[uint](objSym.Value))
-            entryPoint(args, argc)
+            entryPoint(addr args[0], cast[ULONG](args.len()))
 
             # Revert the memory protection change
             if VirtualProtect(secBase, secSize, oldProtect, addr oldProtect) == 0: 
@@ -331,7 +319,7 @@ proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: PBYTE, argc: ULONG): 
     - pArgs: Base address of the arguments to be passed to the function
     - uArgc: Size of the arguments passed to the function
 ]#
-proc inlineExecuteObjectFile*(pObject: PVOID, sFunction: PSTR = "go", pArgs: PBYTE, uArgc: ULONG): bool = 
+proc inlineExecute*(objectFile: seq[byte], args: seq[byte], entryFunction: string = "go"): bool = 
     
     var 
         objCtx: OBJECT_CTX
@@ -340,8 +328,9 @@ proc inlineExecuteObjectFile*(pObject: PVOID, sFunction: PSTR = "go", pArgs: PBY
         secSize: ULONG
         secBase: PVOID 
 
-    if pObject == NULL or sFunction == NULL: 
-        raise newException(CatchableError, "Arguments pObject and sFunction are required.")
+    var pObject = addr objectFile[0]
+    if pObject == NULL or entryFunction == NULL: 
+        raise newException(CatchableError, "Arguments pObject and entryFunction are required.")
 
     # Parsing the object file's file header, symbol table and sections
     objCtx.union.header = cast[PIMAGE_FILE_HEADER](pObject)
@@ -405,23 +394,46 @@ proc inlineExecuteObjectFile*(pObject: PVOID, sFunction: PSTR = "go", pArgs: PBY
 
     # Executing the object file 
     echo "[*] Executing."
-    if not objectExecute(addr objCtx, sFunction, pArgs, uArgc): 
-        raise newException(CatchableError, fmt"Failed to execute function {$sFunction}.")
+    if not objectExecute(addr objCtx, entryFunction, args): 
+        raise newException(CatchableError, fmt"Failed to execute function {$entryFunction}.")
 
     return true
+
+proc inlineExecuteGetOutput*(objectFile: seq[byte], args: seq[byte], entryFunction: string = "go"): string = 
+
+    if not inlineExecute(objectFile, args, entryFunction): 
+        raise newException(CatchableError, fmt"[-] Failed to inline-execute object file.")
+
+    var output = BeaconGetOutputData(NULL)
+    return $output
+
+proc HexStringToByteArray(hexString:string,hexLength:int):seq[byte] =
+    var returnValue:seq[byte] = @[]
+    for i in countup(0,hexLength-1,2):
+        try:
+            #cho hexString[i..i+1]
+            returnValue.add(fromHex[uint8](hexString[i..i+1]))
+        except ValueError:
+            return @[]
+    #fromHex[uint8]
+    return returnValue
 
 proc test*() = 
 
     var
-        fileName = "whoami.x64.o"
+        fileName = "dir.x64.o"
         pObject = readFile(fileName)
         uLength: ULONG = cast[ULONG](pObject.len)
 
     echo fmt"[+] Read file {fileName}: 0x{(addr pObject[0]).toHex()} (Size: {uLength} bytes)"
 
     try: 
-        if not inlineExecuteObjectFile(addr pObject[0], "go", NULL, 0): 
-            echo fmt"[-] Failed to inline-execute {fileName}"
+        let args = "130000000f000000433a2f55736572732f6a616b6f6200"
+        let argsBuffer = HexStringToByteArray(args, args.len)
+
+        echo $argsBuffer
+
+        echo inlineExecuteGetOutput(string.toBytes(pObject), argsBuffer)
 
     except CatchableError as err:
         echo "[-] ", err.msg

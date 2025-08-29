@@ -1,86 +1,346 @@
-import winim/core
+import winim/lean
+import ptr_math
+import strformat
+import ../../common/utils 
 
-# Reference: https://github.com/m4ul3r/malware/blob/main/nim/coff_loader/beaconapi.nim
-
-type va_list {.importc: "va_list", header: "<stdarg.h>".} = object
-proc puts(s: pointer): void {.importc, header: "<stdio.h>".}
-proc vprintf(format: pointer, args: va_list) {.importc, header: "<stdio.h>".}
-proc va_start(va: va_list, fmt: pointer) {.importc, header: "<stdarg.h>".}
-proc va_end(va: va_list): void {.importc, header: "<stdarg.h>".}
-
-type datap* {.pure.} = object
-    original: PCHAR
-    buffer: PCHAR
-    length: INT
-    size: INT
+#[
+    References: 
+    - https://github.com/frkngksl/NiCOFF/blob/main/BeaconFunctions.nim 
+    - https://github.com/trustedsec/COFFLoader/blob/main/beacon_compatibility.c
+    - https://github.com/Cracked5pider/CoffeeLdr/blob/main/Source/BeaconApi.c  
+]#
 
 const
-    CALLBACK_OUTPUT* = 0x0
-    CALLBACK_OUTPUT_OEM* = 0x1e
-    CALLBACK_OUTPUT_UTF8* = 0x20
-    CALLBACK_ERROR* = 0xd
+    CALLBACK_OUTPUT      = 0x0
+    CALLBACK_OUTPUT_OEM  = 0x1e
+    CALLBACK_ERROR       = 0x0d
+    CALLBACK_OUTPUT_UTF8 = 0x20
+    DEFAULT_PROCESS = protect("rundll32.exe")
 
-proc BeaconDataParse*(parser: ptr datap, buffer: PCHAR, size: INT): void =
-    if cast[int](parser) == 0:
+type
+    datap* {.bycopy,packed.} = object
+        original*: ptr char
+        buffer*: ptr char
+        length*: int
+        size*: int
+
+    formatp* {.bycopy,packed.} = object
+        original*: ptr char
+        buffer*: ptr char
+        length*: int
+        size*: int
+
+# Reference: https://forum.nim-lang.org/t/7352
+type va_list* {.importc: "va_list", header: "<stdarg.h>".} = object
+proc va_start(format: va_list, args: ptr char) {.stdcall, importc, header: "stdio.h"}
+proc va_end(ap: va_list) {.stdcall, importc, header: "stdio.h"}
+proc vprintf(format: cstring, args: va_list) {.stdcall, importc, header: "stdio.h"}
+proc vsnprintf(buffer: cstring; size: int; fmt: cstring; args: va_list): int {.stdcall, importc, dynlib: "msvcrt".}
+
+var beaconCompatibilityOutput: ptr char = nil
+var beaconCompatibilitySize: int = 0
+var beaconCompatibilityOffset: int = 0
+
+#[
+    Parsing
+]#
+proc BeaconDataParse(parser: ptr datap, buffer: ptr char, size: int): void {.stdcall.} =
+    if cast[uint64](parser) == 0:
         return
+
     parser.original = buffer
     parser.buffer = buffer
     parser.length = size - 4
     parser.size = size - 4
-    parser.buffer = cast[PCHAR](cast[int](buffer) + 4)
+    parser.buffer += 4
+    return
 
-proc BeaconDataInt*(parser: ptr datap): INT =
-    var fourbyteint: INT = 0
-    if (parser.length < 4):
-        return 0
-    copyMem(fourbyteint.addr, parser.buffer, 4)
-    parser.buffer = cast[PCHAR](cast[int](parser.buffer) + 4)
-    parser.length = cast[INT](cast[int](parser.length) - 4)
+proc BeaconDataInt(parser: ptr datap): int {.stdcall.}=
+    if cast[uint64](parser) == 0:
+        return
 
-    return fourbyteint
+    var returnValue: int = 0
+    if parser.length < 4:
+        return returnValue
+    
+    copyMem(addr returnValue, parser.buffer, 4)
+    parser.length -= 4
+    parser.buffer += 4
+    return returnValue
 
-proc BeaconDataShort*(parser: ptr datap): SHORT =
-    var retvalue: SHORT = 0
-    if (parser.length < 2):
-        return 0
-    copyMem(retvalue.addr, parser.buffer, 2)
-    parser.buffer = cast[PCHAR](cast[int](parser.buffer) + 2)
-    parser.length = cast[INT](cast[int](parser.length) - 2)
+proc BeaconDataShort(parser: ptr datap): int16 {.stdcall.} =
+    if cast[uint64](parser) == 0:
+        return
 
-    return retvalue
+    var returnValue: int16 = 0
+    if parser.length < 2:
+        return returnValue
 
-proc BeaconDataLength*(parser: ptr datap): INT =
+    copyMem(addr returnValue, parser.buffer, 2)
+    parser.length -= 2
+    parser.buffer += 2
+    return returnValue
+
+proc BeaconDataLength(parser: ptr datap): int {.stdcall.} =
+    if cast[uint64](parser) == 0:
+        return
+    
     return parser.length
 
-proc BeaconDataExtract*(parser: ptr datap, size: ptr INT): PCHAR =
-    var
-        length: INT = 0
-        outdata: PCHAR = nil
+proc BeaconDataExtract(parser: ptr datap, size: ptr int): ptr char {.stdcall.} =
+    if cast[uint64](parser) == 0:
+        return
 
-    if (parser.length < 4):
-        return nil
+    var 
+        length: int32 = 0
+        outData: ptr char = nil
+    
+    # Length of prefixed binary blob
+    if parser.length < 4:
+        return NULL
+    copyMem(addr length, parser.buffer, 4)
+    parser.buffer += 4
 
-    copyMem(length.addr, parser.buffer, 4)
-    parser.buffer = cast[PCHAR](cast[int](parser.buffer) + 4)
-
-    outdata = parser.buffer
-    if (outdata == nil):
-        return nil
-
-    parser.length = cast[INT](cast[int](parser.length) - 4)
-    parser.length = cast[INT](cast[int](parser.length) - length)
-    parser.buffer = cast[PCHAR](cast[int](parser.buffer) + length)
-
-    if (size != nil) and (outdata != nil):
+    outData = parser.buffer
+    if(outData == NULL):
+        return NULL
+    parser.length -= 4
+    parser.length -= length
+    parser.buffer += length
+    if(size != NULL and outData != NULL):
         size[] = length
+    return outData
 
-    return outdata
+#[
+    Formatting
+]#
+proc BeaconFormatAlloc(format: ptr formatp, maxsz: int): void {.stdcall.} =
+    if format == NULL:
+        return
 
-proc BeaconOutput*(typ: int, data: pointer, length: int): void =
-    puts(data)
+    format.original = cast[ptr char](alloc(maxsz))
+    zeroMem(format.original, maxsz)
+    format.buffer = format.original
+    format.length = 0
+    format.size = maxsz
 
-proc BeaconPrintf*(typ: int, fmt: pointer): void {.varargs.} =
-    var va: va_list
-    va_start(va, fmt)
-    vprintf(fmt, va)
-    va_end(va)
+proc BeaconFormatReset(format: ptr formatp): void {.stdcall.} =
+    if format == NULL:
+        return
+
+    zeroMem(format.original, format.size)
+    format.buffer = format.original
+    format.length = format.size
+
+proc BeaconFormatFree(format: ptr formatp): void {.stdcall.} =
+    if format == NULL:
+        return
+
+    if cast[uint64](format.original) != 0:
+        dealloc(format.original)
+        format.original = NULL
+
+    format.buffer = NULL
+    format.length = 0
+    format.size = 0
+
+proc BeaconFormatAppend(format: ptr formatp, text: ptr char, len: int): void {.stdcall.} =
+    if format == NULL or text == NULL:
+        return
+
+    copyMem(format.buffer,text,len)
+    format.buffer += len
+    format.length += len
+
+proc BeaconFormatPrintf(format: ptr formatp, fmt: ptr char): void {.stdcall, varargs.} =
+    if format == NULL or fmt == NULL:
+        return
+    
+    var args: va_list
+    var length: int = 0
+
+    va_start(args, fmt)
+    length = vsnprintf(NULL, 0, fmt, args)
+    va_end(args)
+    
+    if format.length + length > format.size:
+        return
+
+    va_start(args, fmt)
+    discard vsnprintf(format.buffer, length, fmt, args)
+    va_end(args)
+    format.length += length
+    format.buffer += length
+
+proc BeaconFormatToString(format: ptr formatp, size: ptr int): ptr char {.stdcall.} =
+    if format == NULL or size == NULL:
+        return
+
+    size[] = format.length
+    return format.original
+
+proc swapEndianess(indata: uint32): uint32 =
+    var testInt: uint32 = cast[uint32](0xaabbccdd)
+    var outInt: uint32 = indata
+    if(cast[PBYTE](addr testInt)[] == 0xdd):
+        cast[PBYTE](addr outInt)[] = (cast[PBYTE](addr indata)+3)[]
+        (cast[PBYTE](addr outInt)+1)[] = (cast[PBYTE](addr indata)+2)[]
+        (cast[PBYTE](addr outInt)+2)[] = (cast[PBYTE](addr indata)+1)[]
+        (cast[PBYTE](addr outInt)+3)[] = cast[PBYTE](addr indata)[]
+    return outint
+
+proc BeaconFormatInt(format: ptr formatp, value: int): void =
+    if format == NULL:
+        return
+
+    var indata:uint32 = cast[uint32](value)
+    var outdata:uint32 = 0
+    if format.length + 4 > format.size:
+        return
+    outdata = swapEndianess(indata)
+    copyMem(format.buffer, addr outdata, 4)
+    format.length += 4
+    format.buffer += 4
+
+#[ 
+    Output functions
+]#
+proc BeaconPrintf(typeArg: int, fmt: ptr char):void{.stdcall, varargs.} =
+    if fmt == NULL:
+        return
+
+    var length: int = 0
+    var tempPtr: ptr char = nil
+    var args: va_list
+    va_start(args, fmt)
+    vprintf(fmt, args)
+    va_end(args)
+
+    va_start(args, fmt)
+    length = vsnprintf(NULL, 0, fmt, args)
+    va_end(args)
+    tempPtr = cast[ptr char](realloc(beaconCompatibilityOutput,beaconCompatibilitySize + length + 1))
+    if tempPtr == nil:
+        return
+    beaconCompatibilityOutput = tempPtr
+    zeroMem(beaconCompatibilityOutput + beaconCompatibilityOffset, length + 1)
+    va_start(args, fmt)
+    length = vsnprintf(beaconCompatibilityOutput+beaconCompatibilityOffset,length,fmt,args)
+    beaconCompatibilitySize += length
+    beaconCompatibilityOffset += length
+    va_end(args)
+    
+proc BeaconOutput(typeArg: int, data: ptr char, len: int): void {.stdcall.} =
+    if data == NULL:
+        return
+
+    var tempPtr: ptr char = nil
+    tempPtr = cast[ptr char](realloc(beaconCompatibilityOutput,beaconCompatibilitySize + len + 1))
+    beaconCompatibilityOutput = tempPtr
+    if tempPtr == nil:
+        return
+    zeroMem(beaconCompatibilityOutput + beaconCompatibilityOffset, len + 1)
+    copyMem(beaconCompatibilityOutput + beaconCompatibilityOffset, data, len)
+    beaconCompatibilitySize += len
+    beaconCompatibilityOffset += len
+    
+#[
+    Token functions
+]#
+proc BeaconUseToken(token: HANDLE): BOOL {.stdcall.} =
+    SetThreadToken(NULL, token)
+    return TRUE
+
+# void BeaconRevertToken();
+proc BeaconRevertToken(): void {.stdcall.} =
+    RevertToSelf()
+
+# BOOL BeaconIsAdmin();
+proc BeaconIsAdmin(): BOOL {.stdcall.}=
+    # Not implemented
+    return FALSE
+
+#[ 
+    Spawn+Inject Functions
+]# 
+proc BeaconGetSpawnTo(x86: BOOL, buffer: ptr char, length: int): void {.stdcall.} =
+    if buffer == NULL:
+        return 
+
+    var tempBufferPath: string = ""
+    if cast[uint64](buffer) == 0:
+        return 
+
+    if x86 == TRUE:
+        tempBufferPath = fmt"C:\Windows\SysWOW64\{DEFAULT_PROCESS}"
+    else:
+        tempBufferPath = fmt"C:\Windows\System32\{DEFAULT_PROCESS}"
+    
+    if tempBufferPath.len > length:
+        return
+    copyMem(buffer, addr tempBufferPath[0], tempBufferPath.len)
+
+proc BeaconSpawnTemporaryProcess(x86: BOOL, ignoreToken: BOOL, sInfo: ptr STARTUPINFOA, pInfo: ptr PROCESS_INFORMATION): BOOL {.stdcall.} =
+    var bSuccess: BOOL = FALSE
+
+    if x86 == TRUE:
+        bSuccess = CreateProcessA(NULL, fmt"C:\Windows\SysWOW64\{DEFAULT_PROCESS}", NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, sInfo, pInfo)
+    else:
+        bSuccess = CreateProcessA(NULL, fmt"C:\Windows\System32\{DEFAULT_PROCESS}", NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, sInfo, pInfo)
+    
+    return bSuccess
+
+proc BeaconInjectProcess(hProc: HANDLE, pid: int, payload: ptr char, p_len: int, p_offset: int, arg: ptr char, a_len: int): void {.stdcall.} =
+    # Not implemented
+    return
+
+proc BeaconInjectTemporaryProcess(pInfo: ptr PROCESS_INFORMATION, payload: ptr char, p_len: int, p_offset: int, arg: ptr char, a_len: int): void {.stdcall.} =
+    # Not implemented
+    return
+
+proc BeaconCleanupProcess(pInfo: ptr PROCESS_INFORMATION): void {.stdcall.} =
+    CloseHandle(pInfo.hThread)
+    CloseHandle(pInfo.hProcess)
+
+#[
+    Utility Functions
+]# 
+proc toWideChar(src: ptr char, dst: ptr char, max: int): BOOL {.stdcall.} =
+    # Not implemented
+    return FALSE
+
+proc BeaconGetOutputData*(outSize: ptr int): ptr char {.stdcall.} =
+    var outData: ptr char = beaconCompatibilityOutput
+    
+    if cast[uint64](outSize) != 0:
+        outsize[] = beaconCompatibilitySize
+    beaconCompatibilityOutput = NULL
+    beaconCompatibilitySize = 0
+    beaconCompatibilityOffset = 0
+    return outData
+
+var beaconApiAddresses*: array[23, tuple[name: string, address: PVOID]] = [
+    (protect("BeaconDataParse"), BeaconDataParse),
+    (protect("BeaconDataInt"), BeaconDataInt),
+    (protect("BeaconDataShort"), BeaconDataShort),
+    (protect("BeaconDataLength"), BeaconDataLength),
+    (protect("BeaconDataExtract"), BeaconDataExtract),
+    (protect("BeaconFormatAlloc"), BeaconFormatAlloc),
+    (protect("BeaconFormatReset"), BeaconFormatReset),
+    (protect("BeaconFormatFree"), BeaconFormatFree),
+    (protect("BeaconFormatAppend"), BeaconFormatAppend),
+    (protect("BeaconFormatPrintf"), BeaconFormatPrintf),
+    (protect("BeaconFormatToString"), BeaconFormatToString),
+    (protect("BeaconFormatInt"), BeaconFormatInt),
+    (protect("BeaconPrintf"), BeaconPrintf),
+    (protect("BeaconOutput"), BeaconOutput),
+    (protect("BeaconUseToken"), BeaconUseToken),
+    (protect("BeaconRevertToken"), BeaconRevertToken),
+    (protect("BeaconIsAdmin"), BeaconIsAdmin),
+    (protect("BeaconGetSpawnTo"), BeaconGetSpawnTo),
+    (protect("BeaconSpawnTemporaryProcess"), BeaconSpawnTemporaryProcess),
+    (protect("BeaconInjectProcess"), BeaconInjectProcess),
+    (protect("BeaconInjectTemporaryProcess"), BeaconInjectTemporaryProcess),
+    (protect("BeaconCleanupProcess"), BeaconCleanupProcess),
+    (protect("toWideChar"), toWideChar)
+]
