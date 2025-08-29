@@ -70,6 +70,4 @@ proc main() =
             echo "[-] ", err.msg
           
 when isMainModule:
-    test()
-    quit(0)
     main() 

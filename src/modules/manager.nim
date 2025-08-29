@@ -6,7 +6,8 @@ import
     shell,
     sleep,
     filesystem,
-    environment
+    environment,
+    bof
 
 type
     ModuleManager* = object 
@@ -26,6 +27,7 @@ proc loadModules*() =
     registerCommands(sleep.commands)
     registerCommands(filesystem.commands)
     registerCommands(environment.commands)
+    registerCommands(bof.commands)
 
 proc getCommandByType*(cmdType: CommandType): Command = 
     return manager.commandsByType[cmdType]

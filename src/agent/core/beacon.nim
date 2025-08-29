@@ -19,32 +19,32 @@ const
 
 type
     datap* {.bycopy,packed.} = object
-        original*: ptr char
-        buffer*: ptr char
+        original*: PCHAR
+        buffer*: PCHAR
         length*: int
         size*: int
 
     formatp* {.bycopy,packed.} = object
-        original*: ptr char
-        buffer*: ptr char
+        original*: PCHAR
+        buffer*: PCHAR
         length*: int
         size*: int
 
 # Reference: https://forum.nim-lang.org/t/7352
 type va_list* {.importc: "va_list", header: "<stdarg.h>".} = object
-proc va_start(format: va_list, args: ptr char) {.stdcall, importc, header: "stdio.h"}
+proc va_start(format: va_list, args: PCHAR) {.stdcall, importc, header: "stdio.h"}
 proc va_end(ap: va_list) {.stdcall, importc, header: "stdio.h"}
 proc vprintf(format: cstring, args: va_list) {.stdcall, importc, header: "stdio.h"}
 proc vsnprintf(buffer: cstring; size: int; fmt: cstring; args: va_list): int {.stdcall, importc, dynlib: "msvcrt".}
 
-var beaconCompatibilityOutput: ptr char = nil
+var beaconCompatibilityOutput: PCHAR = nil
 var beaconCompatibilitySize: int = 0
 var beaconCompatibilityOffset: int = 0
 
 #[
     Parsing
 ]#
-proc BeaconDataParse(parser: ptr datap, buffer: ptr char, size: int): void {.stdcall.} =
+proc BeaconDataParse(parser: ptr datap, buffer: PCHAR, size: int): void {.stdcall.} =
     if cast[uint64](parser) == 0:
         return
 
@@ -87,13 +87,13 @@ proc BeaconDataLength(parser: ptr datap): int {.stdcall.} =
     
     return parser.length
 
-proc BeaconDataExtract(parser: ptr datap, size: ptr int): ptr char {.stdcall.} =
+proc BeaconDataExtract(parser: ptr datap, size: ptr int): PCHAR {.stdcall.} =
     if cast[uint64](parser) == 0:
         return
 
     var 
         length: int32 = 0
-        outData: ptr char = nil
+        outData: PCHAR = nil
     
     # Length of prefixed binary blob
     if parser.length < 4:
@@ -118,7 +118,7 @@ proc BeaconFormatAlloc(format: ptr formatp, maxsz: int): void {.stdcall.} =
     if format == NULL:
         return
 
-    format.original = cast[ptr char](alloc(maxsz))
+    format.original = cast[PCHAR](alloc(maxsz))
     zeroMem(format.original, maxsz)
     format.buffer = format.original
     format.length = 0
@@ -144,7 +144,7 @@ proc BeaconFormatFree(format: ptr formatp): void {.stdcall.} =
     format.length = 0
     format.size = 0
 
-proc BeaconFormatAppend(format: ptr formatp, text: ptr char, len: int): void {.stdcall.} =
+proc BeaconFormatAppend(format: ptr formatp, text: PCHAR, len: int): void {.stdcall.} =
     if format == NULL or text == NULL:
         return
 
@@ -152,7 +152,7 @@ proc BeaconFormatAppend(format: ptr formatp, text: ptr char, len: int): void {.s
     format.buffer += len
     format.length += len
 
-proc BeaconFormatPrintf(format: ptr formatp, fmt: ptr char): void {.stdcall, varargs.} =
+proc BeaconFormatPrintf(format: ptr formatp, fmt: PCHAR): void {.stdcall, varargs.} =
     if format == NULL or fmt == NULL:
         return
     
@@ -172,7 +172,7 @@ proc BeaconFormatPrintf(format: ptr formatp, fmt: ptr char): void {.stdcall, var
     format.length += length
     format.buffer += length
 
-proc BeaconFormatToString(format: ptr formatp, size: ptr int): ptr char {.stdcall.} =
+proc BeaconFormatToString(format: ptr formatp, size: ptr int): PCHAR {.stdcall.} =
     if format == NULL or size == NULL:
         return
 
@@ -205,12 +205,12 @@ proc BeaconFormatInt(format: ptr formatp, value: int): void =
 #[ 
     Output functions
 ]#
-proc BeaconPrintf(typeArg: int, fmt: ptr char):void{.stdcall, varargs.} =
+proc BeaconPrintf(typeArg: int, fmt: PCHAR):void{.stdcall, varargs.} =
     if fmt == NULL:
         return
 
     var length: int = 0
-    var tempPtr: ptr char = nil
+    var tempPtr: PCHAR = nil
     var args: va_list
     va_start(args, fmt)
     vprintf(fmt, args)
@@ -219,7 +219,7 @@ proc BeaconPrintf(typeArg: int, fmt: ptr char):void{.stdcall, varargs.} =
     va_start(args, fmt)
     length = vsnprintf(NULL, 0, fmt, args)
     va_end(args)
-    tempPtr = cast[ptr char](realloc(beaconCompatibilityOutput,beaconCompatibilitySize + length + 1))
+    tempPtr = cast[PCHAR](realloc(beaconCompatibilityOutput,beaconCompatibilitySize + length + 1))
     if tempPtr == nil:
         return
     beaconCompatibilityOutput = tempPtr
@@ -230,12 +230,12 @@ proc BeaconPrintf(typeArg: int, fmt: ptr char):void{.stdcall, varargs.} =
     beaconCompatibilityOffset += length
     va_end(args)
     
-proc BeaconOutput(typeArg: int, data: ptr char, len: int): void {.stdcall.} =
+proc BeaconOutput(typeArg: int, data: PCHAR, len: int): void {.stdcall.} =
     if data == NULL:
         return
 
-    var tempPtr: ptr char = nil
-    tempPtr = cast[ptr char](realloc(beaconCompatibilityOutput,beaconCompatibilitySize + len + 1))
+    var tempPtr: PCHAR = nil
+    tempPtr = cast[PCHAR](realloc(beaconCompatibilityOutput,beaconCompatibilitySize + len + 1))
     beaconCompatibilityOutput = tempPtr
     if tempPtr == nil:
         return
@@ -263,7 +263,7 @@ proc BeaconIsAdmin(): BOOL {.stdcall.}=
 #[ 
     Spawn+Inject Functions
 ]# 
-proc BeaconGetSpawnTo(x86: BOOL, buffer: ptr char, length: int): void {.stdcall.} =
+proc BeaconGetSpawnTo(x86: BOOL, buffer: PCHAR, length: int): void {.stdcall.} =
     if buffer == NULL:
         return 
 
@@ -290,11 +290,11 @@ proc BeaconSpawnTemporaryProcess(x86: BOOL, ignoreToken: BOOL, sInfo: ptr STARTU
     
     return bSuccess
 
-proc BeaconInjectProcess(hProc: HANDLE, pid: int, payload: ptr char, p_len: int, p_offset: int, arg: ptr char, a_len: int): void {.stdcall.} =
+proc BeaconInjectProcess(hProc: HANDLE, pid: int, payload: PCHAR, p_len: int, p_offset: int, arg: PCHAR, a_len: int): void {.stdcall.} =
     # Not implemented
     return
 
-proc BeaconInjectTemporaryProcess(pInfo: ptr PROCESS_INFORMATION, payload: ptr char, p_len: int, p_offset: int, arg: ptr char, a_len: int): void {.stdcall.} =
+proc BeaconInjectTemporaryProcess(pInfo: ptr PROCESS_INFORMATION, payload: PCHAR, p_len: int, p_offset: int, arg: PCHAR, a_len: int): void {.stdcall.} =
     # Not implemented
     return
 
@@ -305,12 +305,12 @@ proc BeaconCleanupProcess(pInfo: ptr PROCESS_INFORMATION): void {.stdcall.} =
 #[
     Utility Functions
 ]# 
-proc toWideChar(src: ptr char, dst: ptr char, max: int): BOOL {.stdcall.} =
+proc toWideChar(src: PCHAR, dst: PCHAR, max: int): BOOL {.stdcall.} =
     # Not implemented
     return FALSE
 
-proc BeaconGetOutputData*(outSize: ptr int): ptr char {.stdcall.} =
-    var outData: ptr char = beaconCompatibilityOutput
+proc BeaconGetOutputData*(outSize: ptr int): PCHAR {.stdcall.} =
+    var outData: PCHAR = beaconCompatibilityOutput
     
     if cast[uint64](outSize) != 0:
         outsize[] = beaconCompatibilitySize

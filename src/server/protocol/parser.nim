@@ -1,5 +1,4 @@
-import strutils, times
-
+import strutils, sequtils, times
 import ../../common/[types, sequence, crypto, utils]
 
 proc parseInput*(input: string): seq[string] = 
@@ -63,12 +62,10 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
             raise newException(ValueError, "Invalid value for boolean argument.")
 
     of STRING:
-        arg.data = cast[seq[byte]](value)
+        arg.data = string.toBytes(value)
 
     of BINARY: 
-        # Read file as binary stream 
-
-        discard 
+        arg.data = string.toBytes(readFile(value))
     
     return arg
 
@@ -84,16 +81,16 @@ proc createTask*(cq: Conquest, command: Command, arguments: seq[string]): Task =
 
     var taskArgs: seq[TaskArg]
 
-    # Add the task arguments
-    for i, arg in command.arguments:        
-        if i < arguments.len: 
-            taskArgs.add(parseArgument(arg, arguments[i]))
-        else: 
-            if arg.isRequired: 
-                raise newException(ValueError, "Missing required argument.")
-            else: 
-                # Handle optional argument
-                taskArgs.add(parseArgument(arg, ""))
+    # Add the task arguments 
+    if arguments.len() < command.arguments.filterIt(it.isRequired).len(): 
+        raise newException(CatchableError, "Missing required argument.")
+
+    for i, arg in arguments: 
+        if i < command.arguments.len():
+            taskArgs.add(parseArgument(command.arguments[i], arg))  
+        else:
+            # Optional arguments should ALWAYS be placed at the end of the command and take the same definition
+            taskArgs.add(parseArgument(command.arguments[^1], arg))  
 
     task.args = taskArgs   
 

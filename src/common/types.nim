@@ -43,6 +43,7 @@ type
         CMD_PS = 9'u16
         CMD_ENV = 10'u16 
         CMD_WHOAMI = 11'u16
+        CMD_BOF = 12'u16
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8

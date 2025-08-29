@@ -1,7 +1,7 @@
 import winim/lean
 import os, strformat, strutils, ptr_math
 import ./beacon
-import ../../common/[types, utils]
+import ../../common/[types, utils, serialize]
 
 #[
     Object file loading involves the following steps
@@ -262,8 +262,7 @@ proc objectProcessSection(objCtx: POBJECT_CTX): bool =
     Arguments: 
     - objCtx: Object context
     - entry: Name of the entry function to be executed
-    - args: Pointer to the address of the arguments passed to the object file
-    - argc: Size of the arguments passed to the object file 
+    - args: Arguments passed to the object file
 ]#
 proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]): bool = 
 
@@ -300,7 +299,11 @@ proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]): bool =
 
             # Execute BOF entry point 
             var entryPoint = cast[EntryPoint](cast[uint](secBase) + cast[uint](objSym.Value))
-            entryPoint(addr args[0], cast[ULONG](args.len()))
+            
+            if args.len > 0:
+                entryPoint(addr args[0], cast[ULONG](args.len()))
+            else: 
+                entryPoint(NULL, 0)
 
             # Revert the memory protection change
             if VirtualProtect(secBase, secSize, oldProtect, addr oldProtect) == 0: 
@@ -314,12 +317,11 @@ proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]): bool =
     Loads, parses and executes a object file in memory
 
     Arguments:
-    - pObject: Base address of the object file in memory
-    - sFunction: Name of the function to be executed, usually "go"
-    - pArgs: Base address of the arguments to be passed to the function
-    - uArgc: Size of the arguments passed to the function
+    - objectFile: Bytes of the object file
+    - args: Bytes of the COFF arguments
+    - entryFunction: Name of the entry function to look for, usually "go"
 ]#
-proc inlineExecute*(objectFile: seq[byte], args: seq[byte], entryFunction: string = "go"): bool = 
+proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction: string = "go"): bool = 
     
     var 
         objCtx: OBJECT_CTX
@@ -399,7 +401,14 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte], entryFunction: strin
 
     return true
 
-proc inlineExecuteGetOutput*(objectFile: seq[byte], args: seq[byte], entryFunction: string = "go"): string = 
+#[ 
+    Execute a object file in memory and retrieve the output using the BeaconGetOutputData API
+    Arguments:
+    - objectFile: Bytes of the object file
+    - args: Bytes of the COFF arguments
+    - entryFunction: Name of the entry function to look for, usually "go"
+]#
+proc inlineExecuteGetOutput*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction: string = "go"): string = 
 
     if not inlineExecute(objectFile, args, entryFunction): 
         raise newException(CatchableError, fmt"[-] Failed to inline-execute object file.")
@@ -407,33 +416,21 @@ proc inlineExecuteGetOutput*(objectFile: seq[byte], args: seq[byte], entryFuncti
     var output = BeaconGetOutputData(NULL)
     return $output
 
-proc HexStringToByteArray(hexString:string,hexLength:int):seq[byte] =
-    var returnValue:seq[byte] = @[]
-    for i in countup(0,hexLength-1,2):
-        try:
-            #cho hexString[i..i+1]
-            returnValue.add(fromHex[uint8](hexString[i..i+1]))
-        except ValueError:
-            return @[]
-    #fromHex[uint8]
-    return returnValue
+#[
+    Process the COFF arguments according to: 
+    https://github.com/trustedsec/COFFLoader/blob/main/beacon_generate.py 
+]#
+proc generateCoffArguments*(args: seq[TaskArg]): seq[byte] =     
+    
+    var packer = Packer.init() 
+    for arg in args: 
+        packer.add(uint32(arg.data.len()))
+        packer.addData(arg.data)
 
-proc test*() = 
+        # Add terminating NULL byte to the end of string arguments
+        if arg.argType == uint8(types.STRING): 
+            packer.add(uint8('\0'))
 
-    var
-        fileName = "dir.x64.o"
-        pObject = readFile(fileName)
-        uLength: ULONG = cast[ULONG](pObject.len)
+    let argBytes = packer.pack() 
 
-    echo fmt"[+] Read file {fileName}: 0x{(addr pObject[0]).toHex()} (Size: {uLength} bytes)"
-
-    try: 
-        let args = "130000000f000000433a2f55736572732f6a616b6f6200"
-        let argsBuffer = HexStringToByteArray(args, args.len)
-
-        echo $argsBuffer
-
-        echo inlineExecuteGetOutput(string.toBytes(pObject), argsBuffer)
-
-    except CatchableError as err:
-        echo "[-] ", err.msg
+    return uint32.toBytes(uint32(argBytes.len())) & argBytes 

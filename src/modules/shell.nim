@@ -39,11 +39,11 @@ when defined(agent):
             of 1: # Only the command has been passed as an argument
                 command = Bytes.toString(task.args[0].data)
                 arguments = ""
-            of 2: # The optional 'arguments' parameter was included
+            else: # The optional 'arguments' parameter was included
                 command = Bytes.toString(task.args[0].data)
-                arguments = Bytes.toString(task.args[1].data)
-            else:  
-                discard 
+
+                for arg in task.args[1..^1]: 
+                    arguments &= Bytes.toString(arg.data) & " "
 
             echo fmt"   [>] Executing command: {command} {arguments}"
 
