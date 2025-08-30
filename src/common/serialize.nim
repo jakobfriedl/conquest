@@ -125,6 +125,8 @@ proc getArgument*(unpacker: Unpacker): TaskArg =
         result.data = unpacker.getBytes(int(length))
     of INT:
         result.data = unpacker.getBytes(4)
+    of SHORT: 
+        result.data = unpacker.getBytes(2)
     of LONG:
         result.data = unpacker.getBytes(8)
     of BOOL:

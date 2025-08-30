@@ -398,7 +398,8 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     echo "[*] Executing."
     if not objectExecute(addr objCtx, entryFunction, args): 
         raise newException(CatchableError, fmt"Failed to execute function {$entryFunction}.")
-
+    echo "[+] Object file executed successfully."
+    
     return true
 
 #[ 
@@ -411,7 +412,7 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
 proc inlineExecuteGetOutput*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction: string = "go"): string = 
 
     if not inlineExecute(objectFile, args, entryFunction): 
-        raise newException(CatchableError, fmt"[-] Failed to inline-execute object file.")
+        raise newException(CatchableError, fmt"[-] Failed to execute object file.")
 
     var output = BeaconGetOutputData(NULL)
     return $output
@@ -424,12 +425,54 @@ proc generateCoffArguments*(args: seq[TaskArg]): seq[byte] =
     
     var packer = Packer.init() 
     for arg in args: 
-        packer.add(uint32(arg.data.len()))
-        packer.addData(arg.data)
 
-        # Add terminating NULL byte to the end of string arguments
+        # All arguments passed to the beacon object file via the 'bof' command are handled as regular ANSI string
+        # As some BOFs however, take different argument types, prefixes can be used to indicate the exact data type
+        # [i]: INT
+        # [s]: SHORT
+        # [w]: WIDE STRING (utf-8)
+
         if arg.argType == uint8(types.STRING): 
-            packer.add(uint8('\0'))
+
+            try: 
+                let 
+                    prefix = Bytes.toString(arg.data)[0..3]
+                    value = Bytes.toString(arg.data)[4..^1]
+
+                # Check the first two characters for a type specification 
+                case prefix: 
+                of protect("[i]:"): 
+                    # Handle argument as integer
+                    let intValue: uint32 = cast[uint32](parseUint(value)) 
+                    packer.add(intValue)
+
+                of protect("[s]:"): 
+                    # Handle argument as short 
+                    let shortValue: uint16 = cast[uint16](parseUint(value))
+                    packer.add(shortValue)
+
+                of protect("[w]:"):
+                    # Handle argument as wide string  
+                    # Add terminating NULL byte to the end of string arguments
+                    let wStrData = cast[seq[byte]](+$value) # +$ converts a string to a wstring
+                    packer.add(uint32(wStrData.len()))
+                    packer.addData(wStrData)
+
+                else: 
+                    # In case no prefix is specified, handle the argument as a regular string
+                    raise newException(IndexDefect, "")
+
+            except IndexDefect: 
+                # Handle argument as regular string
+                # Add terminating NULL byte to the end of string arguments
+                let data = arg.data & @[uint8(0)]
+                packer.add(uint32(data.len()))
+                packer.addData(data)
+    
+        else: 
+            # Argument is not passed as a string, but instead directly as a int or short 
+            # Primarily for alias functions where the exact data types are defined 
+            packer.addData(arg.data)
 
     let argBytes = packer.pack() 
 

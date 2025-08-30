@@ -8,11 +8,11 @@ let commands*: seq[Command] =  @[
     Command(
         name: protect("bof"),
         commandType: CMD_BOF,
-        description: protect("Execute a object file in memory and retrieve the output."),
+        description: protect("Execute an object file in memory and retrieve the output."),
         example: protect("bof /path/to/dir.x64.o C:\\Users"),
         arguments: @[
-            Argument(name: protect("path"), description: protect("Local path to the object file to execute."), argumentType: BINARY, isRequired: true),
-            Argument(name: protect("arguments"), description: protect("Arguments to be passed to the object file."), argumentType: STRING, isRequired: false)
+            Argument(name: protect("path"), description: protect("Path to the object file to execute."), argumentType: BINARY, isRequired: true),
+            Argument(name: protect("arguments"), description: protect("Arguments to be passed to the object file. Arguments are handled as STRING, unless specified with a prefix ([i]:INT, [w]:WSTRING, [s]:SHORT; the colon separates prefix and value)"), argumentType: STRING, isRequired: false)
         ],
         execute: executeBof
     )
@@ -40,7 +40,7 @@ when defined(agent):
             of 1: # Only the object file has been passed as an argument
                 objectFile = task.args[0].data
                 arguments = @[]
-            else: # The optional 'arguments' parameter was included
+            else: # Parameters were passed to the BOF execution
                 objectFile = task.args[0].data
 
                 # Combine the passed arguments into a format that is understood by the Beacon API

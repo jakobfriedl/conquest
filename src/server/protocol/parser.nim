@@ -44,12 +44,17 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
         let intValue = cast[uint32](parseUInt(value))
         arg.data = @[byte(intValue and 0xFF), byte((intValue shr 8) and 0xFF), byte((intValue shr 16) and 0xFF), byte((intValue shr 24) and 0xFF)]
 
+    of SHORT: 
+        # Length: 2 bytes 
+        let shortValue = cast[uint16](parseUint(value))
+        arg.data = @[byte(shortValue and 0xFF), byte((shortValue shr 8) and 0xFF)]
+
     of LONG: 
         # Length: 8 bytes
         var data = newSeq[byte](8)
-        let intValue = cast[uint64](parseUInt(value))
+        let longValue = cast[uint64](parseUInt(value))
         for i in 0..7:
-            data[i] = byte((intValue shr (i * 8)) and 0xFF)
+            data[i] = byte((longValue shr (i * 8)) and 0xFF)
         arg.data = data
 
     of BOOL: 

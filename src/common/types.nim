@@ -19,9 +19,10 @@ type
     ArgType* = enum 
         STRING = 0'u8
         INT = 1'u8
-        LONG = 2'u8
-        BOOL = 3'u8 
-        BINARY = 4'u8 
+        SHORT = 2'u8
+        LONG = 3'u8
+        BOOL = 4'u8 
+        BINARY = 5'u8 
 
     HeaderFlags* = enum 
         # Flags should be powers of 2 so they can be connected with or operators
