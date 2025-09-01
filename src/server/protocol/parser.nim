@@ -1,5 +1,6 @@
+import std/paths
 import strutils, sequtils, times
-import ../../common/[types, sequence, crypto, utils]
+import ../../common/[types, sequence, crypto, utils, serialize]
 
 proc parseInput*(input: string): seq[string] = 
     var i = 0
@@ -70,7 +71,16 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
         arg.data = string.toBytes(value)
 
     of BINARY: 
-        arg.data = string.toBytes(readFile(value))
+        # A binary data argument consists of the file name (without the path) and the file content in bytes, both prefixed with their length as a uint32
+        var packer = Packer.init() 
+
+        let fileName = cast[string](extractFilename(cast[Path](value)))
+        packer.addDataWithLengthPrefix(string.toBytes(fileName))
+        
+        let fileContents = readFile(value)
+        packer.addDataWithLengthPrefix(string.toBytes(fileContents))
+
+        arg.data = packer.pack() 
     
     return arg
 

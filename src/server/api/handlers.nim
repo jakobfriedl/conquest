@@ -132,4 +132,4 @@ proc handleResult*(resultData: seq[byte]) =
                 cq.output()
             
         except CatchableError as err:
-            cq.error(err.msg)  
+            cq.error(err.msg, "\n")  

