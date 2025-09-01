@@ -45,6 +45,8 @@ type
         CMD_ENV = 10'u16 
         CMD_WHOAMI = 11'u16
         CMD_BOF = 12'u16
+        CMD_DOWNLOAD = 13'u16
+        CMD_UPLOAD = 14'u16
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8

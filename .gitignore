@@ -10,6 +10,7 @@ bin/*
 
 # Ignore log files
 *.log
+/data/loot/*
 
 .vscode/
 

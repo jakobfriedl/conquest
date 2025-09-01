@@ -6,6 +6,7 @@ import
     shell,
     sleep,
     filesystem,
+    filetransfer,
     environment,
     bof
 
@@ -26,6 +27,7 @@ proc loadModules*() =
     registerCommands(shell.commands)
     registerCommands(sleep.commands)
     registerCommands(filesystem.commands)
+    registerCommands(filetransfer.commands)
     registerCommands(environment.commands)
     registerCommands(bof.commands)
 
