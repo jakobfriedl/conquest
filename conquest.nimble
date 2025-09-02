@@ -9,12 +9,12 @@ srcDir        = "src"
 # Build tasks 
 
 import os, strformat
+let cqRoot = getCurrentDir()
 task server, "Build conquest server binary": 
-    let cqRoot = getCurrentDir()
     exec fmt"nim c -d:CONQUEST_ROOT={cqRoot} src/server/main.nim"
 
 task client, "Build conquest client binary": 
-    discard
+    exec fmt"nim c -d:release -d:CONQUEST_ROOT={cqRoot} src/client/main.nim"
 
 # Dependencies
 
@@ -28,3 +28,4 @@ requires "tiny_sqlite >= 0.2.0"
 requires "prologue >= 0.6.6" 
 requires "winim >= 3.9.4"
 requires "ptr_math >= 0.3.0"
+requires "imguin >= 1.92.2.0"
