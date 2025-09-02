@@ -346,8 +346,10 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     # Verifying that the object file's architecture is x64
     when defined(amd64): 
         if objCtx.union.header.Machine != IMAGE_FILE_MACHINE_AMD64: 
+            RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
             raise newException(CatchableError, "Only x64 object files are supported")
     else: 
+        RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
         raise newException(CatchableError, "Only x64 object files are supported")
 
     # Calculate required virtual memory
@@ -357,13 +359,17 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     # Allocate memory 
     virtAddr = VirtualAlloc(NULL, virtSize, MEM_RESERVE or MEM_COMMIT, PAGE_READWRITE)
     if virtAddr == NULL: 
+        RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
         raise newException(CatchableError, $GetLastError())
+    defer: VirtualFree(virtAddr, 0, MEM_RELEASE)
 
     # Allocate heap memory to store section map array
     objCtx.secMap = cast[PSECTION_MAP](HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, int(objCtx.union.header.NumberOfSections) * sizeof(SECTION_MAP)))
     if objCtx.secMap == NULL: 
+        RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
         raise newException(CatchableError, $GetLastError())
-    
+    defer: HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, objCtx.secMap)
+
     echo fmt"[*] Virtual memory allocated for object file at 0x{virtAddr.repr} ({virtSize} bytes)"
     
     # Set the section base to the allocated memory
@@ -392,14 +398,18 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
 
     echo "[*] Processing sections and performing relocations."
     if not objectProcessSection(addr objCtx): 
+        RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
         raise newException(CatchableError, "Failed to process sections.")
 
     # Executing the object file 
     echo "[*] Executing."
     if not objectExecute(addr objCtx, entryFunction, args): 
+        RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
         raise newException(CatchableError, fmt"Failed to execute function {$entryFunction}.")
     echo "[+] Object file executed successfully."
     
+    RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
+
     return true
 
 #[ 

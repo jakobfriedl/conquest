@@ -76,6 +76,10 @@ type
         LOG_SUCCESS = "[DONE] "
         LOG_WARNING = "[WARN] "
 
+    SleepObfuscationMode* = enum 
+        EKKO = 0'u8 
+        ZILEAN = 1'u8
+
 # Encryption 
 type    
     Uuid* = uint32
