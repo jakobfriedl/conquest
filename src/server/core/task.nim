@@ -48,7 +48,7 @@ proc handleHelp(cq: Conquest, parsed: seq[string]) =
         cq.displayHelp()
     except ValueError: 
         # Command was not found
-        cq.error("The command '{parsed[1]}' does not exist." & '\n')
+        cq.error(fmt"The command '{parsed[1]}' does not exist." & '\n')
 
 proc handleAgentCommand*(cq: Conquest, input: string) = 
     # Return if no command (or just whitespace) is entered

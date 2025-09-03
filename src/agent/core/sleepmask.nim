@@ -72,7 +72,7 @@ proc GetRandomThreadCtx(): CONTEXT =
 
     return ctx
 
-# Ekko sleep obfuscation with stack spoofing 
+# Timer based sleep obfuscation with stack spoofing (Ekko/Zilean)
 proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = EKKO, spoofStack: bool = true) = 
     
     echo fmt"[*] Using {$mode} for sleep obfuscation [Stack duplication: {$spoofStack}]."

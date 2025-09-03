@@ -69,6 +69,6 @@ proc main() =
 
         except CatchableError as err: 
             echo "[-] ", err.msg
-          
+
 when isMainModule:
     main() 

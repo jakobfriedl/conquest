@@ -8,7 +8,8 @@ import
     filesystem,
     filetransfer,
     environment,
-    bof
+    bof,
+    screenshot
 
 type
     ModuleManager* = object 
@@ -30,6 +31,7 @@ proc loadModules*() =
     registerCommands(filetransfer.commands)
     registerCommands(environment.commands)
     registerCommands(bof.commands)
+    registerCommands(screenshot.commands)
 
 proc getCommandByType*(cmdType: CommandType): Command = 
     return manager.commandsByType[cmdType]
