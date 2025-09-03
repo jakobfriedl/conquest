@@ -42,3 +42,4 @@ Post-Exploitation
         - Create loot directory for agent to store files in 
         - Read file into memory and send byte stream to specific endpoint, e.g. POST /<listener>/<agent>/<download>-task/file
         - Encrypt file in-transit!!!
+- [x] screenshot  : Take a screenshot of the entire desktop and all monitors

