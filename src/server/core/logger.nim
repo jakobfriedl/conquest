@@ -13,6 +13,8 @@ proc makeAgentLogDirectory*(cq: Conquest, agentId: string): bool =
 
 proc log*(cq: Conquest, logEntry: string) = 
     let 
+        # TODO: Fix issue where log files are written to the wrong agent when the interact agent is changed in the middle of command execution
+        # Though that problem would not occur when a proper GUI is used in the future
         date = now().format("dd-MM-yyyy")
         agentLogPath = fmt"{CONQUEST_ROOT}/data/logs/{cq.interactAgent.agentId}/{date}.session.log"
 

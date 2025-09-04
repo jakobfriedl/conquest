@@ -54,9 +54,10 @@ var parser = newParser:
         command("build"): 
             help("Generate a new agent to connect to an active listener.")
             option("-l", "--listener", help="Name of the listener.", required=true)
-            option("-s", "--sleep", help="Sleep delay in seconds." )
+            option("-s", "--sleep", help="Sleep delay in seconds.")
+            option("--sleepmask", help="Sleep obfuscation technique.", default=some("none"), choices = @["ekko", "zilean", "foliage", "none"])
+            flag("--spoof-stack", help="Use stack duplication to spoof the call stack. Supported by EKKO and ZILEAN techniques.")
             # option("-p", "--payload", help="Agent type.\n\t\t\t    ", default=some("monarch"), choices = @["monarch"],)
-
     command("help"):
         nohelpflag()
 
@@ -104,7 +105,7 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
             of "interact":
                 cq.agentInteract(opts.agent.get.interact.get.name) 
             of "build": 
-                cq.agentBuild(opts.agent.get.build.get.listener, opts.agent.get.build.get.sleep)
+                cq.agentBuild(opts.agent.get.build.get.listener, opts.agent.get.build.get.sleep, opts.agent.get.build.get.sleepmask, opts.agent.get.build.get.spoof_stack)
             else: 
                 cq.agentUsage()
 

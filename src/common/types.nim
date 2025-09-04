@@ -77,10 +77,11 @@ type
         LOG_SUCCESS = "[DONE] "
         LOG_WARNING = "[WARN] "
 
-    SleepObfuscationMode* = enum 
-        EKKO = 0'u8 
-        ZILEAN = 1'u8
-        FOLIAGE = 2'u8
+    SleepObfuscationTechnique* = enum 
+        NONE = 0'u8
+        EKKO = 1'u8 
+        ZILEAN = 2'u8
+        FOLIAGE = 3'u8
 
 # Encryption 
 type    
@@ -209,6 +210,8 @@ type
         ip*: string
         port*: int
         sleep*: int
+        sleepTechnique*: SleepObfuscationTechnique
+        spoofStack*: bool
         sessionKey*: Key
         agentPublicKey*: Key
         profile*: Profile

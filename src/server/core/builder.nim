@@ -7,17 +7,27 @@ import ../../common/[types, utils, profile, serialize, crypto]
 
 const PLACEHOLDER = "PLACEHOLDER"
 
-proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int): seq[byte] = 
+proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int, sleepTechnique: string, spoofStack: bool): seq[byte] = 
     
     var packer = Packer.init()
 
     # Add listener configuration
     # Variable length data is prefixed with a 4-byte length indicator
+
+    # Listener configuration
     packer.add(string.toUuid(listener.listenerId))
     packer.addDataWithLengthPrefix(string.toBytes(listener.address))
     packer.add(uint32(listener.port))
+
+    # Sleep settings
     packer.add(uint32(sleep))
+    packer.add(uint8(parseEnum[SleepObfuscationTechnique](sleepTechnique.toUpperAscii())))
+    packer.add(uint8(spoofStack))
+
+    # Public key for key exchange
     packer.addData(cq.keyPair.publicKey)
+
+    # C2 profile
     packer.addDataWithLengthPrefix(string.toBytes(cq.profile.toTomlString()))
 
     let data = packer.pack() 
@@ -123,7 +133,7 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): bo
     return true 
     
 # Agent generation 
-proc agentBuild*(cq: Conquest, listener, sleep: string): bool {.discardable.} =
+proc agentBuild*(cq: Conquest, listener, sleepDelay: string, sleepTechnique: string, spoofStack: bool): bool {.discardable.} =
 
     # Verify that listener exists
     if not cq.dbListenerExists(listener.toUpperAscii): 
@@ -133,11 +143,11 @@ proc agentBuild*(cq: Conquest, listener, sleep: string): bool {.discardable.} =
     let listener = cq.listeners[listener.toUpperAscii] 
     
     var config: seq[byte] 
-    if sleep.isEmptyOrWhitespace(): 
+    if sleepDelay.isEmptyOrWhitespace(): 
         # If no sleep value has been defined, take the default from the profile 
-        config = cq.serializeConfiguration(listener, cq.profile.getInt("agent.sleep"))
+        config = cq.serializeConfiguration(listener, cq.profile.getInt("agent.sleep"), sleepTechnique, spoofStack)
     else: 
-        config = cq.serializeConfiguration(listener, parseInt(sleep))
+        config = cq.serializeConfiguration(listener, parseInt(sleepDelay), sleepTechnique, spoofStack)
     
     let unpatchedExePath = cq.compile(config.len)
     if unpatchedExePath.isEmptyOrWhitespace():
