@@ -112,7 +112,7 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
     # Handle help flag
     except ShortCircuit as err:
         if err.flag == "argparse_help":
-            cq.error(err.help)
+            cq.output(err.help)
     
     # Handle invalid arguments
     except CatchableError: 
