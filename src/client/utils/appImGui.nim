@@ -35,21 +35,6 @@ type
 # Forward definitions
 proc setTheme*(this: var Window, theme: Theme): string
 
-# Sections
-const
-    scWindow = "Window"
-    startupPosX = "startupPosX"
-    startupPosY = "startupPosY"
-    viewportWidth = "viewportWidth"
-    viewportHeight = "viewportHeigth"
-    colBGx = "colBGx"
-    colBGy = "colBGy"
-    colBGz = "colBGz"
-    colBGw = "colBGw"
-    theme = "theme"
-    scImage = "Image"
-    imageSaveFormatIndex = "imageSaveFormatIndex"
-
 # Main setup function
 proc createApp*(w: cint = 1024, h: cint = 900, imnodes: bool = false, implot: bool = false, implot3d = false, title: string = "ImGui window", docking: bool = true): Window =
     doAssert glfwInit()
@@ -153,7 +138,7 @@ proc createApp*(w: cint = 1024, h: cint = 900, imnodes: bool = false, implot: bo
     result.handle = glfwWin
     
     var pio = igGetIO()
-    pio.IniFileName = fmt"{CONQUEST_ROOT}/data/layout.ini"
+    pio.IniFileName = fmt"{CONQUEST_ROOT}/src/client/layout.ini".cstring
     setTheme(Dark)
     discard setupFonts() 
     result.showWindowDelay = 2
