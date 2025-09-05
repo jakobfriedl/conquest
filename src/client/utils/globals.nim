@@ -1,0 +1,1 @@
+const CONQUEST_ROOT* {.strdefine.} = ""
