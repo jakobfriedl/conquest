@@ -1,6 +1,6 @@
 import tables
 import ./utils/appImGui
-import ./views/[dockspace, agents]
+import ./views/[dockspace, agents, listeners, eventlog]
 
 proc main() = 
     var app = createApp(1024, 800, imnodes = true, title = "Conquest", docking = true)
@@ -11,9 +11,13 @@ proc main() =
         showConquest = true
         showAgentsTable = true
         showAgentsGraph = false
+        showListeners = false
+        showEventlog = true
         
     views["Agents [Table View]"] = addr showAgentsTable 
     views["Agents [Graph View]"] = addr showAgentsGraph
+    views["Listeners"] = addr showListeners
+    views["Eventlog"] = addr showEventlog
 
     let io = igGetIO()
 
@@ -26,15 +30,13 @@ proc main() =
             continue 
         newFrame()
 
-        # UI components
+        # UI components/views
         Dockspace().draw(addr showConquest, views)
         
-        if showAgentsTable: 
-            AgentsTable("Agents [Table View]").draw(addr showAgentsTable)   
-
-        if showAgentsGraph: 
-            AgentsTable("Agents [Graph View]").draw(addr showAgentsGraph)   
-
+        if showAgentsTable: AgentsTable("Agents [Table View]").draw(addr showAgentsTable)   
+        if showAgentsGraph: AgentsTable("Agents [Graph View]").draw(addr showAgentsGraph)   
+        if showListeners: ListenersTable("Listeners").draw(addr showListeners)
+        if showEventlog:Eventlog("Eventlog").draw(addr showEventlog)
 
         igShowDemoWindow(nil)
 
