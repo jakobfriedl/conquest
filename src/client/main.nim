@@ -1,6 +1,6 @@
 import tables
 import ./utils/appImGui
-import ./views/[dockspace, agents, listeners, eventlog]
+import ./views/[dockspace, sessions, listeners, eventlog]
 
 proc main() = 
     var app = createApp(1024, 800, imnodes = true, title = "Conquest", docking = true)
@@ -9,13 +9,13 @@ proc main() =
     var 
         views: Table[string, ptr bool]
         showConquest = true
-        showAgentsTable = true
-        showAgentsGraph = false
+        showSessionsTable = true
+        showSessionsGraph = false
         showListeners = false
         showEventlog = true
         
-    views["Agents [Table View]"] = addr showAgentsTable 
-    views["Agents [Graph View]"] = addr showAgentsGraph
+    views["Sessions [Table View]"] = addr showSessionsTable 
+    views["Sessions [Graph View]"] = addr showSessionsGraph
     views["Listeners"] = addr showListeners
     views["Eventlog"] = addr showEventlog
 
@@ -33,8 +33,8 @@ proc main() =
         # UI components/views
         Dockspace().draw(addr showConquest, views)
         
-        if showAgentsTable: AgentsTable("Agents [Table View]").draw(addr showAgentsTable)   
-        if showAgentsGraph: AgentsTable("Agents [Graph View]").draw(addr showAgentsGraph)   
+        if showSessionsTable: SessionsTable("Sessions [Table View]").draw(addr showSessionsTable)   
+        if showSessionsGraph: SessionsTable("Sessions [Graph View]").draw(addr showSessionsGraph)   
         if showListeners: ListenersTable("Listeners").draw(addr showListeners)
         if showEventlog:Eventlog("Eventlog").draw(addr showEventlog)
 
