@@ -19,6 +19,15 @@ proc main() =
     views["Listeners"] = addr showListeners
     views["Eventlog"] = addr showEventlog
 
+    # Create components
+    var 
+        dockspace = Dockspace()
+        sessionsTable = SessionsTable("Sessions [Table View]") 
+        sessionsGraph = SessionsTable("Sessions [Graph View]")
+        listenersTable = ListenersTable("Listeners")
+        eventlog = Eventlog("Eventlog")
+
+
     let io = igGetIO()
 
     # main loop
@@ -30,13 +39,11 @@ proc main() =
             continue 
         newFrame()
 
-        # UI components/views
-        Dockspace().draw(addr showConquest, views)
-        
-        if showSessionsTable: SessionsTable("Sessions [Table View]").draw(addr showSessionsTable)   
-        if showSessionsGraph: SessionsTable("Sessions [Graph View]").draw(addr showSessionsGraph)   
-        if showListeners: ListenersTable("Listeners").draw(addr showListeners)
-        if showEventlog:Eventlog("Eventlog").draw(addr showEventlog)
+        # Draw/update UI components/views
+        dockspace.draw(addr showConquest, views)
+        if showSessionsTable: sessionsTable.draw(addr showSessionsTable)   
+        if showListeners: listenersTable.draw(addr showListeners)
+        if showEventlog: eventlog.draw(addr showEventlog)
 
         igShowDemoWindow(nil)
 
