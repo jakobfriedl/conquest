@@ -1,5 +1,7 @@
-import times
+import times, tables, strformat
 import imguin/[cimgui, glfw_opengl, simple]
+
+import ./console
 import ../utils/appImGui
 import ../../common/[types, utils]
 
@@ -8,6 +10,7 @@ type
         title: string 
         agents: seq[Agent]
         selection: ptr ImGuiSelectionBasicStorage
+        consoles: ptr Table[string, ConsoleComponent]
 
 let exampleAgents: seq[Agent] = @[
   Agent(
@@ -80,11 +83,28 @@ let exampleAgents: seq[Agent] = @[
   )
 ]
 
-proc SessionsTable*(title: string): SessionsTableComponent = 
+proc SessionsTable*(title: string, consoles: ptr Table[string, ConsoleComponent]): SessionsTableComponent = 
     result = new SessionsTableComponent
     result.title = title
     result.agents = exampleAgents
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
+    result.consoles = consoles
+
+proc interact(component: SessionsTableComponent) = 
+    # Open a new console for each selected agent session
+    var it: pointer = nil
+    var row: ImGuiID
+    while ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
+        let agent = component.agents[cast[int](row)]
+
+        # Create a new console window
+        if not component.consoles[].hasKey(agent.agentId):
+            component.consoles[][agent.agentId] = Console(agent)
+
+        # Focus the existing console window
+        else:
+            igSetWindowFocus_Str(fmt"[{agent.agentId}] {agent.username}@{agent.hostname}")
+
 
 proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
     igSetNextWindowSize(vec2(800, 600), ImGuiCond_Once.int32)
@@ -124,7 +144,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.agents.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        for row in 0..< component.agents.len(): 
+        for row in 0 ..< component.agents.len(): 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
             let agent = component.agents[row]
@@ -134,6 +154,11 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
                 igSetNextItemSelectionUserData(row)
                 var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](row))
                 discard igSelectable_Bool(agent.agentId, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
+                
+                # Interact with session on double-click
+                if igIsMouseDoubleClicked_Nil(ImGui_MouseButton_Left.int32):
+                    component.interact()
+            
             if igTableSetColumnIndex(1): 
                 igText(agent.ip)
             if igTableSetColumnIndex(2): 
@@ -153,14 +178,22 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         # Right-clicking the table header to hide/show columns or reset the layout is only possible when no sessions are selected
         if component.selection[].Size > 0 and igBeginPopupContextWindow("TableContextMenu", ImGui_PopupFlags_MouseButtonRight.int32): 
 
-            if igMenuItem("Interact", "ENTER", false, true): 
+            if igMenuItem("Interact", nil, false, true): 
+                component.interact()
                 igCloseCurrentPopup()
         
-            if igMenuItem("Remove", "DELETE", false, true): 
+            if igMenuItem("Remove", nil, false, true): 
+                # Update agents table with only non-selected ones
+                var newAgents: seq[Agent] = @[]
+                for i in 0 ..< component.agents.len():
+                    if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        newAgents.add(component.agents[i])
+
+                component.agents = newAgents
+                ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
 
             igEndPopup()
-
 
         multiSelectIO = igEndMultiSelect()
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
