@@ -1,5 +1,7 @@
 switch "o", "bin/client"
 
+switch "d", "ImColorTextEdit"
+
 # Select compiler
 var TC = "gcc"                
 # var TC = "clang"             
