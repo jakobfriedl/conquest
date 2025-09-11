@@ -9,22 +9,19 @@ type
         showConsole*: bool
         inputBuffer: string
         consoleEntries: seq[string]
+        console: ptr TextEditor
 
 proc Console*(agent: Agent): ConsoleComponent = 
     result = new ConsoleComponent
     result.agent = agent
     result.showConsole = true
+    result.console = TextEditor_TextEditor()
     result.consoleEntries = @[
         "a",
-        "a",
-        "a",
-        "a",
-        "aAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "a",
-        "a",
-        "a",
-        "a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a"
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     ]
+
+    result.console.TextEditor_SetText(result.consoleEntries.join("\n") & '\0')
 
 proc findLongestLength(text: string): float32 =
     var maxWidth = 0.0f
@@ -42,6 +39,9 @@ proc draw*(component: ConsoleComponent) =
     defer: igEnd() 
 
     # Console text section
+    # A InputTextMultiline component is placed within a Child Frame to enable both proper text selection and a horizontal scrollbar
+    # The only thing missing from this implementation is the ability change the text color
+    # https://github.com/ocornut/imgui/issues/383#issuecomment-2080346129
     let footerHeight = igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing()
     let buffer = component.consoleEntries.join("\n") & '\0'
     
@@ -60,12 +60,20 @@ proc draw*(component: ConsoleComponent) =
                 igSetScrollX_Float(1.0f) # This is required to prevent the horizontal scrolling from snapping in
 
         # Retrieve the length of the longes console entry
-        let width = findLongestLength(buffer) 
+        var width = findLongestLength(buffer) 
+        if width <= io.DisplaySize.x: 
+            width = -1.0f
 
         # Set the Text edit background color and make it visible.
         igPushStyleColor_Vec4(ImGuiCol_FrameBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
         igPushStyleColor_Vec4(ImGuiCol_ScrollbarBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
         discard igInputTextMultiline("##ConsoleText", buffer, cast[csize_t](buffer.len()), vec2(width, -1.0f), ImGui_InputTextFlags_ReadOnly.int32 or ImGui_InputTextFlags_AllowTabInput.int32, nil, nil)
+        
+        # Alternative: ImGuiColorTextEdit
+        # component.console.TextEditor_SetReadOnlyEnabled(true)
+        # component.console.TextEditor_SetShowLineNumbersEnabled(false)
+        # component.console.TextEditor_Render("##ConsoleEntries", false, vec2(-1, -1), true)
+        
         igPopStyleColor(2)
 
     igPopStyleColor(2)
