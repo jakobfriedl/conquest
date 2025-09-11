@@ -7,14 +7,16 @@ type
         windowClass: ptr ImGuiWindowClass
         dockspaceFlags: ImGuiDockNodeFlags
         windowFlags: ImGuiWindow_Flags
+        initialized: bool
 
 proc Dockspace*(): DockspaceComponent = 
     result = new DockspaceComponent
     result.windowClass = ImGuiWindowClass_ImGuiWindowClass()
     result.dockspaceFlags = ImGuiDockNodeFlags_None.int32
     result.windowFlags =  ImGuiWindowFlags_MenuBar.int32 or ImGuiWindowFlags_NoDocking.int32
+    result.initialized = false
 
-proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[string, ptr bool]) = 
+proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[string, ptr bool], dockTop, dockBottom, dockTopLeft, dockTopRight: ptr ImGuiID) = 
 
     var vp = igGetMainViewport()
     igSetNextWindowPos(vp.WorkPos, ImGui_Cond_None.int32, vec2(0.0f, 0.0f))
@@ -39,8 +41,25 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[
 
     igPopStyleVar(3)
 
+    # Setup default docking layout
+    var dockspaceId = igGetID_Str("Dockspace")
+    if igDockBuilderGetNode(dockspaceId) == nil:  
+        igDockBuilderRemoveNode(dockspaceId)
+        igDockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace.int32)
+        igDockBuilderSetNodeSize(dockspaceId, vp.WorkSize)
+
+        discard igDockBuilderSplitNode(dockspaceId, ImGuiDir_Down, 0.8f, dockBottom, dockTop)
+        discard igDockBuilderSplitNode(dockTop[], ImGuiDir_Right, 0.4f, dockTopRight, dockTopLeft)
+
+        igDockBuilderDockWindow("Sessions [Table View]", dockTopLeft[])
+        igDockBuilderDockWindow("Listeners", dockBottom[])
+        igDockBuilderDockWindow("Eventlog", dockTopRight[])
+        igDockBuilderDockWindow("Dear ImGui Demo", dockTopRight[])
+        
+        igDockBuilderFinish(dockspaceId)
+
     # Create dockspace
-    igDockSpace(igGetID_Str("Dockspace"), vec2(0.0f, 0.0f), component.dockspaceFlags, component.windowClass)
+    igDockSpace(dockspaceId, vec2(0.0f, 0.0f), component.dockspaceFlags, component.windowClass)
 
     # Create menu bar
     if igBeginMenuBar(): 

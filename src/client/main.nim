@@ -11,10 +11,16 @@ proc main() =
         showConquest = true
         showSessionsTable = true
         showSessionsGraph = false
-        showListeners = false
+        showListeners = true
         showEventlog = true
         consoles: Table[string, ConsoleComponent]
-        
+
+    var 
+        dockTop: ImGuiID = 0
+        dockBottom: ImGuiID = 0
+        dockTopLeft: ImGuiID = 0
+        dockTopRight: ImGuiID = 0
+
     views["Sessions [Table View]"] = addr showSessionsTable 
     views["Sessions [Graph View]"] = addr showSessionsGraph
     views["Listeners"] = addr showListeners
@@ -39,7 +45,7 @@ proc main() =
         newFrame()
 
         # Draw/update UI components/views
-        dockspace.draw(addr showConquest, views)
+        dockspace.draw(addr showConquest, views, addr dockTop, addr dockBottom, addr dockTopLeft, addr dockTopRight)
         if showSessionsTable: sessionsTable.draw(addr showSessionsTable)   
         if showListeners: listenersTable.draw(addr showListeners)
         if showEventlog: eventlog.draw(addr showEventlog)
@@ -47,7 +53,9 @@ proc main() =
         # Show console windows
         var newConsoleTable: Table[string, ConsoleComponent]
         for agentId, console in consoles.mpairs():
-            if console.showConsole: 
+            if console.showConsole:
+                # Ensure that new console windows are docked to the bottom panel by default
+                igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
                 console.draw()
                 newConsoleTable[agentId] = console
             
