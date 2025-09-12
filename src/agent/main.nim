@@ -68,5 +68,11 @@ proc main() =
         except CatchableError as err: 
             echo "[-] ", err.msg
 
+
+import core/clr
 when isMainModule:
+
+    test() 
+    quit(0)
+
     main() 
