@@ -17,7 +17,7 @@ proc Console*(agent: Agent): ConsoleComponent =
     result.showConsole = true
     result.console = TextEditor_TextEditor()
     result.consoleEntries = @[
-        "a",
+        "a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a",
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     ]
 
@@ -38,11 +38,16 @@ proc draw*(component: ConsoleComponent) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}", addr component.showConsole, 0)
     defer: igEnd() 
 
-    # Console text section
-    # A InputTextMultiline component is placed within a Child Frame to enable both proper text selection and a horizontal scrollbar
-    # The only thing missing from this implementation is the ability change the text color
-    # https://github.com/ocornut/imgui/issues/383#issuecomment-2080346129
-    let footerHeight = igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing()
+    #[
+        Console entries/text section
+
+        Problems: 
+        # A InputTextMultiline component is placed within a Child Frame to enable both proper text selection and a horizontal scrollbar
+        # The only thing missing from this implementation is the ability change the text color and auto-scrolling
+        # https://github.com/ocornut/imgui/issues/383#issuecomment-2080346129
+        # https://github.com/ocornut/imgui/issues/950
+    ]#
+    let footerHeight = igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing() # * 2
     let buffer = component.consoleEntries.join("\n") & '\0'
     
     # Push styles to hide the Child's background and scrollbar background.
@@ -74,17 +79,40 @@ proc draw*(component: ConsoleComponent) =
         # component.console.TextEditor_SetShowLineNumbersEnabled(false)
         # component.console.TextEditor_Render("##ConsoleEntries", false, vec2(-1, -1), true)
         
+        # # Scroll to bottom 
+        # if igGetScrollY() >= igGetScrollMaxY():
+        #     let lineCount = component.console.TextEditor_GetLineCount()
+        #     component.console.TextEditor_SetCursorPosition(lineCount, 0)
+
         igPopStyleColor(2)
 
     igPopStyleColor(2)
     igEndChild()
 
-    igSeparator()
+    #[
+        Input field with prompt indicator
+    ]# 
+    let promptIndicator = fmt"[{component.agent.agentId}]"
+    var charWidth: ImVec2
+    igCalcTextSize(addr charWidth, "A", nil, false, -1.0f)
+    let promptWidth = charWidth.x * float(promptIndicator.len()) 
+    let spacing = igGetStyle().ItemSpacing.x
 
-    # Input field
-    igSetNextItemWidth(-1.0f)
+    igTextColored(vec4(1.0f, 1.0f, 1.0f, 1.0f), promptIndicator)
+    igSameLine(0.0f, spacing)  
+
+    var availableWidth: ImVec2
+    igGetContentRegionAvail(addr availableWidth)
+
+    igSetNextItemWidth(availableWidth.x)
     let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32 or ImGuiInputTextFlags_CallbackCompletion.int32 or ImGuiInputTextFlags_CallbackHistory.int32
     if igInputText("##Input", component.inputBuffer, 256, inputFlags, nil, nil): 
-        discard
+        echo component.inputBuffer
 
+    #[ 
+        Session information (requires footerHeight to be doubled)
+    ]# 
+    # igSeparator()
+    # igText(fmt"{component.agent.username}@{component.agent.hostname} [{component.agent.ip}]")
+    
     igSetItemDefaultFocus()
