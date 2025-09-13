@@ -9,6 +9,7 @@ import
     filetransfer,
     environment,
     bof,
+    dotnet,
     screenshot
 
 type
@@ -31,6 +32,7 @@ proc loadModules*() =
     registerCommands(filetransfer.commands)
     registerCommands(environment.commands)
     registerCommands(bof.commands)
+    registerCommands(dotnet.commands)
     registerCommands(screenshot.commands)
 
 proc getCommandByType*(cmdType: CommandType): Command = 

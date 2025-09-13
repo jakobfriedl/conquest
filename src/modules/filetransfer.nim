@@ -52,10 +52,8 @@ when defined(agent):
             # Create result packet for file download            
             var packer = Packer.init() 
 
-            packer.add(uint32(filePath.len()))
-            packer.addData(string.toBytes(filePath))
-            packer.add(uint32(fileBytes.len()))
-            packer.addData(string.toBytes(fileBytes))
+            packer.addDataWithLengthPrefix(string.toBytes(filePath))
+            packer.addDataWithLengthPrefix(string.toBytes(fileBytes))
 
             let result = packer.pack() 
 

@@ -1,4 +1,4 @@
-import macros, system, hashes
+import system
 import nimcrypto
 
 import ./[types, utils]

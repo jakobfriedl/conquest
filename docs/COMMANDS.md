@@ -31,7 +31,7 @@ Execution Commands
         - Read from listener endpoint directly to memory
         - Base for all kinds of BOFs (Situational Awareness, ...)
 - [ ] pe          : Execute PE file in memory and retrieve output (pe /local/path/mimikatz.exe)
-- [ ] dotnet      : Execute .NET assembly inline in memory and retrieve output (dotnet /local/path/Rubeus.exe ) 
+- [x] dotnet      : Execute .NET assembly inline in memory and retrieve output (dotnet /local/path/Rubeus.exe ) 
 
 Post-Exploitation
 -----------------

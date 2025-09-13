@@ -48,6 +48,7 @@ type
         CMD_DOWNLOAD = 13'u16
         CMD_UPLOAD = 14'u16
         CMD_SCREENSHOT = 15'u16
+        CMD_DOTNET = 16'u16
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
