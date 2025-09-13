@@ -34,7 +34,6 @@ proc etwPatch(pThreadCtx: PCONTEXT) =
     Arguments: 
     - assemblyBytes: Serialized .NET assembly 
     - arguments: seq[string] of arguments that should be passed to the function
-    Returns: CLR Version and assembly output
 ]#
 proc dotnetInlineExecuteGetOutput*(assemblyBytes: seq[byte], arguments: seq[string] = @[]): tuple[assembly, output: string] = 
 

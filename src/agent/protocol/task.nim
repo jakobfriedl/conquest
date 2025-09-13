@@ -1,4 +1,4 @@
-import strutils, tables, json, strformat, sugar
+import strutils, tables, json, strformat, zippy
 
 import ./result
 import ../../modules/manager
@@ -20,11 +20,14 @@ proc deserializeTask*(ctx: AgentCtx, bytes: seq[byte]): Task =
     validatePacket(header, cast[uint8](MSG_TASK)) 
 
     # Decrypt payload 
-    let payload = unpacker.getBytes(int(header.size))
-    let decData= validateDecryption(ctx.sessionKey, header.iv, payload, header.seqNr, header)
+    let compressedPayload = unpacker.getBytes(int(header.size))
+    let decData = validateDecryption(ctx.sessionKey, header.iv, compressedPayload, header.seqNr, header)
+
+    # Decompress payload 
+    let payload = uncompress(decData, dfGzip)
 
     # Deserialize decrypted data
-    unpacker = Unpacker.init(Bytes.toString(decData))
+    unpacker = Unpacker.init(Bytes.toString(payload))
 
     let 
         taskId = unpacker.getUint32()

