@@ -1,6 +1,6 @@
 switch "o", "bin/client"
 
-switch "d", "ImColorTextEdit"
+switch "d", "ImGuiTextSelect"
 
 # Select compiler
 var TC = "gcc"                

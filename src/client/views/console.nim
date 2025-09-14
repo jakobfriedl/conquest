@@ -1,118 +1,117 @@
-import strformat, strutils
+import strformat, strutils, times
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/appImGui
 import ../../common/[types]
 
-type 
+type
+    ConsoleItem = ref object 
+        timestamp: DateTime
+        logType: LogType
+        text: string
+
+    ConsoleItems = ref object
+        items: seq[string]
+    
     ConsoleComponent* = ref object of RootObj
         agent: Agent
         showConsole*: bool
         inputBuffer: string
-        consoleEntries: seq[string]
-        console: ptr TextEditor
+        consoleItems: ConsoleItems
+        textSelect: ptr TextSelect
 
-proc Console*(agent: Agent): ConsoleComponent = 
+proc getNumLines(data: pointer): csize_t {.cdecl.} =
+    if data.isNil:
+        return 0
+    let consoleItems = cast[ConsoleItems](data)
+    return consoleItems.items.len().csize_t
+
+proc getLineAtIndex(i: csize_t, data: pointer, outLen: ptr csize_t): cstring {.cdecl.} =
+    if data.isNil:
+        return nil    
+    let consoleItems = cast[ConsoleItems](data)
+    let line = consoleItems.items[i].cstring    
+    if not outLen.isNil:
+        outLen[] = line.len.csize_t
+    return line
+
+proc Console*(agent: Agent): ConsoleComponent =
     result = new ConsoleComponent
     result.agent = agent
     result.showConsole = true
-    result.console = TextEditor_TextEditor()
-    result.consoleEntries = @[
-        "a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a","a",
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    ]
+    result.inputBuffer = ""
 
-    result.console.TextEditor_SetText(result.consoleEntries.join("\n") & '\0')
+    result.consoleItems = new ConsoleItems
+    result.consoleItems.items = @[]    
+    result.textSelect = textselect_create(getLineAtIndex, getNumLines, cast[pointer](result.consoleItems), 0)
 
-proc findLongestLength(text: string): float32 =
-    var maxWidth = 0.0f
-    for line in text.splitLines():
-        let line_cstring = line.cstring
-        var textSizeOut: ImVec2
-        igCalcTextSize(addr textSizeOut, line_cstring, nil, false, -1.0f)
-        if textSizeOut.x > maxWidth:
-            maxWidth = textSizeOut.x
-    return maxWidth
-
-proc draw*(component: ConsoleComponent) = 
-
+proc draw*(component: ConsoleComponent) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}", addr component.showConsole, 0)
-    defer: igEnd() 
-
-    #[
-        Console entries/text section
-
-        Problems: 
-        # A InputTextMultiline component is placed within a Child Frame to enable both proper text selection and a horizontal scrollbar
-        # The only thing missing from this implementation is the ability change the text color and auto-scrolling
-        # https://github.com/ocornut/imgui/issues/383#issuecomment-2080346129
-        # https://github.com/ocornut/imgui/issues/950
-    ]#
-    let footerHeight = igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing() # * 2
-    let buffer = component.consoleEntries.join("\n") & '\0'
+    defer: igEnd()
     
-    # Push styles to hide the Child's background and scrollbar background.
-    igPushStyleColor_Vec4(ImGuiCol_FrameBg.int32, vec4(0.0f, 0.0f, 0.0f, 0.0f))
-    igPushStyleColor_Vec4(ImGuiCol_ScrollbarBg.int32, vec4(0.0f, 0.0f, 0.0f, 0.0f))
+    #[
+        Console items/text section using ImGuiTextSelect in a child window
+        Supports: 
+            - horizontal+vertical scrolling,
+            - autoscroll
+            - colored text
+            - text selection and copy functionality
 
-    if igBeginChild_Str("##Console", vec2(-0.99f, -footerHeight), ImGuiChildFlags_NavFlattened.int32, ImGuiWindowFlags_HorizontalScrollbar.int32):
-
-        # Manually handle horizontal scrolling with the mouse wheel/touchpad
-        let io = igGetIO()
-        if io.MouseWheelH != 0:
-            let scroll_delta = io.MouseWheelH * igGetScrollX() * 0.5
-            igSetScrollX_Float(igGetScrollX() - scroll_delta)
-            if igGetScrollX() == 0:
-                igSetScrollX_Float(1.0f) # This is required to prevent the horizontal scrolling from snapping in
-
-        # Retrieve the length of the longes console entry
-        var width = findLongestLength(buffer) 
-        if width <= io.DisplaySize.x: 
-            width = -1.0f
-
-        # Set the Text edit background color and make it visible.
-        igPushStyleColor_Vec4(ImGuiCol_FrameBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
-        igPushStyleColor_Vec4(ImGuiCol_ScrollbarBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
-        discard igInputTextMultiline("##ConsoleText", buffer, cast[csize_t](buffer.len()), vec2(width, -1.0f), ImGui_InputTextFlags_ReadOnly.int32 or ImGui_InputTextFlags_AllowTabInput.int32, nil, nil)
+        Problems I encountered with other approaches (Multi-line Text Input, TextEditor, ...):
+        - https://github.com/ocornut/imgui/issues/383#issuecomment-2080346129
+        - https://github.com/ocornut/imgui/issues/950
+        Huge thanks to @dinau for implementing ImGuiTextSelect into imguin very rapidly after I requested it.
+    ]#
+    let footerHeight = igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing() * 2
+    
+    if igBeginChild_Str("##Console", vec2(-1.0f, -footerHeight), ImGuiChildFlags_NavFlattened.int32, ImGuiWindowFlags_HorizontalScrollbar.int32):
         
-        # Alternative: ImGuiColorTextEdit
-        # component.console.TextEditor_SetReadOnlyEnabled(true)
-        # component.console.TextEditor_SetShowLineNumbersEnabled(false)
-        # component.console.TextEditor_Render("##ConsoleEntries", false, vec2(-1, -1), true)
+        # Display console items
+        for entry in component.consoleItems.items:
+            igTextColored(vec4(0.0f, 1.0f, 1.0f, 1.0f), entry.cstring)
         
-        # # Scroll to bottom 
-        # if igGetScrollY() >= igGetScrollMaxY():
-        #     let lineCount = component.console.TextEditor_GetLineCount()
-        #     component.console.TextEditor_SetCursorPosition(lineCount, 0)
-
-        igPopStyleColor(2)
-
-    igPopStyleColor(2)
+        component.textSelect.textselect_update()
+        
+        # Auto-scroll to bottom if we're already at the bottom
+        if igGetScrollY() >= igGetScrollMaxY():
+            igSetScrollHereY(1.0f)
+    
     igEndChild()
+    
+    # Buttons for testing the console 
+    if igButton("Add Items", vec2(0.0f, 0.0f)):
+        for i in 1..10:
+            component.consoleItems.items.add("Hello world!")
+
+    igSameLine(0.0f, 5.0f)
+    if igButton("Add Long Items", vec2(0.0f, 0.0f)):
+        for i in 1..3:
+            component.consoleItems.items.add("Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.")
+    
+    igSameLine(0.0f, 5.0f)
+    if igButton("Clear", vec2(0.0f, 0.0f)):
+        component.consoleItems.items.setLen(0)
 
     #[
         Input field with prompt indicator
-    ]# 
-    let promptIndicator = fmt"[{component.agent.agentId}]"
-    var charWidth: ImVec2
-    igCalcTextSize(addr charWidth, "A", nil, false, -1.0f)
-    let promptWidth = charWidth.x * float(promptIndicator.len()) 
-    let spacing = igGetStyle().ItemSpacing.x
-
-    igTextColored(vec4(1.0f, 1.0f, 1.0f, 1.0f), promptIndicator)
-    igSameLine(0.0f, spacing)  
-
+    ]#
+    igText(fmt"[{component.agent.agentId}]") 
+    let spacing = igGetStyle().ItemSpacing.x    
+    igSameLine(0.0f, spacing)
+    
+    # Calculate available width for input
     var availableWidth: ImVec2
     igGetContentRegionAvail(addr availableWidth)
-
     igSetNextItemWidth(availableWidth.x)
+    
     let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32 or ImGuiInputTextFlags_CallbackCompletion.int32 or ImGuiInputTextFlags_CallbackHistory.int32
-    if igInputText("##Input", component.inputBuffer, 256, inputFlags, nil, nil): 
-        echo component.inputBuffer
-
-    #[ 
-        Session information (requires footerHeight to be doubled)
-    ]# 
+    if igInputText("##Input", component.inputBuffer, 256, inputFlags, nil, nil):
+        discard
+    
+    #[
+        Session information (optional footer)
+    ]#
     # igSeparator()
-    # igText(fmt"{component.agent.username}@{component.agent.hostname} [{component.agent.ip}]")
+    # let sessionInfo = fmt"{component.agent.username}@{component.agent.hostname} [{component.agent.ip}]"
+    # igText(sessionInfo)
     
     igSetItemDefaultFocus()
