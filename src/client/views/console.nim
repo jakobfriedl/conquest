@@ -6,12 +6,18 @@ import ../../common/[types]
 const MAX_INPUT_LENGTH = 512
 type    
     ConsoleComponent* = ref object of RootObj
-        agent: Agent
+        agent*: Agent
         showConsole*: bool
         inputBuffer: array[MAX_INPUT_LENGTH, char]
-        console: ConsoleItems
+        console*: ConsoleItems
+        history: seq[string]
+        historyPosition: int 
+        currentInput: string
         textSelect: ptr TextSelect
 
+#[
+    Helper functions for text selection
+]#
 proc getItemText(item: ConsoleItem): cstring = 
     let timestamp = item.timestamp.format("dd-MM-yyyy HH:mm:ss")
     return fmt"[{timestamp}] {$item.itemType} {item.text}".string 
@@ -36,11 +42,69 @@ proc Console*(agent: Agent): ConsoleComponent =
     result.agent = agent
     result.showConsole = true
     zeroMem(addr result.inputBuffer[0], MAX_INPUT_LENGTH)
-
     result.console = new ConsoleItems
-    result.console.items = @[]    
+    result.console.items = @[]
+    result.history = @[]
+    result.historyPosition = -1  
+    result.currentInput = ""
     result.textSelect = textselect_create(getLineAtIndex, getNumLines, cast[pointer](result.console), 0)
 
+#[
+    Text input callback function for managing console history and autocompletion 
+]#
+proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} = 
+
+    let component = cast[ConsoleComponent](data.UserData)
+    
+    case data.EventFlag: 
+    of ImGui_InputTextFlags_CallbackHistory.int32:     
+        # Handle command history using arrow-keys 
+
+        # Store current input
+        if component.historyPosition == -1: 
+            component.currentInput = $(data.Buf)        
+
+        let prev = component.historyPosition
+
+        # Move to a new console history item
+        if data.EventKey == ImGuiKey_UpArrow:
+            if component.history.len() > 0:
+                if component.historyPosition < 0: # We are at the current input and move to the last item in the console history
+                    component.historyPosition = component.history.len() - 1 
+                else: 
+                    component.historyPosition = max(0, component.historyPosition - 1)
+
+        elif data.EventKey == ImGuiKey_DownArrow: 
+            if component.historyPosition != -1:
+                component.historyPosition = min(component.history.len(), component.historyPosition + 1)
+            
+            if component.historyPosition == component.history.len(): 
+                component.historyPosition = -1
+
+        # Update the text buffer if another item was selected
+        if prev != component.historyPosition: 
+            let newText = if component.historyPosition == -1:
+                component.currentInput
+            else:
+                component.history[component.historyPosition]
+
+            # Replace text input
+            data.ImGuiInputTextCallbackData_DeleteChars(0, data.BufTextLen)
+            data.ImGuiInputTextCallbackData_InsertChars(0, newText.cstring, nil)
+
+            # Set the cursor to the end of the updated input text
+            data.CursorPos = newText.len().cint 
+            data.SelectionStart = newText.len().cint
+            data.SelectionEnd = newText.len().cint
+
+        return 0
+
+    of ImGui_InputTextFlags_CallbackCompletion.int32: 
+        # Handle Tab-autocompletion
+        discard
+
+    else: discard
+    
 proc draw*(component: ConsoleComponent) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}", addr component.showConsole, 0)
     defer: igEnd()
@@ -49,15 +113,16 @@ proc draw*(component: ConsoleComponent) =
 
     #[
         Console items/text section using ImGuiTextSelect in a child window
-        Supports: 
-            - horizontal+vertical scrolling,
-            - autoscroll
-            - colored text
-            - text selection and copy functionality
+        Features: 
+            - Horizontal+vertical scrolling,
+            - Autoscroll
+            - Colored text output
+            - Text highlighting, copy/paste
 
         Problems I encountered with other approaches (Multi-line Text Input, TextEditor, ...):
-        - https://github.com/ocornut/imgui/issues/383#issuecomment-2080346129
-        - https://github.com/ocornut/imgui/issues/950
+            - https://github.com/ocornut/imgui/issues/383#issuecomment-2080346129
+            - https://github.com/ocornut/imgui/issues/950
+        
         Huge thanks to @dinau for implementing ImGuiTextSelect into imguin very rapidly after I requested it.
     ]#
     let consolePadding: float = 10.0f 
@@ -113,8 +178,8 @@ proc draw*(component: ConsoleComponent) =
     igGetContentRegionAvail(addr availableWidth)
     igSetNextItemWidth(availableWidth.x)
     
-    let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32 # or ImGuiInputTextFlags_CallbackCompletion.int32 or ImGuiInputTextFlags_CallbackHistory.int32
-    if igInputText("##Input", addr component.inputBuffer[0], MAX_INPUT_LENGTH, inputFlags, nil, nil):
+    let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32 or ImGuiInputTextFlags_CallbackHistory.int32 or ImGuiInputTextFlags_CallbackCompletion.int32
+    if igInputText("##Input", addr component.inputBuffer[0], MAX_INPUT_LENGTH, inputFlags, callback, cast[pointer](component)):
 
         let command = $(addr component.inputBuffer[0]).cstring
         let commandItem = ConsoleItem(
@@ -125,6 +190,11 @@ proc draw*(component: ConsoleComponent) =
         component.console.items.add(commandItem)
 
         # TODO: Handle command execution
+        # console.handleCommand(command)
+
+        # Add command to console history
+        component.history.add(command)
+        component.historyPosition = -1 
 
         zeroMem(addr component.inputBuffer[0], MAX_INPUT_LENGTH)
         focusInput = true

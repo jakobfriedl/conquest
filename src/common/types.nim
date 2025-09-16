@@ -75,11 +75,11 @@ type
         # LOG_WARNING = "[ ! ] "
         # LOG_COMMAND = "[ > ] "
         # LOG_OUTPUT = "" 
-        LOG_INFO = "[INFO] "
-        LOG_ERROR = "[FAIL] "
-        LOG_SUCCESS = "[DONE] "
-        LOG_WARNING = "[WARN] "
-        LOG_COMMAND = "[>>>>] "
+        LOG_INFO = "[INFO]"
+        LOG_ERROR = "[FAIL]"
+        LOG_SUCCESS = "[DONE]"
+        LOG_WARNING = "[WARN]"
+        LOG_COMMAND = "[>>>>]"
         LOG_OUTPUT = ""
 
     SleepObfuscationTechnique* = enum 
