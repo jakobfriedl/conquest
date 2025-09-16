@@ -3,33 +3,30 @@ import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/appImGui
 import ../../common/[types]
 
-type
-    ConsoleItem = ref object 
-        timestamp: DateTime
-        logType: LogType
-        text: string
-
-    ConsoleItems = ref object
-        items: seq[string]
-    
+const MAX_INPUT_LENGTH = 512
+type    
     ConsoleComponent* = ref object of RootObj
         agent: Agent
         showConsole*: bool
-        inputBuffer: string
-        consoleItems: ConsoleItems
+        inputBuffer: array[MAX_INPUT_LENGTH, char]
+        console: ConsoleItems
         textSelect: ptr TextSelect
+
+proc getItemText(item: ConsoleItem): cstring = 
+    let timestamp = item.timestamp.format("dd-MM-yyyy HH:mm:ss")
+    return fmt"[{timestamp}] {$item.itemType} {item.text}".string 
 
 proc getNumLines(data: pointer): csize_t {.cdecl.} =
     if data.isNil:
         return 0
-    let consoleItems = cast[ConsoleItems](data)
-    return consoleItems.items.len().csize_t
+    let console = cast[ConsoleItems](data)
+    return console.items.len().csize_t
 
 proc getLineAtIndex(i: csize_t, data: pointer, outLen: ptr csize_t): cstring {.cdecl.} =
     if data.isNil:
         return nil    
-    let consoleItems = cast[ConsoleItems](data)
-    let line = consoleItems.items[i].cstring    
+    let console = cast[ConsoleItems](data)
+    let line = getItemText(console.items[i])
     if not outLen.isNil:
         outLen[] = line.len.csize_t
     return line
@@ -38,16 +35,18 @@ proc Console*(agent: Agent): ConsoleComponent =
     result = new ConsoleComponent
     result.agent = agent
     result.showConsole = true
-    result.inputBuffer = ""
+    zeroMem(addr result.inputBuffer[0], MAX_INPUT_LENGTH)
 
-    result.consoleItems = new ConsoleItems
-    result.consoleItems.items = @[]    
-    result.textSelect = textselect_create(getLineAtIndex, getNumLines, cast[pointer](result.consoleItems), 0)
+    result.console = new ConsoleItems
+    result.console.items = @[]    
+    result.textSelect = textselect_create(getLineAtIndex, getNumLines, cast[pointer](result.console), 0)
 
 proc draw*(component: ConsoleComponent) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}", addr component.showConsole, 0)
     defer: igEnd()
     
+    var focusInput = false
+
     #[
         Console items/text section using ImGuiTextSelect in a child window
         Supports: 
@@ -61,51 +60,74 @@ proc draw*(component: ConsoleComponent) =
         - https://github.com/ocornut/imgui/issues/950
         Huge thanks to @dinau for implementing ImGuiTextSelect into imguin very rapidly after I requested it.
     ]#
-    let footerHeight = igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing() * 2
-    
-    if igBeginChild_Str("##Console", vec2(-1.0f, -footerHeight), ImGuiChildFlags_NavFlattened.int32, ImGuiWindowFlags_HorizontalScrollbar.int32):
-        
-        # Display console items
-        for entry in component.consoleItems.items:
-            igTextColored(vec4(0.0f, 1.0f, 1.0f, 1.0f), entry.cstring)
-        
-        component.textSelect.textselect_update()
-        
-        # Auto-scroll to bottom if we're already at the bottom
-        if igGetScrollY() >= igGetScrollMaxY():
-            igSetScrollHereY(1.0f)
-    
-    igEndChild()
-    
-    # Buttons for testing the console 
-    if igButton("Add Items", vec2(0.0f, 0.0f)):
-        for i in 1..10:
-            component.consoleItems.items.add("Hello world!")
+    let consolePadding: float = 10.0f 
+    let footerHeight = (consolePadding * 2) + (igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing())
+    let textSpacing = igGetStyle().ItemSpacing.x    
 
-    igSameLine(0.0f, 5.0f)
-    if igButton("Add Long Items", vec2(0.0f, 0.0f)):
-        for i in 1..3:
-            component.consoleItems.items.add("Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.")
-    
-    igSameLine(0.0f, 5.0f)
-    if igButton("Clear", vec2(0.0f, 0.0f)):
-        component.consoleItems.items.setLen(0)
+    # Padding 
+    igDummy(vec2(0.0f, consolePadding))
+    try: 
+        # Set styles of the console window
+        igPushStyleColor_Vec4(ImGui_Col_FrameBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
+        igPushStyleColor_Vec4(ImGui_Col_ScrollbarBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
+        igPushStyleColor_Vec4(ImGui_Col_Border.int32, vec4(0.2f, 0.2f, 0.2f, 1.0f))
+        igPushStyleVar_Float(ImGui_StyleVar_FrameBorderSize .int32, 1.0f)
 
+        let childWindowFlags = ImGuiChildFlags_NavFlattened.int32 or ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AlwaysUseWindowPadding.int32 or ImGuiChildFlags_FrameStyle.int32
+        if igBeginChild_Str("##Console", vec2(-1.0f, -footerHeight), childWindowFlags, ImGuiWindowFlags_HorizontalScrollbar.int32):            
+            # Display console items
+            for entry in component.console.items:
+                let timestamp = entry.timestamp.format("dd-MM-yyyy HH:mm:ss")
+                igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), fmt"[{timestamp}]".cstring)
+                igSameLine(0.0f, textSpacing)
+                igTextColored(vec4(0.0f, 1.0f, 1.0f, 1.0f), $entry.itemType)
+                igSameLine(0.0f, textSpacing)
+                igTextUnformatted(entry.text.cstring, nil)
+            
+            component.textSelect.textselect_update()
+  
+            # Auto-scroll to bottom
+            if igGetScrollY() >= igGetScrollMaxY():
+                igSetScrollHereY(1.0f)
+                    
+    except IndexDefect:
+        # CTRL+A crashes when no items are in the console
+        discard
+    
+    finally: 
+        igPopStyleColor(3)
+        igPopStyleVar(1)
+        igEndChild()
+    
+    # Padding 
+    igDummy(vec2(0.0f, consolePadding))
+    
     #[
         Input field with prompt indicator
     ]#
     igText(fmt"[{component.agent.agentId}]") 
-    let spacing = igGetStyle().ItemSpacing.x    
-    igSameLine(0.0f, spacing)
+    igSameLine(0.0f, textSpacing)
     
     # Calculate available width for input
     var availableWidth: ImVec2
     igGetContentRegionAvail(addr availableWidth)
     igSetNextItemWidth(availableWidth.x)
     
-    let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32 or ImGuiInputTextFlags_CallbackCompletion.int32 or ImGuiInputTextFlags_CallbackHistory.int32
-    if igInputText("##Input", component.inputBuffer, 256, inputFlags, nil, nil):
-        discard
+    let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32 # or ImGuiInputTextFlags_CallbackCompletion.int32 or ImGuiInputTextFlags_CallbackHistory.int32
+    if igInputText("##Input", addr component.inputBuffer[0], MAX_INPUT_LENGTH, inputFlags, nil, nil):
+
+        let command = $(addr component.inputBuffer[0]).cstring
+        let commandItem = ConsoleItem(
+            timestamp: now(),
+            itemType: LOG_COMMAND,
+            text: command
+        )
+        component.console.items.add(commandItem)
+
+        # TODO: Handle command execution
+
+        zeroMem(addr component.inputBuffer[0], MAX_INPUT_LENGTH)
+        focusInput = true
     
     #[
         Session information (optional footer)
@@ -115,3 +137,5 @@ proc draw*(component: ConsoleComponent) =
     # igText(sessionInfo)
     
     igSetItemDefaultFocus()
+    if focusInput: 
+        igSetKeyboardFocusHere(-1)

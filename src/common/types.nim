@@ -73,10 +73,14 @@ type
         # LOG_ERROR = "[ - ] "
         # LOG_SUCCESS = "[ + ] "
         # LOG_WARNING = "[ ! ] "
+        # LOG_COMMAND = "[ > ] "
+        # LOG_OUTPUT = "" 
         LOG_INFO = "[INFO] "
         LOG_ERROR = "[FAIL] "
         LOG_SUCCESS = "[DONE] "
         LOG_WARNING = "[WARN] "
+        LOG_COMMAND = "[>>>>] "
+        LOG_OUTPUT = ""
 
     SleepObfuscationTechnique* = enum 
         NONE = 0'u8
@@ -233,3 +237,13 @@ type
         arguments*: seq[Argument]
         dispatchMessage*: string
         execute*: proc(config: AgentCtx, task: Task): TaskResult {.nimcall.}
+
+# Definitions for ImGui User interface
+type 
+    ConsoleItem* = ref object 
+        timestamp*: DateTime
+        itemType*: LogType
+        text*: string
+
+    ConsoleItems* = ref object
+        items*: seq[ConsoleItem]
