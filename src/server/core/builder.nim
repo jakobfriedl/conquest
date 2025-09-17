@@ -75,6 +75,7 @@ proc compile(cq: Conquest, placeholderLength: int): string =
     var config = readFile(configFile)
                     .replaceAfterPrefix("-d:CONFIGURATION=", placeholder)    
                     .replaceAfterPrefix("-o:", exeFile)
+                    # .replaceAfterPrefix("-d:MODULES=", modules)
     writeFile(configFile, config)
 
     cq.info(fmt"Placeholder created ({placeholder.len()} bytes).")

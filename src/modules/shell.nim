@@ -3,20 +3,24 @@ import ../common/[types, utils]
 # Define function prototype
 proc executeShell(ctx: AgentCtx, task: Task): TaskResult 
 
-# Command definition (as seq[Command])
-let commands*: seq[Command] =  @[
-    Command(
-        name: protect("shell"),
-        commandType: CMD_SHELL,
-        description: protect("Execute a shell command and retrieve the output."),
-        example: protect("shell whoami /all"),
-        arguments: @[
-            Argument(name: protect("command"), description: protect("Command to be executed."), argumentType: STRING, isRequired: true),
-            Argument(name: protect("arguments"), description: protect("Arguments to be passed to the command."), argumentType: STRING, isRequired: false)
-        ],
-        execute: executeShell
-    )
-]
+# Module definition
+let module* = Module(
+    name: protect("shell"), 
+    description: protect("Execute shell commands or programs."),
+    commands: @[
+        Command(
+            name: protect("shell"),
+            commandType: CMD_SHELL,
+            description: protect("Execute a shell command and retrieve the output."),
+            example: protect("shell whoami /all"),
+            arguments: @[
+                Argument(name: protect("command"), description: protect("Command to be executed."), argumentType: STRING, isRequired: true),
+                Argument(name: protect("arguments"), description: protect("Arguments to be passed to the command."), argumentType: STRING, isRequired: false)
+            ],
+            execute: executeShell
+        )
+    ]
+)  
 
 # Implement execution functions
 when defined(server):

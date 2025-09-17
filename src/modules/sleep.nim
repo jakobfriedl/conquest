@@ -3,19 +3,23 @@ import ../common/[types, utils]
 # Define function prototype
 proc executeSleep(ctx: AgentCtx, task: Task): TaskResult 
 
-# Command definition (as seq[Command])
-let commands* = @[
-    Command(
-        name: protect("sleep"),
-        commandType: CMD_SLEEP,
-        description: protect("Update sleep delay configuration."),
-        example: protect("sleep 5"),
-        arguments: @[
-            Argument(name: protect("delay"), description: protect("Delay in seconds."), argumentType: INT, isRequired: true)
-        ],
-        execute: executeSleep
-    )
-]
+# Module definition
+let module* = Module(
+    name: protect("sleep"), 
+    description: protect("Change sleep settings."),
+    commands: @[
+        Command(
+            name: protect("sleep"),
+            commandType: CMD_SLEEP,
+            description: protect("Update sleep delay configuration."),
+            example: protect("sleep 5"),
+            arguments: @[
+                Argument(name: protect("delay"), description: protect("Delay in seconds."), argumentType: INT, isRequired: true)
+            ],
+            execute: executeSleep
+        )
+    ]
+)
 
 # Implement execution functions
 when defined(server):

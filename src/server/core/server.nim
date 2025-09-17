@@ -19,14 +19,12 @@ var parser = newParser:
 
         command("list"): 
             help("List all active listeners.")
+            
         command("start"): 
             help("Starts a new HTTP listener.")
             option("-i", "--ip", default=some("127.0.0.1"), help="IPv4 address to listen on.", required=false)
             option("-p", "--port", help="Port to listen on.", required=true)
-            
-            # TODO: Future features:
-            # flag("--dns", help="Use the DNS protocol for C2 communication.")
-            # flag("--doh", help="Use DNS over HTTPS for C2 communication.)
+
         command("stop"):
             help("Stop an active listener.")
             option("-n", "--name", help="Name of the listener.", required=true)
@@ -57,7 +55,7 @@ var parser = newParser:
             option("-s", "--sleep", help="Sleep delay in seconds.")
             option("--sleepmask", help="Sleep obfuscation technique.", default=some("none"), choices = @["ekko", "zilean", "foliage", "none"])
             flag("--spoof-stack", help="Use stack duplication to spoof the call stack. Supported by EKKO and ZILEAN techniques.")
-            # option("-p", "--payload", help="Agent type.\n\t\t\t    ", default=some("monarch"), choices = @["monarch"],)
+
     command("help"):
         nohelpflag()
 

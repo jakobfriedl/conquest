@@ -1,16 +1,7 @@
 import tables, strformat
 import ../common/types
 
-# Import modules 
-import 
-    shell,
-    sleep,
-    filesystem,
-    filetransfer,
-    environment,
-    bof,
-    dotnet,
-    screenshot
+const MODULES {.intdefine.} = 1
 
 type
     ModuleManager* = object 
@@ -19,21 +10,56 @@ type
 
 var manager: ModuleManager
 
-proc registerCommands(commands: seq[Command]) {.discardable.} = 
-    for cmd in commands: 
+proc registerModule(module: Module) {.discardable.} = 
+    for cmd in module.commands: 
         manager.commandsByType[cmd.commandType] = cmd
         manager.commandsByName[cmd.name] = cmd
 
-proc loadModules*() = 
-    # Register all imported commands  
-    registerCommands(shell.commands)
-    registerCommands(sleep.commands)
-    registerCommands(filesystem.commands)
-    registerCommands(filetransfer.commands)
-    registerCommands(environment.commands)
-    registerCommands(bof.commands)
-    registerCommands(dotnet.commands)
-    registerCommands(screenshot.commands)
+# Import all modules
+when ((MODULES and cast[uint32](MODULE_ALL)) == cast[uint32](MODULE_ALL)):
+    import 
+        sleep,
+        shell,
+        filesystem,
+        filetransfer,
+        bof,
+        dotnet,
+        screenshot,
+        situationalAwareness
+    registerModule(sleep.module)
+    registerModule(shell.module)
+    registerModule(bof.module)
+    registerModule(dotnet.module)
+    registerModule(filesystem.module)
+    registerModule(filetransfer.module)
+    registerModule(screenshot.module)
+    registerModule(situationalAwareness.module)
+
+# Import modules individually 
+when ((MODULES and cast[uint32](MODULE_SLEEP)) == cast[uint32](MODULE_SLEEP)):
+    import sleep
+    registerModule(sleep.module)
+when ((MODULES and cast[uint32](MODULE_SHELL)) == cast[uint32](MODULE_SHELL)):
+    import shell
+    registerModule(shell.module)
+when ((MODULES and cast[uint32](MODULE_BOF)) == cast[uint32](MODULE_BOF)):
+    import bof 
+    registerModule(bof.module)
+when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
+    import dotnet
+    registerModule(dotnet.module)
+when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILESYSTEM)):
+    import filesystem
+    registerModule(filesystem.module)
+when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FILETRANSFER)):
+    import filetransfer
+    registerModule(filetransfer.module)
+when ((MODULES and cast[uint32](MODULE_SCREENSHOT)) == cast[uint32](MODULE_SCREENSHOT)):
+    import screenshot
+    registerModule(screenshot.module)
+when ((MODULES and cast[uint32](MODULE_SITUATIONAL_AWARENESS)) == cast[uint32](MODULE_SITUATIONAL_AWARENESS)):
+    import situationalAwareness
+    registerModule(situationalAwareness.module)
 
 proc getCommandByType*(cmdType: CommandType): Command = 
     return manager.commandsByType[cmdType]

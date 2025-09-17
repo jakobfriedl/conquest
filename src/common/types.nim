@@ -50,6 +50,17 @@ type
         CMD_SCREENSHOT = 15'u16
         CMD_DOTNET = 16'u16
 
+    ModuleType* = enum 
+        MODULE_ALL = 1'u32
+        MODULE_SLEEP = 2'u32
+        MODULE_SHELL = 4'u32 
+        MODULE_BOF = 8'u32
+        MODULE_DOTNET = 16'u32
+        MODULE_FILESYSTEM = 32'u32 
+        MODULE_FILETRANSFER = 64'u32
+        MODULE_SCREENSHOT = 128'u32
+        MODULE_SITUATIONAL_AWARENESS = 256'u32 
+
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
         STATUS_FAILED = 1'u8
@@ -143,7 +154,6 @@ type
 
 # Registration binary structure 
 type 
-
     # All variable length fields are stored as seq[byte], prefixed with 4 bytes indicating the length of the following data
     AgentMetadata* = object 
         listenerId*: Uuid
@@ -237,6 +247,11 @@ type
         arguments*: seq[Argument]
         dispatchMessage*: string
         execute*: proc(config: AgentCtx, task: Task): TaskResult {.nimcall.}
+
+    Module* = object
+        name*: string 
+        description*: string
+        commands*: seq[Command]
 
 # Definitions for ImGui User interface
 type 

