@@ -1,6 +1,6 @@
 import strformat, strutils, times
 import imguin/[cimgui, glfw_opengl, simple]
-import ../utils/appImGui
+import ../utils/[appImGui, colors]
 import ../../common/[types]
 
 const MAX_INPUT_LENGTH = 512
@@ -14,13 +14,41 @@ type
         historyPosition: int 
         currentInput: string
         textSelect: ptr TextSelect
+        filter: ptr ImGuiTextFilter
 
 #[
     Helper functions for text selection
 ]#
-proc getItemText(item: ConsoleItem): cstring = 
-    let timestamp = item.timestamp.format("dd-MM-yyyy HH:mm:ss")
-    return fmt"[{timestamp}] {$item.itemType} {item.text}".string 
+proc getText(item: ConsoleItem): cstring = 
+    if item.timestamp > 0: 
+        let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
+        return fmt"[{timestamp}]{$item.itemType}{item.text}".string 
+    else: 
+        return fmt"{$item.itemType}{item.text}".string 
+
+proc print(item: ConsoleItem) =     
+    if item.timestamp > 0:
+        let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
+        igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), fmt"[{timestamp}]".cstring)
+        igSameLine(0.0f, 0.0f)
+    
+    # https://rgbcolorpicker.com/0-1
+    case item.itemType:
+    of LOG_INFO: 
+        igTextColored(CONSOLE_INFO, $item.itemType)
+    of LOG_ERROR: 
+        igTextColored(CONSOLE_ERROR, $item.itemType)
+    of LOG_SUCCESS: 
+        igTextColored(CONSOLE_SUCCESS, $item.itemType)
+    of LOG_WARNING: 
+        igTextColored(CONSOLE_WARNING, $item.itemType)
+    of LOG_COMMAND: 
+        igTextColored(CONSOLE_COMMAND, $item.itemType)
+    of LOG_OUTPUT: 
+        igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), $item.itemType)
+
+    igSameLine(0.0f, 0.0f)
+    igTextUnformatted(item.text.cstring, nil)
 
 proc getNumLines(data: pointer): csize_t {.cdecl.} =
     if data.isNil:
@@ -32,7 +60,7 @@ proc getLineAtIndex(i: csize_t, data: pointer, outLen: ptr csize_t): cstring {.c
     if data.isNil:
         return nil    
     let console = cast[ConsoleItems](data)
-    let line = getItemText(console.items[i])
+    let line = console.items[i].getText()
     if not outLen.isNil:
         outLen[] = line.len.csize_t
     return line
@@ -48,6 +76,7 @@ proc Console*(agent: Agent): ConsoleComponent =
     result.historyPosition = -1  
     result.currentInput = ""
     result.textSelect = textselect_create(getLineAtIndex, getNumLines, cast[pointer](result.console), 0)
+    result.filter = ImGuiTextFilter_ImGuiTextFilter("")
 
 #[
     Text input callback function for managing console history and autocompletion 
@@ -109,6 +138,8 @@ proc draw*(component: ConsoleComponent) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}", addr component.showConsole, 0)
     defer: igEnd()
     
+    let io = igGetIO()
+
     var focusInput = false
 
     #[
@@ -126,11 +157,34 @@ proc draw*(component: ConsoleComponent) =
         Huge thanks to @dinau for implementing ImGuiTextSelect into imguin very rapidly after I requested it.
     ]#
     let consolePadding: float = 10.0f 
-    let footerHeight = (consolePadding * 2) + (igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing())
+    let footerHeight = (consolePadding * 2) + (igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing()) * 1.5f
     let textSpacing = igGetStyle().ItemSpacing.x    
 
     # Padding 
     igDummy(vec2(0.0f, consolePadding))
+    
+    #[
+        Filter & Options
+    ]# 
+    var labelSize: ImVec2
+    igCalcTextSize(addr labelSize, ICON_FA_MAGNIFYING_GLASS, nil, false, 0.0f)
+    igSameLine(0.0f, igGetWindowWidth() - 200.0f  - (labelSize.x + textSpacing) - (igGetStyle().WindowPadding.x * 2))
+    
+    # SHow tooltip when hovering the search icon
+    igTextUnformatted(ICON_FA_MAGNIFYING_GLASS.cstring, nil)
+    if igIsItemHovered(ImGuiHoveredFlags_None.int32):
+        igBeginTooltip()
+        igText("Press CTRL+F to focus console filter.")
+        igText("Use \",\" as a delimiter to filter for multiple values.")
+        igText("Use \"-\" to exclude values.")
+        igEndTooltip()
+
+    if igIsWindowFocused(ImGui_FocusedFlags_ChildWindows.int32) and io.KeyCtrl and igIsKeyPressed_Bool(ImGuiKey_F, false):
+        igSetKeyboardFocusHere(0) 
+
+    igSameLine(0.0f, textSpacing)
+    component.filter.ImGuiTextFilter_Draw("##ConsoleSearch", 200.0f)    
+
     try: 
         # Set styles of the console window
         igPushStyleColor_Vec4(ImGui_Col_FrameBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
@@ -141,13 +195,14 @@ proc draw*(component: ConsoleComponent) =
         let childWindowFlags = ImGuiChildFlags_NavFlattened.int32 or ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AlwaysUseWindowPadding.int32 or ImGuiChildFlags_FrameStyle.int32
         if igBeginChild_Str("##Console", vec2(-1.0f, -footerHeight), childWindowFlags, ImGuiWindowFlags_HorizontalScrollbar.int32):            
             # Display console items
-            for entry in component.console.items:
-                let timestamp = entry.timestamp.format("dd-MM-yyyy HH:mm:ss")
-                igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), fmt"[{timestamp}]".cstring)
-                igSameLine(0.0f, textSpacing)
-                igTextColored(vec4(0.0f, 1.0f, 1.0f, 1.0f), $entry.itemType)
-                igSameLine(0.0f, textSpacing)
-                igTextUnformatted(entry.text.cstring, nil)
+            for item in component.console.items:
+
+                # Apply filter
+                if component.filter.ImGuiTextFilter_IsActive():
+                    if not component.filter.ImGuiTextFilter_PassFilter(item.getText(), nil):
+                        continue
+
+                item.print()
             
             component.textSelect.textselect_update()
   
@@ -182,13 +237,45 @@ proc draw*(component: ConsoleComponent) =
     if igInputText("##Input", addr component.inputBuffer[0], MAX_INPUT_LENGTH, inputFlags, callback, cast[pointer](component)):
 
         let command = $(addr component.inputBuffer[0]).cstring
-        let commandItem = ConsoleItem(
-            timestamp: now(),
+        var commandItem = ConsoleItem(
+            timestamp: now().toTime().toUnix(),
             itemType: LOG_COMMAND,
             text: command
         )
         component.console.items.add(commandItem)
 
+        # For testing
+        commandItem = ConsoleItem(
+            timestamp: now().toTime().toUnix(),
+            itemType: LOG_ERROR,
+            text: "error"
+        )
+        component.console.items.add(commandItem)
+        commandItem = ConsoleItem(
+            timestamp: now().toTime().toUnix(),
+            itemType: LOG_SUCCESS,
+            text: "success"
+        )
+        component.console.items.add(commandItem)
+        commandItem = ConsoleItem(
+            timestamp: now().toTime().toUnix(),
+            itemType: LOG_WARNING,
+            text: "warn"
+        )
+        component.console.items.add(commandItem)
+        commandItem = ConsoleItem(
+            timestamp: 0,
+            itemType: LOG_OUTPUT,
+            text: "output"
+        )
+        component.console.items.add(commandItem)
+        commandItem = ConsoleItem(
+            timestamp: now().toTime().toUnix(),
+            itemType: LOG_INFO,
+            text: "info"
+        )
+        component.console.items.add(commandItem)
+        
         # TODO: Handle command execution
         # console.handleCommand(command)
 
@@ -199,13 +286,13 @@ proc draw*(component: ConsoleComponent) =
         zeroMem(addr component.inputBuffer[0], MAX_INPUT_LENGTH)
         focusInput = true
     
-    #[
-        Session information (optional footer)
-    ]#
-    # igSeparator()
-    # let sessionInfo = fmt"{component.agent.username}@{component.agent.hostname} [{component.agent.ip}]"
-    # igText(sessionInfo)
-    
     igSetItemDefaultFocus()
     if focusInput: 
         igSetKeyboardFocusHere(-1)
+
+    #[
+        Session information
+    ]#
+    let sessionInfo = fmt"{component.agent.username}@{component.agent.hostname}.{component.agent.domain} [{component.agent.ip}] [{component.agent.process}/{$component.agent.pid}]"
+    igTextColored(vec4(0.75f, 0.75f, 0.75f, 1.0f), sessionInfo)
+    

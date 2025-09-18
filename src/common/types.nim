@@ -86,11 +86,11 @@ type
         # LOG_WARNING = "[ ! ] "
         # LOG_COMMAND = "[ > ] "
         # LOG_OUTPUT = "" 
-        LOG_INFO = "[INFO]"
-        LOG_ERROR = "[FAIL]"
-        LOG_SUCCESS = "[DONE]"
-        LOG_WARNING = "[WARN]"
-        LOG_COMMAND = "[>>>>]"
+        LOG_INFO = " [INFO] "
+        LOG_ERROR = " [FAIL] "
+        LOG_SUCCESS = " [DONE] "
+        LOG_WARNING = " [WARN] "
+        LOG_COMMAND = " [>>>>] "
         LOG_OUTPUT = ""
 
     SleepObfuscationTechnique* = enum 
@@ -256,8 +256,8 @@ type
 # Definitions for ImGui User interface
 type 
     ConsoleItem* = ref object 
-        timestamp*: DateTime
         itemType*: LogType
+        timestamp*: int64
         text*: string
 
     ConsoleItems* = ref object

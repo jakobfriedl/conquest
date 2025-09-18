@@ -43,16 +43,16 @@ template writeLine*(cq: Conquest, args: varargs[untyped] = "") =
 
 # Wrapper functions for logging/console output
 template info*(cq: Conquest, args: varargs[untyped] = "") = 
-    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", $LOG_INFO, resetStyle, " ", args)
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}]", $LOG_INFO, resetStyle, args)
 
 template error*(cq: Conquest, args: varargs[untyped] = "") = 
-    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", fgRed, $LOG_ERROR, resetStyle, " ", args)
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}]", fgRed, $LOG_ERROR, resetStyle, args)
 
 template success*(cq: Conquest, args: varargs[untyped] = "") = 
-    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", fgGreen, $LOG_SUCCESS, resetStyle, " ", args)
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}]", fgGreen, $LOG_SUCCESS, resetStyle, args)
 
 template warning*(cq: Conquest, args: varargs[untyped] = "") = 
-    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}] ", fgYellow, styleDim, $LOG_WARNING, resetStyle, " ", args)
+    cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}]", fgYellow, styleDim, $LOG_WARNING, resetStyle, args)
 
 template input*(cq: Conquest, args: varargs[untyped] = "") = 
     if cq.interactAgent != nil: 
