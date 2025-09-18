@@ -107,8 +107,6 @@ proc interact(component: SessionsTableComponent) =
 
 
 proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
-    igSetNextWindowSize(vec2(800, 600), ImGuiCond_Once.int32)
-
     igBegin(component.title, showComponent, 0)
     defer: igEnd() 
 
