@@ -46,6 +46,7 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool) =
     let listener = component.startListenerModal.draw()
     if listener != nil: 
         # TODO: Start listener
+        
         component.listeners.add(listener)    
 
     #[

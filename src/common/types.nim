@@ -81,18 +81,16 @@ type
         CONFIG_PROFILE = 5'u8
 
     LogType* = enum 
-        # LOG_INFO = "[ * ] "
-        # LOG_ERROR = "[ - ] "
-        # LOG_SUCCESS = "[ + ] "
-        # LOG_WARNING = "[ ! ] "
-        # LOG_COMMAND = "[ > ] "
-        # LOG_OUTPUT = "" 
         LOG_INFO = " [INFO] "
         LOG_ERROR = " [FAIL] "
         LOG_SUCCESS = " [DONE] "
         LOG_WARNING = " [WARN] "
         LOG_COMMAND = " [>>>>] "
         LOG_OUTPUT = ""
+        LOG_INFO_SHORT = " [*] "
+        LOG_ERROR_SHORT = " [-] "
+        LOG_SUCCESS_SHORT = " [+] "
+        LOG_WARNING_SHORT = " [!] "
 
     SleepObfuscationTechnique* = enum 
         NONE = 0'u8

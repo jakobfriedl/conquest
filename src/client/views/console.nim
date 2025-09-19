@@ -26,30 +26,6 @@ proc getText(item: ConsoleItem): cstring =
     else: 
         return fmt"{$item.itemType}{item.text}".string 
 
-proc print(item: ConsoleItem) =     
-    if item.timestamp > 0:
-        let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
-        igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), fmt"[{timestamp}]".cstring)
-        igSameLine(0.0f, 0.0f)
-    
-    # https://rgbcolorpicker.com/0-1
-    case item.itemType:
-    of LOG_INFO: 
-        igTextColored(CONSOLE_INFO, $item.itemType)
-    of LOG_ERROR: 
-        igTextColored(CONSOLE_ERROR, $item.itemType)
-    of LOG_SUCCESS: 
-        igTextColored(CONSOLE_SUCCESS, $item.itemType)
-    of LOG_WARNING: 
-        igTextColored(CONSOLE_WARNING, $item.itemType)
-    of LOG_COMMAND: 
-        igTextColored(CONSOLE_COMMAND, $item.itemType)
-    of LOG_OUTPUT: 
-        igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), $item.itemType)
-
-    igSameLine(0.0f, 0.0f)
-    igTextUnformatted(item.text.cstring, nil)
-
 proc getNumLines(data: pointer): csize_t {.cdecl.} =
     if data.isNil:
         return 0
@@ -133,7 +109,45 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
         discard
 
     else: discard
+
+#[
+    API to add new console item
+]#
+proc addItem*(component: ConsoleComponent, itemType: LogType, data: string) = 
+
+    for line in data.split("\n"): 
+        component.console.items.add(ConsoleItem(
+            timestamp: if itemType == LOG_OUTPUT: 0 else: now().toTime().toUnix(),
+            itemType: itemType,
+            text: line
+        ))
+
+#[
+    Drawing
+]#
+proc print(item: ConsoleItem) =     
+    if item.timestamp > 0:
+        let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
+        igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), fmt"[{timestamp}]".cstring)
+        igSameLine(0.0f, 0.0f)
     
+    case item.itemType:
+    of LOG_INFO, LOG_INFO_SHORT: 
+        igTextColored(CONSOLE_INFO, $item.itemType)
+    of LOG_ERROR, LOG_ERROR_SHORT: 
+        igTextColored(CONSOLE_ERROR, $item.itemType)
+    of LOG_SUCCESS, LOG_SUCCESS_SHORT: 
+        igTextColored(CONSOLE_SUCCESS, $item.itemType)
+    of LOG_WARNING, LOG_WARNING_SHORT: 
+        igTextColored(CONSOLE_WARNING, $item.itemType)
+    of LOG_COMMAND: 
+        igTextColored(CONSOLE_COMMAND, $item.itemType)
+    of LOG_OUTPUT: 
+        igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), $item.itemType)
+
+    igSameLine(0.0f, 0.0f)
+    igTextUnformatted(item.text.cstring, nil)
+
 proc draw*(component: ConsoleComponent) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}", addr component.showConsole, 0)
     defer: igEnd()
@@ -177,6 +191,7 @@ proc draw*(component: ConsoleComponent) =
         igText("Press CTRL+F to focus console filter.")
         igText("Use \",\" as a delimiter to filter for multiple values.")
         igText("Use \"-\" to exclude values.")
+        igText("Example: \"-warning,a,b\" returns all lines that do not include \"warning\" but include \"a\" or \"b\".")
         igEndTooltip()
 
     if igIsWindowFocused(ImGui_FocusedFlags_ChildWindows.int32) and io.KeyCtrl and igIsKeyPressed_Bool(ImGuiKey_F, false):
@@ -237,45 +252,15 @@ proc draw*(component: ConsoleComponent) =
     if igInputText("##Input", addr component.inputBuffer[0], MAX_INPUT_LENGTH, inputFlags, callback, cast[pointer](component)):
 
         let command = $(addr component.inputBuffer[0]).cstring
-        var commandItem = ConsoleItem(
-            timestamp: now().toTime().toUnix(),
-            itemType: LOG_COMMAND,
-            text: command
-        )
-        component.console.items.add(commandItem)
+        component.addItem(LOG_COMMAND, command)
 
         # For testing
-        commandItem = ConsoleItem(
-            timestamp: now().toTime().toUnix(),
-            itemType: LOG_ERROR,
-            text: "error"
-        )
-        component.console.items.add(commandItem)
-        commandItem = ConsoleItem(
-            timestamp: now().toTime().toUnix(),
-            itemType: LOG_SUCCESS,
-            text: "success"
-        )
-        component.console.items.add(commandItem)
-        commandItem = ConsoleItem(
-            timestamp: now().toTime().toUnix(),
-            itemType: LOG_WARNING,
-            text: "warn"
-        )
-        component.console.items.add(commandItem)
-        commandItem = ConsoleItem(
-            timestamp: 0,
-            itemType: LOG_OUTPUT,
-            text: "output"
-        )
-        component.console.items.add(commandItem)
-        commandItem = ConsoleItem(
-            timestamp: now().toTime().toUnix(),
-            itemType: LOG_INFO,
-            text: "info"
-        )
-        component.console.items.add(commandItem)
-        
+        component.addItem(LOG_ERROR, "error message")
+        component.addItem(LOG_SUCCESS, "success message")
+        component.addItem(LOG_INFO, "info message")
+        component.addItem(LOG_WARNING, "warning message")
+        component.addItem(LOG_OUTPUT, "error message\nLong output\n\tindented output\nasdasd")
+
         # TODO: Handle command execution
         # console.handleCommand(command)
 
