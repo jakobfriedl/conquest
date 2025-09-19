@@ -12,16 +12,13 @@ type
         protocol: int32
         protocols: seq[string]
 
-proc getProtocols(): seq[string] = 
-    for p in Protocol.low .. Protocol.high:
-        result.add($p)
-
 proc ListenerModal*(): ListenerModalComponent =
     result = new ListenerModalComponent
     zeroMem(addr result.address[0], 256)
     result.port = DEFAULT_PORT
     result.protocol = 0
-    result.protocols = getProtocols() 
+    for p in Protocol.low .. Protocol.high:
+        result.protocols.add($p)
 
 proc resetModalValues(component: ListenerModalComponent) = 
     zeroMem(addr component.address[0], 256)

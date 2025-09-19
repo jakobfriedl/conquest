@@ -49,6 +49,7 @@ type
         CMD_UPLOAD = 14'u16
         CMD_SCREENSHOT = 15'u16
         CMD_DOTNET = 16'u16
+        CMD_SLEEPMASK = 17'u16
 
     ModuleType* = enum 
         MODULE_ALL = 1'u32
