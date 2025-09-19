@@ -1,18 +1,13 @@
 import strformat, strutils, terminal
-import prologue, parsetoml
+import mummy, mummy/routers
+import parsetoml
 
+import ../globals
 import ../utils
 import ../api/routes
 import ../db/database
 import ../core/logger
 import ../../common/[types, utils, profile]
-
-# Utility functions
-proc delListener(cq: Conquest, listenerName: string) = 
-    cq.listeners.del(listenerName)
-
-proc add(cq: Conquest, listener: Listener) = 
-    cq.listeners[listener.listenerId] = listener
 
 #[
     Listener management
@@ -36,105 +31,111 @@ proc listenerList*(cq: Conquest) =
     let listeners = cq.dbGetAllListeners()
     cq.drawTable(listeners)
 
+proc serve(listener: Listener) {.thread.} = 
+    try:
+        listener.server.serve(Port(listener.port), listener.address)
+    except Exception:
+        discard 
+
 proc listenerStart*(cq: Conquest, host: string, portStr: string) = 
 
     # Validate arguments
     try:
         if not validatePort(portStr):
-            raise newException(CatchableError,fmt"[ - ] Invalid port number: {portStr}")
+            raise newException(CatchableError, fmt"[ - ] Invalid port number: {portStr}")
 
         let port = portStr.parseInt
 
         # Create new listener
-        let 
-            name: string = generateUUID() 
-            listenerSettings = newSettings(
-                appName = name,
-                debug = false,
-                address = "",               # For some reason, the program crashes when the ip parameter is passed to the newSettings function
-                port = Port(port)           # As a result, I will hardcode the listener to be served on all interfaces (0.0.0.0) by default
-            )                               # TODO: fix this issue and start the listener on the address passed as the HOST parameter
+        let name: string = generateUUID()  
+        var router: Router
+        router.notFoundHandler = routes.error404
+        router.methodNotAllowedHandler = routes.error405
         
-        var listener = newApp(settings = listenerSettings)
-
         # Define API endpoints based on C2 profile
         # GET requests
         for endpoint in cq.profile.getArray("http-get.endpoints"): 
-            listener.addRoute(endpoint.getStringValue(), routes.httpGet)
+            router.addRoute("GET", endpoint.getStringValue(), routes.httpGet)
         
         # POST requests
-        var postMethods: seq[HttpMethod]
+        var postMethods: seq[string]
         for reqMethod in cq.profile.getArray("http-post.request-methods"): 
-            postMethods.add(parseEnum[HttpMethod](reqMethod.getStringValue()))
+            postMethods.add(reqMethod.getStringValue())
 
         # Default method is POST
         if postMethods.len == 0: 
-            postMethods = @[HttpPost]
+            postMethods = @["POST"]
 
         for endpoint in cq.profile.getArray("http-post.endpoints"): 
-            listener.addRoute(endpoint.getStringValue(), routes.httpPost, postMethods)
+            for httpMethod in postMethods:
+                router.addRoute(httpMethod, endpoint.getStringValue(), routes.httpPost)
         
-        listener.registerErrorHandler(Http404, routes.error404)
+        let server = newServer(router.toHandler()) 
 
         # Store listener in database
-        var listenerInstance = Listener(
+        var listener = Listener(
+            server: server,
             listenerId: name,
             address: host,
             port: port,
             protocol: HTTP
         )
-        if not cq.dbStoreListener(listenerInstance):
-            raise newException(CatchableError, "Failed to store listener in database.")
 
         # Start serving
-        discard listener.runAsync() 
-        cq.add(listenerInstance)
+        var thread: Thread[Listener]
+        createThread(thread, serve, listener)
+        server.waitUntilReady()
+
+        cq.listeners[name] = (listener, thread)
+        if not cq.dbStoreListener(listener):
+            raise newException(CatchableError, "Failed to store listener in database.")
+
         cq.success("Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on {host}:{portStr}.")
 
     except CatchableError as err: 
         cq.error("Failed to start listener: ", err.msg)
 
-proc restartListeners*(cq: Conquest) = 
-    let listeners: seq[Listener] = cq.dbGetAllListeners()
+proc restartListeners*(cq: Conquest) =
+    var listeners: seq[Listener] = cq.dbGetAllListeners()
     
     # Restart all active listeners that are stored in the database
-    for l in listeners: 
+    for listener in listeners: 
         try:
-            let 
-                settings = newSettings(
-                    appName = l.listenerId,
-                    debug = false,
-                    address = "",
-                    port = Port(l.port)
-                )
-                listener = newApp(settings = settings)
-
+             # Create new listener
+            let name: string = generateUUID()  
+            var router: Router
+            router.notFoundHandler = routes.error404
+            router.methodNotAllowedHandler = routes.error405
+            
             # Define API endpoints based on C2 profile
             # GET requests
             for endpoint in cq.profile.getArray("http-get.endpoints"): 
-                listener.get(endpoint.getStringValue(), routes.httpGet)
+                router.addRoute("GET", endpoint.getStringValue(), routes.httpGet)
             
             # POST requests
-            var postMethods: seq[HttpMethod]
+            var postMethods: seq[string]
             for reqMethod in cq.profile.getArray("http-post.request-methods"): 
-                postMethods.add(parseEnum[HttpMethod](reqMethod.getStringValue()))
+                postMethods.add(reqMethod.getStringValue())
 
             # Default method is POST
             if postMethods.len == 0: 
-                postMethods = @[HttpPost]
+                postMethods = @["POST"]
 
             for endpoint in cq.profile.getArray("http-post.endpoints"): 
-                listener.addRoute(endpoint.getStringValue(), routes.httpPost, postMethods)
-        
-            listener.registerErrorHandler(Http404, routes.error404)
+                for httpMethod in postMethods:
+                    router.addRoute(httpMethod, endpoint.getStringValue(), routes.httpPost)
             
-            discard listener.runAsync() 
-            cq.add(l)
-            cq.success("Restarted listener", fgGreen, fmt" {l.listenerId} ", resetStyle, fmt"on {l.address}:{$l.port}.")
-        
-            # Delay before serving another listener to avoid crashing the application
-            waitFor sleepAsync(100)        
-        
+            let server = newServer(router.toHandler()) 
+            listener.server = server
+
+            # Start serving
+            var thread: Thread[Listener]
+            createThread(thread, serve, listener)
+            server.waitUntilReady()
+
+            cq.listeners[listener.listenerId] = (listener, thread)
+            cq.success("Restarted listener", fgGreen, fmt" {listener.listenerId} ", resetStyle, fmt"on {listener.address}:{$listener.port}.")
+                
         except CatchableError as err: 
             cq.error("Failed to restart listener: ", err.msg)
         
@@ -154,6 +155,14 @@ proc listenerStop*(cq: Conquest, name: string) =
         cq.error("Failed to stop listener: ", getCurrentExceptionMsg())
         return
 
-    cq.delListener(name)
+    cq.listeners.del(name)
     cq.success("Stopped listener ", fgGreen, name.toUpperAscii, resetStyle, ".")
+    
+    # TODO: Make listener stoppable 
+    # try: 
+    #     cq.listeners[name].listener .server.close()
+    #     joinThread(cq.listeners[name].thread)    
+    # except: 
+    #     cq.error("Failed to stop listener.")
+
     

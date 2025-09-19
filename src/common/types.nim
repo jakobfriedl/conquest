@@ -2,6 +2,7 @@ import prompt
 import tables
 import times
 import parsetoml
+import mummy
 
 # Custom Binary Task structure
 const   
@@ -196,6 +197,7 @@ type
         HTTP = "http"
 
     Listener* = ref object of RootObj
+        server*: Server
         listenerId*: string
         address*: string
         port*: int
@@ -212,7 +214,7 @@ type
     Conquest* = ref object
         prompt*: Prompt
         dbPath*: string
-        listeners*: Table[string, Listener]
+        listeners*: Table[string, tuple[listener: Listener, thread: Thread[Listener]]]
         agents*: Table[string, Agent]
         interactAgent*: Agent
         keyPair*: KeyPair

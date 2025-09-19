@@ -141,7 +141,7 @@ proc agentBuild*(cq: Conquest, listener, sleepDelay: string, sleepTechnique: str
         cq.error(fmt"Listener {listener.toUpperAscii} does not exist.")
         return false
 
-    let listener = cq.listeners[listener.toUpperAscii] 
+    let listener = cq.listeners[listener.toUpperAscii].listener
     
     var config: seq[byte] 
     if sleepDelay.isEmptyOrWhitespace(): 
