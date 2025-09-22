@@ -1,4 +1,4 @@
-import prompt, terminal, argparse, parsetoml
+import prompt, terminal, argparse, parsetoml, times
 import strutils, strformat, system, tables
 
 import ./[agent, listener, builder]
@@ -6,6 +6,8 @@ import ../globals
 import ../db/database
 import ../core/logger
 import ../../common/[types, crypto, profile]
+import ../protocol/websocket
+import mummy, mummy/routers
 
 #[
     Argument parsing
@@ -137,6 +139,33 @@ proc init*(T: type Conquest, profile: Profile): Conquest =
     cq.dbPath = CONQUEST_ROOT & "/" & profile.getString("database-file")
     return cq
 
+#[
+    WebSocket
+]#
+proc upgradeHandler(request: Request) = 
+    let ws = request.upgradeToWebSocket()
+
+    # Send client connection message
+    ws.sendEventlogItem(LOG_SUCCESS_SHORT, now().toTime().toUnix(), "CQ-V1")
+
+
+proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) = 
+    case event:
+    of OpenEvent:
+        discard
+    of MessageEvent:
+        ws.sendHeartbeat()
+    of ErrorEvent:
+        discard
+    of CloseEvent:
+        discard
+
+proc serve(server: Server) {.thread.} = 
+    try:
+        server.serve(Port(12345))
+    except Exception:
+        discard 
+    
 proc startServer*(profilePath: string) =
 
     # Ensure that the conquest root directory was passed as a compile-time define 
@@ -166,6 +195,13 @@ proc startServer*(profilePath: string) =
     cq.dbInit()
     cq.restartListeners()
     cq.addMultiple(cq.dbGetAllAgents())
+
+    var router: Router
+    router.get("/*", upgradeHandler)
+    let server = newServer(router, websocketHandler)
+    
+    var thread: Thread[Server]
+    createThread(thread, serve, server)
 
     # Main loop
     while true: 

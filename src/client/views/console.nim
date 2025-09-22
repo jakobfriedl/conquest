@@ -1,3 +1,4 @@
+import whisky
 import strformat, strutils, times
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, colors]
@@ -113,11 +114,11 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 #[
     API to add new console item
 ]#
-proc addItem*(component: ConsoleComponent, itemType: LogType, data: string) = 
+proc addItem*(component: ConsoleComponent, itemType: LogType, data: string, timestamp: int64 = now().toTime().toUnix()) = 
 
     for line in data.split("\n"): 
         component.console.items.add(ConsoleItem(
-            timestamp: if itemType == LOG_OUTPUT: 0 else: now().toTime().toUnix(),
+            timestamp: if itemType == LOG_OUTPUT: 0 else: timestamp,
             itemType: itemType,
             text: line
         ))
@@ -148,7 +149,7 @@ proc print(item: ConsoleItem) =
     igSameLine(0.0f, 0.0f)
     igTextUnformatted(item.text.cstring, nil)
 
-proc draw*(component: ConsoleComponent) =
+proc draw*(component: ConsoleComponent, ws: WebSocket) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}", addr component.showConsole, 0)
     defer: igEnd()
     
@@ -251,22 +252,25 @@ proc draw*(component: ConsoleComponent) =
     let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32 or ImGuiInputTextFlags_CallbackHistory.int32 or ImGuiInputTextFlags_CallbackCompletion.int32
     if igInputText("##Input", addr component.inputBuffer[0], MAX_INPUT_LENGTH, inputFlags, callback, cast[pointer](component)):
 
-        let command = $(addr component.inputBuffer[0]).cstring
-        component.addItem(LOG_COMMAND, command)
+        let command = ($(addr component.inputBuffer[0])).strip()
+        if not command.isEmptyOrWhitespace(): 
+        
+            component.addItem(LOG_COMMAND, command)
 
-        # For testing
-        component.addItem(LOG_ERROR, "error message")
-        component.addItem(LOG_SUCCESS, "success message")
-        component.addItem(LOG_INFO, "info message")
-        component.addItem(LOG_WARNING, "warning message")
-        component.addItem(LOG_OUTPUT, "error message\nLong output\n\tindented output\nasdasd")
+            # For testing
+            # component.addItem(LOG_ERROR, "error message")
+            # component.addItem(LOG_SUCCESS, "success message")
+            # component.addItem(LOG_INFO, "info message")
+            # component.addItem(LOG_WARNING, "warning message")
+            # component.addItem(LOG_OUTPUT, "error message\nLong output\n\tindented output\nasdasd")
 
-        # TODO: Handle command execution
-        # console.handleCommand(command)
+            # TODO: Handle command execution
+            # console.handleCommand(command)
+            ws.send("CMD:" & component.agent.agentId & ":" & command)
 
-        # Add command to console history
-        component.history.add(command)
-        component.historyPosition = -1 
+            # Add command to console history
+            component.history.add(command)
+            component.historyPosition = -1 
 
         zeroMem(addr component.inputBuffer[0], MAX_INPUT_LENGTH)
         focusInput = true

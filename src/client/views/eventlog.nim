@@ -4,7 +4,7 @@ import ../utils/[appImGui, colors]
 import ../../common/types
 
 type 
-    EventlogComponent = ref object of RootObj
+    EventlogComponent* = ref object of RootObj
         title: string 
         log*: ConsoleItems
         textSelect: ptr TextSelect
@@ -41,11 +41,11 @@ proc Eventlog*(title: string): EventlogComponent =
 #[
     API to add new log entry
 ]#
-proc addItem*(component: EventlogComponent, itemType: LogType, data: string) = 
+proc addItem*(component: EventlogComponent, itemType: LogType, data: string, timestamp: int64 = now().toTime().toUnix()) = 
 
     for line in data.split("\n"): 
         component.log.items.add(ConsoleItem(
-            timestamp: if itemType == LOG_OUTPUT: 0 else: now().toTime().toUnix(),
+            timestamp: if itemType == LOG_OUTPUT: 0 else: timestamp,
             itemType: itemType,
             text: line
         ))

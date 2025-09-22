@@ -3,11 +3,12 @@ import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/appImGui
 import ../../common/[types, utils]
 import ./modals/startListener
+import whisky
 
 type 
-    ListenersTableComponent = ref object of RootObj
+    ListenersTableComponent* = ref object of RootObj
         title: string 
-        listeners: seq[Listener]
+        listeners*: seq[Listener]
         selection: ptr ImGuiSelectionBasicStorage
         startListenerModal: ListenerModalComponent
 
@@ -33,7 +34,7 @@ proc ListenersTable*(title: string): ListenersTableComponent =
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.startListenerModal = ListenerModal()
 
-proc draw*(component: ListenersTableComponent, showComponent: ptr bool) = 
+proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebSocket) = 
     igBegin(component.title, showComponent, 0)
     defer: igEnd() 
 
@@ -46,7 +47,7 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool) =
     let listener = component.startListenerModal.draw()
     if listener != nil: 
         # TODO: Start listener
-        
+        ws.send("Starting listener: " & listener.listenerId)
         component.listeners.add(listener)    
 
     #[

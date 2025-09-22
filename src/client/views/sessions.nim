@@ -6,9 +6,9 @@ import ../utils/appImGui
 import ../../common/[types, utils]
 
 type 
-    SessionsTableComponent = ref object of RootObj
+    SessionsTableComponent* = ref object of RootObj
         title: string 
-        agents: seq[Agent]
+        agents*: seq[Agent]
         selection: ptr ImGuiSelectionBasicStorage
         consoles: ptr Table[string, ConsoleComponent]
 

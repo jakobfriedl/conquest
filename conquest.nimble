@@ -2,7 +2,7 @@
 
 version       = "0.1.0"
 author        = "Jakob Friedl"
-description   = "Command & control framework written in Nim"
+description   = "Conquest command & control/post-exploitation framework"
 license       = "BSD-3-Clause"
 srcDir        = "src"
 
@@ -30,3 +30,4 @@ requires "ptr_math >= 0.3.0"
 requires "imguin >= 1.92.2.1"
 requires "zippy >= 0.10.16"
 requires "mummy >= 0.4.6"
+requires "whisky >= 0.1.3"

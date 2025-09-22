@@ -1,6 +1,9 @@
-import tables
+import whisky
+import tables, strutils
 import ./utils/appImGui
 import ./views/[dockspace, sessions, listeners, eventlog, console]
+import ../common/[types, utils]
+import ./websocket
 
 proc main() = 
     var app = createApp(1024, 800, imnodes = true, title = "Conquest", docking = true)
@@ -35,6 +38,10 @@ proc main() =
 
     let io = igGetIO()
 
+    # Initiate WebSocket connection
+    let ws = newWebSocket("ws://localhost:12345")
+    defer: ws.close() 
+
     # main loop
     while not app.handle.windowShouldClose:
         pollEvents()
@@ -44,10 +51,24 @@ proc main() =
             continue 
         newFrame()
 
+        #[
+            WebSocket communication with the team server
+        ]# 
+        # Continuously send heartbeat messages
+        ws.sendHeartbeat()
+
+        # Receive and parse websocket response message 
+        let message = ws.receiveMessage().get()
+        case message.getMessageType()
+        of CLIENT_EVENT_LOG: 
+            message.receiveEventlogItem(addr eventlog)
+        else: discard
+
+
         # Draw/update UI components/views
         dockspace.draw(addr showConquest, views, addr dockTop, addr dockBottom, addr dockTopLeft, addr dockTopRight)
         if showSessionsTable: sessionsTable.draw(addr showSessionsTable)   
-        if showListeners: listenersTable.draw(addr showListeners)
+        if showListeners: listenersTable.draw(addr showListeners, ws)
         if showEventlog: eventlog.draw(addr showEventlog)
 
         # Show console windows
@@ -56,7 +77,7 @@ proc main() =
             if console.showConsole:
                 # Ensure that new console windows are docked to the bottom panel by default
                 igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
-                console.draw()
+                console.draw(ws)
                 newConsoleTable[agentId] = console
             
         # Update the consoles table with only those sessions that have not been closed yet
