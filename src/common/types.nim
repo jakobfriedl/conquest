@@ -219,6 +219,7 @@ type
         interactAgent*: Agent
         keyPair*: KeyPair
         profile*: Profile
+        ws*: WebSocket
 
     AgentCtx* = ref object
         agentId*: string

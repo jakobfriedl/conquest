@@ -8,6 +8,7 @@ import ../api/routes
 import ../db/database
 import ../core/logger
 import ../../common/[types, utils, profile]
+import ../websocket/send
 
 #[
     Listener management
@@ -32,22 +33,16 @@ proc listenerList*(cq: Conquest) =
     cq.drawTable(listeners)
 
 proc serve(listener: Listener) {.thread.} = 
-    try:
+    try: 
         listener.server.serve(Port(listener.port), listener.address)
-    except Exception:
+    except Exception as err:
         discard 
 
-proc listenerStart*(cq: Conquest, host: string, portStr: string) = 
+proc listenerStart*(cq: Conquest, name: string, host: string, port: int, protocol: Protocol) = 
 
     # Validate arguments
     try:
-        if not validatePort(portStr):
-            raise newException(CatchableError, fmt"[ - ] Invalid port number: {portStr}")
-
-        let port = portStr.parseInt
-
         # Create new listener
-        let name: string = generateUUID()  
         var router: Router
         router.notFoundHandler = routes.error404
         router.methodNotAllowedHandler = routes.error405
@@ -78,7 +73,7 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
             listenerId: name,
             address: host,
             port: port,
-            protocol: HTTP
+            protocol: protocol
         )
 
         # Start serving
@@ -90,10 +85,12 @@ proc listenerStart*(cq: Conquest, host: string, portStr: string) =
         if not cq.dbStoreListener(listener):
             raise newException(CatchableError, "Failed to store listener in database.")
 
-        cq.success("Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on {host}:{portStr}.")
+        cq.success("Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on {host}:{$port}.")
+        cq.ws.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {name} on {host}:{$port}.")
 
     except CatchableError as err: 
         cq.error("Failed to start listener: ", err.msg)
+        cq.ws.sendEventlogItem(LOG_ERROR_SHORT, fmt"Failed to start listener: {err.msg}.")
 
 proc restartListeners*(cq: Conquest) =
     var listeners: seq[Listener] = cq.dbGetAllListeners()

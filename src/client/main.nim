@@ -62,7 +62,7 @@ proc main() =
         case message.getMessageType()
         of CLIENT_EVENT_LOG: 
             message.receiveEventlogItem(addr eventlog)
-        else: discard
+        else: discard 
 
 
         # Draw/update UI components/views

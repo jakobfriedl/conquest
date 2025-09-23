@@ -2,7 +2,8 @@ import strutils
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/appImGui
 import ../../common/[types, utils]
-import ./modals/startListener
+import ./modals/[startListener, generatePayload]
+import ../websocket
 import whisky
 
 type 
@@ -11,6 +12,7 @@ type
         listeners*: seq[Listener]
         selection: ptr ImGuiSelectionBasicStorage
         startListenerModal: ListenerModalComponent
+        generatePayloadModal: AgentModalComponent
 
 let exampleListeners: seq[Listener] = @[
     Listener(
@@ -33,6 +35,8 @@ proc ListenersTable*(title: string): ListenersTableComponent =
     result.listeners = exampleListeners
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.startListenerModal = ListenerModal()
+    result.generatePayloadModal = AgentModal(result.listeners)
+
 
 proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebSocket) = 
     igBegin(component.title, showComponent, 0)
@@ -43,12 +47,20 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
     # Listener creation modal
     if igButton("Start Listener", vec2(0.0f, 0.0f)):          
         igOpenPopup_str("Start Listener", ImGui_PopupFlags_None.int32) 
+    igSameLine(0.0f, textSpacing)
+    # Payload generation modal
+    if igButton("Generate Payload", vec2(0.0f, 0.0f)):          
+        igOpenPopup_str("Generate Payload", ImGui_PopupFlags_None.int32) 
 
     let listener = component.startListenerModal.draw()
     if listener != nil: 
-        # TODO: Start listener
-        ws.send("Starting listener: " & listener.listenerId)
+        ws.sendStartListener(listener)
         component.listeners.add(listener)    
+
+    component.generatePayloadModal.draw()
+
+
+
 
     #[
         Listener table
@@ -109,8 +121,8 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
                 for i in 0 ..< component.listeners.len():
                     if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                         newListeners.add(component.listeners[i])
-
-                # TODO: Stop/kill listener
+                    else: 
+                        ws.sendStopListener(component.listeners[i].listenerId)
 
                 component.listeners = newListeners
                 ImGuiSelectionBasicStorage_Clear(component.selection)

@@ -65,7 +65,7 @@ proc sendAgentBuild*(ws: WebSocket, listenerId: string, sleepDelay: int, sleepMa
 
     ws.send(Bytes.toString(data), BinaryMessage)
     
-#[
+#[ 
     [ Retrieval Functions ]
     Server -> Client 
 ]#
@@ -97,7 +97,7 @@ proc receiveAgentConnection*(message: Message, sessions: ptr SessionsTableCompon
         sleep: int(unpacker.getUint32()),
         tasks: @[],  
         firstCheckin: cast[int64](unpacker.getUint32()).fromUnix().utc(),
-        latestCheckin: now(),
+        latestCheckin: cast[int64](unpacker.getUint32()).fromUnix().utc(),
     )
 
     sessions.agents.add(agent)

@@ -6,7 +6,7 @@ import ../globals
 import ../db/database
 import ../core/logger
 import ../../common/[types, crypto, profile]
-import ../protocol/websocket
+import ../websocket/[receive, send]
 import mummy, mummy/routers
 
 #[
@@ -88,9 +88,11 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
             of "list":
                 cq.listenerList()
             of "start": 
-                cq.listenerStart(opts.listener.get.start.get.ip, opts.listener.get.start.get.port)
+                #cq.listenerStart(opts.listener.get.start.get.ip, opts.listener.get.start.get.port)
+                discard
             of "stop": 
-                cq.listenerStop(opts.listener.get.stop.get.name)
+                #cq.listenerStop(opts.listener.get.stop.get.name)
+                discard
             else: 
                 cq.listenerUsage()
 
@@ -143,22 +145,34 @@ proc init*(T: type Conquest, profile: Profile): Conquest =
     WebSocket
 ]#
 proc upgradeHandler(request: Request) = 
-    let ws = request.upgradeToWebSocket()
+    {.cast(gcsafe).}:
+        let ws = request.upgradeToWebSocket()
+        cq.ws = ws
+        # Send client connection message
+        ws.sendEventlogItem(LOG_SUCCESS_SHORT, "CQ-V1")
 
-    # Send client connection message
-    ws.sendEventlogItem(LOG_SUCCESS_SHORT, now().toTime().toUnix(), "CQ-V1")
+proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.gcsafe.} = 
+    {.cast(gcsafe).}:
+        case event:
+        of OpenEvent:
+            discard
+        of MessageEvent:
+            ws.sendHeartbeat() 
 
-
-proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) = 
-    case event:
-    of OpenEvent:
-        discard
-    of MessageEvent:
-        ws.sendHeartbeat()
-    of ErrorEvent:
-        discard
-    of CloseEvent:
-        discard
+            case message.getMessageType(): 
+            of CLIENT_AGENT_COMMAND:
+                discard 
+            of CLIENT_LISTENER_START:
+                message.receiveStartListener()
+            of CLIENT_LISTENER_STOP:
+                message.receiveStopListener() 
+            of CLIENT_AGENT_BUILD:
+                discard 
+            else: discard
+        of ErrorEvent:
+            discard
+        of CloseEvent:
+            discard
 
 proc serve(server: Server) {.thread.} = 
     try:
@@ -196,6 +210,7 @@ proc startServer*(profilePath: string) =
     cq.restartListeners()
     cq.addMultiple(cq.dbGetAllAgents())
 
+    # Start websocket server
     var router: Router
     router.get("/*", upgradeHandler)
     let server = newServer(router, websocketHandler)

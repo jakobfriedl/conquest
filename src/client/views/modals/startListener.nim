@@ -89,6 +89,5 @@ proc draw*(component: ListenerModalComponent): Listener =
         igSameLine(0.0f, textSpacing)
 
         if igButton("Close", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
-            
             component.resetModalValues()
             igCloseCurrentPopup()
