@@ -27,12 +27,9 @@ proc AgentModal*(listeners: seq[Listener]): AgentModalComponent =
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
 
-    var modules: seq[string]
+    var modules: seq[ModuleType]
     for module in ModuleType: 
-        # Magic to convert MODULE_SITUATIONAL_AWARENESS into SituationalAwareness, etc. 
-        var name = ($module).split("_")[1..^1].mapIt(it.toLowerAscii().capitalizeAscii()).join("")
-        modules.add(name)
-
+        modules.add(module)
     result.moduleSelection = DualListSelection(modules)
 
 proc resetModalValues(component: AgentModalComponent) = 
@@ -103,12 +100,27 @@ proc draw*(component: AgentModalComponent) =
         igSeparator()
         igDummy(vec2(0.0f, 10.0f))
 
+        # Enable "Build" button if at least one module has been selected
+        igBeginDisabled(component.moduleSelection.items[1].len() == 0)
+
         if igButton("Build", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
-            
-            
+
+            # Get values 
+            echo component.listeners[component.listener]
+            echo $component.sleepDelay
+            echo component.sleepMaskTechniques[component.sleepMask]
+            echo $component.spoofStack
+        
+            # Iterate over modules
+            var module: uint32 = 0
+            for m in component.moduleSelection.items[1]: 
+                module = module or uint32(m)
+            echo module
+
             component.resetModalValues()
             igCloseCurrentPopup() 
         
+        igEndDisabled()
         igSameLine(0.0f, textSpacing)
 
         if igButton("Close", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):

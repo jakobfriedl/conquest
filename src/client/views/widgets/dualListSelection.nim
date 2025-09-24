@@ -1,73 +1,45 @@
-import strutils
+import strutils, sequtils, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
 import ../../../common/[types, utils]
 
 type 
-    Direction = enum
-        Right = 0
-        Left = 1
-
     DualListSelectionComponent* = ref object of RootObj
-        items: array[2, seq[string]]
+        items*: array[2, seq[ModuleType]]
         selection: array[2, ptr ImGuiSelectionBasicStorage]
 
-proc DualListSelection*(items: seq[string]): DualListSelectionComponent = 
+proc DualListSelection*(items: seq[ModuleType]): DualListSelectionComponent = 
     result = new DualListSelectionComponent
     result.items[0] = items
     result.items[1] = @[]
     result.selection[0] = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.selection[1] = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
 
-proc moveAll(component: DualListSelectionComponent, direction: Direction) = 
-    
-    if direction == Right: 
-        for m in component.items[0]: 
-            component.items[1].add(m)
-        component.items[0].setLen(0)
+proc moveAll(component: DualListSelectionComponent, src, dst: int) = 
+    for m in component.items[src]: 
+        component.items[dst].add(m)
+    component.items[dst].sort()
+    component.items[src].setLen(0)
 
-        ImGuiSelectionBasicStorage_Swap(component.selection[0], component.selection[1])
-        ImGuiSelectionBasicStorage_Clear(component.selection[0])
+    ImGuiSelectionBasicStorage_Swap(component.selection[src], component.selection[dst])
+    ImGuiSelectionBasicStorage_Clear(component.selection[src])
 
-    else: 
-        for m in component.items[1]: 
-            component.items[0].add(m)
-        component.items[1].setLen(0)
+proc moveSelection(component: DualListSelectionComponent, src, dst: int) = 
+    var keep: seq[ModuleType]
+    for i in 0 ..< component.items[src].len(): 
+        let item = component.items[src][i]
+        if not component.selection[src].ImGuiSelectionBasicStorage_Contains(cast[ImGuiID](i)):
+            keep.add(item)
+            continue
+        component.items[dst].add(item)
+    component.items[dst].sort()
+    component.items[src] = keep
 
-        ImGuiSelectionBasicStorage_Swap(component.selection[1], component.selection[0])
-        ImGuiSelectionBasicStorage_Clear(component.selection[1])
+    ImGuiSelectionBasicStorage_Swap(component.selection[src], component.selection[dst])
+    ImGuiSelectionBasicStorage_Clear(component.selection[src])
 
-proc moveSelection(component: DualListSelectionComponent, direction: Direction) = 
-    
-    if direction == Right: 
-        var 
-            keep: seq[string]
-
-        for i in 0 ..< component.items[0].len(): 
-            let item = component.items[0][i]
-            if not component.selection[0].ImGuiSelectionBasicStorage_Contains(cast[ImGuiID](i)):
-                keep.add(item)
-                continue
-            component.items[1].add(item)
-        component.items[0] = keep
-
-        ImGuiSelectionBasicStorage_Swap(component.selection[0], component.selection[1])
-        ImGuiSelectionBasicStorage_Clear(component.selection[0])
-
-    else: 
-        var 
-            keep: seq[string]
-
-        for i in 0 ..< component.items[1].len(): 
-            let item = component.items[1][i]
-            if not component.selection[1].ImGuiSelectionBasicStorage_Contains(cast[ImGuiID](i)):
-                keep.add(item)
-                continue
-            component.items[0].add(item)
-        component.items[1] = keep
-
-        ImGuiSelectionBasicStorage_Swap(component.selection[1], component.selection[0])
-        ImGuiSelectionBasicStorage_Clear(component.selection[1])
+proc moduleName(module: ModuleType): string = 
+    return ($module).split("_")[1..^1].mapIt(it.toLowerAscii().capitalizeAscii()).join("")
 
 proc draw*(component: DualListSelectionComponent) = 
 
@@ -80,7 +52,7 @@ proc draw*(component: DualListSelectionComponent) =
 
         var containerHeight: float
 
-        # Left selection container
+        # Left selection column
         igTableSetColumnIndex(0) 
             
         var modules = component.items[0]
@@ -105,7 +77,14 @@ proc draw*(component: DualListSelectionComponent) =
             for row in 0 ..< modules.len().int32: 
                 var isSelected = ImGuiSelectionBasicStorage_Contains(selection, cast[ImGuiID](row))
                 igSetNextItemSelectionUserData(row)
-                discard igSelectable_Bool(modules[row], isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+                discard igSelectable_Bool(modules[row].moduleName(), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+
+                # Move on Enter and double-click
+                if igIsItemFocused(): 
+                    if igIsKeyPressed_Bool(ImGuiKey_Enter, false) or igIsKeyPressed_Bool(ImGuiKey_KeypadEnter, false):
+                        component.moveSelection(0, 1)
+                    if igIsMouseDoubleClicked_Nil(ImGui_MouseButton_Left.int32):
+                        component.moveSelection(0, 1)
 
             multiSelectIO = igEndMultiSelect()
             ImGuiSelectionBasicStorage_ApplyRequests(selection, multiSelectIO)
@@ -118,15 +97,15 @@ proc draw*(component: DualListSelectionComponent) =
 
         let buttonSize = vec2(igGetFrameHeight(), igGetFrameHeight())
         if igButton(">>", buttonSize): 
-            component.moveAll(Right)
+            component.moveAll(0, 1)
         if igButton(">", buttonSize): 
-            component.moveSelection(Right)
+            component.moveSelection(0, 1)
         if igButton("<", buttonSize): 
-            component.moveSelection(Left)
+            component.moveSelection(1, 0)
         if igButton("<<", buttonSize): 
-            component.moveAll(Left)
+            component.moveAll(1, 0)
 
-        # Right selection container
+        # Right selection column
         igTableSetColumnIndex(2) 
             
         modules = component.items[1]
@@ -148,12 +127,18 @@ proc draw*(component: DualListSelectionComponent) =
             for row in 0 ..< modules.len().int32:         
                 var isSelected = ImGuiSelectionBasicStorage_Contains(selection, cast[ImGuiID](row))
                 igSetNextItemSelectionUserData(row)
-                discard igSelectable_Bool(modules[row], isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+                discard igSelectable_Bool(modules[row].moduleName(), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+
+                # Move on Enter and double-click
+                if igIsItemFocused(): 
+                    if igIsKeyPressed_Bool(ImGuiKey_Enter, false) or igIsKeyPressed_Bool(ImGuiKey_KeypadEnter, false):
+                        component.moveSelection(1, 0)
+                    if igIsMouseDoubleClicked_Nil(ImGui_MouseButton_Left.int32):
+                        component.moveSelection(1, 0)
 
             multiSelectIO = igEndMultiSelect()
             ImGuiSelectionBasicStorage_ApplyRequests(selection, multiSelectIO)
 
         igEndChild()
-
 
         igEndTable()

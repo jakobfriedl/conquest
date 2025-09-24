@@ -1,7 +1,7 @@
 import tables, strformat
 import ../common/types
 
-const MODULES {.intdefine.} = 1
+const MODULES {.intdefine.} = 0
 
 type
     ModuleManager* = object 
@@ -16,7 +16,7 @@ proc registerModule(module: Module) {.discardable.} =
         manager.commandsByName[cmd.name] = cmd
 
 # Import all modules
-when ((MODULES and cast[uint32](MODULE_ALL)) == cast[uint32](MODULE_ALL)):
+when (MODULES == cast[uint32](MODULE_ALL)):
     import 
         sleep,
         shell,

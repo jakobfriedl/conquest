@@ -53,15 +53,15 @@ type
         CMD_SLEEPMASK = 17'u16
 
     ModuleType* = enum 
-        MODULE_ALL = 1'u32
-        MODULE_SLEEP = 2'u32
-        MODULE_SHELL = 4'u32 
-        MODULE_BOF = 8'u32
-        MODULE_DOTNET = 16'u32
-        MODULE_FILESYSTEM = 32'u32 
-        MODULE_FILETRANSFER = 64'u32
-        MODULE_SCREENSHOT = 128'u32
-        MODULE_SITUATIONAL_AWARENESS = 256'u32 
+        MODULE_ALL = 0'u32
+        MODULE_SLEEP = 1'u32
+        MODULE_SHELL = 2'u32 
+        MODULE_BOF = 4'u32
+        MODULE_DOTNET = 8'u32
+        MODULE_FILESYSTEM = 16'u32 
+        MODULE_FILETRANSFER = 32'u32
+        MODULE_SCREENSHOT = 64'u32
+        MODULE_SITUATIONAL_AWARENESS = 128'u32 
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
@@ -101,7 +101,6 @@ type
 
 # Custom iterator for ModuleType, as it uses powers of 2 instead of standard increments
 iterator items*(e: typedesc[ModuleType]): ModuleType =
-    # yield MODULE_ALL
     yield MODULE_SLEEP
     yield MODULE_SHELL
     yield MODULE_BOF
