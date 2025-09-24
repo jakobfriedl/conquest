@@ -39,8 +39,6 @@ proc serve(listener: Listener) {.thread.} =
         discard 
 
 proc listenerStart*(cq: Conquest, name: string, host: string, port: int, protocol: Protocol) = 
-
-    # Validate arguments
     try:
         # Create new listener
         var router: Router
@@ -98,7 +96,7 @@ proc restartListeners*(cq: Conquest) =
     # Restart all active listeners that are stored in the database
     for listener in listeners: 
         try:
-             # Create new listener
+            # Create new listener
             let name: string = generateUUID()  
             var router: Router
             router.notFoundHandler = routes.error404

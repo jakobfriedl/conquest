@@ -1,8 +1,8 @@
-import strutils
+import strutils, sequtils
 import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/appImGui
+import ../../utils/[appImGui, colors]
 import ../../../common/[types, utils]
-
+import ../widgets/dualListSelection
 
 type 
     AgentModalComponent* = ref object of RootObj
@@ -12,6 +12,7 @@ type
         spoofStack: bool 
         listeners: seq[string]
         sleepMaskTechniques: seq[string]
+        moduleSelection: DualListSelectionComponent
 
 proc AgentModal*(listeners: seq[Listener]): AgentModalComponent =
     result = new AgentModalComponent
@@ -23,8 +24,16 @@ proc AgentModal*(listeners: seq[Listener]): AgentModalComponent =
     for l in listeners: 
         result.listeners.add(l.listenerId)
 
-    for s in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
-        result.sleepMaskTechniques.add($s)
+    for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
+        result.sleepMaskTechniques.add($technique)
+
+    var modules: seq[string]
+    for module in ModuleType: 
+        # Magic to convert MODULE_SITUATIONAL_AWARENESS into SituationalAwareness, etc. 
+        var name = ($module).split("_")[1..^1].mapIt(it.toLowerAscii().capitalizeAscii()).join("")
+        modules.add(name)
+
+    result.moduleSelection = DualListSelection(modules)
 
 proc resetModalValues(component: AgentModalComponent) = 
     discard 
@@ -86,7 +95,7 @@ proc draw*(component: AgentModalComponent) =
 
         igText("Modules: ")
         
-
+        component.moduleSelection.draw()
 
         igGetContentRegionAvail(addr availableSize)
 

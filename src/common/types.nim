@@ -99,6 +99,18 @@ type
         ZILEAN = 2'u8
         FOLIAGE = 3'u8
 
+# Custom iterator for ModuleType, as it uses powers of 2 instead of standard increments
+iterator items*(e: typedesc[ModuleType]): ModuleType =
+    # yield MODULE_ALL
+    yield MODULE_SLEEP
+    yield MODULE_SHELL
+    yield MODULE_BOF
+    yield MODULE_DOTNET
+    yield MODULE_FILESYSTEM
+    yield MODULE_FILETRANSFER
+    yield MODULE_SCREENSHOT
+    yield MODULE_SITUATIONAL_AWARENESS
+
 # Encryption 
 type    
     Uuid* = uint32

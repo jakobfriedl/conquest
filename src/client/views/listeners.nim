@@ -59,9 +59,6 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
 
     component.generatePayloadModal.draw()
 
-
-
-
     #[
         Listener table
     ]#
