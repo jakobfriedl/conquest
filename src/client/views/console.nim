@@ -7,7 +7,7 @@ import ../../common/[types]
 const MAX_INPUT_LENGTH = 512
 type    
     ConsoleComponent* = ref object of RootObj
-        agent*: Agent
+        agent*: UIAgent
         showConsole*: bool
         inputBuffer: array[MAX_INPUT_LENGTH, char]
         console*: ConsoleItems
@@ -42,7 +42,7 @@ proc getLineAtIndex(i: csize_t, data: pointer, outLen: ptr csize_t): cstring {.c
         outLen[] = line.len.csize_t
     return line
 
-proc Console*(agent: Agent): ConsoleComponent =
+proc Console*(agent: UIAgent): ConsoleComponent =
     result = new ConsoleComponent
     result.agent = agent
     result.showConsole = true

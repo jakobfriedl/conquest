@@ -3,40 +3,24 @@ import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/appImGui
 import ../../common/[types, utils]
 import ./modals/[startListener, generatePayload]
-import ../websocket
+import ../event/send
 import whisky
 
 type 
     ListenersTableComponent* = ref object of RootObj
         title: string 
-        listeners*: seq[Listener]
+        listeners*: seq[UIListener]
         selection: ptr ImGuiSelectionBasicStorage
         startListenerModal: ListenerModalComponent
         generatePayloadModal: AgentModalComponent
 
-let exampleListeners: seq[Listener] = @[
-    Listener(
-        listenerId: "L1234567",
-        address: "192.168.1.1",
-        port: 8080,
-        protocol: HTTP
-    ),
-    Listener(
-        listenerId: "L7654321",
-        address: "10.0.0.2",
-        port: 443,
-        protocol: HTTP
-    )
-]
-
 proc ListenersTable*(title: string): ListenersTableComponent = 
     result = new ListenersTableComponent
     result.title = title
-    result.listeners = exampleListeners
+    result.listeners = @[]
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.startListenerModal = ListenerModal()
     result.generatePayloadModal = AgentModal()
-
 
 proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebSocket) = 
     igBegin(component.title, showComponent, 0)
@@ -73,7 +57,7 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
         ImGuiTableFlags_ScrollY.int32 or
         ImGuiTableFlags_ScrollX.int32 or 
         ImGuiTableFlags_NoBordersInBodyUntilResize.int32 or
-        ImGui_TableFlags_SizingStretchProp.int32
+        ImGui_TableFlags_SizingStretchSame.int32
     )
 
     let cols: int32 = 4
@@ -114,7 +98,7 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
             
             if igMenuItem("Stop", nil, false, true): 
                 # Update agents table with only non-selected ones
-                var newListeners: seq[Listener] = @[]
+                var newListeners: seq[UIListener] = @[]
                 for i in 0 ..< component.listeners.len():
                     if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                         newListeners.add(component.listeners[i])

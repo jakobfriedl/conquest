@@ -39,7 +39,7 @@ proc resetModalValues(component: AgentModalComponent) =
     component.spoofStack = false 
     component.moduleSelection.reset()
 
-proc draw*(component: AgentModalComponent, listeners: seq[Listener]) =
+proc draw*(component: AgentModalComponent, listeners: seq[UIListener]) =
 
     let textSpacing = igGetStyle().ItemSpacing.x    
     

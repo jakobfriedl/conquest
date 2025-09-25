@@ -25,7 +25,7 @@ proc resetModalValues(component: ListenerModalComponent) =
     component.port = DEFAULT_PORT
     component.protocol = 0
 
-proc draw*(component: ListenerModalComponent): Listener =
+proc draw*(component: ListenerModalComponent): UIListener =
     let textSpacing = igGetStyle().ItemSpacing.x    
     
     # Center modal
@@ -76,7 +76,7 @@ proc draw*(component: ListenerModalComponent): Listener =
 
         if igButton("Start", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
             
-            result = Listener(
+            result = UIListener(
                 listenerId: generateUUID(),
                 address: $(addr component.address[0]),
                 port: int(component.port),

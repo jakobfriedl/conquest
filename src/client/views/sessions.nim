@@ -8,85 +8,14 @@ import ../../common/[types, utils]
 type 
     SessionsTableComponent* = ref object of RootObj
         title: string 
-        agents*: seq[Agent]
+        agents*: seq[UIAgent]
         selection: ptr ImGuiSelectionBasicStorage
         consoles: ptr Table[string, ConsoleComponent]
-
-let exampleAgents: seq[Agent] = @[
-  Agent(
-    agentId: "DEADBEEF",
-    listenerId: "L1234567",
-    username: "alice",
-    hostname: "DESKTOP-01",
-    domain: "corp.local",
-    ip: "192.168.1.10",
-    os: "Windows 10",
-    process: "explorer.exe",
-    pid: 2340,
-    elevated: true,
-    sleep: 60,
-    tasks: @[],
-    firstCheckin: now() - initDuration(hours = 2),
-    latestCheckin: now(),
-    sessionKey: [byte 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
-  ),
-  Agent(
-    agentId: "FACEDEAD",
-    listenerId: "L7654321",
-    username: "bob",
-    hostname: "LAPTOP-02",
-    domain: "corp.local",
-    ip: "10.0.0.5",
-    os: "Windows 11",
-    process: "cmd.exe",
-    pid: 4567,
-    elevated: false,
-    sleep: 120,
-    tasks: @[],
-    firstCheckin: now() - initDuration(hours = 1, minutes = 30),
-    latestCheckin: now() - initDuration(minutes = 5),
-    sessionKey: [byte 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-  ),
-  Agent(
-    agentId: "C9D8E7F6",
-    listenerId: "L2468135",
-    username: "charlie",
-    hostname: "SERVER-03",
-    domain: "child.corp.local",
-    ip: "172.16.0.20",
-    os: "Windows Server 2019",
-    process: "powershell.exe",
-    pid: 7890,
-    elevated: true,
-    sleep: 30,
-    tasks: @[],
-    firstCheckin: now() - initDuration(hours = 3, minutes = 15),
-    latestCheckin: now() - initDuration(minutes = 10),
-    sessionKey: [byte 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-  ),
-  Agent(
-    agentId: "G1H2I3J5",
-    listenerId: "L1357924",
-    username: "diana",
-    hostname: "WORKSTATION-04",
-    domain: "external.local",
-    ip: "192.168.2.15",
-    os: "Windows 10",
-    process: "chrome.exe",
-    pid: 3210,
-    elevated: false,
-    sleep: 90,
-    tasks: @[],
-    firstCheckin: now() - initDuration(hours = 4),
-    latestCheckin: now() - initDuration(minutes = 2),
-    sessionKey: [byte 5, 4, 3, 2, 1, 0, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6]
-  )
-]
 
 proc SessionsTable*(title: string, consoles: ptr Table[string, ConsoleComponent]): SessionsTableComponent = 
     result = new SessionsTableComponent
     result.title = title
-    result.agents = exampleAgents
+    result.agents = @[]
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.consoles = consoles
 
@@ -97,6 +26,7 @@ proc interact(component: SessionsTableComponent) =
     while ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
         let agent = component.agents[cast[int](row)]
 
+
         # Create a new console window
         if not component.consoles[].hasKey(agent.agentId):
             component.consoles[][agent.agentId] = Console(agent)
@@ -104,7 +34,9 @@ proc interact(component: SessionsTableComponent) =
         # Focus the existing console window
         else:
             igSetWindowFocus_Str(fmt"[{agent.agentId}] {agent.username}@{agent.hostname}")
-
+    
+    # TODO: Clear selection properly
+    ImGuiSelectionBasicStorage_Clear(component.selection)
 
 proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
     igBegin(component.title, showComponent, 0)
@@ -121,7 +53,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         ImGuiTableFlags_ScrollY.int32 or
         ImGuiTableFlags_ScrollX.int32 or 
         ImGuiTableFlags_NoBordersInBodyUntilResize.int32 or
-        ImGui_TableFlags_SizingStretchProp.int32
+        ImGui_TableFlags_SizingStretchSame.int32
     )
 
     let cols: int32 = 8
@@ -134,7 +66,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         igTableSetupColumn("OS", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Process", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("PID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-        igTableSetupColumn("Activity", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Last seen", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
 
         igTableSetupScrollFreeze(0, 1)
         igTableHeadersRow()
@@ -170,7 +102,17 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
             if igTableSetColumnIndex(6): 
                 igText($agent.pid)
             if igTableSetColumnIndex(7): 
-                igText(agent.latestCheckin.format("yyyy-MM-dd HH:mm:ss"))
+                let duration = now() - agent.latestCheckin.fromUnix().utc()
+                let totalSeconds = duration.inSeconds
+                
+                let hours = totalSeconds div 3600
+                let minutes = (totalSeconds mod 3600) div 60
+                let seconds = totalSeconds mod 60
+                
+                let dummyTime = dateTime(2000, mJan, 1, hours.int, minutes.int, seconds.int)
+                let timeText = dummyTime.format("HH:mm:ss")
+
+                igText(fmt"{timeText} ago")
 
         # Handle right-click context menu
         # Right-clicking the table header to hide/show columns or reset the layout is only possible when no sessions are selected
@@ -182,7 +124,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         
             if igMenuItem("Remove", nil, false, true): 
                 # Update agents table with only non-selected ones
-                var newAgents: seq[Agent] = @[]
+                var newAgents: seq[UIAgent] = @[]
                 for i in 0 ..< component.agents.len():
                     if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                         newAgents.add(component.agents[i])

@@ -1,15 +1,31 @@
-import strutils, terminal, tables, sequtils, times, strformat, prompt
+import strutils, terminal, tables, sequtils, times, strformat, prompt, json
 import std/wordwrap
 
 import ../common/types
 import core/logger
 
-proc validatePort*(portStr: string): bool = 
-    try:
-        let port: int = portStr.parseInt
-        return port >= 1 and port <= 65535
-    except ValueError:
-        return false
+proc `%`*(agent: Agent): JsonNode =
+    result = newJObject()
+    result["agentId"] = %agent.agentId
+    result["listenerId"] = %agent.listenerId
+    result["username"] = %agent.username
+    result["hostname"] = %agent.hostname
+    result["domain"] = %agent.domain
+    result["ip"] = %agent.ip
+    result["os"] = %agent.os
+    result["process"] = %agent.process
+    result["pid"] = %agent.pid
+    result["elevated"] = %agent.elevated
+    result["sleep"] = %agent.sleep
+    result["firstCheckin"] = %agent.firstCheckin.toTime().toUnix()
+    result["latestCheckin"] = %agent.latestCheckin.toTime().toUnix()
+
+proc `%`*(listener: Listener): JsonNode =
+    result = newJObject()
+    result["listenerId"] = %listener.listenerId
+    result["address"] = %listener.address
+    result["port"] = %listener.port 
+    result["protocol"] = %listener.protocol
 
 # Table border characters
 type

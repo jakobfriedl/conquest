@@ -1,7 +1,7 @@
 import prompt
 import tables
 import times
-import parsetoml
+import parsetoml, json
 import mummy
 
 # Custom Binary Task structure
@@ -202,6 +202,22 @@ type
         latestCheckin*: DateTime
         sessionKey*: Key
 
+    # Session entry for client UI
+    UIAgent* = ref object 
+        agentId*: string
+        listenerId*: string 
+        username*: string 
+        hostname*: string
+        domain*: string
+        ip*: string
+        os*: string
+        process*: string
+        pid*: int
+        elevated*: bool 
+        sleep*: int 
+        firstCheckin*: int64
+        latestCheckin*: int64
+
 # Listener structure
 type 
     Protocol* {.size: sizeof(uint8).} = enum
@@ -209,6 +225,12 @@ type
 
     Listener* = ref object of RootObj
         server*: Server
+        listenerId*: string
+        address*: string
+        port*: int
+        protocol*: Protocol
+
+    UIListener* = ref object of RootObj
         listenerId*: string
         address*: string
         port*: int
@@ -225,7 +247,8 @@ type
     Conquest* = ref object
         prompt*: Prompt
         dbPath*: string
-        listeners*: Table[string, tuple[listener: Listener, thread: Thread[Listener]]]
+        listeners*: Table[string, Listener]
+        threads*: Table[string, Thread[Listener]]
         agents*: Table[string, Agent]
         interactAgent*: Agent
         keyPair*: KeyPair
@@ -280,19 +303,27 @@ type
     Client <-> Server WebSocket communication
 ]#
 type 
-    WsPacketType* = enum
-        # Sent by client 
+    EventType* = enum
         CLIENT_HEARTBEAT = 0'u8             # Basic checkin 
+       
+        # Sent by client 
         CLIENT_AGENT_BUILD = 1'u8           # Generate an agent binary for a specific listener
-        CLIENT_AGENT_COMMAND = 2'u8               # Instruct TS to send queue a command for a specific agent
+        CLIENT_AGENT_COMMAND = 2'u8         # Instruct TS to send queue a command for a specific agent
         CLIENT_LISTENER_START = 3'u8        # Start a listener on the TS
         CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
 
         # Sent by team server
-        CLIENT_AGENT_BINARY = 100'u8        # Return the agent binary to write to the operator's client machine
-        CLIENT_AGENT_CONNECTION = 101'u8    # Notify new agent connection 
-        CLIENT_AGENT_CHECKIN = 102'u8       # Update agent checkin
-        CLIENT_CONSOLE_LOG = 103'u8         # Add entry to a agent's console 
-        CLIENT_EVENT_LOG = 104'u8           # Add entry to the eventlog        
-        
-        CLIENT_CONNECTION = 200'u8          # Return team server profile 
+        CLIENT_PROFILE = 100'u8             # Team server profile and configuration 
+        CLIENT_LISTENER_ADD = 101'u8        # Add listener to listeners table
+        CLIENT_AGENT_ADD = 102'u8           # Add agent to sessions table
+        CLIENT_AGENT_CHECKIN = 103'u8       # Update agent checkin
+        CLIENT_AGENT_PAYLOAD = 104'u8       # Return agent payload binary 
+        CLIENT_CONSOLE_ITEM = 105'u8         # Add entry to a agent's console 
+        CLIENT_EVENTLOG_ITEM = 106'u8           # Add entry to the eventlog        
+
+    Event* = object 
+        eventType*: EventType               
+        timestamp*: int64 
+        data*: JsonNode   
+
+

@@ -8,7 +8,7 @@ import ../api/routes
 import ../db/database
 import ../core/logger
 import ../../common/[types, utils, profile]
-import ../websocket/send
+import ../event/send
 
 #[
     Listener management
@@ -79,7 +79,9 @@ proc listenerStart*(cq: Conquest, name: string, host: string, port: int, protoco
         createThread(thread, serve, listener)
         server.waitUntilReady()
 
-        cq.listeners[name] = (listener, thread)
+        cq.listeners[name] = listener
+        cq.threads[name] = thread
+
         if not cq.dbStoreListener(listener):
             raise newException(CatchableError, "Failed to store listener in database.")
 
@@ -97,7 +99,6 @@ proc restartListeners*(cq: Conquest) =
     for listener in listeners: 
         try:
             # Create new listener
-            let name: string = generateUUID()  
             var router: Router
             router.notFoundHandler = routes.error404
             router.methodNotAllowedHandler = routes.error405
@@ -128,9 +129,11 @@ proc restartListeners*(cq: Conquest) =
             createThread(thread, serve, listener)
             server.waitUntilReady()
 
-            cq.listeners[listener.listenerId] = (listener, thread)
+            cq.listeners[listener.listenerId] = listener
+            cq.threads[listener.listenerId] = thread
+
             cq.success("Restarted listener", fgGreen, fmt" {listener.listenerId} ", resetStyle, fmt"on {listener.address}:{$listener.port}.")
-                
+
         except CatchableError as err: 
             cq.error("Failed to restart listener: ", err.msg)
         

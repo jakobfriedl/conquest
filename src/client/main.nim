@@ -1,19 +1,21 @@
 import whisky
-import tables, strutils
+import tables, strutils, json, parsetoml
 import ./utils/appImGui
 import ./views/[dockspace, sessions, listeners, eventlog, console]
 import ../common/[types, utils]
-import ./websocket
+import ./event/[send, recv]
+
+import sugar 
 
 proc main() = 
     var app = createApp(1024, 800, imnodes = true, title = "Conquest", docking = true)
     defer: app.destroyApp()
 
     var 
+        profile: Profile
         views: Table[string, ptr bool]
         showConquest = true
         showSessionsTable = true
-        showSessionsGraph = false
         showListeners = true
         showEventlog = true
         consoles: Table[string, ConsoleComponent]
@@ -25,7 +27,6 @@ proc main() =
         dockTopRight: ImGuiID = 0
 
     views["Sessions [Table View]"] = addr showSessionsTable 
-    views["Sessions [Graph View]"] = addr showSessionsGraph
     views["Listeners"] = addr showListeners
     views["Eventlog"] = addr showEventlog
 
@@ -58,12 +59,34 @@ proc main() =
         ws.sendHeartbeat()
 
         # Receive and parse websocket response message 
-        let message = ws.receiveMessage().get()
-        case message.getMessageType()
-        of CLIENT_EVENT_LOG: 
-            message.receiveEventlogItem(addr eventlog)
-        else: discard 
+        let event = recvEvent(ws.receiveMessage().get())
+        case event.eventType:
+        of CLIENT_PROFILE: 
+            profile = parseString(event.data["profile"].getStr())
+        
+        of CLIENT_LISTENER_ADD: 
+            let listener = event.data.to(UIListener)
+            dump listener.listenerId
+            listenersTable.listeners.add(listener)
 
+        of CLIENT_AGENT_ADD: 
+            let agent = event.data.to(UIAgent)
+            dump agent.agentId
+            sessionsTable.agents.add(agent)
+        
+        of CLIENT_AGENT_CHECKIN: 
+            discard 
+
+        of CLIENT_AGENT_PAYLOAD: 
+            discard
+
+        of CLIENT_CONSOLE_ITEM: 
+            consoles[event.data["agentId"].getStr()].addItem(cast[LogType](event.data["logType"].getInt()), event.data["message"].getStr(), event.timestamp)
+        
+        of CLIENT_EVENTLOG_ITEM: 
+            eventlog.addItem(cast[LogType](event.data["logType"].getInt()), event.data["message"].getStr(), event.timestamp)
+        
+        else: discard 
 
         # Draw/update UI components/views
         dockspace.draw(addr showConquest, views, addr dockTop, addr dockBottom, addr dockTopLeft, addr dockTopRight)

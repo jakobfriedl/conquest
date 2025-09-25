@@ -5,8 +5,8 @@ import ./[agent, listener, builder]
 import ../globals
 import ../db/database
 import ../core/logger
-import ../../common/[types, crypto, profile]
-import ../websocket/[receive, send]
+import ../../common/[types, crypto, utils, profile]
+import ../event/[recv, send]
 import mummy, mummy/routers
 
 #[
@@ -88,10 +88,10 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
             of "list":
                 cq.listenerList()
             of "start": 
-                #cq.listenerStart(opts.listener.get.start.get.ip, opts.listener.get.start.get.port)
+                cq.listenerStart(generateUUID(), opts.listener.get.start.get.ip, parseInt(opts.listener.get.start.get.port), HTTP)
                 discard
             of "stop": 
-                #cq.listenerStop(opts.listener.get.stop.get.name)
+                cq.listenerStop(opts.listener.get.stop.get.name)
                 discard
             else: 
                 cq.listenerUsage()
@@ -133,7 +133,8 @@ proc header() =
 proc init*(T: type Conquest, profile: Profile): Conquest = 
     var cq = new Conquest
     cq.prompt = Prompt.init() 
-    cq.listeners = initTable[string, tuple[listener: Listener, thread: Thread[Listener]]]()
+    cq.listeners = initTable[string, Listener]()
+    cq.threads = initTable[string, Thread[Listener]]()
     cq.agents = initTable[string, Agent]() 
     cq.interactAgent = nil 
     cq.profile = profile
@@ -148,27 +149,36 @@ proc upgradeHandler(request: Request) =
     {.cast(gcsafe).}:
         let ws = request.upgradeToWebSocket()
         cq.ws = ws
-        # Send client connection message
-        ws.sendEventlogItem(LOG_SUCCESS_SHORT, "CQ-V1")
 
 proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.gcsafe.} = 
     {.cast(gcsafe).}:
         case event:
         of OpenEvent:
-            discard
+            # New client connected to team server
+            # Send profile, sessions and listeners to the UI client
+            ws.sendProfile(cq.profile)
+            for id, listener in cq.listeners: 
+                ws.sendListener(listener)
+            for id, agent in cq.agents: 
+                ws.sendAgent(agent)
+            ws.sendEventlogItem(LOG_SUCCESS_SHORT, "CQ-V1")
+    
         of MessageEvent:
+            # Continuously send heartbeat messages
             ws.sendHeartbeat() 
 
-            case message.getMessageType(): 
-            of CLIENT_AGENT_COMMAND:
-                discard 
-            of CLIENT_LISTENER_START:
-                message.receiveStartListener()
-            of CLIENT_LISTENER_STOP:
-                message.receiveStopListener() 
-            of CLIENT_AGENT_BUILD:
-                discard 
-            else: discard
+            # case message.getMessageType(): 
+            # of CLIENT_AGENT_COMMAND:
+            #     discard 
+            # of CLIENT_LISTENER_START:
+            #     message.receiveStartListener()
+            # of CLIENT_LISTENER_STOP:
+            #     discard
+            #     # message.receiveStopListener() 
+            # of CLIENT_AGENT_BUILD:
+            #     discard 
+            # else: discard
+
         of ErrorEvent:
             discard
         of CloseEvent:
