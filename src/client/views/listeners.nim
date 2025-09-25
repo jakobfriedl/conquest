@@ -35,7 +35,7 @@ proc ListenersTable*(title: string): ListenersTableComponent =
     result.listeners = exampleListeners
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.startListenerModal = ListenerModal()
-    result.generatePayloadModal = AgentModal(result.listeners)
+    result.generatePayloadModal = AgentModal()
 
 
 proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebSocket) = 
@@ -57,7 +57,7 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
         ws.sendStartListener(listener)
         component.listeners.add(listener)    
 
-    component.generatePayloadModal.draw()
+    component.generatePayloadModal.draw(component.listeners)
 
     #[
         Listener table

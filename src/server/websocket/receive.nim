@@ -9,9 +9,9 @@ import ../core/[task, listener]
     [ Retrieval functions ]
     Client -> Server
 ]#
-proc getMessageType*(message: Message): WsMessageAction = 
+proc getMessageType*(message: Message): WsPacketType = 
     var unpacker = Unpacker.init(message.data)
-    return cast[WsMessageAction](unpacker.getUint8()) 
+    return cast[WsPacketType](unpacker.getUint8()) 
 
 proc receiveStartListener*(message: Message) = 
     var unpacker = Unpacker.init(message.data)

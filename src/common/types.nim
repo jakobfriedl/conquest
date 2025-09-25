@@ -280,79 +280,19 @@ type
     Client <-> Server WebSocket communication
 ]#
 type 
-    WsMessageAction* = enum
+    WsPacketType* = enum
         # Sent by client 
         CLIENT_HEARTBEAT = 0'u8             # Basic checkin 
-        CLIENT_AGENT_COMMAND = 1'u8               # Instruct TS to send queue a command for a specific agent
-        CLIENT_LISTENER_START = 2'u8        # Start a listener on the TS
-        CLIENT_LISTENER_STOP = 3'u8         # Stop a listener
-        CLIENT_AGENT_BUILD = 4'u8           # Generate an agent binary for a specific listener
+        CLIENT_AGENT_BUILD = 1'u8           # Generate an agent binary for a specific listener
+        CLIENT_AGENT_COMMAND = 2'u8               # Instruct TS to send queue a command for a specific agent
+        CLIENT_LISTENER_START = 3'u8        # Start a listener on the TS
+        CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
 
         # Sent by team server
         CLIENT_AGENT_BINARY = 100'u8        # Return the agent binary to write to the operator's client machine
         CLIENT_AGENT_CONNECTION = 101'u8    # Notify new agent connection 
         CLIENT_AGENT_CHECKIN = 102'u8       # Update agent checkin
         CLIENT_CONSOLE_LOG = 103'u8         # Add entry to a agent's console 
-        CLIENT_EVENT_LOG = 104'u8           # Add entry to the eventlog
+        CLIENT_EVENT_LOG = 104'u8           # Add entry to the eventlog        
         
         CLIENT_CONNECTION = 200'u8          # Return team server profile 
-
-    # Client -> Server 
-    WsHeartbeat* = object 
-        msgType* = CLIENT_HEARTBEAT         
-
-    WsCommand* = object 
-        msgType* = CLIENT_AGENT_COMMAND           
-        agentId*: uint32                    
-        command*: seq[byte]                 # Command input field in the console window, prefixed with length
-
-    WsListenerStart* = object  
-        msgType* = CLIENT_LISTENER_START    
-        listener*: Listener
-
-    WsListenerStop* = object 
-        msgType* = CLIENT_LISTENER_STOP     
-        listenerId*: uint32                 
-
-    WsAgentBuild* = object 
-        msgType* = CLIENT_AGENT_BUILD   
-        listenerId*: uint32                 
-        sleepDelay*: uint32                  
-        sleepMask*: SleepObfuscationTechnique
-        spoofStack*: uint8  
-        modules*: uint64
-
-    # Server -> Client 
-    WsAgentBinary* = object
-        msgType* = CLIENT_AGENT_BINARY 
-        agentPayload*: seq[byte]            # Agent binary in byte-form, opens file browser to select location on the client
-
-    WsAgentConnection* = object
-        msgType* = CLIENT_AGENT_CONNECTION
-        agent*: Agent                      
-    
-    WsAgentCheckin* = object 
-        msgType* = CLIENT_AGENT_CHECKIN
-        agentId*: uint32                   
-        timestamp*: uint32
-
-    WsConsoleLog* = object 
-        msgType* = CLIENT_CONSOLE_LOG
-        agentId*: uint32 
-        logType*: LogType
-        timestamp*: uint32 
-        data*: seq[byte]
-
-    WsEventLog* = object 
-        msgType* = CLIENT_EVENT_LOG
-        logType*: LogType
-        timestamp*: uint32 
-        data*: seq[byte]
-
-    WsClientConnection* = object 
-        msgType* = CLIENT_CONNECTION
-        version: uint8
-        profile*: seq[byte]
-        agents*: seq[Agent]
-        listeners*: seq[Listener] 
-    

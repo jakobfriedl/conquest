@@ -43,6 +43,9 @@ proc moveSelection[T](component: DualListSelectionComponent[T], src, dst: int) =
     ImGuiSelectionBasicStorage_Swap(component.selection[src], component.selection[dst])
     ImGuiSelectionBasicStorage_Clear(component.selection[src])
 
+proc reset*[T](component: DualListSelectionComponent[T]) = 
+    component.moveAll(1, 0)
+
 proc draw*[T](component: DualListSelectionComponent[T]) = 
 
     if igBeginTable("split", 3, ImGuiTableFlags_None.int32, vec2(0.0f, 0.0f), 0.0f): 

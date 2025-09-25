@@ -69,9 +69,9 @@ proc sendAgentBuild*(ws: WebSocket, listenerId: string, sleepDelay: int, sleepMa
     [ Retrieval Functions ]
     Server -> Client 
 ]#
-proc getMessageType*(message: Message): WsMessageAction = 
+proc getMessageType*(message: Message): WsPacketType = 
     var unpacker = Unpacker.init(message.data)
-    return cast[WsMessageAction](unpacker.getUint8()) 
+    return cast[WsPacketType](unpacker.getUint8()) 
 
 proc receiveAgentPayload*(message: Message): seq[byte] = 
     var unpacker = Unpacker.init(message.data)

@@ -10,19 +10,15 @@ type
         sleepDelay: uint32 
         sleepMask: int32 
         spoofStack: bool 
-        listeners: seq[string]
         sleepMaskTechniques: seq[string]
         moduleSelection: DualListSelectionComponent[ModuleType]
 
-proc AgentModal*(listeners: seq[Listener]): AgentModalComponent =
+proc AgentModal*(): AgentModalComponent =
     result = new AgentModalComponent
     result.listener = 0
     result.sleepDelay = 5
     result.sleepMask = 0
     result.spoofStack = false
-
-    for l in listeners: 
-        result.listeners.add(l.listenerId)
 
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
@@ -37,9 +33,14 @@ proc AgentModal*(listeners: seq[Listener]): AgentModalComponent =
     result.moduleSelection = DualListSelection(modules, moduleName)
 
 proc resetModalValues(component: AgentModalComponent) = 
-    discard 
+    component.listener = 0
+    component.sleepDelay = 5
+    component.sleepMask = 0
+    component.spoofStack = false 
+    component.moduleSelection.reset()
 
-proc draw*(component: AgentModalComponent) =
+proc draw*(component: AgentModalComponent, listeners: seq[Listener]) =
+
     let textSpacing = igGetStyle().ItemSpacing.x    
     
     # Center modal
@@ -64,7 +65,7 @@ proc draw*(component: AgentModalComponent) =
         igSameLine(0.0f, textSpacing)
         igGetContentRegionAvail(addr availableSize)
         igSetNextItemWidth(availableSize.x)
-        igCombo_Str("##InputListener", addr component.listener, (component.listeners.join("\0") & "\0").cstring , component.listeners.len().int32)
+        igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.listenerId).join("\0") & "\0").cstring , listeners.len().int32)
 
         # Sleep delay
         let step: uint32 = 1
@@ -110,7 +111,7 @@ proc draw*(component: AgentModalComponent) =
         if igButton("Build", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
 
             # Get values 
-            echo component.listeners[component.listener]
+            echo listeners[component.listener].listenerId
             echo $component.sleepDelay
             echo component.sleepMaskTechniques[component.sleepMask]
             echo $component.spoofStack
