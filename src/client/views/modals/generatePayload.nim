@@ -12,7 +12,7 @@ type
         spoofStack: bool 
         listeners: seq[string]
         sleepMaskTechniques: seq[string]
-        moduleSelection: DualListSelectionComponent
+        moduleSelection: DualListSelectionComponent[ModuleType]
 
 proc AgentModal*(listeners: seq[Listener]): AgentModalComponent =
     result = new AgentModalComponent
@@ -30,7 +30,11 @@ proc AgentModal*(listeners: seq[Listener]): AgentModalComponent =
     var modules: seq[ModuleType]
     for module in ModuleType: 
         modules.add(module)
-    result.moduleSelection = DualListSelection(modules)
+
+    proc moduleName(module: ModuleType): string = 
+        return ($module).split("_")[1..^1].mapIt(it.toLowerAscii().capitalizeAscii()).join("")
+    
+    result.moduleSelection = DualListSelection(modules, moduleName)
 
 proc resetModalValues(component: AgentModalComponent) = 
     discard 

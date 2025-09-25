@@ -172,20 +172,33 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
         Huge thanks to @dinau for implementing ImGuiTextSelect into imguin very rapidly after I requested it.
     ]#
     let consolePadding: float = 10.0f 
-    let footerHeight = (consolePadding * 2) + (igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing()) * 1.5f
+    let footerHeight = (consolePadding * 2) + (igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing()) * 0.75f
     let textSpacing = igGetStyle().ItemSpacing.x    
 
     # Padding 
     igDummy(vec2(0.0f, consolePadding))
     
     #[
+        Session information
+    ]#
+    let domain = if component.agent.domain.isEmptyOrWhitespace(): "" else: fmt".{component.agent.domain}"
+    let sessionInfo = fmt"{component.agent.username}@{component.agent.hostname}{domain} | {component.agent.ip} | {$component.agent.pid}/{component.agent.process}"
+    igTextColored(GRAY, sessionInfo)
+    igSameLine(0.0f, 0.0f)
+
+    #[
         Filter & Options
     ]# 
+
+    var availableSize: ImVec2
+    igGetContentRegionAvail(addr availableSize)
     var labelSize: ImVec2
     igCalcTextSize(addr labelSize, ICON_FA_MAGNIFYING_GLASS, nil, false, 0.0f)
-    igSameLine(0.0f, igGetWindowWidth() - 200.0f  - (labelSize.x + textSpacing) - (igGetStyle().WindowPadding.x * 2))
     
-    # SHow tooltip when hovering the search icon
+    let searchBoxWidth: float32 = 200.0f
+    igSameLine(0.0f, availableSize.x  - (labelSize.x + textSpacing) - searchBoxWidth)
+
+    # Show tooltip when hovering the search icon
     igTextUnformatted(ICON_FA_MAGNIFYING_GLASS.cstring, nil)
     if igIsItemHovered(ImGuiHoveredFlags_None.int32):
         igBeginTooltip()
@@ -199,7 +212,7 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
         igSetKeyboardFocusHere(0) 
 
     igSameLine(0.0f, textSpacing)
-    component.filter.ImGuiTextFilter_Draw("##ConsoleSearch", 200.0f)    
+    component.filter.ImGuiTextFilter_Draw("##ConsoleSearch", searchBoxWidth)    
 
     try: 
         # Set styles of the console window
@@ -245,9 +258,8 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
     igSameLine(0.0f, textSpacing)
     
     # Calculate available width for input
-    var availableWidth: ImVec2
-    igGetContentRegionAvail(addr availableWidth)
-    igSetNextItemWidth(availableWidth.x)
+    igGetContentRegionAvail(addr availableSize)
+    igSetNextItemWidth(availableSize.x)
     
     let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32 or ImGuiInputTextFlags_CallbackHistory.int32 or ImGuiInputTextFlags_CallbackCompletion.int32
     if igInputText("##Input", addr component.inputBuffer[0], MAX_INPUT_LENGTH, inputFlags, callback, cast[pointer](component)):
@@ -278,10 +290,3 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
     igSetItemDefaultFocus()
     if focusInput: 
         igSetKeyboardFocusHere(-1)
-
-    #[
-        Session information
-    ]#
-    let sessionInfo = fmt"{component.agent.username}@{component.agent.hostname}.{component.agent.domain} [{component.agent.ip}] [{component.agent.process}/{$component.agent.pid}]"
-    igTextColored(vec4(0.75f, 0.75f, 0.75f, 1.0f), sessionInfo)
-    

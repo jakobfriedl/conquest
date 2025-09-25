@@ -4,18 +4,23 @@ import ../../utils/[appImGui, colors]
 import ../../../common/[types, utils]
 
 type 
-    DualListSelectionComponent* = ref object of RootObj
-        items*: array[2, seq[ModuleType]]
+    DualListSelectionComponent*[T] = ref object of RootObj
+        items*: array[2, seq[T]]
         selection: array[2, ptr ImGuiSelectionBasicStorage]
+        display: proc(item: T): string
 
-proc DualListSelection*(items: seq[ModuleType]): DualListSelectionComponent = 
-    result = new DualListSelectionComponent
+proc defaultDisplay[T](item: T): string = 
+    return $item
+
+proc DualListSelection*[T](items: seq[T], display: proc(item: T): string = defaultDisplay): DualListSelectionComponent[T] = 
+    result = new DualListSelectionComponent[T]
     result.items[0] = items
     result.items[1] = @[]
     result.selection[0] = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.selection[1] = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
+    result.display = display
 
-proc moveAll(component: DualListSelectionComponent, src, dst: int) = 
+proc moveAll[T](component: DualListSelectionComponent[T], src, dst: int) = 
     for m in component.items[src]: 
         component.items[dst].add(m)
     component.items[dst].sort()
@@ -24,7 +29,7 @@ proc moveAll(component: DualListSelectionComponent, src, dst: int) =
     ImGuiSelectionBasicStorage_Swap(component.selection[src], component.selection[dst])
     ImGuiSelectionBasicStorage_Clear(component.selection[src])
 
-proc moveSelection(component: DualListSelectionComponent, src, dst: int) = 
+proc moveSelection[T](component: DualListSelectionComponent[T], src, dst: int) = 
     var keep: seq[ModuleType]
     for i in 0 ..< component.items[src].len(): 
         let item = component.items[src][i]
@@ -38,10 +43,7 @@ proc moveSelection(component: DualListSelectionComponent, src, dst: int) =
     ImGuiSelectionBasicStorage_Swap(component.selection[src], component.selection[dst])
     ImGuiSelectionBasicStorage_Clear(component.selection[src])
 
-proc moduleName(module: ModuleType): string = 
-    return ($module).split("_")[1..^1].mapIt(it.toLowerAscii().capitalizeAscii()).join("")
-
-proc draw*(component: DualListSelectionComponent) = 
+proc draw*[T](component: DualListSelectionComponent[T]) = 
 
     if igBeginTable("split", 3, ImGuiTableFlags_None.int32, vec2(0.0f, 0.0f), 0.0f): 
 
@@ -77,7 +79,7 @@ proc draw*(component: DualListSelectionComponent) =
             for row in 0 ..< modules.len().int32: 
                 var isSelected = ImGuiSelectionBasicStorage_Contains(selection, cast[ImGuiID](row))
                 igSetNextItemSelectionUserData(row)
-                discard igSelectable_Bool(modules[row].moduleName(), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+                discard igSelectable_Bool(component.display(modules[row]), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
 
                 # Move on Enter and double-click
                 if igIsItemFocused(): 
@@ -127,7 +129,7 @@ proc draw*(component: DualListSelectionComponent) =
             for row in 0 ..< modules.len().int32:         
                 var isSelected = ImGuiSelectionBasicStorage_Contains(selection, cast[ImGuiID](row))
                 igSetNextItemSelectionUserData(row)
-                discard igSelectable_Bool(modules[row].moduleName(), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+                discard igSelectable_Bool(component.display(modules[row]), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
 
                 # Move on Enter and double-click
                 if igIsItemFocused(): 
