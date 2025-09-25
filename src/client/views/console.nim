@@ -150,7 +150,7 @@ proc print(item: ConsoleItem) =
     igTextUnformatted(item.text.cstring, nil)
 
 proc draw*(component: ConsoleComponent, ws: WebSocket) =
-    igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}", addr component.showConsole, 0)
+    igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}".cstring, addr component.showConsole, 0)
     defer: igEnd()
     
     let io = igGetIO()
@@ -182,7 +182,7 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
         Session information
     ]#
     let domain = if component.agent.domain.isEmptyOrWhitespace(): "" else: fmt".{component.agent.domain}"
-    let sessionInfo = fmt"{component.agent.username}@{component.agent.hostname}{domain} | {component.agent.ip} | {$component.agent.pid}/{component.agent.process}"
+    let sessionInfo = fmt"{component.agent.username}@{component.agent.hostname}{domain} | {component.agent.ip} | {$component.agent.pid}/{component.agent.process}".cstring
     igTextColored(GRAY, sessionInfo)
     igSameLine(0.0f, 0.0f)
 

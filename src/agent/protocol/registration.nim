@@ -36,7 +36,7 @@ proc getUsername(): string =
         # If not domain-joined, only return USERNAME
         discard GetUsernameW(&buffer, &dwSize)
 
-    return $buffer[0 ..< int(dwSize)]
+    return $buffer[0 ..< int(dwSize) - 1]
 
 # Current process name
 proc getProcessExe(): string = 

@@ -26,7 +26,6 @@ proc interact(component: SessionsTableComponent) =
     while ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
         let agent = component.agents[cast[int](row)]
 
-
         # Create a new console window
         if not component.consoles[].hasKey(agent.agentId):
             component.consoles[][agent.agentId] = Console(agent)
@@ -35,9 +34,6 @@ proc interact(component: SessionsTableComponent) =
         else:
             igSetWindowFocus_Str(fmt"[{agent.agentId}] {agent.username}@{agent.hostname}")
     
-    # TODO: Clear selection properly
-    ImGuiSelectionBasicStorage_Clear(component.selection)
-
 proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
     igBegin(component.title, showComponent, 0)
     defer: igEnd() 
