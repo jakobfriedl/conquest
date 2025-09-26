@@ -1,7 +1,7 @@
 import strutils, sequtils
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
-import ../../../common/[types, utils]
+import ../../../common/[types, profile, utils]
 import ../widgets/dualListSelection
 
 type 

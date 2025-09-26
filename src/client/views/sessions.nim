@@ -2,7 +2,7 @@ import times, tables, strformat, strutils
 import imguin/[cimgui, glfw_opengl, simple]
 
 import ./console
-import ../utils/appImGui
+import ../utils/[appImGui, colors]
 import ../../common/[types, utils]
 
 type 
@@ -25,6 +25,7 @@ proc interact(component: SessionsTableComponent) =
     # Open a new console for each selected agent session
     var it: pointer = nil
     var row: ImGuiID
+
     while ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
         let agent = component.agents[cast[int](row)]
 
@@ -35,6 +36,8 @@ proc interact(component: SessionsTableComponent) =
         # Focus the existing console window
         else:
             igSetWindowFocus_Str(fmt"[{agent.agentId}] {agent.username}@{agent.hostname}")
+    
+    component.selection.ImGuiSelectionBasicStorage_Clear()
 
 proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
     igBegin(component.title, showComponent, 0)
@@ -110,7 +113,11 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
                 let seconds = totalSeconds mod 60
                 
                 let timeText = dateTime(2000, mJan, 1, hours.int, minutes.int, seconds.int).format("HH:mm:ss")
-                igText(fmt"{timeText} ago")
+
+                if totalSeconds > agent.sleep: 
+                    igTextColored(GRAY, fmt"{timeText} ago")
+                else: 
+                    igText(fmt"{timeText} ago")
 
         # Handle right-click context menu
         # Right-clicking the table header to hide/show columns or reset the layout is only possible when no sessions are selected
@@ -136,4 +143,8 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         multiSelectIO = igEndMultiSelect()
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
         
+        # Auto-scroll to bottom
+        if igGetScrollY() >= igGetScrollMaxY():
+            igSetScrollHereY(1.0f)
+
         igEndTable()

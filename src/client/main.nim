@@ -64,8 +64,8 @@ proc main() =
         # Receive and parse websocket response message 
         let event = recvEvent(ws.receiveMessage().get())
         case event.eventType:
-        # of CLIENT_PROFILE:
-        #     profile = parsetoml.parseString(event.data["profile"].getStr())
+        of CLIENT_PROFILE:
+            profile = parsetoml.parseString(event.data["profile"].getStr())
         
         of CLIENT_LISTENER_ADD: 
             let listener = event.data.to(UIListener)
@@ -100,10 +100,19 @@ proc main() =
             discard
 
         of CLIENT_CONSOLE_ITEM: 
-            consoles[event.data["agentId"].getStr()].addItem(cast[LogType](event.data["logType"].getInt()), event.data["message"].getStr(), event.timestamp)
+            let agentId = event.data["agentId"].getStr() 
+            consoles[agentId].addItem(
+                cast[LogType](event.data["logType"].getInt()), 
+                event.data["message"].getStr(), 
+                event.timestamp
+            )
         
         of CLIENT_EVENTLOG_ITEM: 
-            eventlog.addItem(cast[LogType](event.data["logType"].getInt()), event.data["message"].getStr(), event.timestamp)
+            eventlog.addItem(
+                cast[LogType](event.data["logType"].getInt()), 
+                event.data["message"].getStr(), 
+                event.timestamp
+            )
         
         else: discard 
 

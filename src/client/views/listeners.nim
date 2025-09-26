@@ -12,7 +12,7 @@ type
         listeners*: seq[UIListener]
         selection: ptr ImGuiSelectionBasicStorage
         startListenerModal: ListenerModalComponent
-        generatePayloadModal: AgentModalComponent
+        generatePayloadModal*: AgentModalComponent
 
 proc ListenersTable*(title: string): ListenersTableComponent = 
     result = new ListenersTableComponent
