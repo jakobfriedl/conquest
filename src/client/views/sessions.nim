@@ -1,4 +1,4 @@
-import times, tables, strformat
+import times, tables, strformat, strutils
 import imguin/[cimgui, glfw_opengl, simple]
 
 import ./console
@@ -52,13 +52,14 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         ImGui_TableFlags_SizingStretchSame.int32
     )
 
-    let cols: int32 = 8
+    let cols: int32 = 9
     if igBeginTable("Sessions", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
         igTableSetupColumn("AgentID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
         igTableSetupColumn("Address", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Username", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Hostname", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Domain", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("OS", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Process", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("PID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
@@ -70,10 +71,9 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.agents.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        for row in 0 ..< component.agents.len(): 
+        for row, agent in component.agents: 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
-            let agent = component.agents[row]
 
             if igTableSetColumnIndex(0):          
                 # Enable multi-select functionality       
@@ -92,12 +92,14 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
             if igTableSetColumnIndex(3): 
                 igText(agent.hostname)
             if igTableSetColumnIndex(4): 
-                igText(agent.os)
+                igText(if agent.domain.isEmptyOrWhitespace(): "-" else: agent.domain)
             if igTableSetColumnIndex(5): 
-                igText(agent.process)
+                igText(agent.os)
             if igTableSetColumnIndex(6): 
-                igText($agent.pid)
+                igText(agent.process)
             if igTableSetColumnIndex(7): 
+                igText($agent.pid)
+            if igTableSetColumnIndex(8): 
                 let duration = now() - agent.latestCheckin.fromUnix().utc()
                 let totalSeconds = duration.inSeconds
                 
@@ -121,9 +123,9 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
             if igMenuItem("Remove", nil, false, true): 
                 # Update agents table with only non-selected ones
                 var newAgents: seq[UIAgent] = @[]
-                for i in 0 ..< component.agents.len():
+                for i, agent in component.agents:
                     if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        newAgents.add(component.agents[i])
+                        newAgents.add(agent)
 
                 component.agents = newAgents
                 ImGuiSelectionBasicStorage_Clear(component.selection)

@@ -1,5 +1,6 @@
 switch "o", "bin/client"
 
+switch "d", "ssl"
 switch "d", "client"
 switch "d", "ImGuiTextSelect"
 

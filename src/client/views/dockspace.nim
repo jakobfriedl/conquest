@@ -43,20 +43,23 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[
 
     # Setup default docking layout
     var dockspaceId = igGetID_Str("Dockspace")
-    if igDockBuilderGetNode(dockspaceId) == nil:  
-        igDockBuilderRemoveNode(dockspaceId)
-        igDockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace.int32)
-        igDockBuilderSetNodeSize(dockspaceId, vp.WorkSize)
+    
+    if not component.initialized:
+        if igDockBuilderGetNode(dockspaceId) == nil:  
+            igDockBuilderRemoveNode(dockspaceId)
+            igDockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace.int32)
+            igDockBuilderSetNodeSize(dockspaceId, vp.WorkSize)
 
-        discard igDockBuilderSplitNode(dockspaceId, ImGuiDir_Down, 0.8f, dockBottom, dockTop)
-        discard igDockBuilderSplitNode(dockTop[], ImGuiDir_Right, 0.4f, dockTopRight, dockTopLeft)
+            discard igDockBuilderSplitNode(dockspaceId, ImGuiDir_Down, 0.8f, dockBottom, dockTop)
+            discard igDockBuilderSplitNode(dockTop[], ImGuiDir_Right, 0.4f, dockTopRight, dockTopLeft)
 
-        igDockBuilderDockWindow("Sessions [Table View]", dockTopLeft[])
-        igDockBuilderDockWindow("Listeners", dockBottom[])
-        igDockBuilderDockWindow("Eventlog", dockTopRight[])
-        igDockBuilderDockWindow("Dear ImGui Demo", dockTopRight[])
-        
-        igDockBuilderFinish(dockspaceId)
+            igDockBuilderDockWindow("Sessions [Table View]", dockTopLeft[])
+            igDockBuilderDockWindow("Listeners", dockBottom[])
+            igDockBuilderDockWindow("Eventlog", dockTopRight[])
+            igDockBuilderDockWindow("Dear ImGui Demo", dockTopRight[])
+            
+            igDockBuilderFinish(dockspaceId)
+            component.initialized = true
 
     # Create dockspace
     igDockSpace(dockspaceId, vec2(0.0f, 0.0f), component.dockspaceFlags, component.windowClass)

@@ -52,6 +52,9 @@ proc main() =
             continue 
         newFrame()
 
+        # Initialize dockspace and docking layout
+        dockspace.draw(addr showConquest, views, addr dockTop, addr dockBottom, addr dockTopLeft, addr dockTopRight)
+        
         #[
             WebSocket communication with the team server
         ]# 
@@ -61,8 +64,8 @@ proc main() =
         # Receive and parse websocket response message 
         let event = recvEvent(ws.receiveMessage().get())
         case event.eventType:
-        of CLIENT_PROFILE: 
-            profile = parseString(event.data["profile"].getStr())
+        # of CLIENT_PROFILE:
+        #     profile = parsetoml.parseString(event.data["profile"].getStr())
         
         of CLIENT_LISTENER_ADD: 
             let listener = event.data.to(UIListener)
@@ -73,7 +76,18 @@ proc main() =
             let agent = event.data.to(UIAgent)
             dump agent.agentId
             sessionsTable.agents.add(agent)
-        
+
+            # Initialize position of console windows to bottom by drawing them once when they are added
+            var agentConsole = Console(agent)
+            consoles[agent.agentId] = agentConsole
+            let listenersWindow = igFindWindowByName("Listeners") 
+            if listenersWindow != nil and listenersWindow.DockNode != nil:
+                igSetNextWindowDockID(listenersWindow.DockNode.ID, ImGuiCond_FirstUseEver.int32)
+            else:
+                igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
+            consoles[agent.agentId].draw(ws)
+            consoles[agent.agentId].showConsole = false
+
         of CLIENT_AGENT_CHECKIN: 
             discard 
 
@@ -89,7 +103,6 @@ proc main() =
         else: discard 
 
         # Draw/update UI components/views
-        dockspace.draw(addr showConquest, views, addr dockTop, addr dockBottom, addr dockTopLeft, addr dockTopRight)
         if showSessionsTable: sessionsTable.draw(addr showSessionsTable)   
         if showListeners: listenersTable.draw(addr showListeners, ws)
         if showEventlog: eventlog.draw(addr showEventlog)
@@ -100,14 +113,14 @@ proc main() =
             if console.showConsole:
                 # Ensure that new console windows are docked to the bottom panel by default
                 igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
-                console.draw(ws)
+                console.draw(ws)    
                 newConsoleTable[agentId] = console
             
         # Update the consoles table with only those sessions that have not been closed yet
         # This is done to ensure that closed console windows can be opened again
         consoles = newConsoleTable
 
-        igShowDemoWindow(nil)
+        #  igShowDemoWindow(nil)
 
         # render
         app.render()
