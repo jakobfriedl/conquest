@@ -78,6 +78,9 @@ proc main() =
             sessionsTable.agents.add(agent)
 
             # Initialize position of console windows to bottom by drawing them once when they are added
+            # By default, the consoles are attached to the same DockNode as the Listeners table (Default: bottom), 
+            # so if you place your listeners somewhere else, the console windows show up somewhere else too
+            # The only case that is not covered is when the listeners table is hidden and the bottom panel was split
             var agentConsole = Console(agent)
             consoles[agent.agentId] = agentConsole
             let listenersWindow = igFindWindowByName("Listeners") 
