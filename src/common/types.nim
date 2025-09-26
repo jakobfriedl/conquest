@@ -3,6 +3,7 @@ import tables
 import times
 import parsetoml, json
 import mummy
+import system
 
 # Custom Binary Task structure
 const   
@@ -236,6 +237,33 @@ type
         port*: int
         protocol*: Protocol
 
+#[
+    Client <-> Server WebSocket communication
+]#
+type 
+    EventType* = enum
+        CLIENT_HEARTBEAT = 0'u8             # Basic checkin 
+       
+        # Sent by client 
+        CLIENT_AGENT_BUILD = 1'u8           # Generate an agent binary for a specific listener
+        CLIENT_AGENT_COMMAND = 2'u8         # Instruct TS to send queue a command for a specific agent
+        CLIENT_LISTENER_START = 3'u8        # Start a listener on the TS
+        CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
+
+        # Sent by team server
+        CLIENT_PROFILE = 100'u8             # Team server profile and configuration 
+        CLIENT_LISTENER_ADD = 101'u8        # Add listener to listeners table
+        CLIENT_AGENT_ADD = 102'u8           # Add agent to sessions table
+        CLIENT_AGENT_CHECKIN = 103'u8       # Update agent checkin
+        CLIENT_AGENT_PAYLOAD = 104'u8       # Return agent payload binary 
+        CLIENT_CONSOLE_ITEM = 105'u8         # Add entry to a agent's console 
+        CLIENT_EVENTLOG_ITEM = 106'u8           # Add entry to the eventlog        
+
+    Event* = object 
+        eventType*: EventType               
+        timestamp*: int64 
+        data*: JsonNode   
+
 # Context structures
 type 
     KeyPair* = object 
@@ -243,6 +271,9 @@ type
         publicKey*: Key
 
     Profile* = TomlValueRef
+
+    UIClient* = ref object
+        ws*: WebSocket
 
     Conquest* = ref object
         prompt*: Prompt
@@ -253,7 +284,7 @@ type
         interactAgent*: Agent
         keyPair*: KeyPair
         profile*: Profile
-        ws*: WebSocket
+        client*: UIClient
 
     AgentCtx* = ref object
         agentId*: string
@@ -298,32 +329,3 @@ type
 
     ConsoleItems* = ref object
         items*: seq[ConsoleItem]
-
-#[
-    Client <-> Server WebSocket communication
-]#
-type 
-    EventType* = enum
-        CLIENT_HEARTBEAT = 0'u8             # Basic checkin 
-       
-        # Sent by client 
-        CLIENT_AGENT_BUILD = 1'u8           # Generate an agent binary for a specific listener
-        CLIENT_AGENT_COMMAND = 2'u8         # Instruct TS to send queue a command for a specific agent
-        CLIENT_LISTENER_START = 3'u8        # Start a listener on the TS
-        CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
-
-        # Sent by team server
-        CLIENT_PROFILE = 100'u8             # Team server profile and configuration 
-        CLIENT_LISTENER_ADD = 101'u8        # Add listener to listeners table
-        CLIENT_AGENT_ADD = 102'u8           # Add agent to sessions table
-        CLIENT_AGENT_CHECKIN = 103'u8       # Update agent checkin
-        CLIENT_AGENT_PAYLOAD = 104'u8       # Return agent payload binary 
-        CLIENT_CONSOLE_ITEM = 105'u8         # Add entry to a agent's console 
-        CLIENT_EVENTLOG_ITEM = 106'u8           # Add entry to the eventlog        
-
-    Event* = object 
-        eventType*: EventType               
-        timestamp*: int64 
-        data*: JsonNode   
-
-

@@ -38,8 +38,8 @@ proc register*(registrationData: seq[byte]): bool =
 
             cq.info("Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
             
-            cq.ws.sendAgent(agent)
-            cq.ws.sendEventlogItem(LOG_INFO_SHORT, fmt"Agent {agent.agentId} connected to listener {agent.listenerId}.")
+            cq.client.sendAgent(agent)
+            cq.client.sendEventlogItem(LOG_INFO_SHORT, fmt"Agent {agent.agentId} connected to listener {agent.listenerId}.")
 
             return true
         
@@ -73,7 +73,7 @@ proc getTasks*(heartbeat: seq[byte]): seq[seq[byte]] =
 
             # Update the last check-in date for the accessed agent
             cq.agents[agentId].latestCheckin = cast[int64](timestamp).fromUnix().local()
-            # cq.ws.sendAgentCheckin(agentId)
+            cq.client.sendAgentCheckin(agentId)
 
             # Return tasks
             for task in cq.agents[agentId].tasks.mitems: # Iterate over agents as mutable items in order to modify GMAC tag

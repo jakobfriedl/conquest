@@ -7,7 +7,7 @@ export sendHeartbeat
 #[
     Server -> Client
 ]#
-proc sendProfile*(ws: WebSocket, profile: Profile) = 
+proc sendProfile*(client: UIClient, profile: Profile) = 
     let event = Event(
         eventType: CLIENT_PROFILE,
         timestamp: now().toTime().toUnix(),
@@ -15,9 +15,10 @@ proc sendProfile*(ws: WebSocket, profile: Profile) =
             "profile": profile.toTomlString()
         }
     )
-    ws.sendEvent(event)
+    if client != nil: 
+        client.ws.sendEvent(event)
 
-proc sendEventlogItem*(ws: WebSocket, logType: LogType, message: string) = 
+proc sendEventlogItem*(client: UIClient, logType: LogType, message: string) = 
     let event = Event(
         eventType: CLIENT_EVENTLOG_ITEM,
         timestamp: now().toTime().toUnix(),
@@ -26,25 +27,28 @@ proc sendEventlogItem*(ws: WebSocket, logType: LogType, message: string) =
             "message": message
         }
     )
-    ws.sendEvent(event)
+    if client != nil: 
+        client.ws.sendEvent(event)
 
-proc sendAgent*(ws: WebSocket, agent: Agent) = 
+proc sendAgent*(client: UIClient, agent: Agent) = 
     let event = Event(
         eventType: CLIENT_AGENT_ADD, 
         timestamp: now().toTime().toUnix(),
         data: %agent
     )
-    ws.sendEvent(event)
+    if client != nil: 
+        client.ws.sendEvent(event)
 
-proc sendListener*(ws: WebSocket, listener: Listener) =
+proc sendListener*(client: UIClient, listener: Listener) =
     let event = Event(
         eventType: CLIENT_LISTENER_ADD,
         timestamp: now().toTime().toUnix(),
         data: %listener
     )
-    ws.sendEvent(event)
+    if client != nil: 
+        client.ws.sendEvent(event)
 
-proc sendAgentCheckin*(ws: WebSocket, agentId: string) = 
+proc sendAgentCheckin*(client: UIClient, agentId: string) = 
     let event = Event(
         eventType: CLIENT_AGENT_CHECKIN,
         timestamp: now().toTime().toUnix(),
@@ -52,9 +56,10 @@ proc sendAgentCheckin*(ws: WebSocket, agentId: string) =
             "agentId": agentId
         }
     )
-    ws.sendEvent(event)
+    if client != nil: 
+        client.ws.sendEvent(event)
 
-proc sendAgentPayload*(ws: WebSocket, agentId: string, bytes: seq[byte]) =
+proc sendAgentPayload*(client: UIClient, agentId: string, bytes: seq[byte]) =
     let event = Event(
         eventType: CLIENT_AGENT_PAYLOAD, 
         timestamp: now().toTime().toUnix(),
@@ -63,9 +68,10 @@ proc sendAgentPayload*(ws: WebSocket, agentId: string, bytes: seq[byte]) =
             "payload": encode(bytes)
         }
     )
-    ws.sendEvent(event)
+    if client != nil: 
+        client.ws.sendEvent(event)
 
-proc sendConsoleItem*(ws: WebSocket, agentId: string, logType: LogType, message: string) = 
+proc sendConsoleItem*(client: UIClient, agentId: string, logType: LogType, message: string) = 
     let event = Event(
         eventType: CLIENT_CONSOLE_ITEM,
         timestamp: now().toTime().toUnix(),
@@ -75,4 +81,5 @@ proc sendConsoleItem*(ws: WebSocket, agentId: string, logType: LogType, message:
             "message": message
         }
     )
-    ws.sendEvent(event)
+    if client != nil: 
+        client.ws.sendEvent(event)

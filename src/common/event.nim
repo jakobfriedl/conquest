@@ -13,7 +13,7 @@ proc sendEvent*(ws: WebSocket, event: Event) =
     packer.add(cast[uint32](event.timestamp))
     packer.addDataWithLengthPrefix(string.toBytes($event.data))
     let data = packer.pack() 
-    
+
     ws.send(Bytes.toString(data), BinaryMessage)
 
 proc recvEvent*(message: Message): Event = 

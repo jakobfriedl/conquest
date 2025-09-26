@@ -8,14 +8,14 @@ import ../../common/[types, utils]
 type 
     SessionsTableComponent* = ref object of RootObj
         title: string 
-        agents*: seq[UIAgent]
+        agents*: Table[string, UIAgent]
         selection: ptr ImGuiSelectionBasicStorage
         consoles: ptr Table[string, ConsoleComponent]
 
 proc SessionsTable*(title: string, consoles: ptr Table[string, ConsoleComponent]): SessionsTableComponent = 
     result = new SessionsTableComponent
     result.title = title
-    result.agents = @[]
+    result.agents = initTable[string, UIAgent]() 
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.consoles = consoles
 
@@ -24,15 +24,19 @@ proc interact(component: SessionsTableComponent) =
     var it: pointer = nil
     var row: ImGuiID
     while ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
-        let agent = component.agents[cast[int](row)]
+        var selectedAgent: UIAgent = nil
+        for agentId, agent in component.agents.mpairs(): 
+            if igGetID_Str(agentId) == row:
+                selectedAgent = agent
 
-        # Create a new console window
-        if not component.consoles[].hasKey(agent.agentId):
-            component.consoles[][agent.agentId] = Console(agent)
+        if selectedAgent != nil: 
+            # Create a new console window
+            if not component.consoles[].hasKey(selectedAgent.agentId):
+                component.consoles[][selectedAgent.agentId] = Console(selectedAgent)
 
-        # Focus the existing console window
-        else:
-            igSetWindowFocus_Str(fmt"[{agent.agentId}] {agent.username}@{agent.hostname}")
+            # Focus the existing console window
+            else:
+                igSetWindowFocus_Str(fmt"[{selectedAgent.agentId}] {selectedAgent.username}@{selectedAgent.hostname}")
     
 proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
     igBegin(component.title, showComponent, 0)
@@ -71,13 +75,15 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.agents.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        for row, agent in component.agents: 
+        for agentId, agent in component.agents.mpairs(): 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
+            let row = igGetID_Str(agentId)
+
             if igTableSetColumnIndex(0):          
                 # Enable multi-select functionality       
-                igSetNextItemSelectionUserData(row)
+                igSetNextItemSelectionUserData(cast[ImGuiSelectionUserData](row))
                 var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](row))
                 discard igSelectable_Bool(agent.agentId, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
                 
@@ -122,12 +128,15 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         
             if igMenuItem("Remove", nil, false, true): 
                 # Update agents table with only non-selected ones
-                var newAgents: seq[UIAgent] = @[]
-                for i, agent in component.agents:
-                    if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        newAgents.add(agent)
+                var agentsToDelete: seq[string] = @[]
+                for agentId, agent in component.agents.mpairs():
+                    let i = igGetID_Str(agentId)
+                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        agentsToDelete.add(agentId)
 
-                component.agents = newAgents
+                for agentId in agentsToDelete:
+                    component.agents.del(agentId)
+
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
 

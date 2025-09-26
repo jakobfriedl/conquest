@@ -69,13 +69,11 @@ proc main() =
         
         of CLIENT_LISTENER_ADD: 
             let listener = event.data.to(UIListener)
-            dump listener.listenerId
             listenersTable.listeners.add(listener)
 
         of CLIENT_AGENT_ADD: 
             let agent = event.data.to(UIAgent)
-            dump agent.agentId
-            sessionsTable.agents.add(agent)
+            sessionsTable.agents[agent.agentId] = agent
 
             # Initialize position of console windows to bottom by drawing them once when they are added
             # By default, the consoles are attached to the same DockNode as the Listeners table (Default: bottom), 
@@ -92,7 +90,7 @@ proc main() =
             consoles[agent.agentId].showConsole = false
 
         of CLIENT_AGENT_CHECKIN: 
-            discard 
+            sessionsTable.agents[event.data["agentId"].getStr()].latestCheckin = event.timestamp
 
         of CLIENT_AGENT_PAYLOAD: 
             discard

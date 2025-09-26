@@ -140,6 +140,7 @@ proc init*(T: type Conquest, profile: Profile): Conquest =
     cq.profile = profile
     cq.keyPair = loadKeyPair(CONQUEST_ROOT & "/" & profile.getString("private-key-file"))
     cq.dbPath = CONQUEST_ROOT & "/" & profile.getString("database-file")
+    cq.client = nil
     return cq
 
 #[
@@ -148,7 +149,9 @@ proc init*(T: type Conquest, profile: Profile): Conquest =
 proc upgradeHandler(request: Request) = 
     {.cast(gcsafe).}:
         let ws = request.upgradeToWebSocket()
-        cq.ws = ws
+        cq.client = UIClient(
+            ws: ws
+        )
 
 proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.gcsafe.} = 
     {.cast(gcsafe).}:
@@ -156,12 +159,12 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
         of OpenEvent:
             # New client connected to team server
             # Send profile, sessions and listeners to the UI client
-            ws.sendProfile(cq.profile)
+            cq.client.sendProfile(cq.profile)
             for id, listener in cq.listeners: 
-                ws.sendListener(listener)
+                cq.client.sendListener(listener)
             for id, agent in cq.agents: 
-                ws.sendAgent(agent)
-            ws.sendEventlogItem(LOG_SUCCESS_SHORT, "CQ-V1")
+                cq.client.sendAgent(agent)
+            cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, "CQ-V1")
     
         of MessageEvent:
             # Continuously send heartbeat messages
@@ -180,16 +183,17 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
             # else: discard
 
         of ErrorEvent:
-            discard
+            discard 
         of CloseEvent:
-            discard
-
+            # Set the client instance to nil again to prevent debug error messages
+            cq.client = nil
+    
 proc serve(server: Server) {.thread.} = 
     try:
         server.serve(Port(12345))
     except Exception:
         discard 
-    
+
 proc startServer*(profilePath: string) =
 
     # Ensure that the conquest root directory was passed as a compile-time define 
@@ -230,6 +234,7 @@ proc startServer*(profilePath: string) =
 
     # Main loop
     while true: 
+    
         cq.prompt.setIndicator("[conquest]> ")
         cq.prompt.setStatusBar(@[("[mode]", "manage"), ("[listeners]", $len(cq.listeners)), ("[agents]", $len(cq.agents))])    
         cq.prompt.showPrompt() 

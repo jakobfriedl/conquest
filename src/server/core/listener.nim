@@ -86,11 +86,11 @@ proc listenerStart*(cq: Conquest, name: string, host: string, port: int, protoco
             raise newException(CatchableError, "Failed to store listener in database.")
 
         cq.success("Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on {host}:{$port}.")
-        cq.ws.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {name} on {host}:{$port}.")
+        cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {name} on {host}:{$port}.")
 
     except CatchableError as err: 
         cq.error("Failed to start listener: ", err.msg)
-        cq.ws.sendEventlogItem(LOG_ERROR_SHORT, fmt"Failed to start listener: {err.msg}.")
+        cq.client.sendEventlogItem(LOG_ERROR_SHORT, fmt"Failed to start listener: {err.msg}.")
 
 proc restartListeners*(cq: Conquest) =
     var listeners: seq[Listener] = cq.dbGetAllListeners()
