@@ -73,7 +73,11 @@ proc main() =
 
         of CLIENT_AGENT_ADD: 
             let agent = event.data.to(UIAgent)
-            sessionsTable.agents[agent.agentId] = agent
+
+            # The ImGui Multi Select only works well with seq's, so we maintain a
+            # separate table of the latest agent heartbeats to have the benefit of quick and direct O(1) access
+            sessionsTable.agents.add(agent)
+            sessionsTable.agentActivity[agent.agentId] = agent.latestCheckin
 
             # Initialize position of console windows to bottom by drawing them once when they are added
             # By default, the consoles are attached to the same DockNode as the Listeners table (Default: bottom), 
@@ -90,7 +94,7 @@ proc main() =
             consoles[agent.agentId].showConsole = false
 
         of CLIENT_AGENT_CHECKIN: 
-            sessionsTable.agents[event.data["agentId"].getStr()].latestCheckin = event.timestamp
+            sessionsTable.agentActivity[event.data["agentId"].getStr()] = event.timestamp
 
         of CLIENT_AGENT_PAYLOAD: 
             discard

@@ -8,14 +8,16 @@ import ../../common/[types, utils]
 type 
     SessionsTableComponent* = ref object of RootObj
         title: string 
-        agents*: Table[string, UIAgent]
+        agents*: seq[UIAgent]
+        agentActivity*: Table[string, int64]            # Direct O(1) access to latest checkin
         selection: ptr ImGuiSelectionBasicStorage
         consoles: ptr Table[string, ConsoleComponent]
 
 proc SessionsTable*(title: string, consoles: ptr Table[string, ConsoleComponent]): SessionsTableComponent = 
     result = new SessionsTableComponent
     result.title = title
-    result.agents = initTable[string, UIAgent]() 
+    result.agents = @[]
+    result.agentActivity = initTable[string, int64]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.consoles = consoles
 
@@ -24,20 +26,16 @@ proc interact(component: SessionsTableComponent) =
     var it: pointer = nil
     var row: ImGuiID
     while ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
-        var selectedAgent: UIAgent = nil
-        for agentId, agent in component.agents.mpairs(): 
-            if igGetID_Str(agentId) == row:
-                selectedAgent = agent
+        let agent = component.agents[cast[int](row)]
 
-        if selectedAgent != nil: 
-            # Create a new console window
-            if not component.consoles[].hasKey(selectedAgent.agentId):
-                component.consoles[][selectedAgent.agentId] = Console(selectedAgent)
+        # Create a new console window
+        if not component.consoles[].hasKey(agent.agentId):
+            component.consoles[][agent.agentId] = Console(agent)
 
-            # Focus the existing console window
-            else:
-                igSetWindowFocus_Str(fmt"[{selectedAgent.agentId}] {selectedAgent.username}@{selectedAgent.hostname}")
-    
+        # Focus the existing console window
+        else:
+            igSetWindowFocus_Str(fmt"[{agent.agentId}] {agent.username}@{agent.hostname}")
+
 proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
     igBegin(component.title, showComponent, 0)
     defer: igEnd() 
@@ -75,15 +73,13 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.agents.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        for agentId, agent in component.agents.mpairs(): 
+        for row, agent in component.agents: 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
-            let row = igGetID_Str(agentId)
-
             if igTableSetColumnIndex(0):          
                 # Enable multi-select functionality       
-                igSetNextItemSelectionUserData(cast[ImGuiSelectionUserData](row))
+                igSetNextItemSelectionUserData(row)
                 var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](row))
                 discard igSelectable_Bool(agent.agentId, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
                 
@@ -106,16 +102,14 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
             if igTableSetColumnIndex(7): 
                 igText($agent.pid)
             if igTableSetColumnIndex(8): 
-                let duration = now() - agent.latestCheckin.fromUnix().utc()
+                let duration = now() - component.agentActivity[agent.agentId].fromUnix().utc()
                 let totalSeconds = duration.inSeconds
                 
                 let hours = totalSeconds div 3600
                 let minutes = (totalSeconds mod 3600) div 60
                 let seconds = totalSeconds mod 60
                 
-                let dummyTime = dateTime(2000, mJan, 1, hours.int, minutes.int, seconds.int)
-                let timeText = dummyTime.format("HH:mm:ss")
-
+                let timeText = dateTime(2000, mJan, 1, hours.int, minutes.int, seconds.int).format("HH:mm:ss")
                 igText(fmt"{timeText} ago")
 
         # Handle right-click context menu
@@ -128,15 +122,12 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         
             if igMenuItem("Remove", nil, false, true): 
                 # Update agents table with only non-selected ones
-                var agentsToDelete: seq[string] = @[]
-                for agentId, agent in component.agents.mpairs():
-                    let i = igGetID_Str(agentId)
-                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        agentsToDelete.add(agentId)
+                var newAgents: seq[UIAgent] = @[]
+                for i, agent in component.agents:
+                    if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        newAgents.add(agent)
 
-                for agentId in agentsToDelete:
-                    component.agents.del(agentId)
-
+                component.agents = newAgents
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
 
@@ -146,6 +137,3 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
         
         igEndTable()
-
-
-    
