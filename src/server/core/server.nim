@@ -1,12 +1,12 @@
-import prompt, terminal, argparse, parsetoml, times
+import prompt, terminal, argparse, parsetoml, times, json
 import strutils, strformat, system, tables
 
 import ./[agent, listener, builder]
 import ../globals
 import ../db/database
 import ../core/logger
-import ../../common/[types, crypto, utils, profile]
-import ../event/[recv, send]
+import ../../common/[types, crypto, utils, profile, event]
+import ../websocket
 import mummy, mummy/routers
 
 #[
@@ -170,17 +170,23 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
             # Continuously send heartbeat messages
             ws.sendHeartbeat() 
 
-            # case message.getMessageType(): 
-            # of CLIENT_AGENT_COMMAND:
-            #     discard 
-            # of CLIENT_LISTENER_START:
-            #     message.receiveStartListener()
-            # of CLIENT_LISTENER_STOP:
-            #     discard
-            #     # message.receiveStopListener() 
-            # of CLIENT_AGENT_BUILD:
-            #     discard 
-            # else: discard
+            let event = message.recvEvent()
+
+            case event.eventType: 
+            of CLIENT_AGENT_COMMAND:
+                discard 
+
+            of CLIENT_LISTENER_START:
+                let listener = event.data.to(UIListener)
+                cq.listenerStart(listener.listenerId, listener.address, listener.port, listener.protocol)
+            
+            of CLIENT_LISTENER_STOP:
+                let listenerId = event.data["listenerId"].getStr()
+                cq.listenerStop(listenerId)
+
+            of CLIENT_AGENT_BUILD:
+                discard 
+            else: discard
 
         of ErrorEvent:
             discard 
@@ -210,7 +216,7 @@ proc startServer*(profilePath: string) =
     try:
         # Initialize framework context
         # Load and parse profile 
-        let profile = parseFile(profilePath)
+        let profile = parsetoml.parseFile(profilePath)
         cq = Conquest.init(profile)
 
         cq.info("Using profile \"", profile.getString("name"), "\" (", profilePath ,").")

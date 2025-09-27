@@ -75,7 +75,6 @@ proc draw*(component: ListenerModalComponent): UIListener =
         igBeginDisabled(($(addr component.address[0]) == "") or (component.port <= 0))
 
         if igButton("Start", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
-            
             result = UIListener(
                 listenerId: generateUUID(),
                 address: $(addr component.address[0]),

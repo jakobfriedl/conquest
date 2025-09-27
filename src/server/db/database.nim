@@ -35,8 +35,7 @@ proc dbInit*(cq: Conquest) =
             sleep INTEGER DEFAULT 10,
             firstCheckin DATETIME NOT NULL,
             latestCheckin DATETIME NOT NULL,
-            sessionKey BLOB NOT NULL, 
-            FOREIGN KEY (listener) REFERENCES listeners(name)
+            sessionKey BLOB NOT NULL
         );
 
         """)

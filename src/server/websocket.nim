@@ -1,8 +1,8 @@
 import mummy
 import times, tables, json, base64, parsetoml
-import ../utils
-import ../../common/[types, utils, serialize, event]
-export sendHeartbeat
+import ./utils
+import ../common/[types, utils, serialize, event]
+export sendHeartbeat, recvEvent
 
 #[
     Server -> Client

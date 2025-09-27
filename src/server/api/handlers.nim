@@ -4,7 +4,7 @@ import ../globals
 import ../db/database
 import ../protocol/packer
 import ../core/logger
-import ../event/send
+import ../websocket
 import ../../common/[types, utils, serialize]
 
 #[
@@ -21,26 +21,23 @@ proc register*(registrationData: seq[byte]): bool =
 
             # Validate that listener exists        
             if not cq.dbListenerExists(agent.listenerId.toUpperAscii): 
-                cq.error(fmt"{agent.ip} attempted to register to non-existent listener: {agent.listenerId}.", "\n")
-                return false
+                raise newException(CatchableError, fmt"{agent.ip} attempted to register to non-existent listener: {agent.listenerId}." & "\n")
 
             # Store agent in database
             if not cq.dbStoreAgent(agent): 
-                cq.error(fmt"Failed to insert agent {agent.agentId} into database.", "\n")
-                return false
+                raise newException(CatchableError, fmt"Failed to insert agent {agent.agentId} into database." & "\n")
 
             # Create log directory
             if not cq.makeAgentLogDirectory(agent.agentId):
-                cq.error("Failed to create log directory.", "\n")
-                return false
+                raise newException(CatchableError, "Failed to create log directory.\n")
 
             cq.agents[agent.agentId] = agent
 
             cq.info("Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
             
+            # Send new agent to client
             cq.client.sendAgent(agent)
             cq.client.sendEventlogItem(LOG_INFO_SHORT, fmt"Agent {agent.agentId} connected to listener {agent.listenerId}.")
-
             return true
         
         except CatchableError as err:
@@ -63,13 +60,11 @@ proc getTasks*(heartbeat: seq[byte]): seq[seq[byte]] =
 
             # Check if listener exists
             if not cq.dbListenerExists(listenerId): 
-                cq.error(fmt"Task-retrieval request made to non-existent listener: {listenerId}.", "\n")
-                raise newException(ValueError, "Invalid listener.")
+                raise newException(ValueError, fmt"Task-retrieval request made to non-existent listener: {listenerId}." & "\n")
 
             # Check if agent exists
             if not cq.dbAgentExists(agentId): 
-                cq.error(fmt"Task-retrieval request made to non-existent agent: {agentId}.", "\n")
-                raise newException(ValueError, "Invalid agent.")
+                raise newException(ValueError, fmt"Task-retrieval request made to non-existent agent: {agentId}." & "\n")
 
             # Update the last check-in date for the accessed agent
             cq.agents[agentId].latestCheckin = cast[int64](timestamp).fromUnix().local()

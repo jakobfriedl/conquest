@@ -3,7 +3,7 @@ import tables, strutils, json, parsetoml
 import ./utils/appImGui
 import ./views/[dockspace, sessions, listeners, eventlog, console]
 import ../common/[types, utils]
-import ./event/[send, recv]
+import ./websocket
 
 import sugar 
 

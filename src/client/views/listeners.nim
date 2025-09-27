@@ -3,7 +3,7 @@ import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/appImGui
 import ../../common/[types, utils]
 import ./modals/[startListener, generatePayload]
-import ../event/send
+import ../websocket
 import whisky
 
 type 
@@ -76,15 +76,14 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.listeners.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        for row in 0 ..< component.listeners.len(): 
+        for i, listener in component.listeners: 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
-            let listener = component.listeners[row]
 
             if igTableSetColumnIndex(0):          
                 # Enable multi-select functionality       
-                igSetNextItemSelectionUserData(row)
-                var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](row))
+                igSetNextItemSelectionUserData(i)
+                var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i))
                 discard igSelectable_Bool(listener.listenerId, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
                 
             if igTableSetColumnIndex(1): 
@@ -101,11 +100,11 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
             if igMenuItem("Stop", nil, false, true): 
                 # Update agents table with only non-selected ones
                 var newListeners: seq[UIListener] = @[]
-                for i in 0 ..< component.listeners.len():
+                for i, listener in component.listeners:
                     if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        newListeners.add(component.listeners[i])
+                        newListeners.add(listener)
                     else: 
-                        ws.sendStopListener(component.listeners[i].listenerId)
+                        ws.sendStopListener(listener.listenerId)
 
                 component.listeners = newListeners
                 ImGuiSelectionBasicStorage_Clear(component.selection)

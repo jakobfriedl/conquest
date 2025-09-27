@@ -8,7 +8,7 @@ import ../api/routes
 import ../db/database
 import ../core/logger
 import ../../common/[types, utils, profile]
-import ../event/send
+import ../websocket
 
 #[
     Listener management
@@ -86,6 +86,7 @@ proc listenerStart*(cq: Conquest, name: string, host: string, port: int, protoco
             raise newException(CatchableError, "Failed to store listener in database.")
 
         cq.success("Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on {host}:{$port}.")
+        cq.client.sendListener(listener)
         cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {name} on {host}:{$port}.")
 
     except CatchableError as err: 
@@ -132,6 +133,7 @@ proc restartListeners*(cq: Conquest) =
             cq.listeners[listener.listenerId] = listener
             cq.threads[listener.listenerId] = thread
 
+            cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Restarted listener {listener.listenerId} on {listener.address}:{$listener.port}.")  
             cq.success("Restarted listener", fgGreen, fmt" {listener.listenerId} ", resetStyle, fmt"on {listener.address}:{$listener.port}.")
 
         except CatchableError as err: 
