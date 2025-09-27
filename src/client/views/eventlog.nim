@@ -8,6 +8,7 @@ type
         title: string 
         log*: ConsoleItems
         textSelect: ptr TextSelect
+        showTimestamps: bool
 
 proc getText(item: ConsoleItem): cstring = 
     if item.timestamp > 0: 
@@ -37,6 +38,7 @@ proc Eventlog*(title: string): EventlogComponent =
     result.log = new ConsoleItems
     result.log.items = @[]
     result.textSelect = textselect_create(getLineAtIndex, getNumLines, cast[pointer](result.log), 0)
+    result.showTimestamps = false
 
 #[
     API to add new log entry
@@ -45,7 +47,7 @@ proc addItem*(component: EventlogComponent, itemType: LogType, data: string, tim
 
     for line in data.split("\n"): 
         component.log.items.add(ConsoleItem(
-            timestamp: if itemType == LOG_OUTPUT: 0 else: timestamp,
+            timestamp: timestamp,
             itemType: itemType,
             text: line
         ))
@@ -53,8 +55,8 @@ proc addItem*(component: EventlogComponent, itemType: LogType, data: string, tim
 #[
     Drawing
 ]#
-proc print(item: ConsoleItem) =     
-    if item.timestamp > 0:
+proc print(component: EventlogComponent, item: ConsoleItem) =     
+    if (item.itemType != LOG_OUTPUT) and component.showTimestamps:
         let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
         igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), fmt"[{timestamp}]".cstring)
         igSameLine(0.0f, 0.0f)
@@ -91,8 +93,14 @@ proc draw*(component: EventlogComponent, showComponent: ptr bool) =
         if igBeginChild_Str("##Log", vec2(-1.0f, -1.0f), childWindowFlags, ImGuiWindowFlags_HorizontalScrollbar.int32):            
             # Display eventlog items
             for item in component.log.items:
-                item.print()
+                component.print(item)
             
+            # Right click context menu to toggle timestamps in eventlog
+            if igBeginPopupContextWindow("EventlogSettings", ImGui_PopupFlags_MouseButtonRight.int32):
+                if igCheckbox("Show timestamps", addr component.showTimestamps): 
+                    igCloseCurrentPopup()
+                igEndPopup()
+
             component.textSelect.textselect_update()
   
             # Auto-scroll to bottom

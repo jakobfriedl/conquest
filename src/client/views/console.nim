@@ -266,19 +266,10 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
 
         let command = ($(addr component.inputBuffer[0])).strip()
         if not command.isEmptyOrWhitespace(): 
-        
+
             component.addItem(LOG_COMMAND, command)
 
-            # For testing
-            # component.addItem(LOG_ERROR, "error message")
-            # component.addItem(LOG_SUCCESS, "success message")
-            # component.addItem(LOG_INFO, "info message")
-            # component.addItem(LOG_WARNING, "warning message")
-            # component.addItem(LOG_OUTPUT, "error message\nLong output\n\tindented output\nasdasd")
-
-            # TODO: Handle command execution
-            # console.handleCommand(command)
-            ws.send("CMD:" & component.agent.agentId & ":" & command)
+            # Send command to team server
 
             # Add command to console history
             component.history.add(command)
