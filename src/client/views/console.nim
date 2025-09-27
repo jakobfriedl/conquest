@@ -3,6 +3,7 @@ import strformat, strutils, times
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, colors]
 import ../../common/[types]
+import ../websocket
 
 const MAX_INPUT_LENGTH = 512
 type    
@@ -270,6 +271,7 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
             component.addItem(LOG_COMMAND, command)
 
             # Send command to team server
+            ws.sendAgentCommand(component.agent.agentId, command)
 
             # Add command to console history
             component.history.add(command)

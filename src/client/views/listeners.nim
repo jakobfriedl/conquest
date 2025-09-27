@@ -1,10 +1,10 @@
+import whisky
 import strutils
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/appImGui
 import ../../common/[types, utils]
 import ./modals/[startListener, generatePayload]
 import ../websocket
-import whisky
 
 type 
     ListenersTableComponent* = ref object of RootObj

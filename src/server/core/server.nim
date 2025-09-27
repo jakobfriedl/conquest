@@ -1,7 +1,7 @@
 import prompt, terminal, argparse, parsetoml, times, json
 import strutils, strformat, system, tables
 
-import ./[agent, listener, builder]
+import ./[agent, listener, task, builder]
 import ../globals
 import ../db/database
 import ../core/logger
@@ -175,7 +175,9 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
 
             case event.eventType: 
             of CLIENT_AGENT_COMMAND:
-                discard 
+                let agentId = event.data["agentId"].getStr()
+                let command = event.data["command"].getStr() 
+                cq.handleAgentCommand(agentId, command)
 
             of CLIENT_LISTENER_START:
                 let listener = event.data.to(UIListener)

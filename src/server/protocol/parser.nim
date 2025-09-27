@@ -1,5 +1,5 @@
 import std/paths
-import strutils, sequtils, times
+import strutils, sequtils, times, tables
 import ../../common/[types, sequence, crypto, utils, serialize]
 
 proc parseInput*(input: string): seq[string] = 
@@ -84,12 +84,12 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
     
     return arg
 
-proc createTask*(cq: Conquest, command: Command, arguments: seq[string]): Task = 
+proc createTask*(cq: Conquest, agentId: string, command: Command, arguments: seq[string]): Task = 
 
     # Construct the task payload prefix
     var task: Task
     task.taskId = string.toUuid(generateUUID()) 
-    task.listenerId = string.toUuid(cq.interactAgent.listenerId)
+    task.listenerId = string.toUuid(cq.agents[agentId].listenerId)
     task.timestamp = uint32(now().toTime().toUnix())
     task.command = cast[uint16](command.commandType) 
     task.argCount = uint8(arguments.len)
@@ -116,7 +116,7 @@ proc createTask*(cq: Conquest, command: Command, arguments: seq[string]): Task =
     taskHeader.packetType = cast[uint8](MSG_TASK)
     taskHeader.flags = cast[uint16](FLAG_ENCRYPTED)
     taskHeader.size = 0'u32
-    taskHeader.agentId = string.toUuid(cq.interactAgent.agentId)
+    taskHeader.agentId = string.toUuid(agentId)
     taskHeader.seqNr = nextSequence(taskHeader.agentId)
     taskHeader.iv = generateBytes(Iv) # Generate a random IV for AES-256 GCM
     taskHeader.gmac = default(AuthenticationTag)

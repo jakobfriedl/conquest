@@ -5,6 +5,7 @@ import ../utils
 import ../core/logger
 import ../db/database
 import ../../common/types
+import ../websocket
 
 # Utility functions
 proc addMultiple*(cq: Conquest, agents: seq[Agent]) = 
@@ -123,7 +124,7 @@ proc agentInteract*(cq: Conquest, name: string) =
 
     while command.replace(" ", "") != "back": 
         command = cq.prompt.readLine()
-        cq.handleAgentCommand(command)
+        cq.handleAgentCommand(name, command)
     
     # Reset interactAgent field after interaction with agent is ended using 'back' command
     cq.interactAgent = nil 

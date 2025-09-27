@@ -2,6 +2,7 @@ import strformat, terminal, tables, sequtils, strutils
 
 import ../protocol/parser
 import ../core/logger
+import ../websocket
 import ../../modules/manager
 import ../../common/types
 
@@ -50,33 +51,28 @@ proc handleHelp(cq: Conquest, parsed: seq[string]) =
         # Command was not found
         cq.error(fmt"The command '{parsed[1]}' does not exist." & '\n')
 
-proc handleAgentCommand*(cq: Conquest, input: string) = 
-    # Return if no command (or just whitespace) is entered
-    if input.replace(" ", "").len == 0: return
+proc handleAgentCommand*(cq: Conquest, agentId: string, input: string) = 
 
     cq.input(input)
 
     # Convert user input into sequence of string arguments
     let parsedArgs = parseInput(input)
     
-    # Handle 'back' command
-    if parsedArgs[0] == "back": 
-        cq.interactAgent = nil 
-        return
-
     # Handle 'help' command 
     if parsedArgs[0] == "help": 
         cq.handleHelp(parsedArgs)
         return
-
+        
     # Handle commands with actions on the agent
     try: 
         let 
             command = getCommandByName(parsedArgs[0])
-            task = cq.createTask(command, parsedArgs[1..^1])
+            task = cq.createTask(agentId, command, parsedArgs[1..^1])
 
         # Add task to queue
-        cq.interactAgent.tasks.add(task)
+        cq.agents[agentId].tasks.add(task)
+
+        cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"Tasked agent to {command.description.toLowerAscii()}")
         cq.info(fmt"Tasked agent to {command.description.toLowerAscii()}")
 
     except CatchableError: 

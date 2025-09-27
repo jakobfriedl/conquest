@@ -1,6 +1,5 @@
 import whisky 
 import times, tables, json
-import ./views/[sessions, listeners, console, eventlog]
 import ../common/[types, utils, serialize, event]
 export sendHeartbeat, recvEvent
 
@@ -39,26 +38,13 @@ proc sendAgentBuild*(ws: WebSocket, buildInformation: AgentBuildInformation) =
     )
     ws.sendEvent(event)
 
-# proc sendAgentCommand*(ws: WebSocket, agentId: string, command: string) = 
-#     var packer = Packer.init() 
-
-#     packer.add(cast[uint8](CLIENT_AGENT_COMMAND))
-#     packer.add(string.toUuid(agentId))
-#     packer.addDataWithLengthPrefix(string.toBytes(command))
-#     let data = packer.pack() 
-
-#     ws.send(Bytes.toString(data), BinaryMessage)
-
-# proc sendAgentBuild*(ws: WebSocket, listenerId: string, sleepDelay: int, sleepMask: SleepObfuscationTechnique, spoofStack: bool, modules: uint32) = 
-#     var packer = Packer.init() 
-
-#     packer.add(cast[uint8](CLIENT_AGENT_BUILD))
-#     packer.add(string.toUuid(listenerId))
-#     packer.add(cast[uint32](sleepDelay))
-#     packer.add(cast[uint8](sleepMask))
-#     packer.add(cast[uint8](spoofStack))
-#     packer.add(modules)
-#     let data = packer.pack() 
-
-#     ws.send(Bytes.toString(data), BinaryMessage)
-    
+proc sendAgentCommand*(ws: WebSocket, agentId: string, command: string) = 
+    let event = Event(
+        eventType: CLIENT_AGENT_COMMAND,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "command": command    
+        }
+    )
+    ws.sendEvent(event)

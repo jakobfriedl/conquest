@@ -91,14 +91,17 @@ proc handleResult*(resultData: seq[byte]) =
                 taskId = Uuid.toString(taskResult.taskId)
                 agentId = Uuid.toString(taskResult.header.agentId)
 
+            cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$resultData.len} bytes received.")
             cq.info(fmt"{$resultData.len} bytes received.")
             
             # Update task queue to include all tasks, except the one that was just completed
             case cast[StatusType](taskResult.status):
             of STATUS_COMPLETED:
+                cq.client.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.")
                 cq.success(fmt"Task {taskId} completed.")
                 cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
             of STATUS_FAILED: 
+                cq.client.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.")
                 cq.error(fmt"Task {taskId} failed.")
                 cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
             of STATUS_IN_PROGRESS: 
@@ -106,8 +109,11 @@ proc handleResult*(resultData: seq[byte]) =
 
             case cast[ResultType](taskResult.resultType):
             of RESULT_STRING:
-                if int(taskResult.length) > 0: 
+                if int(taskResult.length) > 0:
+                    cq.client.sendConsoleItem(agentId, LOG_INFO, "Output:") 
                     cq.info("Output:")
+                    cq.client.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data))
+
                     # Split result string on newline to keep formatting
                     for line in Bytes.toString(taskResult.data).split("\n"):
                         cq.output(line)
