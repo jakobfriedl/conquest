@@ -8,6 +8,7 @@ proc executeUpload(ctx: AgentCtx, task: Task): TaskResult
 let module* = Module(
     name: protect("filetransfer"), 
     description: protect("Upload/download files to/from the target system."),
+    moduleType: MODULE_FILESYSTEM,
     commands: @[
         Command(
             name: protect("download"),
@@ -33,7 +34,7 @@ let module* = Module(
 )
 
 # Implement execution functions
-when defined(server):
+when not defined(agent):
     proc executeDownload(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeUpload(ctx: AgentCtx, task: Task): TaskResult = nil
 

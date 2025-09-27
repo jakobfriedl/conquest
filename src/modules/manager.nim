@@ -5,12 +5,14 @@ const MODULES {.intdefine.} = 0
 
 type
     ModuleManager* = object 
+        modules*: seq[Module]
         commandsByType*: Table[CommandType, Command]
         commandsByName*: Table[string, Command]
 
 var manager: ModuleManager
 
 proc registerModule(module: Module) {.discardable.} = 
+    manager.modules.add(module)
     for cmd in module.commands: 
         manager.commandsByType[cmd.commandType] = cmd
         manager.commandsByName[cmd.name] = cmd
@@ -72,3 +74,6 @@ proc getCommandByName*(cmdName: string): Command =
 
 proc getAvailableCommands*(): Table[string, Command] = 
     return manager.commandsByName
+
+proc getModules*(): seq[Module] = 
+    return manager.modules

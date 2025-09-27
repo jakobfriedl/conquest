@@ -7,6 +7,7 @@ proc executeBof(ctx: AgentCtx, task: Task): TaskResult
 let module* = Module(
     name: protect("bof"),
     description: protect("Load and execute BOF/COFF files in memory."),
+    moduleType: MODULE_BOF,
     commands: @[
         Command(
             name: protect("bof"),
@@ -23,7 +24,7 @@ let module* = Module(
 )
 
 # Implement execution functions
-when defined(server):
+when not defined(agent):
     proc executeBof(ctx: AgentCtx, task: Task): TaskResult = nil
 
 when defined(agent):

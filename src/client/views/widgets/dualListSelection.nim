@@ -1,6 +1,6 @@
 import strutils, sequtils, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/[appImGui, colors]
+import ../../utils/[appImGui, colors, utils]
 import ../../../common/[types, utils]
 
 type 
@@ -8,36 +8,40 @@ type
         items*: array[2, seq[T]]
         selection: array[2, ptr ImGuiSelectionBasicStorage]
         display: proc(item: T): string
+        compare: proc(x, y: T): int
+        tooltip: proc(item: T): string
 
 proc defaultDisplay[T](item: T): string = 
     return $item
 
-proc DualListSelection*[T](items: seq[T], display: proc(item: T): string = defaultDisplay): DualListSelectionComponent[T] = 
+proc DualListSelection*[T](items: seq[T], display: proc(item: T): string = defaultDisplay, compare: proc(x, y: T): int,  tooltip: proc(item: T): string = nil): DualListSelectionComponent[T] = 
     result = new DualListSelectionComponent[T]
     result.items[0] = items
     result.items[1] = @[]
     result.selection[0] = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.selection[1] = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.display = display
+    result.compare = compare
+    result.tooltip = tooltip
 
 proc moveAll[T](component: DualListSelectionComponent[T], src, dst: int) = 
     for m in component.items[src]: 
         component.items[dst].add(m)
-    component.items[dst].sort()
+    component.items[dst].sort(component.compare)
     component.items[src].setLen(0)
 
     ImGuiSelectionBasicStorage_Swap(component.selection[src], component.selection[dst])
     ImGuiSelectionBasicStorage_Clear(component.selection[src])
 
 proc moveSelection[T](component: DualListSelectionComponent[T], src, dst: int) = 
-    var keep: seq[ModuleType]
+    var keep: seq[T]
     for i in 0 ..< component.items[src].len(): 
         let item = component.items[src][i]
         if not component.selection[src].ImGuiSelectionBasicStorage_Contains(cast[ImGuiID](i)):
             keep.add(item)
             continue
         component.items[dst].add(item)
-    component.items[dst].sort()
+    component.items[dst].sort(component.compare)
     component.items[src] = keep
 
     ImGuiSelectionBasicStorage_Swap(component.selection[src], component.selection[dst])
@@ -83,6 +87,9 @@ proc draw*[T](component: DualListSelectionComponent[T]) =
                 var isSelected = ImGuiSelectionBasicStorage_Contains(selection, cast[ImGuiID](row))
                 igSetNextItemSelectionUserData(row)
                 discard igSelectable_Bool(component.display(modules[row]), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+                
+                if not component.tooltip.isNil():
+                    setTooltip(component.tooltip(modules[row]))
 
                 # Move on Enter and double-click
                 if igIsItemFocused(): 
@@ -133,6 +140,9 @@ proc draw*[T](component: DualListSelectionComponent[T]) =
                 var isSelected = ImGuiSelectionBasicStorage_Contains(selection, cast[ImGuiID](row))
                 igSetNextItemSelectionUserData(row)
                 discard igSelectable_Bool(component.display(modules[row]), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+
+                if not component.tooltip.isNil():
+                    setTooltip(component.tooltip(modules[row]))
 
                 # Move on Enter and double-click
                 if igIsItemFocused(): 

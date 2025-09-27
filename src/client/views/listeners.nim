@@ -32,14 +32,16 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
     if igButton("Start Listener", vec2(0.0f, 0.0f)):          
         igOpenPopup_str("Start Listener", ImGui_PopupFlags_None.int32) 
     igSameLine(0.0f, textSpacing)
-    # Payload generation modal
+
+    # Payload generation modal (only enabled when at least one listener is active)
+    igBeginDisabled(component.listeners.len() <= 0)
     if igButton("Generate Payload", vec2(0.0f, 0.0f)):          
         igOpenPopup_str("Generate Payload", ImGui_PopupFlags_None.int32) 
+    igEndDisabled()
 
     let listener = component.startListenerModal.draw()
     if listener != nil: 
         ws.sendStartListener(listener)
-        component.listeners.add(listener)    
 
     component.generatePayloadModal.draw(component.listeners)
 

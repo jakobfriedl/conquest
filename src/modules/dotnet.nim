@@ -7,6 +7,7 @@ proc executeAssembly(ctx: AgentCtx, task: Task): TaskResult
 let module* = Module(
     name: protect("dotnet"), 
     description: protect("Load and execute .NET assemblies in memory."),
+    moduleType: MODULE_DOTNET,
     commands: @[
         Command(
             name: protect("dotnet"),
@@ -23,7 +24,7 @@ let module* = Module(
 )
 
 # Implement execution functions
-when defined(server):
+when not defined(agent):
     proc executeAssembly(ctx: AgentCtx, task: Task): TaskResult = nil
 
 when defined(agent):

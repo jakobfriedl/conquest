@@ -2,6 +2,7 @@ import strutils, sequtils
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
 import ../../../common/[types, profile, utils]
+import ../../../modules/manager
 import ../widgets/dualListSelection
 
 type 
@@ -11,7 +12,7 @@ type
         sleepMask: int32 
         spoofStack: bool 
         sleepMaskTechniques: seq[string]
-        moduleSelection: DualListSelectionComponent[ModuleType]
+        moduleSelection: DualListSelectionComponent[Module]
 
 proc AgentModal*(): AgentModalComponent =
     result = new AgentModalComponent
@@ -23,14 +24,17 @@ proc AgentModal*(): AgentModalComponent =
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
 
-    var modules: seq[ModuleType]
-    for module in ModuleType: 
-        modules.add(module)
+    let modules = getModules()
+    proc moduleName(module: Module): string = 
+        return module.name
+    proc moduleDesc(module: Module): string = 
+        result = module.description & "\nModule commands:\n"
+        for cmd in module.commands: 
+            result &= " - " & cmd.name & "\n"
+    proc compareModules(x, y: Module): int = 
+        return cmp(x.name, y.name)
 
-    proc moduleName(module: ModuleType): string = 
-        return ($module).split("_")[1..^1].mapIt(it.toLowerAscii().capitalizeAscii()).join("")
-    
-    result.moduleSelection = DualListSelection(modules, moduleName)
+    result.moduleSelection = DualListSelection(modules, moduleName, compareModules, moduleDesc)
 
 proc resetModalValues(component: AgentModalComponent) = 
     component.listener = 0
@@ -119,7 +123,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]) =
             # Iterate over modules
             var module: uint32 = 0
             for m in component.moduleSelection.items[1]: 
-                module = module or uint32(m)
+                module = module or uint32(m.moduleType)
             echo module
 
             component.resetModalValues()

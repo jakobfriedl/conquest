@@ -318,6 +318,7 @@ type
     Module* = object
         name*: string 
         description*: string
+        moduleType*: ModuleType
         commands*: seq[Command]
 
 # Definitions for ImGui User interface

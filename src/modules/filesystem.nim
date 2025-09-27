@@ -13,6 +13,7 @@ proc executeCopy(ctx: AgentCtx, task: Task): TaskResult
 let module* = Module(
     name: protect("filesystem"),
     description: protect("Conduct simple filesystem operations via Windows API."),
+    moduleType: MODULE_DOTNET,
     commands: @[
         Command(
             name: protect("pwd"),
@@ -88,7 +89,7 @@ let module* = Module(
 )
 
 # Implementation of the execution functions
-when defined(server):
+when not defined(agent):
     proc executePwd(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeCd(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeDir(ctx: AgentCtx, task: Task): TaskResult = nil

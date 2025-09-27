@@ -9,6 +9,7 @@ proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult
 let module* = Module(
     name: protect("situational-awareness"),
     description: protect("Retrieve information about the target system and environment."),
+    moduleType: MODULE_SITUATIONAL_AWARENESS,
     commands: @[
         Command(
             name: protect("ps"),
@@ -38,7 +39,7 @@ let module* = Module(
 )
 
 # Implement execution functions
-when defined(server):
+when not defined(agent):
     proc executePs(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeEnv(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult = nil

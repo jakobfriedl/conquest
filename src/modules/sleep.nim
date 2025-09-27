@@ -8,6 +8,7 @@ proc executeSleepmask(ctx: AgentCtx, task: Task): TaskResult
 let module* = Module(
     name: protect("sleep"), 
     description: protect("Change sleep settings."),
+    moduleType: MODULE_SLEEP,
     commands: @[
         Command(
             name: protect("sleep"),
@@ -34,7 +35,7 @@ let module* = Module(
 )
 
 # Implement execution functions
-when defined(server):
+when not defined(agent):
     proc executeSleep(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeSleepmask(ctx: AgentCtx, task: Task): TaskResult = nil
 

@@ -7,6 +7,7 @@ proc executeShell(ctx: AgentCtx, task: Task): TaskResult
 let module* = Module(
     name: protect("shell"), 
     description: protect("Execute shell commands or programs."),
+    moduleType: MODULE_SHELL,
     commands: @[
         Command(
             name: protect("shell"),
@@ -23,7 +24,7 @@ let module* = Module(
 )  
 
 # Implement execution functions
-when defined(server):
+when not defined(agent):
     proc executeShell(ctx: AgentCtx, task: Task): TaskResult = nil
 
 when defined(agent):
