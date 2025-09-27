@@ -1,6 +1,6 @@
 import whisky
-import tables, strutils, json, parsetoml
-import ./utils/appImGui
+import tables, strutils, strformat, json, parsetoml, base64, os # native_dialogs
+import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console]
 import ../common/[types, utils]
 import ./websocket
@@ -97,7 +97,16 @@ proc main() =
             sessionsTable.agentActivity[event.data["agentId"].getStr()] = event.timestamp
 
         of CLIENT_AGENT_PAYLOAD: 
-            discard
+            let payload = decode(event.data["payload"].getStr())
+            try: 
+                let outFilePath = fmt"{CONQUEST_ROOT}/bin/monarch.x64.exe"
+
+                # TODO: Using native file dialogs to have the client select the output file path (does not work in WSL) 
+                # let outFilePath = callDialogFileSave("Save Payload") 
+
+                writeFile(outFilePath, payload)
+            except IOError:
+                discard 
 
         of CLIENT_CONSOLE_ITEM: 
             let agentId = event.data["agentId"].getStr() 

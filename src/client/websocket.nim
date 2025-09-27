@@ -25,6 +25,20 @@ proc sendStopListener*(ws: WebSocket, listenerId: string) =
     )
     ws.sendEvent(event)
 
+proc sendAgentBuild*(ws: WebSocket, buildInformation: AgentBuildInformation) = 
+    let event = Event(
+        eventType: CLIENT_AGENT_BUILD,
+        timestamp: now().toTime().toUnix(), 
+        data: %*{
+            "listenerId": buildInformation.listenerId, 
+            "sleepDelay": buildInformation.sleepDelay,
+            "sleepTechnique": cast[uint8](buildInformation.sleepTechnique),
+            "spoofStack": buildInformation.spoofStack,
+            "modules": buildInformation.modules
+        }
+    )
+    ws.sendEvent(event)
+
 # proc sendAgentCommand*(ws: WebSocket, agentId: string, command: string) = 
 #     var packer = Packer.init() 
 

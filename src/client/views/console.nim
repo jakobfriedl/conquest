@@ -205,7 +205,7 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
         igText("Press CTRL+F to focus console filter.")
         igText("Use \",\" as a delimiter to filter for multiple values.")
         igText("Use \"-\" to exclude values.")
-        igText("Example: \"-warning,a,b\" returns all lines that do not include \"warning\" but include \"a\" or \"b\".")
+        igText("Example: \"-warning,a,b\" returns all lines that do not include \"warning\" but include either \"a\" or \"b\".")
         igEndTooltip()
 
     if igIsWindowFocused(ImGui_FocusedFlags_ChildWindows.int32) and io.KeyCtrl and igIsKeyPressed_Bool(ImGuiKey_F, false):

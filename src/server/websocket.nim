@@ -59,12 +59,11 @@ proc sendAgentCheckin*(client: UIClient, agentId: string) =
     if client != nil: 
         client.ws.sendEvent(event)
 
-proc sendAgentPayload*(client: UIClient, agentId: string, bytes: seq[byte]) =
+proc sendAgentPayload*(client: UIClient, bytes: seq[byte]) =
     let event = Event(
         eventType: CLIENT_AGENT_PAYLOAD, 
         timestamp: now().toTime().toUnix(),
         data: %*{
-            "agentId": agentId,
             "payload": encode(bytes)
         }
     )

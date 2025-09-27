@@ -43,7 +43,7 @@ proc resetModalValues(component: AgentModalComponent) =
     component.spoofStack = false 
     component.moduleSelection.reset()
 
-proc draw*(component: AgentModalComponent, listeners: seq[UIListener]) =
+proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBuildInformation =
 
     let textSpacing = igGetStyle().ItemSpacing.x    
     
@@ -114,18 +114,19 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]) =
 
         if igButton("Build", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
 
-            # Get values 
-            echo listeners[component.listener].listenerId
-            echo $component.sleepDelay
-            echo component.sleepMaskTechniques[component.sleepMask]
-            echo $component.spoofStack
-        
             # Iterate over modules
-            var module: uint32 = 0
+            var modules: uint32 = 0
             for m in component.moduleSelection.items[1]: 
-                module = module or uint32(m.moduleType)
-            echo module
+                modules = modules or uint32(m.moduleType)
 
+            result = AgentBuildInformation(
+                listenerId: listeners[component.listener].listenerId,
+                sleepDelay: component.sleepDelay,
+                sleepTechnique: cast[SleepObfuscationTechnique](component.sleepMask),
+                spoofStack: component.spoofStack,
+                modules: modules
+            )
+            
             component.resetModalValues()
             igCloseCurrentPopup() 
         

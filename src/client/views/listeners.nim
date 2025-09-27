@@ -43,7 +43,9 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
     if listener != nil: 
         ws.sendStartListener(listener)
 
-    component.generatePayloadModal.draw(component.listeners)
+    let buildInformation = component.generatePayloadModal.draw(component.listeners)
+    if buildInformation != nil:
+        ws.sendAgentBuild(buildInformation)
 
     #[
         Listener table

@@ -330,3 +330,11 @@ type
 
     ConsoleItems* = ref object
         items*: seq[ConsoleItem]
+
+    AgentBuildInformation* = ref object 
+        listenerId*: string 
+        sleepDelay*: uint32
+        sleepTechnique*: SleepObfuscationTechnique
+        spoofStack*: bool
+        modules*: uint32
+

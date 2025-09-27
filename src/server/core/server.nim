@@ -107,7 +107,8 @@ proc handleConsoleCommand(cq: Conquest, args: string) =
             of "interact":
                 cq.agentInteract(opts.agent.get.interact.get.name) 
             of "build": 
-                cq.agentBuild(opts.agent.get.build.get.listener, opts.agent.get.build.get.sleep, opts.agent.get.build.get.sleepmask, opts.agent.get.build.get.spoof_stack)
+                discard
+                # cq.agentBuild(opts.agent.get.build.get.listener, opts.agent.get.build.get.sleep, opts.agent.get.build.get.sleepmask, opts.agent.get.build.get.spoof_stack)
             else: 
                 cq.agentUsage()
 
@@ -185,7 +186,17 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 cq.listenerStop(listenerId)
 
             of CLIENT_AGENT_BUILD:
-                discard 
+                let 
+                    listenerId = event.data["listenerId"].getStr()
+                    sleepDelay = event.data["sleepDelay"].getInt()
+                    sleepTechnique = cast[SleepObfuscationTechnique](event.data["sleepTechnique"].getInt())
+                    spoofStack = event.data["spoofStack"].getBool()
+                    modules = cast[uint32](event.data["modules"].getInt())
+                
+                let payload = cq.agentBuild(listenerId, sleepDelay, sleepTechnique, spoofStack, modules)
+                if payload.len() != 0: 
+                    cq.client.sendAgentPayload(payload)
+
             else: discard
 
         of ErrorEvent:
@@ -196,7 +207,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
     
 proc serve(server: Server) {.thread.} = 
     try:
-        server.serve(Port(12345))
+        server.serve(Port(12345), "127.0.0.1")
     except Exception:
         discard 
 
