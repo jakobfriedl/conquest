@@ -50,8 +50,8 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[
             igDockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace.int32)
             igDockBuilderSetNodeSize(dockspaceId, vp.WorkSize)
 
-            discard igDockBuilderSplitNode(dockspaceId, ImGuiDir_Down, 0.8f, dockBottom, dockTop)
-            discard igDockBuilderSplitNode(dockTop[], ImGuiDir_Right, 0.4f, dockTopRight, dockTopLeft)
+            discard igDockBuilderSplitNode(dockspaceId, ImGuiDir_Down, 5.0f, dockBottom, dockTop)
+            discard igDockBuilderSplitNode(dockTop[], ImGuiDir_Right, 0.5f, dockTopRight, dockTopLeft)
 
             igDockBuilderDockWindow("Sessions [Table View]", dockTopLeft[])
             igDockBuilderDockWindow("Listeners", dockBottom[])

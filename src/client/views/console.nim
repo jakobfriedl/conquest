@@ -1,12 +1,13 @@
 import whisky
-import strformat, strutils, times
+import strformat, strutils, times, json
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, colors]
-import ../../common/[types]
-import ../websocket
+import ../../common/[types, utils]
+import ../../modules/manager
+import ../[task, websocket]
 
 const MAX_INPUT_LENGTH = 512
-type    
+type 
     ConsoleComponent* = ref object of RootObj
         agent*: UIAgent
         showConsole*: bool
@@ -123,6 +124,32 @@ proc addItem*(component: ConsoleComponent, itemType: LogType, data: string, time
             itemType: itemType,
             text: line
         ))
+
+#[
+    Handling console commands
+]#
+proc handleAgentCommand*(component: ConsoleComponent, ws: WebSocket, input: string) = 
+
+    # Convert user input into sequence of string arguments
+    let parsedArgs = parseInput(input)
+    
+    # Handle 'help' command 
+    if parsedArgs[0] == "help": 
+        # cq.handleHelp(parsedArgs)
+        component.addItem(LOG_WARNING, "Help")
+        return
+        
+    # Handle commands with actions on the agent
+    try: 
+        let 
+            command = getCommandByName(parsedArgs[0])
+            task = createTask(component.agent.agentId, component.agent.listenerId, command, parsedArgs[1..^1])
+
+        ws.sendAgentTask(component.agent.agentId, task)
+        component.addItem(LOG_INFO, fmt"Tasked agent to {command.description.toLowerAscii()} ({Uuid.toString(task.taskId)})")
+
+    except CatchableError: 
+        component.addItem(LOG_ERROR, getCurrentExceptionMsg())
 
 #[
     Drawing
@@ -271,7 +298,7 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
             component.addItem(LOG_COMMAND, command)
 
             # Send command to team server
-            ws.sendAgentCommand(component.agent.agentId, command)
+            component.handleAgentCommand(ws, command)
 
             # Add command to console history
             component.history.add(command)

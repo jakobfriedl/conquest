@@ -106,26 +106,27 @@ proc agentKill*(cq: Conquest, name: string) =
 
 # Switch to interact mode
 proc agentInteract*(cq: Conquest, name: string) = 
-
-    # Verify that agent exists
-    if not cq.dbAgentExists(name.toUpperAscii): 
-        cq.error(fmt"Agent {name.toUpperAscii} does not exist.")
-        return
-
-    let agent = cq.agents[name.toUpperAscii]
-    var command: string = ""
-
-    # Change prompt indicator to show agent interaction
-    cq.interactAgent = agent
-    cq.prompt.setIndicator(fmt"[{agent.agentId}]> ")
-    cq.prompt.setStatusBar(@[("[mode]", "interact"), ("[username]", fmt"{agent.username}"), ("[hostname]", fmt"{agent.hostname}"), ("[ip]", fmt"{agent.ip}"), ("[domain]", fmt"{agent.domain}")])    
-
-    cq.info("Started interacting with agent ", fgYellow, styleBright, agent.agentId, resetStyle, ". Type 'help' to list available commands.\n")
-
-    while command.replace(" ", "") != "back": 
-        command = cq.prompt.readLine()
-        cq.handleAgentCommand(name, command)
     
-    # Reset interactAgent field after interaction with agent is ended using 'back' command
-    cq.interactAgent = nil 
+    discard 
+    # Verify that agent exists
+    # if not cq.dbAgentExists(name.toUpperAscii): 
+    #     cq.error(fmt"Agent {name.toUpperAscii} does not exist.")
+    #     return
+
+    # let agent = cq.agents[name.toUpperAscii]
+    # var command: string = ""
+
+    # # Change prompt indicator to show agent interaction
+    # cq.interactAgent = agent
+    # cq.prompt.setIndicator(fmt"[{agent.agentId}]> ")
+    # cq.prompt.setStatusBar(@[("[mode]", "interact"), ("[username]", fmt"{agent.username}"), ("[hostname]", fmt"{agent.hostname}"), ("[ip]", fmt"{agent.ip}"), ("[domain]", fmt"{agent.domain}")])    
+
+    # cq.info("Started interacting with agent ", fgYellow, styleBright, agent.agentId, resetStyle, ". Type 'help' to list available commands.\n")
+
+    # while command.replace(" ", "") != "back": 
+    #     command = cq.prompt.readLine()
+    #     cq.handleAgentCommand(name, command)
+    
+    # # Reset interactAgent field after interaction with agent is ended using 'back' command
+    # cq.interactAgent = nil 
 

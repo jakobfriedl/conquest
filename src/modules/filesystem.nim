@@ -13,7 +13,7 @@ proc executeCopy(ctx: AgentCtx, task: Task): TaskResult
 let module* = Module(
     name: protect("filesystem"),
     description: protect("Conduct simple filesystem operations via Windows API."),
-    moduleType: MODULE_DOTNET,
+    moduleType: MODULE_FILESYSTEM,
     commands: @[
         Command(
             name: protect("pwd"),

@@ -38,13 +38,13 @@ proc sendAgentBuild*(ws: WebSocket, buildInformation: AgentBuildInformation) =
     )
     ws.sendEvent(event)
 
-proc sendAgentCommand*(ws: WebSocket, agentId: string, command: string) = 
+proc sendAgentTask*(ws: WebSocket, agentId: string, task: Task) = 
     let event = Event(
-        eventType: CLIENT_AGENT_COMMAND,
+        eventType: CLIENT_AGENT_TASK,
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
-            "command": command    
+            "task": task    
         }
     )
     ws.sendEvent(event)

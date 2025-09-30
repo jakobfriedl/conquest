@@ -8,7 +8,7 @@ proc executeUpload(ctx: AgentCtx, task: Task): TaskResult
 let module* = Module(
     name: protect("filetransfer"), 
     description: protect("Upload/download files to/from the target system."),
-    moduleType: MODULE_FILESYSTEM,
+    moduleType: MODULE_FILETRANSFER,
     commands: @[
         Command(
             name: protect("download"),

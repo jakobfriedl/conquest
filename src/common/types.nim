@@ -246,7 +246,7 @@ type
        
         # Sent by client 
         CLIENT_AGENT_BUILD = 1'u8           # Generate an agent binary for a specific listener
-        CLIENT_AGENT_COMMAND = 2'u8         # Instruct TS to send queue a command for a specific agent
+        CLIENT_AGENT_TASK = 2'u8         # Instruct TS to send queue a command for a specific agent
         CLIENT_LISTENER_START = 3'u8        # Start a listener on the TS
         CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
 
@@ -337,4 +337,3 @@ type
         sleepTechnique*: SleepObfuscationTechnique
         spoofStack*: bool
         modules*: uint32
-

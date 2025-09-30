@@ -1,6 +1,6 @@
 import std/paths
 import strutils, sequtils, times, tables
-import ../../common/[types, sequence, crypto, utils, serialize]
+import ../common/[types, sequence, crypto, utils, serialize]
 
 proc parseInput*(input: string): seq[string] = 
     var i = 0
@@ -84,12 +84,12 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
     
     return arg
 
-proc createTask*(cq: Conquest, agentId: string, command: Command, arguments: seq[string]): Task = 
+proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[string]): Task = 
 
     # Construct the task payload prefix
     var task: Task
     task.taskId = string.toUuid(generateUUID()) 
-    task.listenerId = string.toUuid(cq.agents[agentId].listenerId)
+    task.listenerId = string.toUuid(listenerId)
     task.timestamp = uint32(now().toTime().toUnix())
     task.command = cast[uint16](command.commandType) 
     task.argCount = uint8(arguments.len)

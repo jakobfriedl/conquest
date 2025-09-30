@@ -1,4 +1,4 @@
-import prompt, terminal, argparse, parsetoml, times, json
+import prompt, terminal, argparse, parsetoml, times, json, math
 import strutils, strformat, system, tables
 
 import ./[agent, listener, task, builder]
@@ -174,10 +174,10 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
             let event = message.recvEvent()
 
             case event.eventType: 
-            of CLIENT_AGENT_COMMAND:
+            of CLIENT_AGENT_TASK:
                 let agentId = event.data["agentId"].getStr()
-                let command = event.data["command"].getStr() 
-                cq.handleAgentCommand(agentId, command)
+                let task = event.data["task"].to(Task) 
+                cq.agents[agentId].tasks.add(task)
 
             of CLIENT_LISTENER_START:
                 let listener = event.data.to(UIListener)
@@ -246,7 +246,9 @@ proc startServer*(profilePath: string) =
     # Start websocket server
     var router: Router
     router.get("/*", upgradeHandler)
-    let server = newServer(router, websocketHandler)
+    
+    # Increased websocket message length in order to support dotnet assembly execution
+    let server = newServer(router, websocketHandler, maxMessageLen = 1024 * 1024 * 1024)
     
     var thread: Thread[Server]
     createThread(thread, serve, server)

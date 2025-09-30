@@ -44,7 +44,7 @@ proc register*(registrationData: seq[byte]): bool =
             cq.error(err.msg) 
             return false
 
-proc getTasks*(heartbeat: seq[byte]): seq[seq[byte]] = 
+proc getTasks*(heartbeat: seq[byte]): tuple[agentId: string, tasks: seq[seq[byte]]] = 
 
     {.cast(gcsafe).}:
 
@@ -75,11 +75,11 @@ proc getTasks*(heartbeat: seq[byte]): seq[seq[byte]] =
                 let taskData = cq.serializeTask(task)
                 tasks.add(taskData)
             
-            return tasks
+            return (agentId, tasks)
 
         except CatchableError as err:
             cq.error(err.msg) 
-            return @[]
+            return ("", @[])
 
 proc handleResult*(resultData: seq[byte]) = 
 
