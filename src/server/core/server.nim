@@ -1,7 +1,7 @@
 import prompt, terminal, argparse, parsetoml, times, json, math
 import strutils, strformat, system, tables
 
-import ./[agent, listener, task, builder]
+import ./[agent, listener, builder]
 import ../globals
 import ../db/database
 import ../core/logger

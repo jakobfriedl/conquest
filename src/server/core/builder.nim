@@ -124,6 +124,8 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): se
         for i, c in Bytes.toString(configuration): 
             exeBytes[placeholderPos + i] = c 
 
+        writeFile(unpatchedExePath, exeBytes)
+
         cq.success(fmt"Agent payload patched successfully: {unpatchedExePath}.")
         return string.toBytes(exeBytes)
     

@@ -1,5 +1,5 @@
 import whisky
-import strformat, strutils, times, json
+import strformat, strutils, times, json, tables, sequtils
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, colors]
 import ../../common/[types, utils]
@@ -128,6 +128,48 @@ proc addItem*(component: ConsoleComponent, itemType: LogType, data: string, time
 #[
     Handling console commands
 ]#
+proc displayHelp(component: ConsoleComponent) = 
+    for module in getModules(): 
+        for cmd in module.commands: 
+            component.addItem(LOG_OUTPUT, fmt" * {cmd.name:<15}{cmd.description}")
+
+proc displayCommandHelp(component: ConsoleComponent, command: Command) = 
+    var usage = command.name & " " & command.arguments.mapIt(
+        if it.isRequired: fmt"<{it.name}>" else: fmt"[{it.name}]"
+    ).join(" ")
+
+    if command.example != "": 
+        usage &= "\nExample : " & command.example
+
+    component.addItem(LOG_OUTPUT, fmt"""
+{command.description}
+
+Usage   : {usage}
+""")
+
+    if command.arguments.len > 0:
+        component.addItem(LOG_OUTPUT, "Arguments:\n")
+
+        let header = @["Name", "Type", "Required", "Description"]
+        component.addItem(LOG_OUTPUT, fmt"   {header[0]:<15} {header[1]:<6} {header[2]:<8} {header[3]}")
+        component.addItem(LOG_OUTPUT, fmt"   {'-'.repeat(15)} {'-'.repeat(6)} {'-'.repeat(8)} {'-'.repeat(20)}")
+        
+        for arg in command.arguments: 
+            let isRequired = if arg.isRequired: "YES" else: "NO"
+            component.addItem(LOG_OUTPUT, fmt" * {arg.name:<15} {($arg.argumentType).toUpperAscii():<6} {isRequired:>8} {arg.description}")
+        component.addItem(LOG_OUTPUT, "")
+
+proc handleHelp(component: ConsoleComponent, parsed: seq[string]) = 
+    try: 
+        # Try parsing the first argument passed to 'help' as a command
+        component.displayCommandHelp(getCommandByName(parsed[1]))
+    except IndexDefect:
+        # 'help' command is called without additional parameters
+        component.displayHelp()
+    except ValueError: 
+        # Command was not found
+        component.addItem(LOG_ERROR, fmt"The command '{parsed[1]}' does not exist.")
+
 proc handleAgentCommand*(component: ConsoleComponent, ws: WebSocket, input: string) = 
 
     # Convert user input into sequence of string arguments
@@ -135,8 +177,7 @@ proc handleAgentCommand*(component: ConsoleComponent, ws: WebSocket, input: stri
     
     # Handle 'help' command 
     if parsedArgs[0] == "help": 
-        # cq.handleHelp(parsedArgs)
-        component.addItem(LOG_WARNING, "Help")
+        component.handleHelp(parsedArgs)
         return
         
     # Handle commands with actions on the agent
@@ -155,6 +196,7 @@ proc handleAgentCommand*(component: ConsoleComponent, ws: WebSocket, input: stri
     Drawing
 ]#
 proc print(item: ConsoleItem) =     
+    
     if item.timestamp > 0:
         let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
         igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), fmt"[{timestamp}]".cstring)
@@ -252,6 +294,7 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
         let childWindowFlags = ImGuiChildFlags_NavFlattened.int32 or ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AlwaysUseWindowPadding.int32 or ImGuiChildFlags_FrameStyle.int32
         if igBeginChild_Str("##Console", vec2(-1.0f, -footerHeight), childWindowFlags, ImGuiWindowFlags_HorizontalScrollbar.int32):            
             # Display console items
+            
             for item in component.console.items:
 
                 # Apply filter
@@ -262,7 +305,7 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
                 item.print()
             
             component.textSelect.textselect_update()
-  
+
             # Auto-scroll to bottom
             if igGetScrollY() >= igGetScrollMaxY():
                 igSetScrollHereY(1.0f)

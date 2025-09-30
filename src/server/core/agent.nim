@@ -1,6 +1,5 @@
 import terminal, strformat, strutils, tables, times, system, parsetoml, prompt
 
-import ./task
 import ../utils
 import ../core/logger
 import ../db/database
