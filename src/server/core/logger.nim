@@ -1,4 +1,4 @@
-import times, strformat, strutils, prompt, terminal
+import times, strformat, strutils, terminal
 import std/[dirs, paths]
 
 import ../globals
@@ -37,7 +37,7 @@ proc getTimestamp*(): string =
 
 # Function templates and overwrites
 template writeLine*(cq: Conquest, args: varargs[untyped] = "") = 
-    cq.prompt.writeLine(args)
+    stdout.styledWriteLine(args)
     if cq.interactAgent != nil: 
         cq.log(extractStrings($(args)))
 

@@ -20,8 +20,6 @@ task client, "Build conquest client binary":
 
 requires "nim >= 2.2.4"
 
-requires "prompt >= 0.0.1"
-requires "argparse >= 4.0.2"
 requires "parsetoml >= 0.7.2"
 requires "nimcrypto >= 0.6.4"
 requires "tiny_sqlite >= 0.2.0"

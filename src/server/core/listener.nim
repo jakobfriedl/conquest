@@ -10,28 +10,6 @@ import ../core/logger
 import ../../common/[types, utils, profile]
 import ../websocket
 
-#[
-    Listener management
-]#
-proc listenerUsage*(cq: Conquest) = 
-    cq.output("""Manage, start and stop listeners.
-
-Usage:
-  listener [options] COMMAND
-
-Commands:
-
-  list             List all active listeners.
-  start            Starts a new HTTP listener.
-  stop             Stop an active listener.
-
-Options:
-  -h, --help""")
-
-proc listenerList*(cq: Conquest) = 
-    let listeners = cq.dbGetAllListeners()
-    cq.drawTable(listeners)
-
 proc serve(listener: Listener) {.thread.} = 
     try: 
         listener.server.serve(Port(listener.port), listener.address)
@@ -82,8 +60,9 @@ proc listenerStart*(cq: Conquest, name: string, host: string, port: int, protoco
         cq.listeners[name] = listener
         cq.threads[name] = thread
 
-        if not cq.dbStoreListener(listener):
-            raise newException(CatchableError, "Failed to store listener in database.")
+        if not cq.dbListenerExists(name.toUpperAscii): 
+            if not cq.dbStoreListener(listener):
+                raise newException(CatchableError, "Failed to store listener in database.")
 
         cq.success("Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on {host}:{$port}.")
         cq.client.sendListener(listener)
@@ -92,55 +71,6 @@ proc listenerStart*(cq: Conquest, name: string, host: string, port: int, protoco
     except CatchableError as err: 
         cq.error("Failed to start listener: ", err.msg)
         cq.client.sendEventlogItem(LOG_ERROR_SHORT, fmt"Failed to start listener: {err.msg}.")
-
-proc restartListeners*(cq: Conquest) =
-    var listeners: seq[Listener] = cq.dbGetAllListeners()
-    
-    # Restart all active listeners that are stored in the database
-    for listener in listeners: 
-        try:
-            # Create new listener
-            var router: Router
-            router.notFoundHandler = routes.error404
-            router.methodNotAllowedHandler = routes.error405
-            
-            # Define API endpoints based on C2 profile
-            # GET requests
-            for endpoint in cq.profile.getArray("http-get.endpoints"): 
-                router.addRoute("GET", endpoint.getStringValue(), routes.httpGet)
-            
-            # POST requests
-            var postMethods: seq[string]
-            for reqMethod in cq.profile.getArray("http-post.request-methods"): 
-                postMethods.add(reqMethod.getStringValue())
-
-            # Default method is POST
-            if postMethods.len == 0: 
-                postMethods = @["POST"]
-
-            for endpoint in cq.profile.getArray("http-post.endpoints"): 
-                for httpMethod in postMethods:
-                    router.addRoute(httpMethod, endpoint.getStringValue(), routes.httpPost)
-            
-            let server = newServer(router.toHandler()) 
-            listener.server = server
-
-            # Start serving
-            var thread: Thread[Listener]
-            createThread(thread, serve, listener)
-            server.waitUntilReady()
-
-            cq.listeners[listener.listenerId] = listener
-            cq.threads[listener.listenerId] = thread
-
-            cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Restarted listener {listener.listenerId} on {listener.address}:{$listener.port}.")  
-            cq.success("Restarted listener", fgGreen, fmt" {listener.listenerId} ", resetStyle, fmt"on {listener.address}:{$listener.port}.")
-
-        except CatchableError as err: 
-            cq.error("Failed to restart listener: ", err.msg)
-        
-    cq.output()
-
 
 # Remove listener from database, preventing automatic startup on server restart
 proc listenerStop*(cq: Conquest, name: string) = 
@@ -158,7 +88,7 @@ proc listenerStop*(cq: Conquest, name: string) =
     cq.listeners.del(name)
     cq.success("Stopped listener ", fgGreen, name.toUpperAscii, resetStyle, ".")
     
-    # TODO: Make listener stoppable 
+    # TODO: Shutdown listener without server restart. Since the listener is removed from the DB, agents connecting to it after it has been shutdown are not accepted
     # try: 
     #     cq.listeners[name].listener .server.close()
     #     joinThread(cq.listeners[name].thread)    

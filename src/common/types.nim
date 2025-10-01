@@ -1,4 +1,3 @@
-import prompt
 import tables
 import times
 import parsetoml, json
@@ -276,7 +275,6 @@ type
         ws*: WebSocket
 
     Conquest* = ref object
-        prompt*: Prompt
         dbPath*: string
         listeners*: Table[string, Listener]
         threads*: Table[string, Thread[Listener]]

@@ -2,9 +2,17 @@
 
 name = "cq-default-profile"
 
+
 # Important file paths and locations
 private-key-file = "data/keys/conquest-server_x25519_private.key"
 database-file = "data/conquest.db"
+
+# Team server settings (WebSocket server port, users, ...)
+[team-server]
+port = 37573
+
+[server.users]
+
 
 # General agent settings 
 [agent]

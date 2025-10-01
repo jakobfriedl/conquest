@@ -259,7 +259,6 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
     #[
         Filter & Options
     ]# 
-
     var availableSize: ImVec2
     igGetContentRegionAvail(addr availableSize)
     var labelSize: ImVec2
@@ -293,17 +292,17 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
 
         let childWindowFlags = ImGuiChildFlags_NavFlattened.int32 or ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AlwaysUseWindowPadding.int32 or ImGuiChildFlags_FrameStyle.int32
         if igBeginChild_Str("##Console", vec2(-1.0f, -footerHeight), childWindowFlags, ImGuiWindowFlags_HorizontalScrollbar.int32):            
+                        
             # Display console items
-            
             for item in component.console.items:
 
                 # Apply filter
                 if component.filter.ImGuiTextFilter_IsActive():
                     if not component.filter.ImGuiTextFilter_PassFilter(item.getText(), nil):
                         continue
+                
+                item.print()    
 
-                item.print()
-            
             component.textSelect.textselect_update()
 
             # Auto-scroll to bottom

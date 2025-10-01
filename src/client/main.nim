@@ -7,7 +7,7 @@ import ./websocket
 
 import sugar 
 
-proc main() = 
+proc main(ip: string = "localhost", port: int = 37573) = 
     var app = createApp(1024, 800, imnodes = true, title = "Conquest", docking = true)
     defer: app.destroyApp()
 
@@ -40,7 +40,7 @@ proc main() =
     let io = igGetIO()
 
     # Initiate WebSocket connection
-    let ws = newWebSocket("ws://localhost:12345")
+    let ws = newWebSocket(fmt"ws://{ip}:{$port}")
     defer: ws.close() 
 
     # main loop
@@ -152,4 +152,4 @@ proc main() =
             app.handle.setWindowShouldClose(true)
 
 when isMainModule:
-    main()
+    import cligen; dispatch main

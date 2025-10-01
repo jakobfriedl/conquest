@@ -1,4 +1,4 @@
-import times, tables, strformat, strutils
+import times, tables, strformat, strutils, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 
 import ./console
@@ -21,6 +21,9 @@ proc SessionsTable*(title: string, consoles: ptr Table[string, ConsoleComponent]
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.consoles = consoles
 
+proc cmp(x, y: UIAgent): int =
+    return cmp(x.firstCheckin, y.firstCheckin)
+
 proc interact(component: SessionsTableComponent) = 
     # Open a new console for each selected agent session
     var it: pointer = nil
@@ -41,7 +44,6 @@ proc interact(component: SessionsTableComponent) =
 
 proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
     igBegin(component.title, showComponent, 0)
-    defer: igEnd() 
 
     let tableFlags = (
         ImGuiTableFlags_Resizable.int32 or 
@@ -57,10 +59,11 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         ImGui_TableFlags_SizingStretchSame.int32
     )
 
-    let cols: int32 = 9
+    let cols: int32 = 11
     if igBeginTable("Sessions", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
         igTableSetupColumn("AgentID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
+        igTableSetupColumn("ListenerID", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
         igTableSetupColumn("Address", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Username", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Hostname", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
@@ -68,6 +71,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         igTableSetupColumn("OS", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Process", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("PID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("First seen", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Last seen", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
 
         igTableSetupScrollFreeze(0, 1)
@@ -76,6 +80,8 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.agents.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
+        # Sort sessions table based on first checkin
+        component.agents.sort(cmp)
         for row, agent in component.agents: 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
@@ -89,22 +95,35 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
                 # Interact with session on double-click
                 if igIsMouseDoubleClicked_Nil(ImGui_MouseButton_Left.int32):
                     component.interact()
-            
+
             if igTableSetColumnIndex(1): 
-                igText(agent.ip)
+                igText(agent.listenerId)
             if igTableSetColumnIndex(2): 
-                igText(agent.username)
+                igText(agent.ip)
             if igTableSetColumnIndex(3): 
-                igText(agent.hostname)
+                igText(agent.username)
             if igTableSetColumnIndex(4): 
-                igText(if agent.domain.isEmptyOrWhitespace(): "-" else: agent.domain)
+                igText(agent.hostname)
             if igTableSetColumnIndex(5): 
-                igText(agent.os)
+                igText(if agent.domain.isEmptyOrWhitespace(): "-" else: agent.domain)
             if igTableSetColumnIndex(6): 
-                igText(agent.process)
+                igText(agent.os)
             if igTableSetColumnIndex(7): 
-                igText($agent.pid)
+                igText(agent.process)
             if igTableSetColumnIndex(8): 
+                igText($agent.pid)
+            if igTableSetColumnIndex(9): 
+                let duration = now() - agent.firstCheckin.fromUnix().utc()
+                let totalSeconds = duration.inSeconds
+                
+                let hours = totalSeconds div 3600
+                let minutes = (totalSeconds mod 3600) div 60
+                let seconds = totalSeconds mod 60
+                
+                let timeText = dateTime(2000, mJan, 1, hours.int, minutes.int, seconds.int).format("HH:mm:ss")
+                igText(fmt"{timeText} ago")
+
+            if igTableSetColumnIndex(10): 
                 let duration = now() - component.agentActivity[agent.agentId].fromUnix().utc()
                 let totalSeconds = duration.inSeconds
                 
@@ -148,3 +167,5 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
             igSetScrollHereY(1.0f)
 
         igEndTable()
+
+    igEnd()
