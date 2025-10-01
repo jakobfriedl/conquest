@@ -279,7 +279,6 @@ type
         listeners*: Table[string, Listener]
         threads*: Table[string, Thread[Listener]]
         agents*: Table[string, Agent]
-        interactAgent*: Agent
         keyPair*: KeyPair
         profile*: Profile
         client*: UIClient

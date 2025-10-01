@@ -2,8 +2,6 @@ import strformat, strutils, terminal
 import mummy, mummy/routers
 import parsetoml
 
-import ../globals
-import ../utils
 import ../api/routes
 import ../db/database
 import ../core/logger

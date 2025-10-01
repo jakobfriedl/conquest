@@ -11,14 +11,15 @@ proc makeAgentLogDirectory*(cq: Conquest, agentId: string): bool =
     except OSError:
         return false 
 
-proc log*(cq: Conquest, logEntry: string) = 
-    # TODO: Fix issue where log files are written to the wrong agent when the interact agent is changed in the middle of command execution
-    # Though that problem would not occur when a proper GUI is used in the future
-    let agentLogPath = fmt"{CONQUEST_ROOT}/data/logs/{cq.interactAgent.agentId}/session.log"
-
+proc log*(cq: Conquest, agentId: string = "", logEntry: string) = 
     # Write log entry to file 
-    let file = open(agentLogPath, fmAppend)
-    file.writeLine(fmt"{logEntry}")
+    var logFile: string 
+    if agentId.isEmptyOrWhitespace():
+        logFile = fmt"{CONQUEST_ROOT}/data/logs/events.log"
+    else: 
+        logFile = fmt"{CONQUEST_ROOT}/data/logs/{agentId}/session.log"
+    let file = open(logFile, fmAppend)
+    file.writeLine(logEntry)
     file.flushFile() 
 
 proc extractStrings*(args: string): string =
@@ -38,8 +39,7 @@ proc getTimestamp*(): string =
 # Function templates and overwrites
 template writeLine*(cq: Conquest, args: varargs[untyped] = "") = 
     stdout.styledWriteLine(args)
-    if cq.interactAgent != nil: 
-        cq.log(extractStrings($(args)))
+    # cq.log(extractStrings($(args)))
 
 # Wrapper functions for logging/console output
 template info*(cq: Conquest, args: varargs[untyped] = "") = 
@@ -53,12 +53,6 @@ template success*(cq: Conquest, args: varargs[untyped] = "") =
 
 template warning*(cq: Conquest, args: varargs[untyped] = "") = 
     cq.writeLine(fgBlack, styleBright, fmt"[{getTimestamp()}]", fgYellow, styleDim, $LOG_WARNING, resetStyle, args)
-
-template input*(cq: Conquest, args: varargs[untyped] = "") = 
-    if cq.interactAgent != nil: 
-        cq.writeLine(fgBlue, styleBright, fmt"[{getTimestamp()}] ", fgYellow, fmt"[{cq.interactAgent.agentId}] ", resetStyle, args)
-    else: 
-        cq.writeLine(fgBlue, styleBright, fmt"[{getTimestamp()}] ", resetStyle, args)
 
 template output*(cq: Conquest, args: varargs[untyped] = "") = 
     cq.writeLine(args)

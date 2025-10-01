@@ -1,12 +1,12 @@
-import terminal, parsetoml, json, math
+import prompt, terminal, argparse, parsetoml, times, json, math
 import strutils, strformat, system, tables
 
-import ./core/[listener, builder]
-import ./globals
-import ./db/database
-import ./core/logger
-import ../common/[types, crypto, profile, event]
-import ./websocket
+import ./[agent, listener, builder]
+import ../globals
+import ../db/database
+import ../core/logger
+import ../../common/[types, crypto, utils, profile, event]
+import ../websocket
 import mummy, mummy/routers
 
 proc header() = 
@@ -22,6 +22,7 @@ proc init*(T: type Conquest, profile: Profile): Conquest =
     cq.listeners = initTable[string, Listener]()
     cq.threads = initTable[string, Thread[Listener]]()
     cq.agents = initTable[string, Agent]() 
+    cq.interactAgent = nil 
     cq.profile = profile
     cq.keyPair = loadKeyPair(CONQUEST_ROOT & "/" & profile.getString("private-key-file"))
     cq.dbPath = CONQUEST_ROOT & "/" & profile.getString("database-file")
@@ -129,7 +130,3 @@ proc startServer*(profilePath: string) =
     # Increased websocket message length in order to support dotnet assembly execution
     let server = newServer(router, websocketHandler, maxMessageLen = 1024 * 1024 * 1024)
     server.serve(Port(cq.profile.getInt("team-server.port")), "0.0.0.0")
-
-# Conquest framework entry point
-when isMainModule:
-    import cligen; dispatch startServer
