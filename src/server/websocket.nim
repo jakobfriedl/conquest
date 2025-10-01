@@ -1,6 +1,5 @@
 import times, json, base64, parsetoml
-import ../common/[types, event]
-
+import ../common/[types, utils, event]
 export sendHeartbeat, recvEvent
 
 proc `%`*(agent: Agent): JsonNode =
@@ -29,7 +28,18 @@ proc `%`*(listener: Listener): JsonNode =
 #[
     Server -> Client
 ]#
-proc sendProfile*(client: UIClient, profile: Profile) = 
+proc sendPublicKey*(client: WsConnection, publicKey: Key) = 
+    let event = Event(
+        eventType: CLIENT_KEY_EXCHANGE,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "publicKey": encode(Bytes.toString(publicKey))
+        }
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)
+
+proc sendProfile*(client: WsConnection, profile: Profile) = 
     let event = Event(
         eventType: CLIENT_PROFILE,
         timestamp: now().toTime().toUnix(),
@@ -38,9 +48,9 @@ proc sendProfile*(client: UIClient, profile: Profile) =
         }
     )
     if client != nil: 
-        client.ws.sendEvent(event)
+        client.ws.sendEvent(event, client.sessionKey)
 
-proc sendEventlogItem*(client: UIClient, logType: LogType, message: string) = 
+proc sendEventlogItem*(client: WsConnection, logType: LogType, message: string) = 
     let event = Event(
         eventType: CLIENT_EVENTLOG_ITEM,
         timestamp: now().toTime().toUnix(),
@@ -50,27 +60,27 @@ proc sendEventlogItem*(client: UIClient, logType: LogType, message: string) =
         }
     )
     if client != nil: 
-        client.ws.sendEvent(event)
+        client.ws.sendEvent(event, client.sessionKey)
 
-proc sendAgent*(client: UIClient, agent: Agent) = 
+proc sendAgent*(client: WsConnection, agent: Agent) = 
     let event = Event(
         eventType: CLIENT_AGENT_ADD, 
         timestamp: now().toTime().toUnix(),
         data: %agent
     )
     if client != nil: 
-        client.ws.sendEvent(event)
+        client.ws.sendEvent(event, client.sessionKey)
 
-proc sendListener*(client: UIClient, listener: Listener) =
+proc sendListener*(client: WsConnection, listener: Listener) =
     let event = Event(
         eventType: CLIENT_LISTENER_ADD,
         timestamp: now().toTime().toUnix(),
         data: %listener
     )
     if client != nil: 
-        client.ws.sendEvent(event)
+        client.ws.sendEvent(event, client.sessionKey)
 
-proc sendAgentCheckin*(client: UIClient, agentId: string) = 
+proc sendAgentCheckin*(client: WsConnection, agentId: string) = 
     let event = Event(
         eventType: CLIENT_AGENT_CHECKIN,
         timestamp: now().toTime().toUnix(),
@@ -79,9 +89,9 @@ proc sendAgentCheckin*(client: UIClient, agentId: string) =
         }
     )
     if client != nil: 
-        client.ws.sendEvent(event)
+        client.ws.sendEvent(event, client.sessionKey)
 
-proc sendAgentPayload*(client: UIClient, bytes: seq[byte]) =
+proc sendAgentPayload*(client: WsConnection, bytes: seq[byte]) =
     let event = Event(
         eventType: CLIENT_AGENT_PAYLOAD, 
         timestamp: now().toTime().toUnix(),
@@ -90,9 +100,9 @@ proc sendAgentPayload*(client: UIClient, bytes: seq[byte]) =
         }
     )
     if client != nil: 
-        client.ws.sendEvent(event)
+        client.ws.sendEvent(event, client.sessionKey)
 
-proc sendConsoleItem*(client: UIClient, agentId: string, logType: LogType, message: string) = 
+proc sendConsoleItem*(client: WsConnection, agentId: string, logType: LogType, message: string) = 
     let event = Event(
         eventType: CLIENT_CONSOLE_ITEM,
         timestamp: now().toTime().toUnix(),
@@ -103,4 +113,4 @@ proc sendConsoleItem*(client: UIClient, agentId: string, logType: LogType, messa
         }
     )
     if client != nil: 
-        client.ws.sendEvent(event)
+        client.ws.sendEvent(event, client.sessionKey)

@@ -170,7 +170,7 @@ proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
         # Command was not found
         component.addItem(LOG_ERROR, fmt"The command '{parsed[1]}' does not exist.")
 
-proc handleAgentCommand*(component: ConsoleComponent, ws: WebSocket, input: string) = 
+proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, input: string) = 
 
     # Convert user input into sequence of string arguments
     let parsedArgs = parseInput(input)
@@ -186,7 +186,7 @@ proc handleAgentCommand*(component: ConsoleComponent, ws: WebSocket, input: stri
             command = getCommandByName(parsedArgs[0])
             task = createTask(component.agent.agentId, component.agent.listenerId, command, parsedArgs[1..^1])
 
-        ws.sendAgentTask(component.agent.agentId, task)
+        connection.sendAgentTask(component.agent.agentId, task)
         component.addItem(LOG_INFO, fmt"Tasked agent to {command.description.toLowerAscii()} ({Uuid.toString(task.taskId)})")
 
     except CatchableError: 
@@ -219,7 +219,7 @@ proc print(item: ConsoleItem) =
     igSameLine(0.0f, 0.0f)
     igTextUnformatted(item.text.cstring, nil)
 
-proc draw*(component: ConsoleComponent, ws: WebSocket) =
+proc draw*(component: ConsoleComponent, connection: WsConnection) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}".cstring, addr component.showConsole, 0)
     defer: igEnd()
     
@@ -340,7 +340,7 @@ proc draw*(component: ConsoleComponent, ws: WebSocket) =
             component.addItem(LOG_COMMAND, command)
 
             # Send command to team server
-            component.handleAgentCommand(ws, command)
+            component.handleAgentCommand(connection, command)
 
             # Add command to console history
             component.history.add(command)

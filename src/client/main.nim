@@ -2,7 +2,7 @@ import whisky
 import tables, strutils, strformat, json, parsetoml, base64, os # native_dialogs
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console]
-import ../common/[types, utils]
+import ../common/[types, utils, crypto]
 import ./websocket
 
 import sugar 
@@ -39,9 +39,15 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
     let io = igGetIO()
 
+    # Create key pair 
+    let clientKeyPair = generateKeyPair() 
+        
     # Initiate WebSocket connection
-    let ws = newWebSocket(fmt"ws://{ip}:{$port}")
-    defer: ws.close() 
+    var connection = WsConnection(
+        ws: newWebSocket(fmt"ws://{ip}:{$port}"),
+        sessionKey: default(Key)
+    )
+    defer: connection.ws.close() 
 
     # main loop
     while not app.handle.windowShouldClose:
@@ -59,13 +65,17 @@ proc main(ip: string = "localhost", port: int = 37573) =
             WebSocket communication with the team server
         ]# 
         # Continuously send heartbeat messages
-        ws.sendHeartbeat()
+        connection.ws.sendHeartbeat()
 
         # Receive and parse websocket response message 
-        let event = recvEvent(ws.receiveMessage().get())
+        let event = recvEvent(connection.ws.receiveMessage().get(), connection.sessionKey)
         case event.eventType:
+        of CLIENT_KEY_EXCHANGE: 
+            connection.sessionKey = deriveSessionKey(clientKeyPair, decode(event.data["publicKey"].getStr()).toKey())            
+            connection.sendPublicKey(clientKeyPair.publicKey)
+
         of CLIENT_PROFILE:
-            profile = parsetoml.parseString(event.data["profile"].getStr())
+           profile = parsetoml.parseString(event.data["profile"].getStr())
         
         of CLIENT_LISTENER_ADD: 
             let listener = event.data.to(UIListener)
@@ -90,7 +100,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                 igSetNextWindowDockID(listenersWindow.DockNode.ID, ImGuiCond_FirstUseEver.int32)
             else:
                 igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
-            consoles[agent.agentId].draw(ws)
+            consoles[agent.agentId].draw(connection)
             consoles[agent.agentId].showConsole = false
 
         of CLIENT_AGENT_CHECKIN: 
@@ -127,7 +137,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
         # Draw/update UI components/views
         if showSessionsTable: sessionsTable.draw(addr showSessionsTable)   
-        if showListeners: listenersTable.draw(addr showListeners, ws)
+        if showListeners: listenersTable.draw(addr showListeners, connection)
         if showEventlog: eventlog.draw(addr showEventlog)
 
         # Show console windows
@@ -136,7 +146,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
             if console.showConsole:
                 # Ensure that new console windows are docked to the bottom panel by default
                 igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
-                console.draw(ws)    
+                console.draw(connection)    
                 newConsoleTable[agentId] = console
             
         # Update the consoles table with only those sessions that have not been closed yet

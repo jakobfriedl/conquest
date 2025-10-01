@@ -1,8 +1,10 @@
 import tables
 import times
 import parsetoml, json
-import mummy
 import system
+import mummy
+when defined(client): 
+    import whisky
 
 # Custom Binary Task structure
 const   
@@ -242,10 +244,11 @@ type
 type 
     EventType* = enum
         CLIENT_HEARTBEAT = 0'u8             # Basic checkin 
-       
+        CLIENT_KEY_EXCHANGE = 200'u8
+
         # Sent by client 
         CLIENT_AGENT_BUILD = 1'u8           # Generate an agent binary for a specific listener
-        CLIENT_AGENT_TASK = 2'u8         # Instruct TS to send queue a command for a specific agent
+        CLIENT_AGENT_TASK = 2'u8            # Instruct TS to send queue a command for a specific agent
         CLIENT_LISTENER_START = 3'u8        # Start a listener on the TS
         CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
 
@@ -255,8 +258,8 @@ type
         CLIENT_AGENT_ADD = 102'u8           # Add agent to sessions table
         CLIENT_AGENT_CHECKIN = 103'u8       # Update agent checkin
         CLIENT_AGENT_PAYLOAD = 104'u8       # Return agent payload binary 
-        CLIENT_CONSOLE_ITEM = 105'u8         # Add entry to a agent's console 
-        CLIENT_EVENTLOG_ITEM = 106'u8           # Add entry to the eventlog        
+        CLIENT_CONSOLE_ITEM = 105'u8        # Add entry to a agent's console 
+        CLIENT_EVENTLOG_ITEM = 106'u8       # Add entry to the eventlog        
 
     Event* = object 
         eventType*: EventType               
@@ -271,8 +274,12 @@ type
 
     Profile* = TomlValueRef
 
-    UIClient* = ref object
-        ws*: WebSocket
+    WsConnection* = ref object
+        when defined(server):
+            ws*: mummy.WebSocket
+        when defined(client):
+            ws*: whisky.WebSocket
+        sessionKey*: Key
 
     Conquest* = ref object
         dbPath*: string
@@ -281,7 +288,7 @@ type
         agents*: Table[string, Agent]
         keyPair*: KeyPair
         profile*: Profile
-        client*: UIClient
+        client*: WsConnection
 
     AgentCtx* = ref object
         agentId*: string

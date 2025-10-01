@@ -93,7 +93,6 @@ proc getUint64*(unpacker: Unpacker): uint64 =
     unpacker.position += 8
 
 proc getBytes*(unpacker: Unpacker, length: int): seq[byte] = 
-    
     if length <= 0:
         return @[]
 

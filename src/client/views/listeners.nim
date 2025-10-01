@@ -22,7 +22,7 @@ proc ListenersTable*(title: string): ListenersTableComponent =
     result.startListenerModal = ListenerModal()
     result.generatePayloadModal = AgentModal()
 
-proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebSocket) = 
+proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connection: WsConnection) = 
     igBegin(component.title, showComponent, 0)
     defer: igEnd() 
 
@@ -41,11 +41,11 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
 
     let listener = component.startListenerModal.draw()
     if listener != nil: 
-        ws.sendStartListener(listener)
+        connection.sendStartListener(listener)
 
     let buildInformation = component.generatePayloadModal.draw(component.listeners)
     if buildInformation != nil:
-        ws.sendAgentBuild(buildInformation)
+        connection.sendAgentBuild(buildInformation)
 
     #[
         Listener table
@@ -106,7 +106,7 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, ws: WebS
                     if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                         newListeners.add(listener)
                     else: 
-                        ws.sendStopListener(listener.listenerId)
+                        connection.sendStopListener(listener.listenerId)
 
                 component.listeners = newListeners
                 ImGuiSelectionBasicStorage_Clear(component.selection)

@@ -5,7 +5,7 @@ import parsetoml
 import ../api/routes
 import ../db/database
 import ../core/logger
-import ../../common/[types, utils, profile]
+import ../../common/[types, profile]
 import ../websocket
 
 proc serve(listener: Listener) {.thread.} = 

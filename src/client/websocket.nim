@@ -1,20 +1,30 @@
 import whisky 
-import times, tables, json
+import times, tables, json, base64
 import ../common/[types, utils, serialize, event]
 export sendHeartbeat, recvEvent
 
 #[
     Client -> Server 
 ]#
-proc sendStartListener*(ws: WebSocket, listener: UIListener) = 
+proc sendPublicKey*(connection: WsConnection, publicKey: Key) = 
+    let event = Event(
+        eventType: CLIENT_KEY_EXCHANGE,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "publicKey": encode(Bytes.toString(publicKey))
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)
+
+proc sendStartListener*(connection: WsConnection, listener: UIListener) = 
     let event = Event(
         eventType: CLIENT_LISTENER_START, 
         timestamp: now().toTime().toUnix(),
         data: %listener
     )
-    ws.sendEvent(event)
+    connection.ws.sendEvent(event, connection.sessionKey)
 
-proc sendStopListener*(ws: WebSocket, listenerId: string) = 
+proc sendStopListener*(connection: WsConnection, listenerId: string) = 
     let event = Event(
         eventType: CLIENT_LISTENER_STOP,
         timestamp: now().toTime().toUnix(),
@@ -22,9 +32,9 @@ proc sendStopListener*(ws: WebSocket, listenerId: string) =
             "listenerId": listenerId
         }
     )
-    ws.sendEvent(event)
+    connection.ws.sendEvent(event, connection.sessionKey)
 
-proc sendAgentBuild*(ws: WebSocket, buildInformation: AgentBuildInformation) = 
+proc sendAgentBuild*(connection: WsConnection, buildInformation: AgentBuildInformation) = 
     let event = Event(
         eventType: CLIENT_AGENT_BUILD,
         timestamp: now().toTime().toUnix(), 
@@ -36,9 +46,9 @@ proc sendAgentBuild*(ws: WebSocket, buildInformation: AgentBuildInformation) =
             "modules": buildInformation.modules
         }
     )
-    ws.sendEvent(event)
+    connection.ws.sendEvent(event, connection.sessionKey)
 
-proc sendAgentTask*(ws: WebSocket, agentId: string, task: Task) = 
+proc sendAgentTask*(connection: WsConnection, agentId: string, task: Task) = 
     let event = Event(
         eventType: CLIENT_AGENT_TASK,
         timestamp: now().toTime().toUnix(),
@@ -47,4 +57,4 @@ proc sendAgentTask*(ws: WebSocket, agentId: string, task: Task) =
             "task": task    
         }
     )
-    ws.sendEvent(event)
+    connection.ws.sendEvent(event, connection.sessionKey)

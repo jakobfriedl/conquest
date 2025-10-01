@@ -1,11 +1,11 @@
-import terminal, parsetoml, json, math
+import terminal, parsetoml, json, math, base64
 import strutils, strformat, system, tables
 
 import ./core/[listener, builder]
 import ./globals
 import ./db/database
 import ./core/logger
-import ../common/[types, crypto, profile, event]
+import ../common/[types, crypto, utils, profile, event]
 import ./websocket
 import mummy, mummy/routers
 
@@ -25,7 +25,7 @@ proc init*(T: type Conquest, profile: Profile): Conquest =
     cq.profile = profile
     cq.keyPair = loadKeyPair(CONQUEST_ROOT & "/" & profile.getString("private-key-file"))
     cq.dbPath = CONQUEST_ROOT & "/" & profile.getString("database-file")
-    cq.client = nil
+    cq.client = nil 
     return cq
 
 #[
@@ -34,7 +34,7 @@ proc init*(T: type Conquest, profile: Profile): Conquest =
 proc upgradeHandler(request: Request) = 
     {.cast(gcsafe).}:
         let ws = request.upgradeToWebSocket()
-        cq.client = UIClient(
+        cq.client = WsConnection(
             ws: ws
         )
 
@@ -43,21 +43,31 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
         case event:
         of OpenEvent:
             # New client connected to team server
-            # Send profile, sessions and listeners to the UI client
-            cq.client.sendProfile(cq.profile)
-            for id, listener in cq.listeners: 
-                cq.client.sendListener(listener)
-            for id, agent in cq.agents: 
-                cq.client.sendAgent(agent)
-            cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, "CQ-V1")
+            # Send the public key for the key exchange, all other information with be transmitted when the key exchange is completed
+            cq.client.sendPublicKey(cq.keyPair.publicKey)
     
         of MessageEvent:
             # Continuously send heartbeat messages
             ws.sendHeartbeat() 
 
-            let event = message.recvEvent()
+            let event = message.recvEvent(cq.client.sessionKey)
 
             case event.eventType: 
+            of CLIENT_KEY_EXCHANGE: 
+                let publicKey = decode(event.data["publicKey"].getStr()).toKey()
+                cq.client.sessionKey = deriveSessionKey(cq.keyPair, publicKey)
+            
+                # Send relevant information to the client
+                # - C2 profile 
+                # - agent sessions
+                # - listeners
+                cq.client.sendProfile(cq.profile)
+                for id, listener in cq.listeners: 
+                    cq.client.sendListener(listener)
+                for id, agent in cq.agents: 
+                    cq.client.sendAgent(agent)
+                cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, "CQ-V1")
+
             of CLIENT_AGENT_TASK:
                 let agentId = event.data["agentId"].getStr()
                 let task = event.data["task"].to(Task) 
