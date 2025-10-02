@@ -116,3 +116,15 @@ proc sendConsoleItem*(client: WsConnection, agentId: string, logType: LogType, m
     )
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
+
+proc sendBuildlogItem*(client: WsConnection, logType: LogType, message: string) = 
+    let event = Event(
+        eventType: CLIENT_BUILDLOG_ITEM,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "logType": cast[uint8](logType),
+            "message": message
+        }
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)

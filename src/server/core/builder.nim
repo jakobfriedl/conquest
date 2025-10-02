@@ -4,6 +4,7 @@ import ../globals
 import ../core/logger
 import ../db/database 
 import ../../common/[types, utils, serialize, crypto]
+import ../websocket
 
 const PLACEHOLDER = "PLACEHOLDER"
 
@@ -49,6 +50,8 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int, sleepT
     wipeKey(aesKey)
 
     cq.info("Profile configuration serialized.")
+    cq.client.sendBuildlogItem(LOG_INFO_SHORT, "Profile configuration serialized.")
+
     return encMaterial & encData 
 
 proc replaceAfterPrefix(content, prefix, value: string): string = 
@@ -79,9 +82,11 @@ proc compile(cq: Conquest, placeholderLength: int, modules: uint32): string =
     writeFile(configFile, config)
 
     cq.info(fmt"Placeholder created ({placeholder.len()} bytes).")
+    cq.client.sendBuildlogItem(LOG_INFO_SHORT, fmt"Placeholder created ({placeholder.len()} bytes).")
     
     # Build agent by executing the ./build.sh script on the system.
     cq.info("Compiling agent.")
+    cq.client.sendBuildlogItem(LOG_INFO_SHORT, "Compiling agent...")
     
     try:
         # Using the startProcess function from the 'osproc' module, it is possible to retrieve the output as it is received, line-by-line instead of all at once
@@ -97,9 +102,13 @@ proc compile(cq: Conquest, placeholderLength: int, modules: uint32): string =
         # Check if the build succeeded or not
         if exitCode == 0:
             cq.info("Agent payload generated successfully.")
+            cq.client.sendBuildlogItem(LOG_INFO_SHORT, "Agent payload generated successfully.")
+
             return exeFile
         else:
             cq.error("Build script exited with code ", $exitCode)
+            cq.client.sendBuildlogItem(LOG_ERROR_SHORT, "Build script exited with code " & $exitCode)
+
             return ""
 
     except CatchableError as err:
@@ -109,6 +118,7 @@ proc compile(cq: Conquest, placeholderLength: int, modules: uint32): string =
 proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): seq[byte] = 
     
     cq.info("Patching profile configuration into agent.")
+    cq.client.sendBuildlogItem(LOG_INFO_SHORT, "Patching profile configuration into agent.")
 
     try: 
         var exeBytes = readFile(unpatchedExePath) 
@@ -119,6 +129,7 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): se
             raise newException(CatchableError, "Placeholder not found.")
         
         cq.info(fmt"Placeholder found at offset 0x{placeholderPos:08X}.")
+        cq.client.sendBuildlogItem(LOG_INFO_SHORT, fmt"Placeholder found at offset 0x{placeholderPos:08X}.")
 
         # Patch placeholder bytes
         for i, c in Bytes.toString(configuration): 
@@ -127,10 +138,12 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): se
         writeFile(unpatchedExePath, exeBytes)
 
         cq.success(fmt"Agent payload patched successfully: {unpatchedExePath}.")
+        cq.client.sendBuildlogItem(LOG_SUCCESS_SHORT, fmt"Agent payload patched successfully: {unpatchedExePath}.")
         return string.toBytes(exeBytes)
     
     except CatchableError as err:
         cq.error("An error occurred: ", err.msg) 
+        cq.client.sendBuildlogItem(LOG_ERROR_SHORT, "An error occurred: " & err.msg)
         
     return @[]
 

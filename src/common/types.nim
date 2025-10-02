@@ -83,16 +83,16 @@ type
         CONFIG_PROFILE = 5'u8
 
     LogType* {.size: sizeof(uint8).} = enum 
-        LOG_INFO = " [INFO] "
-        LOG_ERROR = " [FAIL] "
-        LOG_SUCCESS = " [DONE] "
-        LOG_WARNING = " [WARN] "
-        LOG_COMMAND = " [>>>>] "
+        LOG_INFO = "[INFO] "
+        LOG_ERROR = "[FAIL] "
+        LOG_SUCCESS = "[DONE] "
+        LOG_WARNING = "[WARN] "
+        LOG_COMMAND = "[>>>>] "
         LOG_OUTPUT = ""
-        LOG_INFO_SHORT = " [*] "
-        LOG_ERROR_SHORT = " [-] "
-        LOG_SUCCESS_SHORT = " [+] "
-        LOG_WARNING_SHORT = " [!] "
+        LOG_INFO_SHORT = "[*] "
+        LOG_ERROR_SHORT = "[-] "
+        LOG_SUCCESS_SHORT = "[+] "
+        LOG_WARNING_SHORT = "[!] "
 
     SleepObfuscationTechnique* = enum 
         NONE = 0'u8
@@ -264,7 +264,8 @@ type
         CLIENT_AGENT_PAYLOAD = 104'u8       # Return agent payload binary 
         CLIENT_CONSOLE_ITEM = 105'u8        # Add entry to a agent's console 
         CLIENT_EVENTLOG_ITEM = 106'u8       # Add entry to the eventlog   
-        CLIENT_LOOT = 107'u8                # Download file or screenshot to the operator desktop
+        CLIENT_BUILDLOG_ITEM = 107'u8          # Add entry to the build log
+        CLIENT_LOOT = 108'u8                # Download file or screenshot to the operator desktop
 
     Event* = object 
         eventType*: EventType               

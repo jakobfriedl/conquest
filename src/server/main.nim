@@ -1,4 +1,4 @@
-import terminal, parsetoml, json, math, base64
+import terminal, parsetoml, json, math, base64, times
 import strutils, strformat, system, tables
 
 import ./core/[listener, builder]
@@ -100,12 +100,28 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
         of CloseEvent:
             # Set the client instance to nil again to prevent debug error messages
             cq.client = nil
+
+var lastCtrlCTime = fromUnix(0)
+var ctrlC = 0
+
+proc handleCtrlC() {.noconv.} =
+    let now = getTime()
+    if now - lastCtrlCTime > initDuration(seconds = 2):
+        ctrlC = 0
     
+    inc ctrlC
+    lastCtrlCTime = now
+    
+    if ctrlC == 1:
+        echo "\nPress Ctrl+C again to exit."
+    else:
+        echo "\nExiting."
+        quit(0)
+
 proc startServer*(profilePath: string) =
 
-    # Ensure that the conquest root directory was passed as a compile-time define 
-    when not defined(CONQUEST_ROOT): 
-        quit(0)
+    # Handle team server exit
+    setControlCHook(handleCtrlC)
 
     header()
     

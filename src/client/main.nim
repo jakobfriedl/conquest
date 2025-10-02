@@ -2,6 +2,7 @@ import whisky
 import tables, strutils, strformat, json, parsetoml, base64, os # native_dialogs
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console]
+import ./views/modals/generatePayload
 import ../common/[types, utils, crypto]
 import ./websocket
 
@@ -118,6 +119,10 @@ proc main(ip: string = "localhost", port: int = 37573) =
             except IOError:
                 discard 
 
+            # Close and reset the payload generation modal window when the payload was received
+            listenersTable.generatePayloadModal.resetModalValues()
+            igClosePopupToLevel(0, false)
+
         of CLIENT_CONSOLE_ITEM: 
             let agentId = event.data["agentId"].getStr() 
             consoles[agentId].addItem(
@@ -132,7 +137,14 @@ proc main(ip: string = "localhost", port: int = 37573) =
                 event.data["message"].getStr(), 
                 event.timestamp
             )
-        
+
+        of CLIENT_BUILDLOG_ITEM:
+            listenersTable.generatePayloadModal.addBuildlogItem(
+                cast[LogType](event.data["logType"].getInt()), 
+                event.data["message"].getStr(), 
+                event.timestamp
+            )
+    
         else: discard 
 
         # Draw/update UI components/views

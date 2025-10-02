@@ -264,7 +264,7 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
     var labelSize: ImVec2
     igCalcTextSize(addr labelSize, ICON_FA_MAGNIFYING_GLASS, nil, false, 0.0f)
     
-    let searchBoxWidth: float32 = 200.0f
+    let searchBoxWidth: float32 = 400.0f
     igSameLine(0.0f, availableSize.x  - (labelSize.x + textSpacing) - searchBoxWidth)
 
     # Show tooltip when hovering the search icon

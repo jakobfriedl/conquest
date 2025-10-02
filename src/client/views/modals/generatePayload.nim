@@ -1,4 +1,4 @@
-import strutils, sequtils
+import strutils, sequtils, times
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
 import ../../../common/[types, profile, utils]
@@ -13,6 +13,8 @@ type
         spoofStack: bool 
         sleepMaskTechniques: seq[string]
         moduleSelection: DualListSelectionComponent[Module]
+        buildLog: ConsoleItems
+
 
 proc AgentModal*(): AgentModalComponent =
     result = new AgentModalComponent
@@ -36,12 +38,42 @@ proc AgentModal*(): AgentModalComponent =
 
     result.moduleSelection = DualListSelection(modules, moduleName, compareModules, moduleDesc)
 
-proc resetModalValues(component: AgentModalComponent) = 
+    result.buildlog = new ConsoleItems
+    result.buildLog.items = @[]
+
+proc resetModalValues*(component: AgentModalComponent) = 
     component.listener = 0
     component.sleepDelay = 5
     component.sleepMask = 0
     component.spoofStack = false 
     component.moduleSelection.reset()
+    component.buildLog.items = @[]
+
+proc addBuildlogItem*(component: AgentModalComponent, itemType: LogType, data: string, timestamp: int64 = now().toTime().toUnix()) = 
+    for line in data.split("\n"): 
+        component.buildLog.items.add(ConsoleItem(
+            timestamp: timestamp,
+            itemType: itemType,
+            text: line
+        ))
+
+proc print(component: AgentModalComponent, item: ConsoleItem) =         
+    case item.itemType:
+    of LOG_INFO, LOG_INFO_SHORT: 
+        igTextColored(CONSOLE_INFO, $item.itemType)
+    of LOG_ERROR, LOG_ERROR_SHORT: 
+        igTextColored(CONSOLE_ERROR, $item.itemType)
+    of LOG_SUCCESS, LOG_SUCCESS_SHORT: 
+        igTextColored(CONSOLE_SUCCESS, $item.itemType)
+    of LOG_WARNING, LOG_WARNING_SHORT: 
+        igTextColored(CONSOLE_WARNING, $item.itemType)
+    of LOG_COMMAND: 
+        igTextColored(CONSOLE_COMMAND, $item.itemType)
+    of LOG_OUTPUT: 
+        igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), $item.itemType)
+
+    igSameLine(0.0f, 0.0f)
+    igTextUnformatted(item.text.cstring, nil)
 
 proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBuildInformation =
 
@@ -109,6 +141,38 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igSeparator()
         igDummy(vec2(0.0f, 10.0f))
 
+        igText("Build log: ")
+        try: 
+            # Set styles of the eventlog window
+            igPushStyleColor_Vec4(ImGui_Col_FrameBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
+            igPushStyleColor_Vec4(ImGui_Col_ScrollbarBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
+            igPushStyleColor_Vec4(ImGui_Col_Border.int32, vec4(0.2f, 0.2f, 0.2f, 1.0f))
+            igPushStyleVar_Float(ImGui_StyleVar_FrameBorderSize .int32, 1.0f)
+
+            let buildLogHeight = 250.0f 
+            let childWindowFlags = ImGuiChildFlags_NavFlattened.int32 or ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AlwaysUseWindowPadding.int32 or ImGuiChildFlags_FrameStyle.int32
+            if igBeginChild_Str("##Log", vec2(-1.0f, buildLogHeight), childWindowFlags, ImGuiWindowFlags_HorizontalScrollbar.int32):            
+                # Display eventlog items
+                for item in component.buildLog.items:
+                    component.print(item)
+                    
+                # Auto-scroll to bottom
+                if igGetScrollY() >= igGetScrollMaxY():
+                    igSetScrollHereY(1.0f)
+                        
+        except IndexDefect:
+            # CTRL+A crashes when no items are in the eventlog
+            discard
+        
+        finally: 
+            igPopStyleColor(3)
+            igPopStyleVar(1)
+            igEndChild()
+
+        igDummy(vec2(0.0f, 10.0f))
+        igSeparator()
+        igDummy(vec2(0.0f, 10.0f))
+
         # Enable "Build" button if at least one module has been selected
         igBeginDisabled(component.moduleSelection.items[1].len() == 0)
 
@@ -126,9 +190,6 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
                 spoofStack: component.spoofStack,
                 modules: modules
             )
-            
-            component.resetModalValues()
-            igCloseCurrentPopup() 
         
         igEndDisabled()
         igSameLine(0.0f, textSpacing)
