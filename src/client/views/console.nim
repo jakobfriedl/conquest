@@ -186,7 +186,7 @@ proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, 
             command = getCommandByName(parsedArgs[0])
             task = createTask(component.agent.agentId, component.agent.listenerId, command, parsedArgs[1..^1])
 
-        connection.sendAgentTask(component.agent.agentId, task)
+        connection.sendAgentTask(component.agent.agentId, input, task)
         component.addItem(LOG_INFO, fmt"Tasked agent to {command.description.toLowerAscii()} ({Uuid.toString(task.taskId)})")
 
     except CatchableError: 

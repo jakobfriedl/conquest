@@ -11,11 +11,11 @@ proc makeAgentLogDirectory*(cq: Conquest, agentId: string): bool =
     except OSError:
         return false 
 
-proc log*(cq: Conquest, agentId: string = "", logEntry: string) = 
+proc log*(logEntry: string, agentId: string = "") = 
     # Write log entry to file 
     var logFile: string 
     if agentId.isEmptyOrWhitespace():
-        logFile = fmt"{CONQUEST_ROOT}/data/logs/events.log"
+        logFile = fmt"{CONQUEST_ROOT}/data/logs/teamserver.log"
     else: 
         logFile = fmt"{CONQUEST_ROOT}/data/logs/{agentId}/session.log"
     let file = open(logFile, fmAppend)
@@ -39,7 +39,6 @@ proc getTimestamp*(): string =
 # Function templates and overwrites
 template writeLine*(cq: Conquest, args: varargs[untyped] = "") = 
     stdout.styledWriteLine(args)
-    # cq.log(extractStrings($(args)))
 
 # Wrapper functions for logging/console output
 template info*(cq: Conquest, args: varargs[untyped] = "") = 

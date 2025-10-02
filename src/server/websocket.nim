@@ -1,5 +1,6 @@
-import times, json, base64, parsetoml
+import times, json, base64, parsetoml, strformat
 import ../common/[types, utils, event]
+import ./core/logger
 export sendHeartbeat, recvEvent
 
 proc `%`*(agent: Agent): JsonNode =
@@ -61,6 +62,11 @@ proc sendEventlogItem*(client: WsConnection, logType: LogType, message: string) 
             "message": message
         }
     )
+
+    # Log event
+    let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+    log(fmt"[{timestamp}]{$logType}{message}")
+
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
@@ -101,6 +107,7 @@ proc sendAgentPayload*(client: WsConnection, bytes: seq[byte]) =
             "payload": encode(bytes)
         }
     )
+    
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
@@ -114,6 +121,14 @@ proc sendConsoleItem*(client: WsConnection, agentId: string, logType: LogType, m
             "message": message
         }
     )
+
+    # Log agent console item 
+    let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+    if logType != LOG_OUTPUT: 
+        log(fmt"[{timestamp}]{$logType}{message}", agentId)
+    else: 
+        log(message, agentId)
+
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 

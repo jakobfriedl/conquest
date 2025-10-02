@@ -1,10 +1,9 @@
 import terminal, parsetoml, json, math, base64, times
 import strutils, strformat, system, tables
 
-import ./core/[listener, builder]
+import ./core/[listener, logger, builder]
 import ./globals
 import ./db/database
-import ./core/logger
 import ../common/[types, crypto, utils, profile, event]
 import ./websocket
 import mummy, mummy/routers
@@ -66,12 +65,16 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                     cq.client.sendListener(listener)
                 for id, agent in cq.agents: 
                     cq.client.sendAgent(agent)
-                cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, "CQ-V1")
+                cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, "Connected to Conquest team server.")
 
             of CLIENT_AGENT_TASK:
                 let agentId = event.data["agentId"].getStr()
+                let command = event.data["command"].getStr()
                 let task = event.data["task"].to(Task) 
                 cq.agents[agentId].tasks.add(task)
+
+                let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+                log(fmt"[{timestamp}]{$LOG_COMMAND}{command}", agentId)
 
             of CLIENT_LISTENER_START:
                 let listener = event.data.to(UIListener)
@@ -133,28 +136,29 @@ proc startServer*(profilePath: string) =
 
         cq.info("Using profile \"", profile.getString("name"), "\" (", profilePath ,").")
         
+        # Initialize database
+        cq.dbInit()
+        for agent in cq.dbGetAllAgents():
+            cq.agents[agent.agentId] = agent
+        for listener in cq.dbGetAllListeners():
+            cq.listeners[listener.listenerId] = listener
+
+        # Restart existing listeners
+        for listenerId, listener in cq.listeners: 
+            cq.listenerStart(listenerId, listener.address, listener.port, listener.protocol)
+
+        # Start websocket server
+        var router: Router
+        router.get("/*", upgradeHandler)
+        
+        # Increased websocket message length in order to support dotnet assembly execution (1GB)
+        let server = newServer(router, websocketHandler, maxBodyLen = 1024 * 1024 * 1024, maxMessageLen = 1024 * 1024 * 1024)
+        server.serve(Port(cq.profile.getInt("team-server.port")), "0.0.0.0")
+
     except CatchableError as err:
         echo err.msg
         quit(0)
     
-    # Initialize database
-    cq.dbInit()
-    for agent in cq.dbGetAllAgents():
-        cq.agents[agent.agentId] = agent
-    for listener in cq.dbGetAllListeners():
-        cq.listeners[listener.listenerId] = listener
-
-    # Restart existing listeners
-    for listenerId, listener in cq.listeners: 
-        cq.listenerStart(listenerId, listener.address, listener.port, listener.protocol)
-
-    # Start websocket server
-    var router: Router
-    router.get("/*", upgradeHandler)
-    
-    # Increased websocket message length in order to support dotnet assembly execution (1GB)
-    let server = newServer(router, websocketHandler, maxBodyLen = 1024 * 1024 * 1024, maxMessageLen = 1024 * 1024 * 1024)
-    server.serve(Port(cq.profile.getInt("team-server.port")), "0.0.0.0")
 
 # Conquest framework entry point
 when isMainModule:
