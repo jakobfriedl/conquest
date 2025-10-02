@@ -20,10 +20,12 @@ nimble install -d
 4. Build conquest binaries
 ```
 nimble server
+nimble client
 ```
 
-5. Start the Conquest server with a C2 Profile
-```
+5. Start the Conquest server with a C2 Profile and connect to it with the client
+```bash
 ./bin/server -p ./data/profile.toml
+./bin/client -i localhost -p 35753
 ```
 
