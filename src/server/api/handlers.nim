@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, sequtils, tables, times, system, std/[dirs, paths]
+import terminal, strformat, strutils, sequtils, tables, system, std/[dirs, paths]
 
 import ../globals
 import ../db/database
@@ -11,17 +11,17 @@ import ../../common/[types, utils, serialize]
   Agent API
   Functions relevant for dealing with the agent API, such as registering new agents, querying tasks and posting results
 ]#
-proc register*(registrationData: seq[byte]): bool = 
+proc register*(registrationData: seq[byte], remoteAddress: string): bool = 
 
     # The following line is required to be able to use the `cq` global variable for console output
     {.cast(gcsafe).}:
 
         try:
-            let agent: Agent = cq.deserializeNewAgent(registrationData)
+            let agent: Agent = cq.deserializeNewAgent(registrationData, remoteAddress)
 
             # Validate that listener exists        
             if not cq.dbListenerExists(agent.listenerId.toUpperAscii): 
-                raise newException(CatchableError, fmt"{agent.ip} attempted to register to non-existent listener: {agent.listenerId}." & "\n")
+                raise newException(CatchableError, fmt"{agent.ipInternal} attempted to register to non-existent listener: {agent.listenerId}." & "\n")
 
             # Store agent in database
             if not cq.dbStoreAgent(agent): 
@@ -67,7 +67,7 @@ proc getTasks*(heartbeat: seq[byte]): tuple[agentId: string, tasks: seq[seq[byte
                 raise newException(ValueError, fmt"Task-retrieval request made to non-existent agent: {agentId}." & "\n")
 
             # Update the last check-in date for the accessed agent
-            cq.agents[agentId].latestCheckin = cast[int64](timestamp).fromUnix().local()
+            cq.agents[agentId].latestCheckin = cast[int64](timestamp)
             cq.client.sendAgentCheckin(agentId)
 
             # Return tasks
@@ -133,6 +133,7 @@ proc handleResult*(resultData: seq[byte]) =
                 writeFile(downloadPath, fileBytes)
 
                 cq.success(fmt"File downloaded to {downloadPath} ({$fileBytes.len()} bytes).", "\n")
+                cq.client.sendConsoleItem(agentId, LOG_SUCCESS, fmt"File downloaded to {downloadPath} ({$fileBytes.len()} bytes).")
 
             of RESULT_NO_OUTPUT:
                 cq.output()

@@ -138,7 +138,7 @@ proc httpPost*(request: Request) =
                 headers.add((header, value.getStringValue()))
 
             if cast[PacketType](header.packetType) == MSG_REGISTER: 
-                if not register(string.toBytes(request.body)):
+                if not register(string.toBytes(request.body), request.remoteAddress):
                     request.respond(400, body = "")
                     return
 

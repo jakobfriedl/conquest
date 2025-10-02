@@ -74,7 +74,7 @@ proc deserializeTaskResult*(cq: Conquest, resultData: seq[byte]): TaskResult =
         data: data
     )
 
-proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent = 
+proc deserializeNewAgent*(cq: Conquest, data: seq[byte], remoteAddress: string): Agent = 
 
     var unpacker = Unpacker.init(Bytes.toString(data))
 
@@ -102,12 +102,13 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent =
         username = unpacker.getDataWithLengthPrefix()
         hostname = unpacker.getDataWithLengthPrefix()
         domain = unpacker.getDataWithLengthPrefix()
-        ip = unpacker.getDataWithLengthPrefix()
+        ipInternal = unpacker.getDataWithLengthPrefix()
         os = unpacker.getDataWithLengthPrefix()
         process = unpacker.getDataWithLengthPrefix()
         pid = unpacker.getUint32() 
         isElevated = unpacker.getUint8()
         sleep = unpacker.getUint32()
+        modules = unpacker.getUint32()
 
     return Agent(
         agentId: Uuid.toString(header.agentId),
@@ -115,15 +116,17 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte]): Agent =
         username: username, 
         hostname: hostname,
         domain: domain,
-        ip: ip,
+        ipInternal: ipInternal,
+        ipExternal: remoteAddress,
         os: os,
         process: process,
         pid: int(pid),
         elevated: isElevated != 0,
         sleep: int(sleep),
+        modules: modules,
         tasks: @[],  
-        firstCheckin: now(),
-        latestCheckin: now(),
+        firstCheckin: now().toTime().toUnix(),
+        latestCheckin: now().toTime().toUnix(),
         sessionKey: sessionKey
     )
 

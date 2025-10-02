@@ -1,5 +1,4 @@
 import tables
-import times
 import parsetoml, json
 import system
 import mummy
@@ -179,6 +178,7 @@ type
         pid*: uint32
         isElevated*: uint8
         sleep*: uint32
+        modules*: uint32
 
     AgentRegistrationData* = object
         header*: Header
@@ -193,15 +193,17 @@ type
         username*: string 
         hostname*: string
         domain*: string
-        ip*: string
+        ipInternal*: string
+        ipExternal*: string
         os*: string
         process*: string
         pid*: int
         elevated*: bool 
         sleep*: int 
         tasks*: seq[Task]
-        firstCheckin*: DateTime
-        latestCheckin*: DateTime
+        modules*: uint32
+        firstCheckin*: int64
+        latestCheckin*: int64
         sessionKey*: Key
 
     # Session entry for client UI
@@ -211,12 +213,14 @@ type
         username*: string 
         hostname*: string
         domain*: string
-        ip*: string
+        ipInternal*: string
+        ipExternal*: string
         os*: string
         process*: string
         pid*: int
         elevated*: bool 
         sleep*: int 
+        modules*: uint32
         firstCheckin*: int64
         latestCheckin*: int64
 
@@ -259,7 +263,8 @@ type
         CLIENT_AGENT_CHECKIN = 103'u8       # Update agent checkin
         CLIENT_AGENT_PAYLOAD = 104'u8       # Return agent payload binary 
         CLIENT_CONSOLE_ITEM = 105'u8        # Add entry to a agent's console 
-        CLIENT_EVENTLOG_ITEM = 106'u8       # Add entry to the eventlog        
+        CLIENT_EVENTLOG_ITEM = 106'u8       # Add entry to the eventlog   
+        CLIENT_LOOT = 107'u8                # Download file or screenshot to the operator desktop
 
     Event* = object 
         eventType*: EventType               

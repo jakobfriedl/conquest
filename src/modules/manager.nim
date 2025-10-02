@@ -1,7 +1,7 @@
 import tables, strformat
 import ../common/types
 
-const MODULES {.intdefine.} = 0
+const MODULES* {.intdefine.} = 0
 
 type
     ModuleManager* = object 
@@ -75,5 +75,10 @@ proc getCommandByName*(cmdName: string): Command =
 proc getAvailableCommands*(): Table[string, Command] = 
     return manager.commandsByName
 
-proc getModules*(): seq[Module] = 
-    return manager.modules
+proc getModules*(modules: uint32 = 0): seq[Module] = 
+    if modules == 0:
+        return manager.modules
+    else: 
+        for m in manager.modules: 
+            if (modules and cast[uint32](m.moduleType)) == cast[uint32](m.moduleType): 
+                result.add(m)

@@ -1,4 +1,4 @@
-import system, terminal, tiny_sqlite, times, sequtils
+import system, terminal, tiny_sqlite, sequtils
 
 import ../core/logger
 import ../../common/types
@@ -15,9 +15,9 @@ proc dbStoreAgent*(cq: Conquest, agent: Agent): bool =
         let sessionKeyBlob = agent.sessionKey.toSeq()
 
         conquestDb.exec("""
-        INSERT INTO agents (name, listener, process, pid, username, hostname, domain, ip, os, elevated, sleep, firstCheckin, latestCheckin, sessionKey)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-        """, agent.agentId, agent.listenerId, agent.process, agent.pid, agent.username, agent.hostname, agent.domain, agent.ip, agent.os, agent.elevated, agent.sleep, agent.firstCheckin.format("dd-MM-yyyy HH:mm:ss"), agent.latestCheckin.format("dd-MM-yyyy HH:mm:ss"), sessionKeyBlob)
+        INSERT INTO agents (name, listener, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, sleep, modules, firstCheckin, latestCheckin, sessionKey)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """, agent.agentId, agent.listenerId, agent.process, agent.pid, agent.username, agent.hostname, agent.domain, agent.ipInternal, agent.ipExternal, agent.os, agent.elevated, agent.sleep, agent.modules, agent.firstCheckin, agent.latestCheckin, sessionKeyBlob)
 
         conquestDb.close() 
     except: 
@@ -32,8 +32,8 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        for row in conquestDb.iterate("SELECT name, listener, sleep, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin, latestCheckin, sessionKey FROM agents;"):
-            let (agentId, listenerId, sleep, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin, latestCheckin, sessionKeyBlob) = row.unpack((string, string, int, string, int, string, string, string, string, string, bool, string, string, seq[byte]))
+        for row in conquestDb.iterate("SELECT name, listener, sleep, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKey FROM agents;"):
+            let (agentId, listenerId, sleep, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKeyBlob) = row.unpack((string, string, int, string, int, string, string, string, string, string, string, bool, uint32, int64, int64, seq[byte]))
 
             # Convert session key blob back to array
             var sessionKey: Key
@@ -51,12 +51,14 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
                 username: username,
                 hostname: hostname,
                 domain: domain,
-                ip: ip,
+                ipInternal: ipInternal, 
+                ipExternal: ipExternal,
                 os: os,
                 elevated: elevated,
-                firstCheckin: parse(firstCheckin, "dd-MM-yyyy HH:mm:ss"),
-                latestCheckin: parse(latestCheckin, "dd-MM-yyyy HH:mm:ss"),
+                firstCheckin: cast[int64](firstCheckin),
+                latestCheckin: cast[int64](firstCheckin),
                 process: process,
+                modules: cast[uint32](modules),
                 sessionKey: sessionKey,
                 tasks: @[]  # Initialize empty tasks
             )
@@ -75,14 +77,15 @@ proc dbGetAllAgentsByListener*(cq: Conquest, listenerName: string): seq[Agent] =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        for row in conquestDb.iterate("SELECT name, listener, sleep, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin, latestCheckin, sessionKey FROM agents WHERE listener = ?;", listenerName):
-            let (agentId, listenerId, sleep, process, pid, username, hostname, domain, ip, os, elevated, firstCheckin, latestCheckin, sessionKeyBlob) = row.unpack((string, string, int, string, int, string, string, string, string, string, bool, string, string, seq[byte]))
+        for row in conquestDb.iterate("SELECT name, listener, sleep, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKey FROM agents WHERE listener = ?;", listenerName):
+            let (agentId, listenerId, sleep, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKeyBlob) = row.unpack((string, string, int, string, int, string, string, string, string, string, string, bool, uint32, int64, int64, seq[byte]))
 
             # Convert session key blob back to array
             var sessionKey: Key
             if sessionKeyBlob.len == 32:
                 copyMem(sessionKey[0].addr, sessionKeyBlob[0].unsafeAddr, 32)
             else:
+                # Handle invalid session key - log error but continue
                 cq.warning("Invalid session key length for agent: ", agentId)
 
             let a = Agent(
@@ -93,17 +96,17 @@ proc dbGetAllAgentsByListener*(cq: Conquest, listenerName: string): seq[Agent] =
                 username: username,
                 hostname: hostname,
                 domain: domain,
-                ip: ip,
+                ipInternal: ipInternal, 
+                ipExternal: ipExternal,
                 os: os,
                 elevated: elevated,
-                firstCheckin: parse(firstCheckin, "dd-MM-yyyy HH:mm:ss"),
-                latestCheckin: parse(latestCheckin, "dd-MM-yyyy HH:mm:ss"),
+                firstCheckin: cast[int64](firstCheckin),
+                latestCheckin: cast[int64](firstCheckin),
                 process: process,
+                modules: cast[uint32](modules),
                 sessionKey: sessionKey,
-                tasks: @[]
+                tasks: @[]  # Initialize empty tasks
             )
-
-            agents.add(a)
 
         conquestDb.close()
     except: 
@@ -133,18 +136,6 @@ proc dbAgentExists*(cq: Conquest, agentName: string): bool =
         conquestDb.close()
 
         return res.isSome
-    except:
-        cq.error(getCurrentExceptionMsg())
-        return false
-
-proc dbUpdateCheckin*(cq: Conquest, agentName: string, timestamp: string): bool =
-    try:
-        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
-
-        conquestDb.exec("UPDATE agents SET latestCheckin = ? WHERE name = ?", timestamp, agentName)
-
-        conquestDb.close()
-        return true
     except:
         cq.error(getCurrentExceptionMsg())
         return false

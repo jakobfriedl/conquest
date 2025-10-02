@@ -129,7 +129,7 @@ proc addItem*(component: ConsoleComponent, itemType: LogType, data: string, time
     Handling console commands
 ]#
 proc displayHelp(component: ConsoleComponent) = 
-    for module in getModules(): 
+    for module in getModules(component.agent.modules): 
         for cmd in module.commands: 
             component.addItem(LOG_OUTPUT, fmt" * {cmd.name:<15}{cmd.description}")
 
@@ -252,7 +252,7 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
         Session information
     ]#
     let domain = if component.agent.domain.isEmptyOrWhitespace(): "" else: fmt".{component.agent.domain}"
-    let sessionInfo = fmt"{component.agent.username}@{component.agent.hostname}{domain} | {component.agent.ip} | {$component.agent.pid}/{component.agent.process}".cstring
+    let sessionInfo = fmt"{component.agent.username}@{component.agent.hostname}{domain} | {component.agent.ipInternal} | {$component.agent.pid}/{component.agent.process}".cstring
     igTextColored(GRAY, sessionInfo)
     igSameLine(0.0f, 0.0f)
 

@@ -39,7 +39,7 @@ proc listenerStart*(cq: Conquest, name: string, host: string, port: int, protoco
             for httpMethod in postMethods:
                 router.addRoute(httpMethod, endpoint.getStringValue(), routes.httpPost)
         
-        let server = newServer(router.toHandler()) 
+        let server = newServer(router.toHandler(), maxBodyLen = 1024 * 1024 * 1024) 
 
         # Store listener in database
         var listener = Listener(

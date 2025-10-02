@@ -32,7 +32,7 @@ proc AgentModal*(): AgentModalComponent =
         for cmd in module.commands: 
             result &= " - " & cmd.name & "\n"
     proc compareModules(x, y: Module): int = 
-        return cmp(x.name, y.name)
+        return cmp(x.moduleType, y.moduleType)
 
     result.moduleSelection = DualListSelection(modules, moduleName, compareModules, moduleDesc)
 

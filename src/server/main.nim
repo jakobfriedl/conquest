@@ -136,8 +136,8 @@ proc startServer*(profilePath: string) =
     var router: Router
     router.get("/*", upgradeHandler)
     
-    # Increased websocket message length in order to support dotnet assembly execution
-    let server = newServer(router, websocketHandler, maxMessageLen = 1024 * 1024 * 1024)
+    # Increased websocket message length in order to support dotnet assembly execution (1GB)
+    let server = newServer(router, websocketHandler, maxBodyLen = 1024 * 1024 * 1024, maxMessageLen = 1024 * 1024 * 1024)
     server.serve(Port(cq.profile.getInt("team-server.port")), "0.0.0.0")
 
 # Conquest framework entry point

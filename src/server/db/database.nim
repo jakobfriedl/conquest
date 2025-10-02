@@ -29,12 +29,14 @@ proc dbInit*(cq: Conquest) =
             username TEXT NOT NULL,
             hostname TEXT NOT NULL,
             domain TEXT NOT NULL,
-            ip TEXT NOT NULL,
+            ipInternal TEXT NOT NULL,
+            ipExternal TEXT NOT NULL,
             os TEXT NOT NULL,
             elevated BOOLEAN NOT NULL,
-            sleep INTEGER DEFAULT 10,
-            firstCheckin DATETIME NOT NULL,
-            latestCheckin DATETIME NOT NULL,
+            sleep INTEGER NOT NULL,
+            modules INTEGER NOT NULL,
+            firstCheckin INTEGER NOT NULL,
+            latestCheckin INTEGER NOT NULL,
             sessionKey BLOB NOT NULL
         );
 
