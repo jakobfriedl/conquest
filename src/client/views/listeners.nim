@@ -4,7 +4,7 @@ import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/appImGui
 import ../../common/[types, utils]
 import ./modals/[startListener, generatePayload]
-import ../websocket
+import ../core/websocket
 
 type 
     ListenersTableComponent* = ref object of RootObj

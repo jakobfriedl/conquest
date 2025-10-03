@@ -4,7 +4,7 @@ import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, colors]
 import ../../common/[types, utils]
 import ../../modules/manager
-import ../[task, websocket]
+import ../core/[task, websocket]
 
 const MAX_INPUT_LENGTH = 512
 type 

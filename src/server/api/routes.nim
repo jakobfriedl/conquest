@@ -3,9 +3,8 @@ import strutils, base64
 
 import ./handlers
 import ../globals
-import ../core/logger
+import ../core/[logger, websocket]
 import ../../common/[types, utils, serialize, profile]
-import ../websocket
 
 # Not Found
 proc error404*(request: Request) =  

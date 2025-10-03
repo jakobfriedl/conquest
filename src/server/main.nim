@@ -1,12 +1,11 @@
+import mummy, mummy/routers
 import terminal, parsetoml, json, math, base64, times
 import strutils, strformat, system, tables
 
-import ./core/[listener, logger, builder]
 import ./globals
 import ./db/database
+import ./core/[listener, logger, builder, websocket]
 import ../common/[types, crypto, utils, profile, event]
-import ./websocket
-import mummy, mummy/routers
 
 proc header() = 
     echo ""

@@ -1,6 +1,6 @@
 import times, json, base64, parsetoml, strformat
-import ../common/[types, utils, event]
-import ./core/logger
+import ./logger
+import ../../common/[types, utils, event]
 export sendHeartbeat, recvEvent
 
 proc `%`*(agent: Agent): JsonNode =

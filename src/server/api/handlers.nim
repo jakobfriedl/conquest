@@ -2,9 +2,7 @@ import terminal, strformat, strutils, sequtils, tables, system, std/[dirs, paths
 
 import ../globals
 import ../db/database
-import ../protocol/packer
-import ../core/logger
-import ../websocket
+import ../core/[packer, logger, websocket]
 import ../../common/[types, utils, serialize]
 
 #[

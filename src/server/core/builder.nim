@@ -1,10 +1,9 @@
 import terminal, strformat, strutils, sequtils, tables, system, osproc, streams, parsetoml
 
 import ../globals
-import ../core/logger
+import ../core/[logger, websocket]
 import ../db/database 
 import ../../common/[types, utils, serialize, crypto]
-import ../websocket
 
 const PLACEHOLDER = "PLACEHOLDER"
 

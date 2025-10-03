@@ -1,6 +1,6 @@
 import whisky 
 import times, tables, json, base64
-import ../common/[types, utils, serialize, event]
+import ../../common/[types, utils, serialize, event]
 export sendHeartbeat, recvEvent
 
 #[

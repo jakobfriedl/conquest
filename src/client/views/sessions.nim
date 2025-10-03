@@ -64,8 +64,8 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
 
         igTableSetupColumn("AgentID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
         igTableSetupColumn("ListenerID", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
-        igTableSetupColumn("Internal", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-        igTableSetupColumn("External", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
+        igTableSetupColumn("IP (Internal)", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("IP (External)", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
         igTableSetupColumn("Username", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Hostname", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Domain", ImGuiTableColumnFlags_None.int32, 0.0f, 0)

@@ -1,4 +1,4 @@
-import tables
+import tables, strutils
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/appImGui
 
@@ -56,6 +56,8 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[
             igDockBuilderDockWindow("Sessions [Table View]", dockTopLeft[])
             igDockBuilderDockWindow("Listeners", dockBottom[])
             igDockBuilderDockWindow("Eventlog", dockTopRight[])
+            igDockBuilderDockWindow("Downloads", dockBottom[])
+            igDockBuilderDockWindow("Screenshots", dockBottom[])
             igDockBuilderDockWindow("Dear ImGui Demo", dockTopRight[])
             
             igDockBuilderFinish(dockspaceId)
@@ -74,8 +76,18 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[
         if igBeginMenu("Views", true): 
             # Create a menu item to toggle each of the main views of the application
             for view, showView in views: 
-                if igMenuItem(view, nil, showView[], showView != nil):
-                    showView[] = not showView[]
+                if not view.contains("::"):
+                    if igMenuItem(view, nil, showView[], showView != nil):
+                        showView[] = not showView[]
+            
+            if igBeginMenu("Loot", true):
+                for view, showView in views:
+                    if view.startsWith("Loot"): 
+                        let item = view.split("::", 1)[1].strip()
+                        if igMenuItem(item, nil, showView[], showView != nil):
+                         showView[] = not showView[]
+                igEndMenu()
+                
             igEndMenu()
 
         igEndMenuBar()

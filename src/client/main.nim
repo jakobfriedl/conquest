@@ -3,8 +3,9 @@ import tables, strutils, strformat, json, parsetoml, base64, os # native_dialogs
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console]
 import ./views/modals/generatePayload
+import ./views/loot/[downloads, screenshots]
 import ../common/[types, utils, crypto]
-import ./websocket
+import ./core/websocket
 
 import sugar 
 
@@ -19,6 +20,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
         showSessionsTable = true
         showListeners = true
         showEventlog = true
+        showDownloads = false
+        showScreenshots = false
         consoles: Table[string, ConsoleComponent]
 
     var 
@@ -30,6 +33,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
     views["Sessions [Table View]"] = addr showSessionsTable 
     views["Listeners"] = addr showListeners
     views["Eventlog"] = addr showEventlog
+    views["Loot::Downloads"] = addr showDownloads
+    views["Loot::Screenshots"] = addr showScreenshots
 
     # Create components
     var 
@@ -37,6 +42,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
         sessionsTable = SessionsTable("Sessions [Table View]", addr consoles) 
         listenersTable = ListenersTable("Listeners")
         eventlog = Eventlog("Eventlog")
+        lootDownloads = LootDownloads("Downloads")
+        lootScreenshots = LootScreenshots("Screenshots") 
 
     let io = igGetIO()
 
@@ -151,6 +158,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
         if showSessionsTable: sessionsTable.draw(addr showSessionsTable)   
         if showListeners: listenersTable.draw(addr showListeners, connection)
         if showEventlog: eventlog.draw(addr showEventlog)
+        if showDownloads: lootDownloads.draw(addr showDownloads)
+        if showScreenshots: lootScreenshots.draw(addr showScreenshots)
 
         # Show console windows
         var newConsoleTable: Table[string, ConsoleComponent]
