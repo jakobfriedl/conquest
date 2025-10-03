@@ -60,6 +60,9 @@ proc Console*(agent: UIAgent): ConsoleComponent =
 #[
     Text input callback function for managing console history and autocompletion 
 ]#
+var currentCompletionIndex: int = -1
+var lastMatches: seq[string] = @[]
+
 proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} = 
 
     let component = cast[ConsoleComponent](data.UserData)
@@ -108,8 +111,61 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
         return 0
 
     of ImGui_InputTextFlags_CallbackCompletion.int32: 
-        # Handle Tab-autocompletion
-        discard
+        # Handle Tab-autocompletion for agent commands
+        let commands = getCommands(component.agent.modules).mapIt(it.name & " ") & @["help "]
+
+        # Get the word to complete
+        let inputEndPos = data.CursorPos
+        var inputStartPos = inputEndPos
+
+        while inputStartPos > 0:
+            let c = cast[ptr UncheckedArray[char]](data.Buf)[inputStartPos - 1]
+            if c in [' ', '\t', ',', ';']:
+                break
+            dec inputStartPos
+        
+        let inputLen = inputEndPos - inputStartPos
+        var currentWord = newString(inputLen)
+        for i in 0..<inputLen:
+            currentWord[i] = cast[ptr UncheckedArray[char]](data.Buf)[inputStartPos + i]
+        
+        # Check for matches
+        var matches: seq[string] = @[]
+        for cmd in commands: 
+            if cmd.toLowerAscii().startsWith(currentWord.toLowerAscii()): 
+                matches.add(cmd)
+
+        # No matching commands found
+        if matches.len() == 0: 
+            return 0
+        
+        elif matches.len() == 1:
+            data.ImGuiInputTextCallbackData_DeleteChars(inputStartPos.cint, inputLen.cint)
+            data.ImGuiInputTextCallbackData_InsertChars(data.CursorPos, matches[0].cstring, nil)
+        
+        # More than 1 matching command -> complete common prefix
+        else:
+            var prefixLen = inputLen 
+
+            while prefixLen < matches[0].len(): 
+                let c = matches[0][prefixLen]
+                var allMatch = true
+                
+                for i in 1 ..< matches.len(): 
+                    if prefixLen >= matches[i].len() or matches[i][prefixLen] != c: 
+                        allMatch = false
+                        break
+
+                if not allMatch:
+                    break
+
+                inc prefixLen
+        
+            if prefixLen > inputLen:
+                data.ImGuiInputTextCallbackData_DeleteChars(inputStartPos.cint, inputLen.cint)
+                data.ImGuiInputTextCallbackData_InsertChars(data.CursorPos, matches[0][0..<prefixLen].cstring, nil)
+
+            return 0
 
     else: discard
 

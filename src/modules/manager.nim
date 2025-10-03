@@ -82,3 +82,12 @@ proc getModules*(modules: uint32 = 0): seq[Module] =
         for m in manager.modules: 
             if (modules and cast[uint32](m.moduleType)) == cast[uint32](m.moduleType): 
                 result.add(m)
+
+proc getCommands*(modules: uint32 = 0): seq[Command] = 
+    if modules == 0:
+        for m in manager.modules: 
+            result.add(m.commands)
+    else: 
+        for m in manager.modules: 
+            if (modules and cast[uint32](m.moduleType)) == cast[uint32](m.moduleType): 
+                result.add(m.commands)
