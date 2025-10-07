@@ -143,7 +143,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
 
         igText("Build log: ")
         try: 
-            # Set styles of the eventlog window
+            # Set styles of the log window
             igPushStyleColor_Vec4(ImGui_Col_FrameBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
             igPushStyleColor_Vec4(ImGui_Col_ScrollbarBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
             igPushStyleColor_Vec4(ImGui_Col_Border.int32, vec4(0.2f, 0.2f, 0.2f, 1.0f))

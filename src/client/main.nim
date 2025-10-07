@@ -2,8 +2,8 @@ import whisky
 import tables, strutils, strformat, json, parsetoml, base64, os # native_dialogs
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console]
+import ./views/loot/[screenshots, downloads]
 import ./views/modals/generatePayload
-import ./views/loot/[downloads, screenshots]
 import ../common/[types, utils, crypto]
 import ./core/websocket
 
@@ -33,8 +33,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
     views["Sessions [Table View]"] = addr showSessionsTable 
     views["Listeners"] = addr showListeners
     views["Eventlog"] = addr showEventlog
-    views["Loot::Downloads"] = addr showDownloads
-    views["Loot::Screenshots"] = addr showScreenshots
+    views["Loot:Downloads"] = addr showDownloads
+    views["Loot:Screenshots"] = addr showScreenshots
 
     # Create components
     var 
@@ -43,7 +43,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
         listenersTable = ListenersTable("Listeners")
         eventlog = Eventlog("Eventlog")
         lootDownloads = LootDownloads("Downloads")
-        lootScreenshots = LootScreenshots("Screenshots") 
+        lootScreenshots = LootScreenshots("Screenshots")
+
 
     let io = igGetIO()
 
@@ -174,7 +175,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         # This is done to ensure that closed console windows can be opened again
         consoles = newConsoleTable
 
-        #  igShowDemoWindow(nil)
+        igShowDemoWindow(nil)
 
         # render
         app.render()

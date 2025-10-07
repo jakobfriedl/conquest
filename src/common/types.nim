@@ -53,17 +53,6 @@ type
         CMD_DOTNET = 16'u16
         CMD_SLEEPMASK = 17'u16
 
-    ModuleType* = enum 
-        MODULE_ALL = 0'u32
-        MODULE_SLEEP = 1'u32
-        MODULE_SHELL = 2'u32 
-        MODULE_BOF = 4'u32
-        MODULE_DOTNET = 8'u32
-        MODULE_FILESYSTEM = 16'u32 
-        MODULE_FILETRANSFER = 32'u32
-        MODULE_SCREENSHOT = 64'u32
-        MODULE_SITUATIONAL_AWARENESS = 128'u32 
-
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
         STATUS_FAILED = 1'u8
@@ -99,6 +88,17 @@ type
         EKKO = 1'u8 
         ZILEAN = 2'u8
         FOLIAGE = 3'u8
+
+    ModuleType* = enum 
+        MODULE_ALL = 0'u32
+        MODULE_SLEEP = 1'u32
+        MODULE_SHELL = 2'u32 
+        MODULE_BOF = 4'u32
+        MODULE_DOTNET = 8'u32
+        MODULE_FILESYSTEM = 16'u32 
+        MODULE_FILETRANSFER = 32'u32
+        MODULE_SCREENSHOT = 64'u32
+        MODULE_SITUATIONAL_AWARENESS = 128'u32 
 
 # Custom iterator for ModuleType, as it uses powers of 2 instead of standard increments
 iterator items*(e: typedesc[ModuleType]): ModuleType =
@@ -264,8 +264,9 @@ type
         CLIENT_AGENT_PAYLOAD = 104'u8       # Return agent payload binary 
         CLIENT_CONSOLE_ITEM = 105'u8        # Add entry to a agent's console 
         CLIENT_EVENTLOG_ITEM = 106'u8       # Add entry to the eventlog   
-        CLIENT_BUILDLOG_ITEM = 107'u8          # Add entry to the build log
-        CLIENT_LOOT = 108'u8                # Download file or screenshot to the operator desktop
+        CLIENT_BUILDLOG_ITEM = 107'u8       # Add entry to the build log
+        CLIENT_LOOT_ADD = 108'u8            # Add file or screenshot stored on the team server to preview on the client
+        CLIENT_SYNC_LOOT = 109'u8           # Download a file/screenshot to the operator desktop
 
     Event* = object 
         eventType*: EventType               
@@ -347,3 +348,11 @@ type
         sleepTechnique*: SleepObfuscationTechnique
         spoofStack*: bool
         modules*: uint32
+
+    LootItem* = ref object 
+        agentId*: string
+        path*: string 
+        timestamp*: int64
+        size*: int 
+        host*: string 
+        data*: seq[byte] 
