@@ -59,3 +59,23 @@ proc sendAgentTask*(connection: WsConnection, agentId: string, command: string, 
         }
     )
     connection.ws.sendEvent(event, connection.sessionKey)
+
+proc sendRemoveLoot*(connection: WsConnection, lootId: string) = 
+    let event = Event(
+        eventType: CLIENT_LOOT_REMOVE, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "lootId": lootId
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)
+
+proc sendDownloadLoot*(connection: WsConnection, lootId: string) = 
+    let event = Event(
+        eventType: CLIENT_LOOT_SYNC, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "lootId": lootId
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)

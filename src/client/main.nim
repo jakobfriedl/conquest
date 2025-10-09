@@ -157,10 +157,18 @@ proc main(ip: string = "localhost", port: int = 37573) =
                 lootDownloads.items.add(lootItem)
             of SCREENSHOT:
                 lootScreenshots.addItem(lootItem)
-
             else: discard 
 
-        of CLIENT_SYNC_LOOT: 
+        of CLIENT_LOOT_SYNC:
+            let path = event.data["path"].getStr()
+            let file = decode(event.data["loot"].getStr())
+            try: 
+                # TODO: Using native file dialogs to have the client select the output file path (does not work in WSL) 
+                # let outFilePath = callDialogFileSave("Save Payload") 
+                writeFile(path & "_download", file)
+            except IOError:
+                discard 
+
             discard 
     
         else: discard 
@@ -169,8 +177,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
         if showSessionsTable: sessionsTable.draw(addr showSessionsTable)   
         if showListeners: listenersTable.draw(addr showListeners, connection)
         if showEventlog: eventlog.draw(addr showEventlog)
-        if showDownloads: lootDownloads.draw(addr showDownloads)
-        if showScreenshots: lootScreenshots.draw(addr showScreenshots)
+        if showDownloads: lootDownloads.draw(addr showDownloads, connection)
+        if showScreenshots: lootScreenshots.draw(addr showScreenshots, connection)
 
         # Show console windows
         var newConsoleTable: Table[string, ConsoleComponent]

@@ -2,6 +2,7 @@ import strformat, strutils, times, os, tables
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
 import ../../../common/[types, utils]
+import ../../core/websocket
 
 type
     ScreenshotTexture* = ref object 
@@ -33,7 +34,7 @@ proc addItem*(component: ScreenshotsComponent, screenshot: LootItem) =
         height: height
     )
 
-proc draw*(component: ScreenshotsComponent, showComponent: ptr bool) =
+proc draw*(component: ScreenshotsComponent, showComponent: ptr bool, connection: WsConnection) =
     igBegin(component.title, showComponent, 0)
     defer: igEnd()
 
@@ -43,7 +44,7 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool) =
         
     # Left panel (file table) 
     let childFlags = ImGui_ChildFlags_ResizeX.int32 or ImGui_ChildFlags_NavFlattened.int32
-    if igBeginChild_Str("##Left", vec2(availableSize.x * 0.66f, 0.0f), childFlags, ImGui_WindowFlags_None.int32):
+    if igBeginChild_Str("##Left", vec2(availableSize.x * 0.5f, 0.0f), childFlags, ImGui_WindowFlags_None.int32):
 
         let tableFlags = (
             ImGui_TableFlags_Resizable.int32 or
@@ -77,6 +78,10 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool) =
                     let isSelected = component.selectedIndex == i
                     if igSelectable_Bool(item.lootId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0)):
                         component.selectedIndex = i
+                
+                    if igIsItemHovered(ImGuiHoveredFlags_None.int32) and igIsMouseClicked_Bool(ImGuiMouseButton_Right.int32, false):
+                        component.selectedIndex = i
+                    
                     igPopID()                
 
                 if igTableSetColumnIndex(1):
@@ -90,6 +95,23 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool) =
 
                 if igTableSetColumnIndex(4):
                     igText($item.size)
+
+            # Handle right-click context menu
+            if component.selectedIndex >= 0 and component.selectedIndex < component.items.len and igBeginPopupContextWindow("Downloads", ImGui_PopupFlags_MouseButtonRight.int32): 
+                let item = component.items[component.selectedIndex]
+
+                if igMenuItem("Download", nil, false, true):                     
+                    # Task team server to download file
+                    connection.sendDownloadLoot(item.lootId)
+                    igCloseCurrentPopup()
+
+                if igMenuItem("Remove", nil, false, true): 
+                    # Task team server to remove the loot item 
+                    connection.sendRemoveLoot(item.lootId)
+                    component.items.delete(component.selectedIndex)
+                    igCloseCurrentPopup()
+
+                igEndPopup()
 
             igEndTable()
         
@@ -106,5 +128,5 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool) =
             igImage(ImTextureRef(internal_TexData: nil, internal_TexID: texture.textureId), vec2(texture.width, texture.height), vec2(0, 0), vec2(1, 1))
             
         else:
-            igText("Select item to preview contents")
+            igText("Select item for preview.")
     igEndChild()

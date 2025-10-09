@@ -255,7 +255,8 @@ type
         CLIENT_AGENT_TASK = 2'u8            # Instruct TS to send queue a command for a specific agent
         CLIENT_LISTENER_START = 3'u8        # Start a listener on the TS
         CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
-        CLIENT_REQUEST_SYNC = 5'u8          # Request to download a file/screenshot to the client
+        CLIENT_LOOT_REMOVE = 5'u8           # Remove loot on the team server
+        CLIENT_LOOT_SYNC = 6'u8         # Request to download a file/screenshot to the client
 
         # Sent by team server
         CLIENT_PROFILE = 100'u8             # Team server profile and configuration 
@@ -267,7 +268,6 @@ type
         CLIENT_EVENTLOG_ITEM = 106'u8       # Add entry to the eventlog   
         CLIENT_BUILDLOG_ITEM = 107'u8       # Add entry to the build log
         CLIENT_LOOT_ADD = 108'u8            # Add file or screenshot stored on the team server to preview on the client
-        CLIENT_SYNC_LOOT = 109'u8           # Download a file/screenshot to the operator desktop
 
     Event* = object 
         eventType*: EventType               

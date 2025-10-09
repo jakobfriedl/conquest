@@ -2,6 +2,7 @@ import strformat, strutils, times, os
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
 import ../../../common/[types, utils]
+import ../../core/websocket
 
 type
     DownloadsComponent* = ref object of RootObj
@@ -16,7 +17,7 @@ proc LootDownloads*(title: string): DownloadsComponent =
     result.items = @[]
     result.selectedIndex = -1
 
-proc draw*(component: DownloadsComponent, showComponent: ptr bool) =
+proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: WsConnection) =
     igBegin(component.title, showComponent, 0)
     defer: igEnd()
 
@@ -61,7 +62,11 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool) =
                     let isSelected = component.selectedIndex == i
                     if igSelectable_Bool(item.lootId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0)):
                         component.selectedIndex = i
-                    igPopID()                
+                    
+                    if igIsItemHovered(ImGuiHoveredFlags_None.int32) and igIsMouseClicked_Bool(ImGuiMouseButton_Right.int32, false):
+                        component.selectedIndex = i
+                    
+                    igPopID()
 
                 if igTableSetColumnIndex(1):
                     igText(item.agentId)
@@ -78,6 +83,23 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool) =
                 if igTableSetColumnIndex(5):
                     igText($item.size)
                                         
+            # Handle right-click context menu
+            if component.selectedIndex >= 0 and component.selectedIndex < component.items.len and igBeginPopupContextWindow("Downloads", ImGui_PopupFlags_MouseButtonRight.int32): 
+                let item = component.items[component.selectedIndex]
+
+                if igMenuItem("Download", nil, false, true):                     
+                    # Task team server to download file
+                    connection.sendDownloadLoot(item.lootId)
+                    igCloseCurrentPopup()
+
+                if igMenuItem("Remove", nil, false, true): 
+                    # Task team server to remove the loot item 
+                    connection.sendRemoveLoot(item.lootId)
+                    component.items.delete(component.selectedIndex)
+                    igCloseCurrentPopup()
+
+                igEndPopup()
+            
             igEndTable()
         
     igEndChild()
@@ -93,9 +115,11 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool) =
             igSameLine(0.0f, 0.0f)
             igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/"))
             
+            igDummy(vec2(0.0f, 5.0f))
             igSeparator()
-            
-            igText(item.data)
+            igDummy(vec2(0.0f, 5.0f)) 
+
+            igTextUnformatted(item.data, nil)
             
         else:
             igText("Select item to preview contents")

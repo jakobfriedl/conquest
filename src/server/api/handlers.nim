@@ -111,11 +111,10 @@ proc handleResult*(resultData: seq[byte]) =
                 if int(taskResult.length) > 0:
                     cq.client.sendConsoleItem(agentId, LOG_INFO, "Output:") 
                     cq.info("Output:")
-                    cq.client.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data))
 
                     # Split result string on newline to keep formatting
                     for line in Bytes.toString(taskResult.data).split("\n"):
-                        cq.output(line)
+                        cq.client.sendConsoleItem(agentId, LOG_OUTPUT, line)
 
             of RESULT_BINARY:
                 # Write binary data to a file 
@@ -143,16 +142,11 @@ proc handleResult*(resultData: seq[byte]) =
                     host: cq.agents[agentId].hostname
                 )
 
-                if lootItem.itemType == SCREENSHOT: 
-                    lootItem.data = createThumbnail(readFile(downloadPath))    # Create a smaller thumbnail version of the screenshot for better transportability
-                elif lootItem.itemType == DOWNLOAD:
-                    lootItem.data = readFile(downloadPath)                     # Read downloaded file
-
                 # Store loot in database 
                 if not cq.dbStoreLoot(lootItem): 
                     raise newException(ValueError, fmt"Failed to store loot in database." & "\n")
 
-                # Send packet to client to display file/screenshot in the UI
+                # Send loot to client to display file/screenshot in the UI
                 cq.client.sendLoot(lootItem)
 
                 cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
