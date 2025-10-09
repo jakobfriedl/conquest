@@ -56,14 +56,21 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 cq.client.sessionKey = deriveSessionKey(cq.keyPair, publicKey)
             
                 # Send relevant information to the client
-                # - C2 profile 
-                # - agent sessions
-                # - listeners
+                # C2 profile 
                 cq.client.sendProfile(cq.profile)
+                
+                # Listeners
                 for id, listener in cq.listeners: 
                     cq.client.sendListener(listener)
+                
+                # Agent sessions
                 for id, agent in cq.agents: 
                     cq.client.sendAgent(agent)
+
+                # Downloads & Screenshots
+                for lootItem in cq.dbGetLoot():
+                    cq.client.sendLoot(lootItem)
+
                 cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, "Connected to Conquest team server.")
 
             of CLIENT_AGENT_TASK:

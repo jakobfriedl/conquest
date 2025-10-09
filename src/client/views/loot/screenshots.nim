@@ -20,36 +20,18 @@ proc LootScreenshots*(title: string): ScreenshotsComponent =
     result.title = title
     result.items = @[]
     result.selectedIndex = -1
-
-    result.items.add(@[LootItem(
-        agentId: "DEADBEEF",
-        timestamp: now().toTime().toUnix(),
-        size: 1000, 
-        path: "/mnt/c/Users/jakob/Documents/Projects/conquest/data/loot/570DCB57/screenshot_1757769346.bmp",
-        host: "WKS-1", 
-        data: string.toBytes(readFile("/mnt/c/Users/jakob/Documents/Projects/conquest/data/loot/570DCB57/screenshot_1757769346.bmp"))
-    ),
-    LootItem(
-        agentId: "DEADBEEF",
-        timestamp: now().toTime().toUnix(),
-        path: "/mnt/c/Users/jakob/Documents/Projects/conquest/data/loot/C2468819/screenshot_1759238569.png",
-        size: 1000, 
-        host: "WKS-1", 
-        data: string.toBytes(readFile("/mnt/c/Users/jakob/Documents/Projects/conquest/data/loot/C2468819/screenshot_1759238569.png"))
-    )
-    ])
-
     result.textures = initTable[string, ScreenshotTexture]()
 
-    for item in result.items: 
-        var textureId: GLuint
-        let (width, height) = loadTextureFromBytes(item.data, textureId)
-    
-        result.textures[item.path] = ScreenshotTexture(
-            textureId: textureId,
-            width: width, 
-            height: height
-        )
+proc addItem*(component: ScreenshotsComponent, screenshot: LootItem) = 
+    component.items.add(screenshot)
+
+    var textureId: GLuint
+    let (width, height) = loadTextureFromBytes(string.toBytes(screenshot.data), textureId)
+    component.textures[screenshot.path] = ScreenshotTexture(
+        textureId: textureId,
+        width: width, 
+        height: height
+    )
 
 proc draw*(component: ScreenshotsComponent, showComponent: ptr bool) =
     igBegin(component.title, showComponent, 0)
@@ -77,12 +59,13 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool) =
             ImGui_TableFlags_SizingStretchSame.int32
         )
         
-        let cols: int32 = 4
+        let cols: int32 = 5
         if igBeginTable("##Items", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
-            igTableSetupColumn("Path", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-            igTableSetupColumn("Creation Date", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-            igTableSetupColumn("Size", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+            igTableSetupColumn("ID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+            igTableSetupColumn("AgentID", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
             igTableSetupColumn("Host", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+            igTableSetupColumn("Creation Date", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+            igTableSetupColumn("File Size", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupScrollFreeze(0, 1)
             igTableHeadersRow()
         
@@ -92,18 +75,21 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool) =
                 if igTableSetColumnIndex(0):
                     igPushID_Int(i.int32)
                     let isSelected = component.selectedIndex == i
-                    if igSelectable_Bool(item.path.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0)):
+                    if igSelectable_Bool(item.lootId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0)):
                         component.selectedIndex = i
                     igPopID()                
 
                 if igTableSetColumnIndex(1):
-                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
+                    igText(item.agentId)
 
                 if igTableSetColumnIndex(2):
-                    igText($item.size)
-                                        
-                if igTableSetColumnIndex(3):
                     igText(item.host.cstring)
+
+                if igTableSetColumnIndex(3):
+                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
+
+                if igTableSetColumnIndex(4):
+                    igText($item.size)
 
             igEndTable()
         

@@ -15,7 +15,7 @@ proc dbStoreAgent*(cq: Conquest, agent: Agent): bool =
         let sessionKeyBlob = agent.sessionKey.toSeq()
 
         conquestDb.exec("""
-        INSERT INTO agents (name, listener, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, sleep, modules, firstCheckin, latestCheckin, sessionKey)
+        INSERT INTO agents (agentId, listenerId, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, sleep, modules, firstCheckin, latestCheckin, sessionKey)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """, agent.agentId, agent.listenerId, agent.process, agent.pid, agent.username, agent.hostname, agent.domain, agent.ipInternal, agent.ipExternal, agent.os, agent.elevated, agent.sleep, agent.modules, agent.firstCheckin, agent.latestCheckin, sessionKeyBlob)
 
@@ -32,7 +32,7 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        for row in conquestDb.iterate("SELECT name, listener, sleep, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKey FROM agents;"):
+        for row in conquestDb.iterate("SELECT agentId, listenerId, sleep, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKey FROM agents;"):
             let (agentId, listenerId, sleep, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKeyBlob) = row.unpack((string, string, int, string, int, string, string, string, string, string, string, bool, uint32, int64, int64, seq[byte]))
 
             # Convert session key blob back to array
@@ -77,7 +77,7 @@ proc dbGetAllAgentsByListener*(cq: Conquest, listenerName: string): seq[Agent] =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        for row in conquestDb.iterate("SELECT name, listener, sleep, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKey FROM agents WHERE listener = ?;", listenerName):
+        for row in conquestDb.iterate("SELECT agentId, listenerId, sleep, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKey FROM agents WHERE listenerId = ?;", listenerName):
             let (agentId, listenerId, sleep, process, pid, username, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKeyBlob) = row.unpack((string, string, int, string, int, string, string, string, string, string, string, bool, uint32, int64, int64, seq[byte]))
 
             # Convert session key blob back to array
@@ -114,11 +114,11 @@ proc dbGetAllAgentsByListener*(cq: Conquest, listenerName: string): seq[Agent] =
 
     return agents
 
-proc dbDeleteAgentByName*(cq: Conquest, name: string): bool =
+proc dbDeleteAgentByName*(cq: Conquest, agentId: string): bool =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        conquestDb.exec("DELETE FROM agents WHERE name = ?", name)
+        conquestDb.exec("DELETE FROM agents WHERE agentId = ?", agentId)
 
         conquestDb.close()
     except: 
@@ -131,7 +131,7 @@ proc dbAgentExists*(cq: Conquest, agentName: string): bool =
     try:
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        let res = conquestDb.one("SELECT 1 FROM agents WHERE name = ? LIMIT 1", agentName)
+        let res = conquestDb.one("SELECT 1 FROM agents WHERE agentId = ? LIMIT 1", agentName)
         
         conquestDb.close()
 
@@ -144,7 +144,7 @@ proc dbUpdateSleep*(cq: Conquest, agentName: string, delay: int): bool =
     try:
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        conquestDb.exec("UPDATE agents SET sleep = ? WHERE name = ?", delay, agentName)
+        conquestDb.exec("UPDATE agents SET sleep = ? WHERE agentId = ?", delay, agentName)
 
         conquestDb.close()
         return true

@@ -143,3 +143,12 @@ proc sendBuildlogItem*(client: WsConnection, logType: LogType, message: string) 
     )
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
+
+proc sendLoot*(client: WsConnection, loot: LootItem) = 
+    let event = Event(
+        eventType: CLIENT_LOOT_ADD,
+        timestamp: now().toTime().toUnix(),
+        data: %loot
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)

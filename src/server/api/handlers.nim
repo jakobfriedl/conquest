@@ -1,4 +1,5 @@
-import terminal, strformat, strutils, sequtils, tables, system, std/[dirs, paths]
+import terminal, strformat, strutils, sequtils, tables, os, times
+import std/[dirs, paths]
 
 import ../globals
 import ../db/database
@@ -118,20 +119,44 @@ proc handleResult*(resultData: seq[byte]) =
 
             of RESULT_BINARY:
                 # Write binary data to a file 
-                # A binary result packet consists of the filename and file contents, both prefixed with their respective lengths as a uint32 value, unless it is fragmented
+                # A binary result packet consists of the filename and file contents, both prefixed with their respective lengths as a uint32 value
                 var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
                 let 
                     fileName = unpacker.getDataWithLengthPrefix().replace("\\", "_").replace(":", "") # Replace path characters for better storage of downloaded files            
-                    fileBytes = unpacker.getDataWithLengthPrefix()
+                    fileData = unpacker.getDataWithLengthPrefix()
 
                 # Create loot directory for the agent
                 createDir(cast[Path](fmt"{CONQUEST_ROOT}/data/loot/{agentId}"))
                 let downloadPath = fmt"{CONQUEST_ROOT}/data/loot/{agentId}/{fileName}"
 
-                writeFile(downloadPath, fileBytes)
+                writeFile(downloadPath, fileData)
 
-                cq.success(fmt"File downloaded to {downloadPath} ({$fileBytes.len()} bytes).", "\n")
-                cq.client.sendConsoleItem(agentId, LOG_SUCCESS, fmt"File downloaded to {downloadPath} ({$fileBytes.len()} bytes).")
+                # Get file information
+                let fileInfo = getFileInfo(downloadPath)
+                var lootItem = LootItem(
+                    lootId: generateUuid(),
+                    itemType: parseEnum[LootItemType](($cast[CommandType](taskResult.command)).split("_")[1]), # CMD_DOWNLOAD -> DOWNLOAD, CMD_SCREENSHOT -> SCREENSHOT
+                    agentId: agentId, 
+                    path: downloadPath, 
+                    timestamp: fileInfo.creationTime.toUnix(),
+                    size: fileInfo.size, 
+                    host: cq.agents[agentId].hostname
+                )
+
+                if lootItem.itemType == SCREENSHOT: 
+                    lootItem.data = createThumbnail(readFile(downloadPath))    # Create a smaller thumbnail version of the screenshot for better transportability
+                elif lootItem.itemType == DOWNLOAD:
+                    lootItem.data = readFile(downloadPath)                     # Read downloaded file
+
+                # Store loot in database 
+                if not cq.dbStoreLoot(lootItem): 
+                    raise newException(ValueError, fmt"Failed to store loot in database." & "\n")
+
+                # Send packet to client to display file/screenshot in the UI
+                cq.client.sendLoot(lootItem)
+
+                cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
+                cq.client.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).")
 
             of RESULT_NO_OUTPUT:
                 cq.output()

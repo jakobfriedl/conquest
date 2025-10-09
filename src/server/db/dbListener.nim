@@ -19,7 +19,7 @@ proc dbStoreListener*(cq: Conquest, listener: Listener): bool =
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
         conquestDb.exec("""
-        INSERT INTO listeners (name, address, port, protocol)
+        INSERT INTO listeners (listenerId, address, port, protocol)
         VALUES (?, ?, ?, ?);
         """, listener.listenerId, listener.address, listener.port, $listener.protocol)
 
@@ -37,7 +37,7 @@ proc dbGetAllListeners*(cq: Conquest): seq[Listener] =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        for row in conquestDb.iterate("SELECT name, address, port, protocol FROM listeners;"):
+        for row in conquestDb.iterate("SELECT listenerId, address, port, protocol FROM listeners;"):
             let (listenerId, address, port, protocol) = row.unpack((string, string, int, string))
             
             let l = Listener(
@@ -54,11 +54,11 @@ proc dbGetAllListeners*(cq: Conquest): seq[Listener] =
 
     return listeners
 
-proc dbDeleteListenerByName*(cq: Conquest, name: string): bool =
+proc dbDeleteListenerByName*(cq: Conquest, listenerId: string): bool =
     try: 
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        conquestDb.exec("DELETE FROM listeners WHERE name = ?", name)
+        conquestDb.exec("DELETE FROM listeners WHERE listenerId = ?", listenerId)
 
         conquestDb.close()
     except: 
@@ -70,7 +70,7 @@ proc dbListenerExists*(cq: Conquest, listenerName: string): bool =
     try:
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
-        let res = conquestDb.one("SELECT 1 FROM listeners WHERE name = ? LIMIT 1", listenerName)
+        let res = conquestDb.one("SELECT 1 FROM listeners WHERE listenerId = ? LIMIT 1", listenerName)
         
         conquestDb.close()
 

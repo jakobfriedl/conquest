@@ -248,13 +248,14 @@ type
 type 
     EventType* = enum
         CLIENT_HEARTBEAT = 0'u8             # Basic checkin 
-        CLIENT_KEY_EXCHANGE = 200'u8
+        CLIENT_KEY_EXCHANGE = 200'u8        # Unencrypted public key sent by both parties for key exchange
 
         # Sent by client 
         CLIENT_AGENT_BUILD = 1'u8           # Generate an agent binary for a specific listener
         CLIENT_AGENT_TASK = 2'u8            # Instruct TS to send queue a command for a specific agent
         CLIENT_LISTENER_START = 3'u8        # Start a listener on the TS
         CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
+        CLIENT_REQUEST_SYNC = 5'u8          # Request to download a file/screenshot to the client
 
         # Sent by team server
         CLIENT_PROFILE = 100'u8             # Team server profile and configuration 
@@ -349,10 +350,16 @@ type
         spoofStack*: bool
         modules*: uint32
 
+    LootItemType* = enum 
+        DOWNLOAD = 0'u8 
+        SCREENSHOT = 1'u8
+
     LootItem* = ref object 
+        itemType*: LootItemType
+        lootId*: string
         agentId*: string
+        host*: string 
         path*: string 
         timestamp*: int64
         size*: int 
-        host*: string 
-        data*: seq[byte] 
+        data*: string   # Image bytes or file content (binary data prefixed with length)

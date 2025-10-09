@@ -84,7 +84,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
             connection.sendPublicKey(clientKeyPair.publicKey)
 
         of CLIENT_PROFILE:
-           profile = parsetoml.parseString(event.data["profile"].getStr())
+            profile = parsetoml.parseString(event.data["profile"].getStr())
         
         of CLIENT_LISTENER_ADD: 
             let listener = event.data.to(UIListener)
@@ -152,9 +152,22 @@ proc main(ip: string = "localhost", port: int = 37573) =
                 event.data["message"].getStr(), 
                 event.timestamp
             )
+
+        of CLIENT_LOOT_ADD: 
+            let lootItem = event.data.to(LootItem)
+            case lootItem.itemType:
+            of DOWNLOAD:
+                lootDownloads.items.add(lootItem)
+            of SCREENSHOT:
+                lootScreenshots.addItem(lootItem)
+
+            else: discard 
+
+        of CLIENT_SYNC_LOOT: 
+            discard 
     
         else: discard 
-
+    
         # Draw/update UI components/views
         if showSessionsTable: sessionsTable.draw(addr showSessionsTable)   
         if showListeners: listenersTable.draw(addr showListeners, connection)
@@ -175,6 +188,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         # This is done to ensure that closed console windows can be opened again
         consoles = newConsoleTable
 
+
         igShowDemoWindow(nil)
 
         # render
@@ -182,6 +196,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
         if not showConquest: 
             app.handle.setWindowShouldClose(true)
+
 
 when isMainModule:
     import cligen; dispatch main

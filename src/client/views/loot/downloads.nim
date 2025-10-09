@@ -1,4 +1,4 @@
-import strformat, strutils, times
+import strformat, strutils, times, os
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
 import ../../../common/[types, utils]
@@ -6,7 +6,7 @@ import ../../../common/[types, utils]
 type
     DownloadsComponent* = ref object of RootObj
         title: string
-        items: seq[LootItem]
+        items*: seq[LootItem]
         selectedIndex: int
         
 
@@ -15,24 +15,6 @@ proc LootDownloads*(title: string): DownloadsComponent =
     result.title = title
     result.items = @[]
     result.selectedIndex = -1
-
-    result.items.add(@[LootItem(
-        agentId: "DEADBEEF",
-        path: "C:\\Software\\Conquest\\README.md", 
-        timestamp: now().toTime().toUnix(),
-        size: 1000, 
-        host: "WKS-1", 
-        data: string.toBytes("README.md\nPreview\nHello world.")
-    ),
-    LootItem(
-        agentId: "DEADBEEF",
-        path: "C:\\Software\\Conquest\\README.md", 
-        timestamp: now().toTime().toUnix(),
-        size: 1000, 
-        host: "WKS-1", 
-        data: string.toBytes("README.md\nPreview\nHello world.")
-    )
-    ])
 
 proc draw*(component: DownloadsComponent, showComponent: ptr bool) =
     igBegin(component.title, showComponent, 0)
@@ -60,12 +42,14 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool) =
             ImGui_TableFlags_SizingStretchSame.int32
         )
         
-        let cols: int32 = 4
+        let cols: int32 = 6
         if igBeginTable("##Items", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
+            igTableSetupColumn("ID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+            igTableSetupColumn("AgentID", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
+            igTableSetupColumn("Host", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("Path", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("Creation Date", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("Size", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-            igTableSetupColumn("Host", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupScrollFreeze(0, 1)
             igTableHeadersRow()
         
@@ -75,19 +59,25 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool) =
                 if igTableSetColumnIndex(0):
                     igPushID_Int(i.int32)
                     let isSelected = component.selectedIndex == i
-                    if igSelectable_Bool(item.path.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0)):
+                    if igSelectable_Bool(item.lootId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0)):
                         component.selectedIndex = i
                     igPopID()                
 
                 if igTableSetColumnIndex(1):
-                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
+                    igText(item.agentId)
 
                 if igTableSetColumnIndex(2):
+                    igText(item.host.cstring)
+                
+                if igTableSetColumnIndex(3):
+                    igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/"))
+
+                if igTableSetColumnIndex(4):
+                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
+
+                if igTableSetColumnIndex(5):
                     igText($item.size)
                                         
-                if igTableSetColumnIndex(3):
-                    igText(item.host.cstring)
-
             igEndTable()
         
     igEndChild()
@@ -99,7 +89,13 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool) =
         if component.selectedIndex >= 0 and component.selectedIndex < component.items.len:
             let item = component.items[component.selectedIndex]
             
-            igText(item.path)
+            igText(fmt("[{item.host}] "))
+            igSameLine(0.0f, 0.0f)
+            igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/"))
+            
+            igSeparator()
+            
+            igText(item.data)
             
         else:
             igText("Select item to preview contents")
