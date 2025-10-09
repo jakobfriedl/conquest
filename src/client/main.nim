@@ -7,8 +7,6 @@ import ./views/modals/generatePayload
 import ../common/[types, utils, crypto]
 import ./core/websocket
 
-import sugar 
-
 proc main(ip: string = "localhost", port: int = 37573) = 
     var app = createApp(1024, 800, imnodes = true, title = "Conquest", docking = true)
     defer: app.destroyApp()
@@ -39,12 +37,11 @@ proc main(ip: string = "localhost", port: int = 37573) =
     # Create components
     var 
         dockspace = Dockspace()
-        sessionsTable = SessionsTable("Sessions [Table View]", addr consoles) 
-        listenersTable = ListenersTable("Listeners")
-        eventlog = Eventlog("Eventlog")
-        lootDownloads = LootDownloads("Downloads")
-        lootScreenshots = LootScreenshots("Screenshots")
-
+        sessionsTable = SessionsTable(WIDGET_SESSIONS, addr consoles) 
+        listenersTable = ListenersTable(WIDGET_LISTENERS)
+        eventlog = Eventlog(WIDGET_EVENTLOG)
+        lootDownloads = LootDownloads(WIDGET_DOWNLOADS)
+        lootScreenshots = LootScreenshots(WIDGET_SCREENSHOTS)
 
     let io = igGetIO()
 
@@ -104,7 +101,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
             # The only case that is not covered is when the listeners table is hidden and the bottom panel was split
             var agentConsole = Console(agent)
             consoles[agent.agentId] = agentConsole
-            let listenersWindow = igFindWindowByName("Listeners") 
+            let listenersWindow = igFindWindowByName(WIDGET_LISTENERS) 
             if listenersWindow != nil and listenersWindow.DockNode != nil:
                 igSetNextWindowDockID(listenersWindow.DockNode.ID, ImGuiCond_FirstUseEver.int32)
             else:

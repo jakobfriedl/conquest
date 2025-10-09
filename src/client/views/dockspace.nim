@@ -1,6 +1,6 @@
 import tables, strutils
 import imguin/[cimgui, glfw_opengl, simple]
-import ../utils/appImGui
+import ../utils/[appImGui, globals]
 
 type 
     DockspaceComponent* = ref object of RootObj
@@ -53,11 +53,11 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[
             discard igDockBuilderSplitNode(dockspaceId, ImGuiDir_Down, 5.0f, dockBottom, dockTop)
             discard igDockBuilderSplitNode(dockTop[], ImGuiDir_Right, 0.5f, dockTopRight, dockTopLeft)
 
-            igDockBuilderDockWindow("Sessions [Table View]", dockTopLeft[])
-            igDockBuilderDockWindow("Listeners", dockBottom[])
-            igDockBuilderDockWindow("Eventlog", dockTopRight[])
-            igDockBuilderDockWindow("Downloads", dockBottom[])
-            igDockBuilderDockWindow("Screenshots", dockBottom[])
+            igDockBuilderDockWindow(WIDGET_SESSIONS, dockTopLeft[])
+            igDockBuilderDockWindow(WIDGET_LISTENERS, dockBottom[])
+            igDockBuilderDockWindow(WIDGET_EVENTLOG, dockTopRight[])
+            igDockBuilderDockWindow(WIDGET_DOWNLOADS, dockBottom[])
+            igDockBuilderDockWindow(WIDGET_SCREENSHOTS, dockBottom[])
             igDockBuilderDockWindow("Dear ImGui Demo", dockTopRight[])
             
             igDockBuilderFinish(dockspaceId)
