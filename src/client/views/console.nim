@@ -24,10 +24,10 @@ type
 ]#
 proc getText(item: ConsoleItem): cstring = 
     if item.timestamp > 0: 
-        let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
-        return fmt"[{timestamp}]{$item.itemType}{item.text}".string 
+        let timestamp = "[" & item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss") & "]"
+        return timestamp & $item.itemType & item.text
     else: 
-        return fmt"{$item.itemType}{item.text}".string 
+        return $item.itemType & item.text
 
 proc getNumLines(data: pointer): csize_t {.cdecl.} =
     if data.isNil:
@@ -173,14 +173,12 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
     API to add new console item
 ]#
 proc addItem*(component: ConsoleComponent, itemType: LogType, data: string, timestamp: int64 = now().toTime().toUnix()) = 
-
     for line in data.split("\n"): 
         component.console.items.add(ConsoleItem(
             timestamp: if itemType == LOG_OUTPUT: 0 else: timestamp,
             itemType: itemType,
             text: line
         ))
-
 #[
     Handling console commands
 ]#
@@ -188,6 +186,7 @@ proc displayHelp(component: ConsoleComponent) =
     for module in getModules(component.agent.modules): 
         for cmd in module.commands: 
             component.addItem(LOG_OUTPUT, fmt" * {cmd.name:<15}{cmd.description}")
+    component.addItem(LOG_OUTPUT, "")
 
 proc displayCommandHelp(component: ConsoleComponent, command: Command) = 
     var usage = command.name & " " & command.arguments.mapIt(
@@ -359,12 +358,12 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
                 
                 item.print()    
 
-            component.textSelect.textselect_update()
-
             # Auto-scroll to bottom
             if igGetScrollY() >= igGetScrollMaxY():
                 igSetScrollHereY(1.0f)
                     
+            component.textSelect.textselect_update()
+
     except IndexDefect:
         # CTRL+A crashes when no items are in the console
         discard

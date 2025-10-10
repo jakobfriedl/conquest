@@ -256,8 +256,8 @@ type
         CLIENT_LISTENER_START = 3'u8        # Start a listener on the TS
         CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
         CLIENT_LOOT_REMOVE = 5'u8           # Remove loot on the team server
-        CLIENT_LOOT_SYNC = 6'u8         # Request to download a file/screenshot to the client
-
+        CLIENT_LOOT_SYNC = 6'u8             # Download a file/screenshot to the client
+                                        
         # Sent by team server
         CLIENT_PROFILE = 100'u8             # Team server profile and configuration 
         CLIENT_LISTENER_ADD = 101'u8        # Add listener to listeners table
