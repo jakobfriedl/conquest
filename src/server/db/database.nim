@@ -16,6 +16,7 @@ proc dbInit*(cq: Conquest) =
         conquestDb.execScript("""
         CREATE TABLE listeners (
             listenerId TEXT PRIMARY KEY,
+            hosts TEXT NOT NULL,
             address TEXT NOT NULL,
             port INTEGER NOT NULL UNIQUE,
             protocol TEXT NOT NULL CHECK (protocol IN ('http'))

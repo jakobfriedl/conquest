@@ -84,7 +84,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
 
             of CLIENT_LISTENER_START:
                 let listener = event.data.to(UIListener)
-                cq.listenerStart(listener.listenerId, listener.address, listener.port, listener.protocol)
+                cq.listenerStart(listener.listenerId, listener.hosts, listener.address, listener.port, listener.protocol)
             
             of CLIENT_LISTENER_STOP:
                 let listenerId = event.data["listenerId"].getStr()
@@ -159,7 +159,7 @@ proc startServer*(profilePath: string) =
 
         # Restart existing listeners
         for listenerId, listener in cq.listeners: 
-            cq.listenerStart(listenerId, listener.address, listener.port, listener.protocol)
+            cq.listenerStart(listenerId, listener.hosts, listener.address, listener.port, listener.protocol)
 
         # Start websocket server
         var router: Router

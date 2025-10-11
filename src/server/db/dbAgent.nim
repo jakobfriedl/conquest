@@ -107,6 +107,7 @@ proc dbGetAllAgentsByListener*(cq: Conquest, listenerName: string): seq[Agent] =
                 sessionKey: sessionKey,
                 tasks: @[]  # Initialize empty tasks
             )
+            agents.add(a)
 
         conquestDb.close()
     except: 

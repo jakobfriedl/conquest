@@ -179,72 +179,69 @@ proc addItem*(component: ConsoleComponent, itemType: LogType, data: string, time
             itemType: itemType,
             text: line
         ))
+
 #[
     Handling console commands
 ]#
-proc displayHelp(component: ConsoleComponent) = 
-    for module in getModules(component.agent.modules): 
-        for cmd in module.commands: 
-            component.addItem(LOG_OUTPUT, fmt" * {cmd.name:<15}{cmd.description}")
+proc displayHelp(component: ConsoleComponent) =
+    for module in getModules(component.agent.modules):
+        for cmd in module.commands:
+            component.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(15) & cmd.description)
     component.addItem(LOG_OUTPUT, "")
 
-proc displayCommandHelp(component: ConsoleComponent, command: Command) = 
+proc displayCommandHelp(component: ConsoleComponent, command: Command) =
     var usage = command.name & " " & command.arguments.mapIt(
-        if it.isRequired: fmt"<{it.name}>" else: fmt"[{it.name}]"
+        if it.isRequired: "<" & it.name & ">" else: "[" & it.name & "]"
     ).join(" ")
-
-    if command.example != "": 
-        usage &= "\nExample : " & command.example
-
-    component.addItem(LOG_OUTPUT, fmt"""
-{command.description}
-
-Usage   : {usage}
-""")
-
+    
+    component.addItem(LOG_OUTPUT, command.description)
+    component.addItem(LOG_OUTPUT, "Usage    : " & usage)
+    
+    if command.example != "":
+        component.addItem(LOG_OUTPUT, "Example  : " & command.example)
+    
     if command.arguments.len > 0:
-        component.addItem(LOG_OUTPUT, "Arguments:\n")
-
-        let header = @["Name", "Type", "Required", "Description"]
-        component.addItem(LOG_OUTPUT, fmt"   {header[0]:<15} {header[1]:<6} {header[2]:<8} {header[3]}")
-        component.addItem(LOG_OUTPUT, fmt"   {'-'.repeat(15)} {'-'.repeat(6)} {'-'.repeat(8)} {'-'.repeat(20)}")
+        component.addItem(LOG_OUTPUT, "Arguments:")
         
-        for arg in command.arguments: 
+        let header = @["Name", "Type", "Required", "Description"]
+        component.addItem(LOG_OUTPUT, "   " & header[0].alignLeft(15) & " " & header[1].alignLeft(6) & " " & header[2].alignLeft(8) & " " & header[3])
+        component.addItem(LOG_OUTPUT, "   " & '-'.repeat(15) & " " & '-'.repeat(6) & " " & '-'.repeat(8) & " " & '-'.repeat(20))
+        
+        for arg in command.arguments:
             let isRequired = if arg.isRequired: "YES" else: "NO"
-            component.addItem(LOG_OUTPUT, fmt" * {arg.name:<15} {($arg.argumentType).toUpperAscii():<6} {isRequired:>8} {arg.description}")
+            component.addItem(LOG_OUTPUT, " * " & arg.name.alignLeft(15) & " " & ($arg.argumentType).toUpperAscii().alignLeft(6) & " " & isRequired.align(8) & " " & arg.description)
         component.addItem(LOG_OUTPUT, "")
 
-proc handleHelp(component: ConsoleComponent, parsed: seq[string]) = 
-    try: 
+proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
+    try:
         # Try parsing the first argument passed to 'help' as a command
         component.displayCommandHelp(getCommandByName(parsed[1]))
     except IndexDefect:
         # 'help' command is called without additional parameters
         component.displayHelp()
-    except ValueError: 
+    except ValueError:
         # Command was not found
-        component.addItem(LOG_ERROR, fmt"The command '{parsed[1]}' does not exist.")
+        component.addItem(LOG_ERROR, "The command '" & parsed[1] & "' does not exist.")
 
-proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, input: string) = 
-
+proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, input: string) =
     # Convert user input into sequence of string arguments
     let parsedArgs = parseInput(input)
     
-    # Handle 'help' command 
-    if parsedArgs[0] == "help": 
+    # Handle 'help' command
+    if parsedArgs[0] == "help":
         component.handleHelp(parsedArgs)
         return
         
     # Handle commands with actions on the agent
-    try: 
+    try:
         let 
             command = getCommandByName(parsedArgs[0])
             task = createTask(component.agent.agentId, component.agent.listenerId, command, parsedArgs[1..^1])
 
         connection.sendAgentTask(component.agent.agentId, input, task)
-        component.addItem(LOG_INFO, fmt"Tasked agent to {command.description.toLowerAscii()} ({Uuid.toString(task.taskId)})")
+        component.addItem(LOG_INFO, "Tasked agent to " & command.description.toLowerAscii() & " (" & Uuid.toString(task.taskId) & ")")
 
-    except CatchableError: 
+    except CatchableError:
         component.addItem(LOG_ERROR, getCurrentExceptionMsg())
 
 #[
@@ -254,7 +251,7 @@ proc print(item: ConsoleItem) =
     
     if item.timestamp > 0:
         let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
-        igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), fmt"[{timestamp}]".cstring)
+        igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), "[" & timestamp & "]")
         igSameLine(0.0f, 0.0f)
     
     case item.itemType:

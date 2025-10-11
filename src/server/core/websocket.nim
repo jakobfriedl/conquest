@@ -25,6 +25,7 @@ proc `%`*(agent: Agent): JsonNode =
 proc `%`*(listener: Listener): JsonNode =
     result = newJObject()
     result["listenerId"] = %listener.listenerId
+    result["hosts"] = %listener.hosts
     result["address"] = %listener.address
     result["port"] = %listener.port 
     result["protocol"] = %listener.protocol

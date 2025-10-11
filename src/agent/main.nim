@@ -1,10 +1,11 @@
-import strformat, os, times, system, base64
+import strformat, os, times, system, base64, random
 
 import core/[http, context, sleepmask]
 import protocol/[task, result, heartbeat, registration]
 import ../common/[types, utils, crypto]
 
 proc main() = 
+    randomize()
 
     # Initialize agent context
     var ctx = AgentCtx.init()

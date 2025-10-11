@@ -64,12 +64,13 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
         ImGui_TableFlags_SizingStretchSame.int32
     )
 
-    let cols: int32 = 4
+    let cols: int32 = 5
     if igBeginTable("Listeners", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
         igTableSetupColumn("ListenerID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
         igTableSetupColumn("Address", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Port", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Callback Hosts", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Protocol", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
 
         igTableSetupScrollFreeze(0, 1)
@@ -93,6 +94,9 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
             if igTableSetColumnIndex(2): 
                 igText($listener.port)
             if igTableSetColumnIndex(3): 
+                for host in listener.hosts.split(";"):
+                    igText(host)
+            if igTableSetColumnIndex(4): 
                 igText($listener.protocol)
 
         # Handle right-click context menu

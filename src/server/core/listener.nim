@@ -13,7 +13,7 @@ proc serve(listener: Listener) {.thread.} =
     except Exception as err:
         discard 
 
-proc listenerStart*(cq: Conquest, name: string, host: string, port: int, protocol: Protocol) = 
+proc listenerStart*(cq: Conquest, listenerId: string, hosts: string, address: string, port: int, protocol: Protocol) = 
     try:
         # Create new listener
         var router: Router
@@ -43,8 +43,9 @@ proc listenerStart*(cq: Conquest, name: string, host: string, port: int, protoco
         # Store listener in database
         var listener = Listener(
             server: server,
-            listenerId: name,
-            address: host,
+            listenerId: listenerId,
+            hosts: hosts,
+            address: address,
             port: port,
             protocol: protocol
         )
@@ -54,16 +55,16 @@ proc listenerStart*(cq: Conquest, name: string, host: string, port: int, protoco
         createThread(thread, serve, listener)
         server.waitUntilReady()
 
-        cq.listeners[name] = listener
-        cq.threads[name] = thread
+        cq.listeners[listenerId] = listener
+        cq.threads[listenerId] = thread
 
-        if not cq.dbListenerExists(name.toUpperAscii): 
+        if not cq.dbListenerExists(listenerId.toUpperAscii): 
             if not cq.dbStoreListener(listener):
                 raise newException(CatchableError, "Failed to store listener in database.")
 
-        cq.success("Started listener", fgGreen, fmt" {name} ", resetStyle, fmt"on {host}:{$port}.")
+        cq.success("Started listener", fgGreen, fmt" {listenerId} ", resetStyle, fmt"on {address}:{$port}.")
         cq.client.sendListener(listener)
-        cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {name} on {host}:{$port}.")
+        cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {listenerId} on {address}:{$port}.")
 
     except CatchableError as err: 
         cq.error("Failed to start listener: ", err.msg)

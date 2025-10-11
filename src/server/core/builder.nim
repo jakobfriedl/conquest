@@ -16,8 +16,7 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int, sleepT
 
     # Listener configuration
     packer.add(string.toUuid(listener.listenerId))
-    packer.addDataWithLengthPrefix(string.toBytes(listener.address))
-    packer.add(uint32(listener.port))
+    packer.addDataWithLengthPrefix(string.toBytes(listener.hosts))
 
     # Sleep settings
     packer.add(uint32(sleep))

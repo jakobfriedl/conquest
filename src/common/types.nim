@@ -229,15 +229,17 @@ type
     Protocol* {.size: sizeof(uint8).} = enum
         HTTP = "http"
 
-    Listener* = ref object of RootObj
+    Listener* = ref object
         server*: Server
         listenerId*: string
+        hosts*: string
         address*: string
         port*: int
         protocol*: Protocol
 
-    UIListener* = ref object of RootObj
+    UIListener* = ref object
         listenerId*: string
+        hosts*: string
         address*: string
         port*: int
         protocol*: Protocol
@@ -301,8 +303,7 @@ type
     AgentCtx* = ref object
         agentId*: string
         listenerId*: string
-        ip*: string
-        port*: int
+        hosts*: string
         sleep*: int
         sleepTechnique*: SleepObfuscationTechnique
         spoofStack*: bool
