@@ -338,7 +338,7 @@ type
 type 
     ConsoleItem* = ref object 
         itemType*: LogType
-        timestamp*: int64
+        timestamp*: string
         text*: string
 
     ConsoleItems* = ref object

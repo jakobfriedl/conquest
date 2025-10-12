@@ -11,9 +11,8 @@ type
         showTimestamps: bool
 
 proc getText(item: ConsoleItem): cstring = 
-    if item.timestamp > 0: 
-        let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
-        return fmt"[{timestamp}]{$item.itemType}{item.text}".string 
+    if item.itemType != LOG_OUTPUT: 
+        return fmt"[{item.timestamp}]{$item.itemType}{item.text}".string 
     else: 
         return fmt"{$item.itemType}{item.text}".string 
 
@@ -43,7 +42,7 @@ proc Eventlog*(title: string): EventlogComponent =
 #[
     API to add new log entry
 ]#
-proc addItem*(component: EventlogComponent, itemType: LogType, data: string, timestamp: int64 = now().toTime().toUnix()) = 
+proc addItem*(component: EventlogComponent, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss")) = 
 
     for line in data.split("\n"): 
         component.log.items.add(ConsoleItem(
@@ -57,8 +56,7 @@ proc addItem*(component: EventlogComponent, itemType: LogType, data: string, tim
 ]#
 proc print(component: EventlogComponent, item: ConsoleItem) =     
     if (item.itemType != LOG_OUTPUT) and component.showTimestamps:
-        let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
-        igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), fmt"[{timestamp}]".cstring)
+        igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), fmt"[{item.timestamp}]".cstring)
         igSameLine(0.0f, 0.0f)
     
     case item.itemType:

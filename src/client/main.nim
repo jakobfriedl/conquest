@@ -1,5 +1,5 @@
 import whisky
-import tables, strutils, strformat, json, parsetoml, base64, os # native_dialogs
+import tables, times, strutils, strformat, json, parsetoml, base64, os # native_dialogs
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console]
 import ./views/loot/[screenshots, downloads]
@@ -133,21 +133,21 @@ proc main(ip: string = "localhost", port: int = 37573) =
             consoles[agentId].addItem(
                 cast[LogType](event.data["logType"].getInt()), 
                 event.data["message"].getStr(), 
-                event.timestamp
+                event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
             )
         
         of CLIENT_EVENTLOG_ITEM: 
             eventlog.addItem(
                 cast[LogType](event.data["logType"].getInt()), 
                 event.data["message"].getStr(), 
-                event.timestamp
+                event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
             )
 
         of CLIENT_BUILDLOG_ITEM:
             listenersTable.generatePayloadModal.addBuildlogItem(
                 cast[LogType](event.data["logType"].getInt()), 
                 event.data["message"].getStr(), 
-                event.timestamp
+                event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
             )
 
         of CLIENT_LOOT_ADD: 
@@ -193,8 +193,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         # This is done to ensure that closed console windows can be opened again
         consoles = newConsoleTable
 
-
-        igShowDemoWindow(nil)
+        # igShowDemoWindow(nil)
 
         # render
         app.render()

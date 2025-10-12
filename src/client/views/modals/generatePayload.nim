@@ -49,7 +49,7 @@ proc resetModalValues*(component: AgentModalComponent) =
     component.moduleSelection.reset()
     component.buildLog.items = @[]
 
-proc addBuildlogItem*(component: AgentModalComponent, itemType: LogType, data: string, timestamp: int64 = now().toTime().toUnix()) = 
+proc addBuildlogItem*(component: AgentModalComponent, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss")) = 
     for line in data.split("\n"): 
         component.buildLog.items.add(ConsoleItem(
             timestamp: timestamp,

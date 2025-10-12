@@ -23,9 +23,9 @@ type
     Helper functions for text selection
 ]#
 proc getText(item: ConsoleItem): cstring = 
-    if item.timestamp > 0: 
-        let timestamp = "[" & item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss") & "]"
-        return timestamp & $item.itemType & item.text
+    if item.itemType != LOG_OUTPUT: 
+        # let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
+        return "[" & item.timestamp & "]" & $item.itemType & item.text
     else: 
         return $item.itemType & item.text
 
@@ -172,10 +172,10 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 #[
     API to add new console item
 ]#
-proc addItem*(component: ConsoleComponent, itemType: LogType, data: string, timestamp: int64 = now().toTime().toUnix()) = 
+proc addItem*(component: ConsoleComponent, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss")) = 
     for line in data.split("\n"): 
         component.console.items.add(ConsoleItem(
-            timestamp: if itemType == LOG_OUTPUT: 0 else: timestamp,
+            timestamp: timestamp,
             itemType: itemType,
             text: line
         ))
@@ -195,11 +195,10 @@ proc displayCommandHelp(component: ConsoleComponent, command: Command) =
     ).join(" ")
     
     component.addItem(LOG_OUTPUT, command.description)
-    component.addItem(LOG_OUTPUT, "Usage    : " & usage)
-    
-    if command.example != "":
-        component.addItem(LOG_OUTPUT, "Example  : " & command.example)
-    
+    component.addItem(LOG_OUTPUT, "Usage    : " & usage)    
+    component.addItem(LOG_OUTPUT, "Example  : " & command.example)
+    component.addItem(LOG_OUTPUT, "")
+
     if command.arguments.len > 0:
         component.addItem(LOG_OUTPUT, "Arguments:")
         
@@ -249,9 +248,9 @@ proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, 
 ]#
 proc print(item: ConsoleItem) =     
     
-    if item.timestamp > 0:
-        let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
-        igTextColored(vec4(0.6f, 0.6f, 0.6f, 1.0f), "[" & timestamp & "]")
+    if item.itemType != LOG_OUTPUT:
+    # let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
+        igTextColored(GRAY, "[" & item.timestamp & "]", nil)
         igSameLine(0.0f, 0.0f)
     
     case item.itemType:
