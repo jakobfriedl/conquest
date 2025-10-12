@@ -12,7 +12,8 @@ type
         agent*: UIAgent
         showConsole*: bool
         inputBuffer: array[MAX_INPUT_LENGTH, char]
-        console*: ConsoleItems
+        console*: ConsoleItems              # Stores all console items
+        consoleFiltered*: ConsoleItems      # Temporarily stores console items that are displayed to the user
         history: seq[string]
         historyPosition: int 
         currentInput: string
@@ -51,10 +52,13 @@ proc Console*(agent: UIAgent): ConsoleComponent =
     zeroMem(addr result.inputBuffer[0], MAX_INPUT_LENGTH)
     result.console = new ConsoleItems
     result.console.items = @[]
+    result.consoleFiltered = new ConsoleItems
+    result.consoleFiltered.items = @[]
     result.history = @[]
     result.historyPosition = -1  
     result.currentInput = ""
-    result.textSelect = textselect_create(getLineAtIndex, getNumLines, cast[pointer](result.console), 0)
+    # Text selection covers only console items that are shown to the user even after using text filters
+    result.textSelect = textselect_create(getLineAtIndex, getNumLines, cast[pointer](result.consoleFiltered), 0)
     result.filter = ImGuiTextFilter_ImGuiTextFilter("")
 
 #[
@@ -343,6 +347,9 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
 
         let childWindowFlags = ImGuiChildFlags_NavFlattened.int32 or ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AlwaysUseWindowPadding.int32 or ImGuiChildFlags_FrameStyle.int32
         if igBeginChild_Str("##Console", vec2(-1.0f, -footerHeight), childWindowFlags, ImGuiWindowFlags_HorizontalScrollbar.int32):            
+            
+            # Reset console items shown in the UI
+            component.consoleFiltered.items = @[]    
                         
             # Display console items
             for item in component.console.items:
@@ -352,12 +359,14 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
                     if not component.filter.ImGuiTextFilter_PassFilter(item.getText(), nil):
                         continue
                 
+                component.consoleFiltered.items.add(item)
                 item.print()    
 
             # Auto-scroll to bottom
             if igGetScrollY() >= igGetScrollMaxY():
                 igSetScrollHereY(1.0f)
-                    
+
+            # Update selection
             component.textSelect.textselect_update()
 
     except IndexDefect:
