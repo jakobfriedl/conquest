@@ -60,13 +60,6 @@ proc draw*(component: ListenerModalComponent): UIListener =
 
         # HTTP Listener settings
         if component.protocols[component.protocol] == $HTTP:
-            # Callback hosts
-            igText("Hosts (Callback): ")
-            igSameLine(0.0f, textSpacing)
-            igGetContentRegionAvail(addr availableSize)
-            igSetNextItemWidth(availableSize.x)
-            igInputTextMultiline("##InputCallbackHosts", addr component.callbackHosts[0], 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
-
             # Listener bindAddress 
             igText("Host (Bind):      ")
             igSameLine(0.0f, textSpacing)
@@ -81,6 +74,13 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igSetNextItemWidth(availableSize.x)
             igInputScalar("##InputPortBind", ImGuiDataType_U16.int32, addr component.bindPort, addr step, nil, "%hu", ImGui_InputTextFlags_CharsDecimal.int32)
 
+            # Callback hosts
+            igText("Hosts (Callback): ")
+            igSameLine(0.0f, textSpacing)
+            igGetContentRegionAvail(addr availableSize)
+            igSetNextItemWidth(availableSize.x)
+            igInputTextMultiline("##InputCallbackHosts", addr component.callbackHosts[0], 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
+      
         igGetContentRegionAvail(addr availableSize)
 
         igDummy(vec2(0.0f, 10.0f))

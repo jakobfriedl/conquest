@@ -110,7 +110,6 @@ proc handleResult*(resultData: seq[byte]) =
             of RESULT_STRING:
                 if int(taskResult.length) > 0:
                     cq.client.sendConsoleItem(agentId, LOG_INFO, "Output:") 
-                    cq.info("Output:")
                     cq.client.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data))
 
             of RESULT_BINARY:

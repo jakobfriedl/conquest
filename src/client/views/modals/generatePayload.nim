@@ -3,7 +3,8 @@ import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
 import ../../../common/[types, profile, utils]
 import ../../../modules/manager
-import ../widgets/dualListSelection
+import ../widgets/[dualListSelection, textarea]
+export addItem
 
 type 
     AgentModalComponent* = ref object of RootObj
@@ -12,8 +13,8 @@ type
         sleepMask: int32 
         spoofStack: bool 
         sleepMaskTechniques: seq[string]
-        moduleSelection: DualListSelectionComponent[Module]
-        buildLog: ConsoleItems
+        moduleSelection: DualListSelectionWidget[Module]
+        buildLog*: TextareaWidget
 
 
 proc AgentModal*(): AgentModalComponent =
@@ -37,9 +38,7 @@ proc AgentModal*(): AgentModalComponent =
         return cmp(x.moduleType, y.moduleType)
 
     result.moduleSelection = DualListSelection(modules, moduleName, compareModules, moduleDesc)
-
-    result.buildlog = new ConsoleItems
-    result.buildLog.items = @[]
+    result.buildLog = Textarea(showTimestamps = false)
 
 proc resetModalValues*(component: AgentModalComponent) = 
     component.listener = 0
@@ -47,33 +46,7 @@ proc resetModalValues*(component: AgentModalComponent) =
     component.sleepMask = 0
     component.spoofStack = false 
     component.moduleSelection.reset()
-    component.buildLog.items = @[]
-
-proc addBuildlogItem*(component: AgentModalComponent, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss")) = 
-    for line in data.split("\n"): 
-        component.buildLog.items.add(ConsoleItem(
-            timestamp: timestamp,
-            itemType: itemType,
-            text: line
-        ))
-
-proc print(component: AgentModalComponent, item: ConsoleItem) =         
-    case item.itemType:
-    of LOG_INFO, LOG_INFO_SHORT: 
-        igTextColored(CONSOLE_INFO, $item.itemType)
-    of LOG_ERROR, LOG_ERROR_SHORT: 
-        igTextColored(CONSOLE_ERROR, $item.itemType)
-    of LOG_SUCCESS, LOG_SUCCESS_SHORT: 
-        igTextColored(CONSOLE_SUCCESS, $item.itemType)
-    of LOG_WARNING, LOG_WARNING_SHORT: 
-        igTextColored(CONSOLE_WARNING, $item.itemType)
-    of LOG_COMMAND: 
-        igTextColored(CONSOLE_COMMAND, $item.itemType)
-    of LOG_OUTPUT: 
-        igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), $item.itemType)
-
-    igSameLine(0.0f, 0.0f)
-    igTextUnformatted(item.text.cstring, nil)
+    component.buildLog.clear()
 
 proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBuildInformation =
 
@@ -142,32 +115,8 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igDummy(vec2(0.0f, 10.0f))
 
         igText("Build log: ")
-        try: 
-            # Set styles of the log window
-            igPushStyleColor_Vec4(ImGui_Col_FrameBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
-            igPushStyleColor_Vec4(ImGui_Col_ScrollbarBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
-            igPushStyleColor_Vec4(ImGui_Col_Border.int32, vec4(0.2f, 0.2f, 0.2f, 1.0f))
-            igPushStyleVar_Float(ImGui_StyleVar_FrameBorderSize .int32, 1.0f)
-
-            let buildLogHeight = 250.0f 
-            let childWindowFlags = ImGuiChildFlags_NavFlattened.int32 or ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AlwaysUseWindowPadding.int32 or ImGuiChildFlags_FrameStyle.int32
-            if igBeginChild_Str("##Log", vec2(-1.0f, buildLogHeight), childWindowFlags, ImGuiWindowFlags_HorizontalScrollbar.int32):            
-                # Display eventlog items
-                for item in component.buildLog.items:
-                    component.print(item)
-                    
-                # Auto-scroll to bottom
-                if igGetScrollY() >= igGetScrollMaxY():
-                    igSetScrollHereY(1.0f)
-                        
-        except IndexDefect:
-            # CTRL+A crashes when no items are in the eventlog
-            discard
-        
-        finally: 
-            igPopStyleColor(3)
-            igPopStyleVar(1)
-            igEndChild()
+        let buildLogHeight = 250.0f 
+        component.buildLog.draw(vec2(-1.0f, buildLogHeight))
 
         igDummy(vec2(0.0f, 10.0f))
         igSeparator()

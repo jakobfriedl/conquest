@@ -27,7 +27,7 @@ when (MODULES == cast[uint32](MODULE_ALL)):
         bof,
         dotnet,
         screenshot,
-        situationalAwareness
+        systeminfo
     registerModule(sleep.module)
     registerModule(shell.module)
     registerModule(bof.module)
@@ -35,7 +35,7 @@ when (MODULES == cast[uint32](MODULE_ALL)):
     registerModule(filesystem.module)
     registerModule(filetransfer.module)
     registerModule(screenshot.module)
-    registerModule(situationalAwareness.module)
+    registerModule(systeminfo.module)
 
 # Import modules individually 
 when ((MODULES and cast[uint32](MODULE_SLEEP)) == cast[uint32](MODULE_SLEEP)):
@@ -60,8 +60,8 @@ when ((MODULES and cast[uint32](MODULE_SCREENSHOT)) == cast[uint32](MODULE_SCREE
     import screenshot
     registerModule(screenshot.module)
 when ((MODULES and cast[uint32](MODULE_SITUATIONAL_AWARENESS)) == cast[uint32](MODULE_SITUATIONAL_AWARENESS)):
-    import situationalAwareness
-    registerModule(situationalAwareness.module)
+    import systeminfo
+    registerModule(systeminfo.module)
 
 proc getCommandByType*(cmdType: CommandType): Command = 
     return manager.commandsByType[cmdType]

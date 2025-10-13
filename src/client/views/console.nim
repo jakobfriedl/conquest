@@ -5,6 +5,8 @@ import ../utils/[appImGui, colors]
 import ../../common/[types, utils]
 import ../../modules/manager
 import ../core/[task, websocket]
+import ./widgets/textarea
+export addItem
 
 const MAX_INPUT_LENGTH = 512
 type 
@@ -12,53 +14,21 @@ type
         agent*: UIAgent
         showConsole*: bool
         inputBuffer: array[MAX_INPUT_LENGTH, char]
-        console*: ConsoleItems              # Stores all console items
-        consoleFiltered*: ConsoleItems      # Temporarily stores console items that are displayed to the user
+        console*: TextareaWidget
         history: seq[string]
         historyPosition: int 
         currentInput: string
-        textSelect: ptr TextSelect
         filter: ptr ImGuiTextFilter
-
-#[
-    Helper functions for text selection
-]#
-proc getText(item: ConsoleItem): cstring = 
-    if item.itemType != LOG_OUTPUT: 
-        # let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
-        return "[" & item.timestamp & "]" & $item.itemType & item.text
-    else: 
-        return $item.itemType & item.text
-
-proc getNumLines(data: pointer): csize_t {.cdecl.} =
-    if data.isNil:
-        return 0
-    let console = cast[ConsoleItems](data)
-    return console.items.len().csize_t
-
-proc getLineAtIndex(i: csize_t, data: pointer, outLen: ptr csize_t): cstring {.cdecl.} =
-    if data.isNil:
-        return nil    
-    let console = cast[ConsoleItems](data)
-    let line = console.items[i].getText()
-    if not outLen.isNil:
-        outLen[] = line.len.csize_t
-    return line
 
 proc Console*(agent: UIAgent): ConsoleComponent =
     result = new ConsoleComponent
     result.agent = agent
     result.showConsole = true
     zeroMem(addr result.inputBuffer[0], MAX_INPUT_LENGTH)
-    result.console = new ConsoleItems
-    result.console.items = @[]
-    result.consoleFiltered = new ConsoleItems
-    result.consoleFiltered.items = @[]
+    result.console = Textarea()
     result.history = @[]
     result.historyPosition = -1  
     result.currentInput = ""
-    # Text selection covers only console items that are shown to the user even after using text filters
-    result.textSelect = textselect_create(getLineAtIndex, getNumLines, cast[pointer](result.consoleFiltered), 0)
     result.filter = ImGuiTextFilter_ImGuiTextFilter("")
 
 #[
@@ -174,46 +144,35 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
     else: discard
 
 #[
-    API to add new console item
-]#
-proc addItem*(component: ConsoleComponent, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss")) = 
-    for line in data.split("\n"): 
-        component.console.items.add(ConsoleItem(
-            timestamp: timestamp,
-            itemType: itemType,
-            text: line
-        ))
-
-#[
     Handling console commands
 ]#
 proc displayHelp(component: ConsoleComponent) =
     for module in getModules(component.agent.modules):
         for cmd in module.commands:
-            component.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(15) & cmd.description)
-    component.addItem(LOG_OUTPUT, "")
+            component.console.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(15) & cmd.description)
+    component.console.addItem(LOG_OUTPUT, "")
 
 proc displayCommandHelp(component: ConsoleComponent, command: Command) =
     var usage = command.name & " " & command.arguments.mapIt(
         if it.isRequired: "<" & it.name & ">" else: "[" & it.name & "]"
     ).join(" ")
     
-    component.addItem(LOG_OUTPUT, command.description)
-    component.addItem(LOG_OUTPUT, "Usage    : " & usage)    
-    component.addItem(LOG_OUTPUT, "Example  : " & command.example)
-    component.addItem(LOG_OUTPUT, "")
+    component.console.addItem(LOG_OUTPUT, command.description)
+    component.console.addItem(LOG_OUTPUT, "Usage    : " & usage)    
+    component.console.addItem(LOG_OUTPUT, "Example  : " & command.example)
+    component.console.addItem(LOG_OUTPUT, "")
 
     if command.arguments.len > 0:
-        component.addItem(LOG_OUTPUT, "Arguments:")
+        component.console.addItem(LOG_OUTPUT, "Arguments:")
         
         let header = @["Name", "Type", "Required", "Description"]
-        component.addItem(LOG_OUTPUT, "   " & header[0].alignLeft(15) & " " & header[1].alignLeft(6) & " " & header[2].alignLeft(8) & " " & header[3])
-        component.addItem(LOG_OUTPUT, "   " & '-'.repeat(15) & " " & '-'.repeat(6) & " " & '-'.repeat(8) & " " & '-'.repeat(20))
+        component.console.addItem(LOG_OUTPUT, "   " & header[0].alignLeft(15) & " " & header[1].alignLeft(6) & " " & header[2].alignLeft(8) & " " & header[3])
+        component.console.addItem(LOG_OUTPUT, "   " & '-'.repeat(15) & " " & '-'.repeat(6) & " " & '-'.repeat(8) & " " & '-'.repeat(20))
         
         for arg in command.arguments:
             let isRequired = if arg.isRequired: "YES" else: "NO"
-            component.addItem(LOG_OUTPUT, " * " & arg.name.alignLeft(15) & " " & ($arg.argumentType).toUpperAscii().alignLeft(6) & " " & isRequired.align(8) & " " & arg.description)
-        component.addItem(LOG_OUTPUT, "")
+            component.console.addItem(LOG_OUTPUT, " * " & arg.name.alignLeft(15) & " " & ($arg.argumentType).toUpperAscii().alignLeft(6) & " " & isRequired.align(8) & " " & arg.description)
+        component.console.addItem(LOG_OUTPUT, "")
 
 proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
     try:
@@ -224,7 +183,7 @@ proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
         component.displayHelp()
     except ValueError:
         # Command was not found
-        component.addItem(LOG_ERROR, "The command '" & parsed[1] & "' does not exist.")
+        component.console.addItem(LOG_ERROR, "The command '" & parsed[1] & "' does not exist.")
 
 proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, input: string) =
     # Convert user input into sequence of string arguments
@@ -242,37 +201,10 @@ proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, 
             task = createTask(component.agent.agentId, component.agent.listenerId, command, parsedArgs[1..^1])
 
         connection.sendAgentTask(component.agent.agentId, input, task)
-        component.addItem(LOG_INFO, "Tasked agent to " & command.description.toLowerAscii() & " (" & Uuid.toString(task.taskId) & ")")
+        component.console.addItem(LOG_INFO, "Tasked agent to " & command.description.toLowerAscii() & " (" & Uuid.toString(task.taskId) & ")")
 
     except CatchableError:
-        component.addItem(LOG_ERROR, getCurrentExceptionMsg())
-
-#[
-    Drawing
-]#
-proc print(item: ConsoleItem) =     
-    
-    if item.itemType != LOG_OUTPUT:
-    # let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
-        igTextColored(GRAY, "[" & item.timestamp & "]", nil)
-        igSameLine(0.0f, 0.0f)
-    
-    case item.itemType:
-    of LOG_INFO, LOG_INFO_SHORT: 
-        igTextColored(CONSOLE_INFO, $item.itemType)
-    of LOG_ERROR, LOG_ERROR_SHORT: 
-        igTextColored(CONSOLE_ERROR, $item.itemType)
-    of LOG_SUCCESS, LOG_SUCCESS_SHORT: 
-        igTextColored(CONSOLE_SUCCESS, $item.itemType)
-    of LOG_WARNING, LOG_WARNING_SHORT: 
-        igTextColored(CONSOLE_WARNING, $item.itemType)
-    of LOG_COMMAND: 
-        igTextColored(CONSOLE_COMMAND, $item.itemType)
-    of LOG_OUTPUT: 
-        igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), $item.itemType)
-
-    igSameLine(0.0f, 0.0f)
-    igTextUnformatted(item.text.cstring, nil)
+        component.console.addItem(LOG_ERROR, getCurrentExceptionMsg())
 
 proc draw*(component: ConsoleComponent, connection: WsConnection) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}".cstring, addr component.showConsole, 0)
@@ -338,45 +270,10 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
     igSameLine(0.0f, textSpacing)
     component.filter.ImGuiTextFilter_Draw("##ConsoleSearch", searchBoxWidth)    
 
-    try: 
-        # Set styles of the console window
-        igPushStyleColor_Vec4(ImGui_Col_FrameBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
-        igPushStyleColor_Vec4(ImGui_Col_ScrollbarBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
-        igPushStyleColor_Vec4(ImGui_Col_Border.int32, vec4(0.2f, 0.2f, 0.2f, 1.0f))
-        igPushStyleVar_Float(ImGui_StyleVar_FrameBorderSize .int32, 1.0f)
-
-        let childWindowFlags = ImGuiChildFlags_NavFlattened.int32 or ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AlwaysUseWindowPadding.int32 or ImGuiChildFlags_FrameStyle.int32
-        if igBeginChild_Str("##Console", vec2(-1.0f, -footerHeight), childWindowFlags, ImGuiWindowFlags_HorizontalScrollbar.int32):            
-            
-            # Reset console items shown in the UI
-            component.consoleFiltered.items = @[]    
-                        
-            # Display console items
-            for item in component.console.items:
-
-                # Apply filter
-                if component.filter.ImGuiTextFilter_IsActive():
-                    if not component.filter.ImGuiTextFilter_PassFilter(item.getText(), nil):
-                        continue
-                
-                component.consoleFiltered.items.add(item)
-                item.print()    
-
-            # Auto-scroll to bottom
-            if igGetScrollY() >= igGetScrollMaxY():
-                igSetScrollHereY(1.0f)
-
-            # Update selection
-            component.textSelect.textselect_update()
-
-    except IndexDefect:
-        # CTRL+A crashes when no items are in the console
-        discard
-    
-    finally: 
-        igPopStyleColor(3)
-        igPopStyleVar(1)
-        igEndChild()
+    #[
+        Console textarea
+    ]# 
+    component.console.draw(vec2(-1.0f, -footerHeight), component.filter)
     
     # Padding 
     igDummy(vec2(0.0f, consolePadding))
@@ -397,7 +294,7 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
         let command = ($(addr component.inputBuffer[0])).strip()
         if not command.isEmptyOrWhitespace(): 
 
-            component.addItem(LOG_COMMAND, command)
+            component.console.addItem(LOG_COMMAND, command)
 
             # Send command to team server
             component.handleAgentCommand(connection, command)

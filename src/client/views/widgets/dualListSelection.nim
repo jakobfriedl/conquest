@@ -4,7 +4,7 @@ import ../../utils/[appImGui, colors, utils]
 import ../../../common/[types, utils]
 
 type 
-    DualListSelectionComponent*[T] = ref object of RootObj
+    DualListSelectionWidget*[T] = ref object of RootObj
         items*: array[2, seq[T]]
         selection: array[2, ptr ImGuiSelectionBasicStorage]
         display: proc(item: T): string
@@ -14,8 +14,8 @@ type
 proc defaultDisplay[T](item: T): string = 
     return $item
 
-proc DualListSelection*[T](items: seq[T], display: proc(item: T): string = defaultDisplay, compare: proc(x, y: T): int,  tooltip: proc(item: T): string = nil): DualListSelectionComponent[T] = 
-    result = new DualListSelectionComponent[T]
+proc DualListSelection*[T](items: seq[T], display: proc(item: T): string = defaultDisplay, compare: proc(x, y: T): int,  tooltip: proc(item: T): string = nil): DualListSelectionWidget[T] = 
+    result = new DualListSelectionWidget[T]
     result.items[0] = items
     result.items[1] = @[]
     result.selection[0] = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
@@ -24,7 +24,7 @@ proc DualListSelection*[T](items: seq[T], display: proc(item: T): string = defau
     result.compare = compare
     result.tooltip = tooltip
 
-proc moveAll[T](component: DualListSelectionComponent[T], src, dst: int) = 
+proc moveAll[T](component: DualListSelectionWidget[T], src, dst: int) = 
     for m in component.items[src]: 
         component.items[dst].add(m)
     component.items[dst].sort(component.compare)
@@ -33,7 +33,7 @@ proc moveAll[T](component: DualListSelectionComponent[T], src, dst: int) =
     ImGuiSelectionBasicStorage_Swap(component.selection[src], component.selection[dst])
     ImGuiSelectionBasicStorage_Clear(component.selection[src])
 
-proc moveSelection[T](component: DualListSelectionComponent[T], src, dst: int) = 
+proc moveSelection[T](component: DualListSelectionWidget[T], src, dst: int) = 
     var keep: seq[T]
     for i in 0 ..< component.items[src].len(): 
         let item = component.items[src][i]
@@ -47,10 +47,10 @@ proc moveSelection[T](component: DualListSelectionComponent[T], src, dst: int) =
     ImGuiSelectionBasicStorage_Swap(component.selection[src], component.selection[dst])
     ImGuiSelectionBasicStorage_Clear(component.selection[src])
 
-proc reset*[T](component: DualListSelectionComponent[T]) = 
+proc reset*[T](component: DualListSelectionWidget[T]) = 
     component.moveAll(1, 0)
 
-proc draw*[T](component: DualListSelectionComponent[T]) = 
+proc draw*[T](component: DualListSelectionWidget[T]) = 
 
     if igBeginTable("split", 3, ImGuiTableFlags_None.int32, vec2(0.0f, 0.0f), 0.0f): 
 

@@ -130,21 +130,21 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
         of CLIENT_CONSOLE_ITEM: 
             let agentId = event.data["agentId"].getStr() 
-            consoles[agentId].addItem(
+            consoles[agentId].console.addItem(
                 cast[LogType](event.data["logType"].getInt()), 
                 event.data["message"].getStr(), 
                 event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
             )
         
         of CLIENT_EVENTLOG_ITEM: 
-            eventlog.addItem(
+            eventlog.textarea.addItem(
                 cast[LogType](event.data["logType"].getInt()), 
                 event.data["message"].getStr(), 
                 event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
             )
 
         of CLIENT_BUILDLOG_ITEM:
-            listenersTable.generatePayloadModal.addBuildlogItem(
+            listenersTable.generatePayloadModal.buildLog.addItem(
                 cast[LogType](event.data["logType"].getInt()), 
                 event.data["message"].getStr(), 
                 event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
@@ -193,7 +193,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         # This is done to ensure that closed console windows can be opened again
         consoles = newConsoleTable
 
-        # igShowDemoWindow(nil)
+        igShowDemoWindow(nil)
 
         # render
         app.render()

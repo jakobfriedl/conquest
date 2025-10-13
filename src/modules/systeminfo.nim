@@ -3,11 +3,10 @@ import ../common/[types, utils]
 # Declare function prototypes
 proc executePs(ctx: AgentCtx, task: Task): TaskResult
 proc executeEnv(ctx: AgentCtx, task: Task): TaskResult
-proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult
 
 # Module definition
 let module* = Module(
-    name: protect("situational-awareness"),
+    name: protect("systeminfo"),
     description: protect("Retrieve information about the target system and environment."),
     moduleType: MODULE_SITUATIONAL_AWARENESS,
     commands: @[
@@ -26,14 +25,6 @@ let module* = Module(
             example: protect("env"),
             arguments: @[],
             execute: executeEnv
-        ),
-        Command(
-            name: protect("whoami"),
-            commandType: CMD_WHOAMI,
-            description: protect("Get user information."),
-            example: protect("whoami"),
-            arguments: @[],
-            execute: executeWhoami
         )
     ]
 )
@@ -42,7 +33,6 @@ let module* = Module(
 when not defined(agent):
     proc executePs(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeEnv(ctx: AgentCtx, task: Task): TaskResult = nil
-    proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult = nil
 
 when defined(agent): 
 
@@ -143,18 +133,6 @@ when defined(agent):
                output &= fmt"{key}: {value}" & '\n'
                
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
-
-        except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
-
-    proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult = 
-
-        echo protect("   [>] Getting user information.") 
-
-        try: 
-
-            let output = protect("Not implemented") 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(output))
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
