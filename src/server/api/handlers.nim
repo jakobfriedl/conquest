@@ -111,10 +111,7 @@ proc handleResult*(resultData: seq[byte]) =
                 if int(taskResult.length) > 0:
                     cq.client.sendConsoleItem(agentId, LOG_INFO, "Output:") 
                     cq.info("Output:")
-
-                    # Split result string on newline to keep formatting
-                    for line in Bytes.toString(taskResult.data).split("\n"):
-                        cq.client.sendConsoleItem(agentId, LOG_OUTPUT, line)
+                    cq.client.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data))
 
             of RESULT_BINARY:
                 # Write binary data to a file 
@@ -150,7 +147,7 @@ proc handleResult*(resultData: seq[byte]) =
                 cq.client.sendLoot(lootItem)
 
                 cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
-                cq.client.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).")
+                cq.client.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes)." & "\n")
 
             of RESULT_NO_OUTPUT:
                 cq.output()
