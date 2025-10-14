@@ -1,7 +1,5 @@
 # Conquest default configuration file 
-
 name = "cq-default-profile"
-
 
 # Important file paths and locations
 private-key-file = "data/keys/conquest-server_x25519_private.key"
@@ -11,7 +9,7 @@ database-file = "data/conquest.db"
 [team-server]
 port = 37573
 
-[server.users]
+[team-server.users]
 
 
 # General agent settings 

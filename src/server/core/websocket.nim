@@ -146,15 +146,14 @@ proc sendBuildlogItem*(client: WsConnection, logType: LogType, message: string) 
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
-proc createThumbnail(data: string, maxWidth: int = 1024, quality: int = 90): string =
+proc createThumbnail(data: string, maxHeight: int = 1024, quality: int = 80): string =
     let img: Image = decodeImage(data)
     
-    let aspectRatio = img.height.float / img.width.float
-    let 
-        width = min(maxWidth, img.width)
-        height = int(width.float * aspectRatio)
-
     # Resize image
+    let aspectRatio = img.width.float / img.height.float
+    let
+        height = min(maxHeight, img.height)
+        width = int(height.float * aspectRatio)
     let thumbnail = img.resize(width, height)
 
     # Convert to JPEG image for smaller file size

@@ -5,7 +5,7 @@ import ../fonticon/IconsFontAwesome6
 #--------------
 #--- zoomGlass
 #--------------
-proc zoomGlass*(textureID: var uint32, itemWidth:int, itemPosTop, itemPosEnd:ImVec2 , capture = false) =
+proc zoomGlass*(textureID: var uint32, itemWidth:int, itemPosTop, itemPosEnd:ImVec2 , capture = false, zoom: float = 4.0f) =
   # itemPosTop and itemPosEnd are absolute position in main window.
   if igBeginItemTooltip():
     defer: igEndTooltip()
@@ -23,7 +23,6 @@ proc zoomGlass*(textureID: var uint32, itemWidth:int, itemPosTop, itemPosEnd:ImV
     let region_sz = 32.0f
     var region_x = pio.MousePos.x - itemPosTop.x - region_sz * 0.5f
     var region_y = pio.MousePos.y - itemPosTop.y - region_sz * 0.5f
-    let zoom = 4.0f
     if region_x < 0.0f:
       region_x = 0.0f
     elif region_x > (my_tex_w - region_sz):

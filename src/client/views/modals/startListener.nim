@@ -104,6 +104,9 @@ proc draw*(component: ListenerModalComponent): UIListener =
 
             else: 
                 for host in callbackHosts.splitLines():
+                    if host.isEmptyOrWhitespace(): 
+                        continue
+
                     hosts &= ";"
                     let hostParts = host.split(":")
                     if hostParts.len() == 2:

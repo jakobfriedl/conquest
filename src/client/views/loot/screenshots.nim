@@ -126,7 +126,7 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool, connection:
             let texture = component.textures[item.path]
 
             igImage(ImTextureRef(internal_TexData: nil, internal_TexID: texture.textureId), vec2(texture.width, texture.height), vec2(0, 0), vec2(1, 1))
-            
+
         else:
             igText("Select item for preview.")
     igEndChild()
