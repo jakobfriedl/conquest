@@ -157,18 +157,20 @@ proc main(ip: string = "localhost", port: int = 37573) =
             of DOWNLOAD:
                 lootDownloads.items.add(lootItem)
             of SCREENSHOT:
-                lootScreenshots.addItem(lootItem)
+                lootScreenshots.items.add(lootItem)
             else: discard 
 
-        of CLIENT_LOOT_SYNC:
-            let path = event.data["path"].getStr()
-            let file = decode(event.data["loot"].getStr())
-            try: 
-                # TODO: Using native file dialogs to have the client select the output file path (does not work in WSL) 
-                # let outFilePath = callDialogFileSave("Save Payload") 
-                writeFile(path & "_download", file)
-            except IOError:
-                discard 
+        of CLIENT_LOOT_DATA:
+            let
+                lootItem = event.data["loot"].to(LootItem)
+                data = decode(event.data["data"].getStr())
+            
+            case lootItem.itemType: 
+            of DOWNLOAD: 
+                lootDownloads.contents[lootItem.lootId] = data
+            of SCREENSHOT: 
+                lootScreenshots.addTexture(lootItem.lootId, data)
+            else: discard 
     
         else: discard 
     

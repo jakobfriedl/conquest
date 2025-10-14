@@ -67,7 +67,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 for id, agent in cq.agents: 
                     cq.client.sendAgent(agent)
 
-                # Downloads & Screenshots
+                # Downloads & Screenshots metadata
                 for lootItem in cq.dbGetLoot():
                     cq.client.sendLoot(lootItem)
 
@@ -106,9 +106,9 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 if not cq.dbDeleteLootById(event.data["lootId"].getStr()): 
                     cq.client.sendEventlogItem(LOG_ERROR, "Failed to delete loot.")
 
-            of CLIENT_LOOT_SYNC: 
-                let path = cq.dbGetLootById(event.data["lootId"].getStr()).path
-                cq.client.sendLootSync(path, readFile(path))
+            of CLIENT_LOOT_GET: 
+                let loot = cq.dbGetLootById(event.data["lootId"].getStr())
+                cq.client.sendLootData(loot, readFile(loot.path))
 
             else: discard
 

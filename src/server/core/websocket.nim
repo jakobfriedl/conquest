@@ -171,12 +171,6 @@ proc createThumbnail(data: string, maxHeight: int = 1024, quality: int = 80): st
     return Bytes.toString(stbiw.writeJPG(width, height, 4, rgbaData, quality))
 
 proc sendLoot*(client: WsConnection, loot: LootItem) = 
-    var data: string
-    if loot.itemType == SCREENSHOT: 
-        loot.data = createThumbnail(readFile(loot.path))    # Create a smaller thumbnail version of the screenshot for better transportability
-    elif loot.itemType == DOWNLOAD:
-        loot.data = readFile(loot.path)                     # Read downloaded file
-    
     let event = Event(
         eventType: CLIENT_LOOT_ADD,
         timestamp: now().toTime().toUnix(),
@@ -185,13 +179,13 @@ proc sendLoot*(client: WsConnection, loot: LootItem) =
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
-proc sendLootSync*(client: WsConnection, path: string, file: string) = 
+proc sendLootData*(client: WsConnection, loot: LootItem, data: string) = 
     let event = Event(
-        eventType: CLIENT_LOOT_SYNC,
+        eventType: CLIENT_LOOT_DATA,
         timestamp: now().toTime().toUnix(),
         data: %*{
-            "path": path,
-            "loot": encode(file)
+            "loot": %loot,
+            "data": encode(data)
         }
     )
     if client != nil: 

@@ -1,4 +1,4 @@
-import strformat, strutils, times, os
+import strformat, strutils, times, os, tables
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
 import ../../../common/[types, utils]
@@ -8,6 +8,7 @@ type
     DownloadsComponent* = ref object of RootObj
         title: string
         items*: seq[LootItem]
+        contents*: Table[string, string]
         selectedIndex: int
         
 
@@ -15,6 +16,7 @@ proc LootDownloads*(title: string): DownloadsComponent =
     result = new DownloadsComponent
     result.title = title
     result.items = @[]
+    result.contents = initTable[string, string]() 
     result.selectedIndex = -1
 
 proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: WsConnection) =
@@ -88,8 +90,14 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: W
                 let item = component.items[component.selectedIndex]
 
                 if igMenuItem("Download", nil, false, true):                     
-                    # Task team server to download file
-                    connection.sendDownloadLoot(item.lootId)
+                    # Download file
+                    try: 
+                        # TODO: Use native dialogs to select the download location
+                        let path = item.path & ".download"
+                        let data = component.contents[item.lootId]
+                        writeFile(path, data)
+                    except IOError: 
+                        discard                     
                     igCloseCurrentPopup()
 
                 if igMenuItem("Remove", nil, false, true): 
@@ -111,15 +119,20 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: W
         if component.selectedIndex >= 0 and component.selectedIndex < component.items.len:
             let item = component.items[component.selectedIndex]
             
-            igText(fmt("[{item.host}] "))
-            igSameLine(0.0f, 0.0f)
-            igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/"))
-            
-            igDummy(vec2(0.0f, 5.0f))
-            igSeparator()
-            igDummy(vec2(0.0f, 5.0f)) 
+            if not component.contents.hasKey(item.lootId): 
+                connection.sendGetLoot(item.lootId)     
+                component.contents[item.lootId] = ""       # Ensure that the sendGetLoot() function is sent only once by setting a value for the table key
 
-            igTextUnformatted(item.data, nil)
+            else: 
+                igText(fmt("[{item.host}] "))
+                igSameLine(0.0f, 0.0f)
+                igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/"))
+                
+                igDummy(vec2(0.0f, 5.0f))
+                igSeparator()
+                igDummy(vec2(0.0f, 5.0f)) 
+
+                igTextUnformatted(component.contents[item.lootId], nil)
             
         else:
             igText("Select item to preview contents")

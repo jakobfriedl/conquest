@@ -7,12 +7,13 @@ import ../../core/websocket
 type
     ScreenshotTexture* = ref object 
         textureId*: GLuint
+        data*: string
         width: int 
         height: int 
 
     ScreenshotsComponent* = ref object of RootObj
         title: string
-        items: seq[LootItem]
+        items*: seq[LootItem]
         selectedIndex: int
         textures: Table[string, ScreenshotTexture]
 
@@ -23,13 +24,12 @@ proc LootScreenshots*(title: string): ScreenshotsComponent =
     result.selectedIndex = -1
     result.textures = initTable[string, ScreenshotTexture]()
 
-proc addItem*(component: ScreenshotsComponent, screenshot: LootItem) = 
-    component.items.add(screenshot)
-
+proc addTexture*(component: ScreenshotsComponent, lootId: string, data: string) = 
     var textureId: GLuint
-    let (width, height) = loadTextureFromBytes(string.toBytes(screenshot.data), textureId)
-    component.textures[screenshot.path] = ScreenshotTexture(
+    let (width, height) = loadTextureFromBytes(string.toBytes(data), textureId)
+    component.textures[lootId] = ScreenshotTexture(
         textureId: textureId,
+        data: data,
         width: width, 
         height: height
     )
@@ -98,11 +98,18 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool, connection:
 
             # Handle right-click context menu
             if component.selectedIndex >= 0 and component.selectedIndex < component.items.len and igBeginPopupContextWindow("Downloads", ImGui_PopupFlags_MouseButtonRight.int32): 
+                
                 let item = component.items[component.selectedIndex]
 
                 if igMenuItem("Download", nil, false, true):                     
-                    # Task team server to download file
-                    connection.sendDownloadLoot(item.lootId)
+                    # Download screenshot 
+                    try: 
+                        # TODO: Use native dialogs to select the download location
+                        let path = item.path & "_download.jpeg"
+                        let data = component.textures[item.lootId].data
+                        writeFile(path, data)
+                    except IOError: 
+                        discard 
                     igCloseCurrentPopup()
 
                 if igMenuItem("Remove", nil, false, true): 
@@ -122,10 +129,20 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool, connection:
     if igBeginChild_Str("##Preview", vec2(0.0f, 0.0f), ImGui_ChildFlags_Borders.int32, ImGui_WindowFlags_None.int32):
 
         if component.selectedIndex >= 0 and component.selectedIndex < component.items.len:
-            let item = component.items[component.selectedIndex]
-            let texture = component.textures[item.path]
 
-            igImage(ImTextureRef(internal_TexData: nil, internal_TexID: texture.textureId), vec2(texture.width, texture.height), vec2(0, 0), vec2(1, 1))
+            let item = component.items[component.selectedIndex]
+            
+            # Check if the texture for the loot item has already been loaded from the team server
+            # If the texture doesn't exist yet, send a request to the team server to retrieve and render it
+            if not component.textures.hasKey(item.lootId): 
+                connection.sendGetLoot(item.lootId)     
+                component.textures[item.lootId] = nil       # Ensure that the sendGetLoot() function is sent only once by setting a value for the table key
+
+            # Display the image preview
+            else: 
+                let texture = component.textures[item.lootId]
+                if not texture.isNil(): 
+                    igImage(ImTextureRef(internal_TexData: nil, internal_TexID: texture.textureId), vec2(texture.width, texture.height), vec2(0, 0), vec2(1, 1))
 
         else:
             igText("Select item for preview.")

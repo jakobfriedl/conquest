@@ -224,9 +224,7 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
 
         Problems I encountered with other approaches (Multi-line Text Input, TextEditor, ...):
             - https://github.com/ocornut/imgui/issues/383#issuecomment-2080346129
-            - https://github.com/ocornut/imgui/issues/950
-        
-        Huge thanks to @dinau for implementing ImGuiTextSelect into imguin very rapidly after I requested it.
+            - https://github.com/ocornut/imgui/issues/950        
     ]#
     let consolePadding: float = 10.0f 
     let footerHeight = (consolePadding * 2) + (igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing()) * 0.75f

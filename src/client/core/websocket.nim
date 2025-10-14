@@ -70,9 +70,9 @@ proc sendRemoveLoot*(connection: WsConnection, lootId: string) =
     )
     connection.ws.sendEvent(event, connection.sessionKey)
 
-proc sendDownloadLoot*(connection: WsConnection, lootId: string) = 
+proc sendGetLoot*(connection: WsConnection, lootId: string) = 
     let event = Event(
-        eventType: CLIENT_LOOT_SYNC, 
+        eventType: CLIENT_LOOT_GET, 
         timestamp: now().toTime().toUnix(),
         data: %*{
             "lootId": lootId

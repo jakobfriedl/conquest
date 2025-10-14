@@ -258,8 +258,8 @@ type
         CLIENT_LISTENER_START = 3'u8        # Start a listener on the TS
         CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
         CLIENT_LOOT_REMOVE = 5'u8           # Remove loot on the team server
-        CLIENT_LOOT_SYNC = 6'u8             # Download a file/screenshot to the client
-                                        
+        CLIENT_LOOT_GET = 6'u8              # Request file/screenshot from the team server for preview or download
+
         # Sent by team server
         CLIENT_PROFILE = 100'u8             # Team server profile and configuration 
         CLIENT_LISTENER_ADD = 101'u8        # Add listener to listeners table
@@ -269,7 +269,8 @@ type
         CLIENT_CONSOLE_ITEM = 105'u8        # Add entry to a agent's console 
         CLIENT_EVENTLOG_ITEM = 106'u8       # Add entry to the eventlog   
         CLIENT_BUILDLOG_ITEM = 107'u8       # Add entry to the build log
-        CLIENT_LOOT_ADD = 108'u8            # Add file or screenshot stored on the team server to preview on the client
+        CLIENT_LOOT_ADD = 108'u8            # Add file or screenshot stored on the team server to preview on the client, only sends metadata and not the actual file content
+        CLIENT_LOOT_DATA = 109'u8           # Send file/screenshot bytes to the client to display as preview or to download to the client desktop
 
     Event* = object 
         eventType*: EventType               
@@ -363,4 +364,3 @@ type
         path*: string 
         timestamp*: int64
         size*: int 
-        data*: string   # Image bytes or file content (binary data prefixed with length)
