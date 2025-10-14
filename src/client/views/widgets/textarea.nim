@@ -13,11 +13,9 @@ type
 # Text highlighting
 proc getText(item: ConsoleItem): cstring = 
     if item.itemType != LOG_OUTPUT: 
-        # let timestamp = item.timestamp.fromUnix().format("dd-MM-yyyy HH:mm:ss")
         return "[" & item.timestamp & "]" & $item.itemType & item.text
     else: 
         return $item.itemType & item.text
-
 
 proc getNumLines(data: pointer): csize_t {.cdecl.} =
     if data.isNil:
@@ -92,10 +90,10 @@ proc draw*(component: TextareaWidget, size: ImVec2, filter: ptr ImGuiTextFilter 
         let childWindowFlags = ImGuiChildFlags_NavFlattened.int32 or ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AlwaysUseWindowPadding.int32 or ImGuiChildFlags_FrameStyle.int32
         if igBeginChild_Str("##TextArea", size, childWindowFlags, ImGuiWindowFlags_HorizontalScrollbar.int32):            
             
-            component.contentDisplayed.items.setLen(0)
-
             # Display items
+            component.contentDisplayed.items.setLen(0)
             for item in component.content.items:
+
                 # Handle search/filter
                 if not filter.isNil():
                     if filter.ImGuiTextFilter_IsActive():
@@ -111,7 +109,7 @@ proc draw*(component: TextareaWidget, size: ImVec2, filter: ptr ImGuiTextFilter 
             component.textSelect.textselect_update()
                     
     except IndexDefect:
-        # CTRL+A crashes when no items are in the eventlog
+        # CTRL+A crashes when no items are in the text area
         discard
     
     finally: 

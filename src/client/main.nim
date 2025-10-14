@@ -46,7 +46,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
     let io = igGetIO()
 
     # Create key pair 
-    let clientKeyPair = generateKeyPair() 
+    var clientKeyPair = generateKeyPair() 
         
     # Initiate WebSocket connection
     var connection = WsConnection(
@@ -79,6 +79,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         of CLIENT_KEY_EXCHANGE: 
             connection.sessionKey = deriveSessionKey(clientKeyPair, decode(event.data["publicKey"].getStr()).toKey())            
             connection.sendPublicKey(clientKeyPair.publicKey)
+            wipeKey(clientKeyPair.privateKey)
 
         of CLIENT_PROFILE:
             profile = parsetoml.parseString(event.data["profile"].getStr())
@@ -168,8 +169,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
                 writeFile(path & "_download", file)
             except IOError:
                 discard 
-
-            discard 
     
         else: discard 
     
