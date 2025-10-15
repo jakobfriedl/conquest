@@ -3,12 +3,14 @@ import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
 import ../../../common/[types, utils]
 import ../../core/websocket
+import ../widgets/textarea
 
 type
     DownloadsComponent* = ref object of RootObj
         title: string
         items*: seq[LootItem]
         contents*: Table[string, string]
+        textarea: TextareaWidget
         selectedIndex: int
         
 
@@ -18,6 +20,7 @@ proc LootDownloads*(title: string): DownloadsComponent =
     result.items = @[]
     result.contents = initTable[string, string]() 
     result.selectedIndex = -1
+    result.textarea = Textarea(showTimestamps = false, autoScroll = false)
 
 proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: WsConnection) =
     igBegin(component.title, showComponent, 0)
@@ -64,6 +67,7 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: W
                     let isSelected = component.selectedIndex == i
                     if igSelectable_Bool(item.lootId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0)):
                         component.selectedIndex = i
+                        component.textarea.clear()
                     
                     if igIsItemHovered(ImGuiHoveredFlags_None.int32) and igIsMouseClicked_Bool(ImGuiMouseButton_Right.int32, false):
                         component.selectedIndex = i
@@ -132,8 +136,12 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: W
                 igSeparator()
                 igDummy(vec2(0.0f, 5.0f)) 
 
-                igTextUnformatted(component.contents[item.lootId], nil)
+                if component.textarea.isEmpty() and not component.contents[item.lootId].isEmptyOrWhitespace():
+                    component.textarea.addItem(LOG_OUTPUT, component.contents[item.lootId])
+                
+                component.textarea.draw(vec2(-1.0f, -1.0f))
             
         else:
             igText("Select item to preview contents")
+
     igEndChild()

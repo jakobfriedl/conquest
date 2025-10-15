@@ -9,6 +9,7 @@ type
         contentDisplayed: ConsoleItems
         textSelect: ptr TextSelect
         showTimestamps: bool
+        autoScroll: bool
 
 # Text highlighting
 proc getText(item: ConsoleItem): cstring = 
@@ -32,7 +33,7 @@ proc getLineAtIndex(i: csize_t, data: pointer, outLen: ptr csize_t): cstring {.c
         outLen[] = line.len.csize_t
     return line
 
-proc Textarea*(showTimestamps: bool = true): TextareaWidget = 
+proc Textarea*(showTimestamps: bool = true, autoScroll: bool = true): TextareaWidget = 
     result = new TextareaWidget
     result.content = new ConsoleItems
     result.content.items = @[]
@@ -40,6 +41,7 @@ proc Textarea*(showTimestamps: bool = true): TextareaWidget =
     result.contentDisplayed.items = @[]
     result.textSelect = textselect_create(getLineAtIndex, getNumLines, cast[pointer](result.contentDisplayed), 0)
     result.showTimestamps = showTimestamps
+    result.autoScroll = autoScroll
 
 # API to add new content entry
 proc addItem*(component: TextareaWidget, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss")) = 
@@ -55,9 +57,11 @@ proc clear*(component: TextareaWidget) =
     component.contentDisplayed.items.setLen(0)
     component.textSelect.textselect_clear_selection()
 
+proc isEmpty*(component: TextareaWidget): bool = 
+    return component.content.items.len() <= 0
+
 # Drawing
 proc print(component: TextareaWidget, item: ConsoleItem) =     
-    
     if item.itemType != LOG_OUTPUT and component.showTimestamps:
         igTextColored(GRAY, "[" & item.timestamp & "]", nil)
         igSameLine(0.0f, 0.0f)
@@ -103,8 +107,9 @@ proc draw*(component: TextareaWidget, size: ImVec2, filter: ptr ImGuiTextFilter 
                 component.print(item)
 
             # Auto-scroll to bottom
-            if igGetScrollY() >= igGetScrollMaxY():
-                igSetScrollHereY(1.0f)
+            if component.autoScroll:
+                if igGetScrollY() >= igGetScrollMaxY():
+                    igSetScrollHereY(1.0f)
   
             component.textSelect.textselect_update()
                     
