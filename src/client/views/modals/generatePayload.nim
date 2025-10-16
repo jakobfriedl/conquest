@@ -127,6 +127,8 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
 
         if igButton("Build", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
 
+            component.buildLog.clear()
+
             # Iterate over modules
             var modules: uint32 = 0
             for m in component.moduleSelection.items[1]: 

