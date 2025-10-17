@@ -1,4 +1,5 @@
 import winim/lean 
+import strformat
 import ../../common/[types, utils]
 
 #[
@@ -7,6 +8,7 @@ import ../../common/[types, utils]
     - https://www.nccgroup.com/research-blog/demystifying-cobalt-strike-s-make_token-command/ 
     - https://github.com/HavocFramework/Havoc/blob/main/payloads/Demon/src/core/Token.c
     - https://github.com/itaymigdal/Nimbo-C2/blob/main/Nimbo-C2/agent/windows/utils/token.nim
+    - Windows System Programming Security on INE (Pavel Yosifovich)
 ]#
 
 # APIs
@@ -14,6 +16,7 @@ type
     NtQueryInformationToken = proc(hToken: HANDLE, tokenInformationClass: TOKEN_INFORMATION_CLASS, tokenInformation: PVOID, tokenInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}
     NtOpenThreadToken = proc(threadHandle: HANDLE, desiredAccess: ACCESS_MASK, openAsSelf: BOOLEAN, tokenHandle: PHANDLE): NTSTATUS {.stdcall.}
     NtOpenProcessToken = proc(processHandle: HANDLE, desiredAccess: ACCESS_MASK, tokenHandle: PHANDLE): NTSTATUS {.stdcall.}
+    ConvertSidToStringSidA = proc(sid: PSID, stringSid: ptr LPSTR): NTSTATUS {.stdcall.}
 
 const 
     CURRENT_THREAD = cast[HANDLE](-2)
@@ -29,7 +32,8 @@ proc getCurrentToken*(): HANDLE =
         pNtOpenThreadToken = cast[NtOpenThreadToken](GetProcAddress(hNtdll, protect("NtOpenThreadToken")))
         pNtOpenProcessToken = cast[NtOpenProcessToken](GetProcAddress(hNtdll, protect("NtOpenProcessToken")))
     
-    status = pNtOpenThreadToken(CURRENT_THREAD, TOKEN_QUERY, FALSE, addr hToken)
+    # https://ntdoc.m417z.com/ntopenthreadtoken, token-info fails with error ACCESS_DENIED if OpenAsSelf is set to
+    status = pNtOpenThreadToken(CURRENT_THREAD, TOKEN_QUERY, TRUE, addr hToken)
     if status != STATUS_SUCCESS:
         status = pNtOpenProcessToken(CURRENT_PROCESS, TOKEN_QUERY, addr hToken)
         if status != STATUS_SUCCESS: 
@@ -37,53 +41,135 @@ proc getCurrentToken*(): HANDLE =
 
     return hToken
 
-proc getTokenOwner*(hToken: HANDLE): string =
+proc sidToString(sid: PSID): string = 
+    let pConvertSidToStringSidA = cast[ConvertSidToStringSidA](GetProcAddress(GetModuleHandleA(protect("advapi32.dll")), protect("ConvertSidToStringSidA")))
+    var stringSid: LPSTR 
+    discard pConvertSidToStringSidA(sid, addr stringSid)
+    return $stringSid
+
+proc sidToName(sid: PSID): string = 
+    var 
+        usernameSize: DWORD = 0
+        domainSize: DWORD = 0
+        sidType: SID_NAME_USE
+    
+    # Retrieve required sizes
+    discard LookupAccountSidW(NULL, sid, NULL, addr usernameSize, NULL, addr domainSize, addr sidType)
+    
+    var username = newWString(int(usernameSize) + 1)
+    var domain = newWString(int(domainSize) + 1)
+    if LookupAccountSidW(NULL, sid, username, addr usernameSize, domain, addr domainSize, addr sidType) == TRUE:
+        return $domain[0 ..< int(domainSize)] & "\\" & $username[0 ..< int(usernameSize)]
+    return ""
+
+proc privilegeToString(luid: PLUID): string =
+    var privSize: DWORD = 0
+
+    # Retrieve required size
+    discard LookupPrivilegeNameW(NULL, luid, NULL, addr privSize)   
+
+    var privName = newWString(int(privSize) + 1)
+    if LookupPrivilegeNameW(NULL, luid, privName, addr privSize) == TRUE: 
+        return $privName[0 ..< int(privSize)]
+    return ""
+
+#[
+    Retrieve and return information about an access token
+]#
+proc getTokenInfo*(hToken: HANDLE): string =
     var
         status: NTSTATUS = 0
         returnLength: ULONG = 0
-        pUser: ptr TOKEN_USER = nil
-        usernameLength: DWORD = 0
-        domainLength: DWORD = 0
-        totalLength: ULONG = 0
-        sidName: SID_NAME_USE
-        szUsername: PWCHAR = nil
-        pDomain: PWCHAR = nil
+
+        pStats: TOKEN_STATISTICS
+        pUser: PTOKEN_USER
+        pGroups: PTOKEN_GROUPS
+        pPrivileges: PTOKEN_PRIVILEGES
    
     let pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationToken")))
    
-    # Calculate return length to allocate space
+    #[
+        Token statistics
+    ]#
+    status = pNtQueryInformationToken(hToken, tokenStatistics, addr pStats, cast[ULONG](sizeof(pStats)), addr returnLength)
+    if status != STATUS_SUCCESS: 
+        raise newException(CatchableError, protect("NtQueryInformationToken - Token Statistics ") & $status.toHex())
+
+    let 
+        tokenType = if cast[TOKEN_TYPE](pStats.TokenType) == tokenPrimary: protect("Primary") else: protect("Impersonation")
+        tokenId = cast[uint32](pStats.TokenId).toHex()
+
+    result &= fmt"TokenID: 0x{tokenId}" & "\n"
+    result &= fmt"Type:    {tokenType}" & "\n"
+    
+    #[
+        Token user information
+    ]#
     status = pNtQueryInformationToken(hToken, tokenUser, NULL, 0, addr returnLength)
     if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
-        raise newException(CatchableError, protect("NtQueryInformationToken [1] ") & $status.toHex())
+        raise newException(CatchableError, protect("NtQueryInformationToken - Token User [1] ") & $status.toHex())
     
-    pUser = cast[ptr TOKEN_USER](LocalAlloc(LMEM_FIXED, returnLength))
+    pUser = cast[PTOKEN_USER](LocalAlloc(LMEM_FIXED, returnLength))
     if pUser == NULL:
-        raise newException(CatchableError, "Failed to allocate memory for TOKEN_USER")
+        raise newException(CatchableError, $GetLastError())
     defer: LocalFree(cast[HLOCAL](pUser))
     
-    # Retrieve token user information 
     status = pNtQueryInformationToken(hToken, tokenUser, cast[PVOID](pUser), returnLength, addr returnLength)
     if status != STATUS_SUCCESS:
-        raise newException(CatchableError, protect("NtQueryInformationToken [2] ") & $status.toHex())
+        raise newException(CatchableError, protect("NtQueryInformationToken - Token User [2] ") & $status.toHex())
     
-    if LookupAccountSidW(NULL, pUser.User.Sid, NULL, addr usernameLength, NULL, addr domainLength, addr sidName) == FALSE:
-        sidName = 0        
-        
-        let
-            sizeofWChar = cast[ULONG](sizeof(WCHAR))
-            pDomain = cast[PWCHAR](LocalAlloc(LMEM_FIXED, domainLength * sizeofWChar))
-            pUsername = cast[PWCHAR](LocalAlloc(LMEM_FIXED, usernameLength * sizeofWChar))
-        if pDomain == NULL or pUsername == NULL:
-            raise newException(CatchableError, $GetLastError())
-        defer: 
-            LocalFree(cast[HLOCAL](pDomain))
-            LocalFree(cast[HLOCAL](pUsername))
-                
-        # Retrieve username & domain
-        if LookupAccountSidW(nil, pUser.User.Sid, pUsername, addr usernameLength, pDomain, addr domainLength, addr sidName) == FALSE:
-            raise newException(CatchableError, $GetLastError())
-        
-        return $pDomain & "\\" & $pUsername
+    result &= fmt"User:    {sidToName(pUser.User.Sid)}" & "\n"
+    result &= fmt"SID:     {sidToString(pUser.User.Sid)}" & "\n"
+
+    #[
+        Groups
+    ]#
+    status = pNtQueryInformationToken(hToken, tokenGroups, NULL, 0, addr returnLength)
+    if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
+        raise newException(CatchableError, protect("NtQueryInformationToken - Token Groups [1] ") & $status.toHex())
+    
+    pGroups = cast[PTOKEN_GROUPS](LocalAlloc(LMEM_FIXED, returnLength))
+    if pGroups == NULL:
+        raise newException(CatchableError, $GetLastError())
+    defer: LocalFree(cast[HLOCAL](pGroups))
+    
+    status = pNtQueryInformationToken(hToken, tokenGroups, cast[PVOID](pGroups), returnLength, addr returnLength)
+    if status != STATUS_SUCCESS:
+        raise newException(CatchableError, protect("NtQueryInformationToken - Token Groups [2] ") & $status.toHex())
+
+    let 
+        groupCount = pGroups.GroupCount
+        groups = cast[ptr UncheckedArray[SID_AND_ATTRIBUTES]](addr pGroups.Groups[0])
+
+    result &= fmt"Group memberships ({groupCount})" & "\n"
+    for i, group in groups.toOpenArray(0, int(groupCount) - 1): 
+        result &= fmt" - {sidToString(group.Sid):<50} {sidToName(group.Sid)}" & "\n"
+
+    #[
+        Privileges
+    ]#
+    status = pNtQueryInformationToken(hToken, tokenPrivileges, NULL, 0, addr returnLength)
+    if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
+        raise newException(CatchableError, protect("NtQueryInformationToken - Token Privileges [1] ") & $status.toHex())
+    
+    pPrivileges = cast[PTOKEN_PRIVILEGES](LocalAlloc(LMEM_FIXED, returnLength))
+    if pPrivileges == NULL:
+        raise newException(CatchableError, $GetLastError())
+    defer: LocalFree(cast[HLOCAL](pPrivileges))
+    
+    status = pNtQueryInformationToken(hToken, tokenPrivileges, cast[PVOID](pPrivileges), returnLength, addr returnLength)
+    if status != STATUS_SUCCESS:
+        raise newException(CatchableError, protect("NtQueryInformationToken - Token Privileges [2] ") & $status.toHex())
+
+    let 
+        privCount = pPrivileges.PrivilegeCount
+        privs = cast[ptr UncheckedArray[LUID_AND_ATTRIBUTES]](addr pPrivileges.Privileges[0])
+
+    result &= fmt"Privileges ({privCount})" & "\n"
+    for i, priv in privs.toOpenArray(0, int(privCount) - 1):
+        let enabled = if priv.Attributes and SE_PRIVILEGE_ENABLED: "Enabled" else: "Disabled" 
+        result &= fmt" - {privilegeToString(addr priv.Luid):<50} {enabled}" & "\n"
+
 
 proc impersonateToken*(hToken: HANDLE) = 
     discard
@@ -107,19 +193,18 @@ proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_L
         hImpersonationToken: HANDLE
 
     let provider: DWORD = if logonType == LOGON32_LOGON_NEW_CREDENTIALS: LOGON32_PROVIDER_WINNT50 else: LOGON32_PROVIDER_DEFAULT
-    if LogonUserA(username, domain, password, logonType, provider, addr hToken): 
-        
-        if DuplicateTokenEx(hToken, TOKEN_QUERY or TOKEN_IMPERSONATE, NULL, securityImpersonation, tokenImpersonation, addr hImpersonationToken) == FALSE:
-            return false
-        defer: CloseHandle(hImpersonationToken)
-    
-        if ImpersonateLoggedOnUser(hImpersonationToken) == FALSE: 
-            return false
-    
-    else: 
+    if LogonUserA(username, domain, password, logonType, provider, addr hToken) == FALSE:
         return false 
-
     defer: CloseHandle(hToken)
+
+    if DuplicateTokenEx(hToken, TOKEN_QUERY or TOKEN_IMPERSONATE, NULL, securityImpersonation, tokenImpersonation, addr hImpersonationToken) == FALSE:
+        return false
+    
+    # Revert to self before impersonation
+    discard RevertToSelf() 
+    if ImpersonateLoggedOnUser(hImpersonationToken) == FALSE: 
+        CloseHandle(hImpersonationToken)
+        return false
 
     return true
 

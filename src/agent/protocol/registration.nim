@@ -20,7 +20,7 @@ proc getDomain(): string =
         dwSize = DWORD buffer.len
 
     GetComputerNameExW(ComputerNameDnsDomain, &buffer, &dwSize)
-    return $buffer[ 0 ..< int(dwSize)]
+    return $buffer[0 ..< int(dwSize)]
 
 # Username
 proc getUsername(): string = 

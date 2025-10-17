@@ -55,8 +55,7 @@ type
         CMD_MAKE_TOKEN = 18'u16
         CMD_STEAL_TOKEN = 19'u16 
         CMD_REV2SELF = 20'u16 
-        CMD_TOKEN_GET_PRIV = 21'u16 
-        CMD_TOKEN_SET_PRIV = 22'u16 
+        CMD_TOKEN_INFO = 21'u16 
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
