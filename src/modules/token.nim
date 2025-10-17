@@ -16,7 +16,7 @@ let module* = Module(
             description: protect("Create an access token from username and password."),
             example: protect("make-token LAB\\john Password123!"),
             arguments: @[
-                Argument(name: protect("domain\\username"), description: protect("Account domain and username."), argumentType: STRING, isRequired: true),
+                Argument(name: protect("domain\\username"), description: protect("Account domain and username. For impersonating local users, use .\\username."), argumentType: STRING, isRequired: true),
                 Argument(name: protect("password"), description: protect("Account password."), argumentType: STRING, isRequired: true),
                 Argument(name: protect("logonType"), description: protect("Logon type (https://learn.microsoft.com/en-us/windows-server/identity/securing-privileged-access/reference-tools-logon-types)."), argumentType: INT, isRequired: false)
             ],
@@ -63,6 +63,9 @@ when defined(agent):
             if task.argCount == 3: 
                 logonType = cast[DWORD](Bytes.toUint32(task.args[2].data))
             
+            # Revert current token before creating a new one 
+            discard rev2self() 
+
             if not makeToken(userParts[1], password, userParts[0], logonType): 
                 return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(protect("Failed to create token.")))
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {username}."))

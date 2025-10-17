@@ -114,6 +114,7 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte], remoteAddress: string):
         agentId: Uuid.toString(header.agentId),
         listenerId: Uuid.toString(listenerId),
         username: username, 
+        impersonationToken: "",
         hostname: hostname,
         domain: domain,
         ipInternal: ipInternal,

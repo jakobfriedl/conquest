@@ -9,6 +9,7 @@ proc `%`*(agent: Agent): JsonNode =
     result["agentId"] = %agent.agentId
     result["listenerId"] = %agent.listenerId
     result["username"] = %agent.username
+    result["impersonationToken"] = %agent.impersonationToken
     result["hostname"] = %agent.hostname
     result["domain"] = %agent.domain
     result["ipInternal"] = %agent.ipInternal
@@ -186,6 +187,29 @@ proc sendLootData*(client: WsConnection, loot: LootItem, data: string) =
         data: %*{
             "loot": %loot,
             "data": encode(data)
+        }
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)
+
+proc sendImpersonateToken*(client: WsConnection, agentId: string, username: string) = 
+    let event = Event(
+        eventType: CLIENT_IMPERSONATE_TOKEN,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "username": username
+        }
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)
+
+proc sendRevertToken*(client: WsConnection, agentId: string) = 
+    let event = Event(
+        eventType: CLIENT_REVERT_TOKEN,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId
         }
     )
     if client != nil: 

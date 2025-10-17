@@ -1,4 +1,4 @@
-import strformat, strutils, system, terminal, tiny_sqlite
+import strformat, system, terminal, tiny_sqlite
 
 import ../core/logger
 import ../../common/types

@@ -96,6 +96,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
             sessionsTable.agents.add(agent)
             sessionsTable.agentActivity[agent.agentId] = agent.latestCheckin
 
+            if not agent.impersonationToken.isEmptyOrWhitespace():
+                sessionsTable.agentImpersonation[agent.agentId] = agent.impersonationToken
+
             # Initialize position of console windows to bottom by drawing them once when they are added
             # By default, the consoles are attached to the same DockNode as the Listeners table (Default: bottom), 
             # so if you place your listeners somewhere else, the console windows show up somewhere else too
@@ -171,6 +174,16 @@ proc main(ip: string = "localhost", port: int = 37573) =
             of SCREENSHOT: 
                 lootScreenshots.addTexture(lootItem.lootId, data)
             else: discard 
+
+        of CLIENT_IMPERSONATE_TOKEN: 
+            let 
+                agentId = event.data["agentId"].getStr()
+                impersonationToken = event.data["username"].getStr()
+            sessionsTable.agentImpersonation[agentId] = impersonationToken
+
+        of CLIENT_REVERT_TOKEN: 
+            echo event.data["agentId"].getStr()
+            sessionsTable.agentImpersonation.del(event.data["agentId"].getStr())
     
         else: discard 
     

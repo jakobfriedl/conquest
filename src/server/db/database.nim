@@ -28,6 +28,7 @@ proc dbInit*(cq: Conquest) =
             process TEXT NOT NULL,                   
             pid INTEGER NOT NULL,
             username TEXT NOT NULL,
+            impersonationToken TEXT NOT NULL,
             hostname TEXT NOT NULL,
             domain TEXT NOT NULL,
             ipInternal TEXT NOT NULL,

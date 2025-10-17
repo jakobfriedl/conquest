@@ -9,7 +9,8 @@ type
     SessionsTableComponent* = ref object of RootObj
         title: string 
         agents*: seq[UIAgent]
-        agentActivity*: Table[string, int64]            # Direct O(1) access to latest checkin
+        agentActivity*: Table[string, int64]                # Direct O(1) access to latest checkin
+        agentImpersonation*: Table[string, string]
         selection: ptr ImGuiSelectionBasicStorage
         consoles: ptr Table[string, ConsoleComponent]
 
@@ -45,6 +46,8 @@ proc interact(component: SessionsTableComponent) =
 proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
     igBegin(component.title, showComponent, 0)
 
+    let textSpacing = igGetStyle().ItemSpacing.x
+
     let tableFlags = (
         ImGuiTableFlags_Resizable.int32 or 
         ImGuiTableFlags_Reorderable.int32 or 
@@ -59,7 +62,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         ImGui_TableFlags_SizingStretchSame.int32
     )
 
-    let cols: int32 = 12
+    let cols: int32 = 11
     if igBeginTable("Sessions", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
         igTableSetupColumn("AgentID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
@@ -68,7 +71,6 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         igTableSetupColumn("IP (External)", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
         igTableSetupColumn("Username", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Hostname", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-        igTableSetupColumn("Domain", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("OS", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Process", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("PID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
@@ -104,18 +106,26 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
             if igTableSetColumnIndex(3): 
                 igText(agent.ipExternal)
             if igTableSetColumnIndex(4): 
+
+                if not agent.domain.isEmptyOrWhitespace():
+                    igText(agent.domain & "\\")
+                    igSameLine(0.0f, 0.0f)
+
                 igText(agent.username)
+
+                if component.agentImpersonation.hasKey(agent.agentId):
+                    igSameLine(0.0f, textSpacing)
+                    igText(fmt"[{component.agentImpersonation[agent.agentId]}]")
+
             if igTableSetColumnIndex(5): 
                 igText(agent.hostname)
             if igTableSetColumnIndex(6): 
-                igText(if agent.domain.isEmptyOrWhitespace(): "-" else: agent.domain)
-            if igTableSetColumnIndex(7): 
                 igText(agent.os)
-            if igTableSetColumnIndex(8): 
+            if igTableSetColumnIndex(7): 
                 igText(agent.process)
-            if igTableSetColumnIndex(9): 
+            if igTableSetColumnIndex(8): 
                 igText($agent.pid)
-            if igTableSetColumnIndex(10): 
+            if igTableSetColumnIndex(9): 
                 let duration = now() - agent.firstCheckin.fromUnix().local()
                 let totalSeconds = duration.inSeconds
                 
@@ -126,7 +136,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
                 let timeText = dateTime(2000, mJan, 1, hours.int, minutes.int, seconds.int).format("HH:mm:ss")
                 igText(fmt"{timeText} ago")
 
-            if igTableSetColumnIndex(11): 
+            if igTableSetColumnIndex(10): 
                 let duration = now() - component.agentActivity[agent.agentId].fromUnix().local()
                 let totalSeconds = duration.inSeconds
                 

@@ -55,6 +55,8 @@ type
         CMD_MAKE_TOKEN = 18'u16
         CMD_STEAL_TOKEN = 19'u16 
         CMD_REV2SELF = 20'u16 
+        CMD_TOKEN_GET_PRIV = 21'u16 
+        CMD_TOKEN_SET_PRIV = 22'u16 
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
@@ -195,6 +197,7 @@ type
         agentId*: string
         listenerId*: string 
         username*: string 
+        impersonationToken*: string
         hostname*: string
         domain*: string
         ipInternal*: string
@@ -215,6 +218,7 @@ type
         agentId*: string
         listenerId*: string 
         username*: string 
+        impersonationToken*: string
         hostname*: string
         domain*: string
         ipInternal*: string
@@ -275,6 +279,8 @@ type
         CLIENT_BUILDLOG_ITEM = 107'u8       # Add entry to the build log
         CLIENT_LOOT_ADD = 108'u8            # Add file or screenshot stored on the team server to preview on the client, only sends metadata and not the actual file content
         CLIENT_LOOT_DATA = 109'u8           # Send file/screenshot bytes to the client to display as preview or to download to the client desktop
+        CLIENT_IMPERSONATE_TOKEN = 110'u8   # Access token impersonated
+        CLIENT_REVERT_TOKEN = 111'u8        # Revert to original logon session 
 
     Event* = object 
         eventType*: EventType               

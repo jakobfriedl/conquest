@@ -99,6 +99,20 @@ proc handleResult*(resultData: seq[byte]) =
                 cq.client.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.")
                 cq.success(fmt"Task {taskId} completed.")
                 cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
+
+                # Handle additional actions or UI-events based on command type (only when command succeeded)
+                case cast[CommandType](taskResult.command):
+                of CMD_MAKE_TOKEN: 
+                    let impersonationToken: string = Bytes.toString(taskResult.data).split(" ")[1][0..^2]   # Remove trailing '.' character from the domain\username string
+                    if cq.dbUpdateTokenImpersonation(agentId, impersonationToken):
+                        cq.agents[agentId].impersonationToken = impersonationToken
+                        cq.client.sendImpersonateToken(agentId, impersonationToken) 
+                of CMD_REV2SELF:
+                    if cq.dbUpdateTokenImpersonation(agentId, ""):
+                        cq.agents[agentId].impersonationToken.setLen(0)
+                        cq.client.sendRevertToken(agentId)
+                else: discard 
+
             of STATUS_FAILED: 
                 cq.client.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.")
                 cq.error(fmt"Task {taskId} failed.")
@@ -138,11 +152,8 @@ proc handleResult*(resultData: seq[byte]) =
                     host: cq.agents[agentId].hostname
                 )
 
-                # Store loot in database 
-                if not cq.dbStoreLoot(lootItem): 
-                    raise newException(ValueError, fmt"Failed to store loot in database." & "\n")
-
                 # Send loot to client to display file/screenshot in the UI
+                discard cq.dbStoreLoot(lootItem)
                 cq.client.sendLoot(lootItem)
 
                 cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
