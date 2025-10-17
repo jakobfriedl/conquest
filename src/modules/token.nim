@@ -61,7 +61,7 @@ when defined(agent):
             
             var success: bool
             var logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS
-            let 
+            var  
                 username = Bytes.toString(task.args[0].data)
                 password = Bytes.toString(task.args[1].data)
         
@@ -73,8 +73,9 @@ when defined(agent):
             if task.argCount == 3: 
                 logonType = cast[DWORD](Bytes.toUint32(task.args[2].data))
             
-            if not makeToken(userParts[1], password, userParts[0], logonType): 
-                return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(protect("Failed to create token.")))
+            let impersonationUser  = makeToken(userParts[1], password, userParts[0], logonType)
+            if logonType != LOGON32_LOGON_NEW_CREDENTIALS:
+                username = impersonationUser
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {username}."))
 
         except CatchableError as err: 

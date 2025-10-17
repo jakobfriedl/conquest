@@ -182,7 +182,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
             sessionsTable.agentImpersonation[agentId] = impersonationToken
 
         of CLIENT_REVERT_TOKEN: 
-            echo event.data["agentId"].getStr()
             sessionsTable.agentImpersonation.del(event.data["agentId"].getStr())
     
         else: discard 

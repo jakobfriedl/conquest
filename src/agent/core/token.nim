@@ -76,21 +76,15 @@ proc privilegeToString(luid: PLUID): string =
 #[
     Retrieve and return information about an access token
 ]#
-proc getTokenInfo*(hToken: HANDLE): string =
+
+proc getTokenStatistics(hToken: HANDLE): tuple[tokenId, tokenType: string] = 
     var
         status: NTSTATUS = 0
         returnLength: ULONG = 0
-
         pStats: TOKEN_STATISTICS
-        pUser: PTOKEN_USER
-        pGroups: PTOKEN_GROUPS
-        pPrivileges: PTOKEN_PRIVILEGES
-   
+
     let pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationToken")))
-   
-    #[
-        Token statistics
-    ]#
+
     status = pNtQueryInformationToken(hToken, tokenStatistics, addr pStats, cast[ULONG](sizeof(pStats)), addr returnLength)
     if status != STATUS_SUCCESS: 
         raise newException(CatchableError, protect("NtQueryInformationToken - Token Statistics ") & $status.toHex())
@@ -99,12 +93,16 @@ proc getTokenInfo*(hToken: HANDLE): string =
         tokenType = if cast[TOKEN_TYPE](pStats.TokenType) == tokenPrimary: protect("Primary") else: protect("Impersonation")
         tokenId = cast[uint32](pStats.TokenId).toHex()
 
-    result &= fmt"TokenID: 0x{tokenId}" & "\n"
-    result &= fmt"Type:    {tokenType}" & "\n"
-    
-    #[
-        Token user information
-    ]#
+    return (tokenId, tokenType)
+
+proc getTokenUser(hToken: HANDLE): tuple[username, sid: string] = 
+    var
+        status: NTSTATUS = 0
+        returnLength: ULONG = 0
+        pUser: PTOKEN_USER
+
+    let pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationToken")))
+
     status = pNtQueryInformationToken(hToken, tokenUser, NULL, 0, addr returnLength)
     if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
         raise newException(CatchableError, protect("NtQueryInformationToken - Token User [1] ") & $status.toHex())
@@ -118,12 +116,16 @@ proc getTokenInfo*(hToken: HANDLE): string =
     if status != STATUS_SUCCESS:
         raise newException(CatchableError, protect("NtQueryInformationToken - Token User [2] ") & $status.toHex())
     
-    result &= fmt"User:    {sidToName(pUser.User.Sid)}" & "\n"
-    result &= fmt"SID:     {sidToString(pUser.User.Sid)}" & "\n"
+    return (sidToName(pUser.User.Sid), sidToString(pUser.User.Sid))
 
-    #[
-        Groups
-    ]#
+proc getTokenGroups(hToken: HANDLE): string = 
+    var
+        status: NTSTATUS = 0
+        returnLength: ULONG = 0
+        pGroups: PTOKEN_GROUPS
+
+    let pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationToken")))
+
     status = pNtQueryInformationToken(hToken, tokenGroups, NULL, 0, addr returnLength)
     if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
         raise newException(CatchableError, protect("NtQueryInformationToken - Token Groups [1] ") & $status.toHex())
@@ -145,9 +147,14 @@ proc getTokenInfo*(hToken: HANDLE): string =
     for i, group in groups.toOpenArray(0, int(groupCount) - 1): 
         result &= fmt" - {sidToString(group.Sid):<50} {sidToName(group.Sid)}" & "\n"
 
-    #[
-        Privileges
-    ]#
+proc getTokenPrivileges(hToken: HANDLE): string = 
+    var
+        status: NTSTATUS = 0
+        returnLength: ULONG = 0
+        pPrivileges: PTOKEN_PRIVILEGES
+        
+    let pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationToken")))
+
     status = pNtQueryInformationToken(hToken, tokenPrivileges, NULL, 0, addr returnLength)
     if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
         raise newException(CatchableError, protect("NtQueryInformationToken - Token Privileges [1] ") & $status.toHex())
@@ -171,6 +178,18 @@ proc getTokenInfo*(hToken: HANDLE): string =
         result &= fmt" - {privilegeToString(addr priv.Luid):<50} {enabled}" & "\n"
 
 
+proc getTokenInfo*(hToken: HANDLE): string =   
+    let (tokenId, tokenType) = hToken.getTokenStatistics()
+    result &= fmt"TokenID: 0x{tokenId}" & "\n"
+    result &= fmt"Type:    {tokenType}" & "\n"
+
+    let (username, sid) = hToken.getTokenUser()
+    result &= fmt"User:    {username}" & "\n"
+    result &= fmt"SID:     {sid}" & "\n"
+
+    result &= hToken.getTokenGroups()
+    result &= hToken.getTokenPrivileges()
+
 proc impersonateToken*(hToken: HANDLE) = 
     discard
 
@@ -184,9 +203,9 @@ proc impersonateToken*(hToken: HANDLE) =
     Using other logon types (https://learn.microsoft.com/en-us/windows-server/identity/securing-privileged-access/reference-tools-logon-types) 
     changes the output of the getTokenOwner function. The credentials are then validated by the LogonUserA function. 
 ]#
-proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS): bool = 
+proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS): string = 
     if username == "" or password == "" or domain == "": 
-        return false
+        raise newException(CatchableError, protect("Invalid format."))
 
     var 
         hToken: HANDLE 
@@ -194,19 +213,19 @@ proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_L
 
     let provider: DWORD = if logonType == LOGON32_LOGON_NEW_CREDENTIALS: LOGON32_PROVIDER_WINNT50 else: LOGON32_PROVIDER_DEFAULT
     if LogonUserA(username, domain, password, logonType, provider, addr hToken) == FALSE:
-        return false 
+        raise newException(CatchableError, $GetLastError())
     defer: CloseHandle(hToken)
 
     if DuplicateTokenEx(hToken, TOKEN_QUERY or TOKEN_IMPERSONATE, NULL, securityImpersonation, tokenImpersonation, addr hImpersonationToken) == FALSE:
-        return false
+        raise newException(CatchableError, $GetLastError())
     
     # Revert to self before impersonation
     discard RevertToSelf() 
     if ImpersonateLoggedOnUser(hImpersonationToken) == FALSE: 
         CloseHandle(hImpersonationToken)
-        return false
+        raise newException(CatchableError, $GetLastError())
 
-    return true
+    return hToken.getTokenUser.username
 
 proc tokenSteal*(pid: int): bool = 
     discard 
