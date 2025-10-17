@@ -68,7 +68,7 @@ when defined(agent):
             case int(task.argCount): 
             of 0: 
                 # Retrieve sleepmask settings 
-                let response = fmt"Sleepmask settings: Technique: {$ctx.sleepTechnique}, Delay: {$ctx.sleep}ms, Stack spoofing: {$ctx.spoofStack}" & "\n"
+                let response = fmt"Sleepmask settings: Technique: {$ctx.sleepTechnique}, Delay: {$ctx.sleep}ms, Stack spoofing: {$ctx.spoofStack}"
                 return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
 
             of 1: 

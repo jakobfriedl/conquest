@@ -83,7 +83,7 @@ when defined(agent):
             let destination = fmt"{paths.getCurrentDir()}\{fileName}"
             writeFile(fmt"{destination}", fileContents)
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"File uploaded to {destination}." & "\n"))
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"File uploaded to {destination}."))
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

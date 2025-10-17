@@ -150,7 +150,6 @@ proc displayHelp(component: ConsoleComponent) =
     for module in getModules(component.agent.modules):
         for cmd in module.commands:
             component.console.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(15) & cmd.description)
-    component.console.addItem(LOG_OUTPUT, "")
 
 proc displayCommandHelp(component: ConsoleComponent, command: Command) =
     var usage = command.name & " " & command.arguments.mapIt(
@@ -172,7 +171,6 @@ proc displayCommandHelp(component: ConsoleComponent, command: Command) =
         for arg in command.arguments:
             let isRequired = if arg.isRequired: "YES" else: "NO"
             component.console.addItem(LOG_OUTPUT, " * " & arg.name.alignLeft(15) & " " & ($arg.argumentType).toUpperAscii().alignLeft(6) & " " & isRequired.align(8) & " " & arg.description)
-        component.console.addItem(LOG_OUTPUT, "")
 
 proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
     try:
@@ -184,6 +182,9 @@ proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
     except ValueError:
         # Command was not found
         component.console.addItem(LOG_ERROR, "The command '" & parsed[1] & "' does not exist.")
+
+    # Add newline at the end of help text
+    component.console.addItem(LOG_OUTPUT, "")
 
 proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, input: string) =
     # Convert user input into sequence of string arguments

