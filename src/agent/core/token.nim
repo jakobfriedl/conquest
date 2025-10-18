@@ -23,7 +23,7 @@ const
     CURRENT_THREAD = cast[HANDLE](-2)
     CURRENT_PROCESS = cast[HANDLE](-1)
 
-proc getCurrentToken*(): HANDLE = 
+proc getCurrentToken*(desiredAccess: ACCESS_MASK = TOKEN_QUERY): HANDLE = 
     var 
         status: NTSTATUS = 0
         hToken: HANDLE 
@@ -34,9 +34,9 @@ proc getCurrentToken*(): HANDLE =
         pNtOpenProcessToken = cast[NtOpenProcessToken](GetProcAddress(hNtdll, protect("NtOpenProcessToken")))
     
     # https://ntdoc.m417z.com/ntopenthreadtoken, token-info fails with error ACCESS_DENIED if OpenAsSelf is set to
-    status = pNtOpenThreadToken(CURRENT_THREAD, TOKEN_ADJUST_PRIVILEGES or TOKEN_QUERY, TRUE, addr hToken)
+    status = pNtOpenThreadToken(CURRENT_THREAD, desiredAccess, TRUE, addr hToken)
     if status != STATUS_SUCCESS:
-        status = pNtOpenProcessToken(CURRENT_PROCESS, TOKEN_ADJUST_PRIVILEGES or TOKEN_QUERY, addr hToken)
+        status = pNtOpenProcessToken(CURRENT_PROCESS, desiredAccess, addr hToken)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, protect("NtOpenProcessToken ") & $status.toHex())
 
@@ -234,14 +234,14 @@ proc tokenSteal*(pid: int): bool =
 proc rev2self*(): bool = 
     return RevertToSelf()
 
-proc enablePrivilege*(privilegeName: string): string = 
+proc enablePrivilege*(privilegeName: string, enable: bool = true): string = 
     var 
         tokenPrivs: TOKEN_PRIVILEGES
         oldTokenPrivs: TOKEN_PRIVILEGES
         luid: LUID 
         returnLength: DWORD
 
-    let hToken = getCurrentToken() 
+    let hToken = getCurrentToken(TOKEN_ADJUST_PRIVILEGES or TOKEN_QUERY) 
     defer: CloseHandle(hToken)
 
     if LookupPrivilegeValueW(NULL, newWideCString(privilegeName), addr luid) == FALSE: 
@@ -250,9 +250,10 @@ proc enablePrivilege*(privilegeName: string): string =
     # Enable privilege
     tokenPrivs.PrivilegeCount = 1
     tokenPrivs.Privileges[0].Luid = luid 
-    tokenPrivs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED
+    tokenPrivs.Privileges[0].Attributes = if enable: SE_PRIVILEGE_ENABLED else: 0
 
     if AdjustTokenPrivileges(hToken, FALSE, addr tokenPrivs, cast[DWORD](sizeof(TOKEN_PRIVILEGES)), addr oldTokenPrivs, addr returnLength) == FALSE:
         raise newException(CatchableError, $GetLastError())
 
-    return privilegeToString(addr luid)
+    let action = if enable: protect("Enabled") else: protect("Disabled")
+    return fmt"{action} {privilegeToString(addr luid)}."
