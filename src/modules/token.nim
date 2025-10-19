@@ -109,9 +109,7 @@ when defined(agent):
     proc executeRev2Self(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
             echo fmt"   [>] Reverting access token."
-
-            if not rev2self(): 
-                return createTaskResult(task, STATUS_FAILED, RESULT_NO_OUTPUT, @[])
+            rev2self()
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
@@ -120,7 +118,6 @@ when defined(agent):
     proc executeTokenInfo(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
             echo fmt"   [>] Retrieving token information."
-
             let tokenInfo = getCurrentToken().getTokenInfo() 
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(tokenInfo))
 

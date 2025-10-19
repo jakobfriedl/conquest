@@ -86,7 +86,6 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         # Sort sessions table based on first checkin
         component.agents.sort(cmp)
         for row, agent in component.agents: 
-            
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
             if igTableSetColumnIndex(0):          
@@ -128,13 +127,12 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
             if igTableSetColumnIndex(9): 
                 let duration = now() - agent.firstCheckin.fromUnix().local()
                 let totalSeconds = duration.inSeconds
-                
+                    
                 let hours = totalSeconds div 3600
                 let minutes = (totalSeconds mod 3600) div 60
                 let seconds = totalSeconds mod 60
                 
-                let timeText = dateTime(2000, mJan, 1, hours.int, minutes.int, seconds.int).format("HH:mm:ss")
-                igText(fmt"{timeText} ago")
+                igText(fmt"{hours:02d}:{minutes:02d}:{seconds:02d} ago")
 
             if igTableSetColumnIndex(10): 
                 let duration = now() - component.agentActivity[agent.agentId].fromUnix().local()
@@ -144,12 +142,11 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
                 let minutes = (totalSeconds mod 3600) div 60
                 let seconds = totalSeconds mod 60
                 
-                let timeText = dateTime(2000, mJan, 1, hours.int, minutes.int, seconds.int).format("HH:mm:ss")
-
+                let timeText = fmt"{hours:02d}:{minutes:02d}:{seconds:02d} ago"
                 if totalSeconds > agent.sleep: 
-                    igTextColored(GRAY, fmt"{timeText} ago")
+                    igTextColored(GRAY, timeText)
                 else: 
-                    igText(fmt"{timeText} ago")
+                    igText(timeText)
 
         # Handle right-click context menu
         # Right-clicking the table header to hide/show columns or reset the layout is only possible when no sessions are selected
