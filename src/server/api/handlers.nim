@@ -102,8 +102,8 @@ proc handleResult*(resultData: seq[byte]) =
 
                 # Handle additional actions or UI-events based on command type (only when command succeeded)
                 case cast[CommandType](taskResult.command):
-                of CMD_MAKE_TOKEN: 
-                    let impersonationToken: string = Bytes.toString(taskResult.data).split(" ")[1][0..^2]   # Remove trailing '.' character from the domain\username string
+                of CMD_MAKE_TOKEN, CMD_STEAL_TOKEN: 
+                    let impersonationToken: string = Bytes.toString(taskResult.data).split(" ", 1)[1..^1].join(" ")[0..^2]   # Remove trailing '.' character from the domain\username string
                     if cq.dbUpdateTokenImpersonation(agentId, impersonationToken):
                         cq.agents[agentId].impersonationToken = impersonationToken
                         cq.client.sendImpersonateToken(agentId, impersonationToken) 

