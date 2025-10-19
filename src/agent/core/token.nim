@@ -209,7 +209,6 @@ proc getTokenPrivileges(apis: Apis, hToken: HANDLE): string =
 
 
 proc getTokenInfo*(hToken: HANDLE): string = 
-
     let apis = initApis() 
 
     let (tokenId, tokenType) = apis.getTokenStatistics(hToken)
@@ -273,7 +272,6 @@ proc impersonate*(apis: Apis, hToken: HANDLE) =
     RevertToSelf() API implemented using Native API
 ]#
 proc rev2self*() =
-    
     let apis = initApis() 
     
     var 
@@ -296,7 +294,6 @@ proc rev2self*() =
     changes the output of the getTokenOwner function. The credentials are then validated by the LogonUserA function. 
 ]#
 proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS): string = 
-    
     let apis = initApis()
     
     if username == "" or password == "" or domain == "": 
@@ -315,7 +312,6 @@ proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_L
     return apis.getTokenUser(hToken).username
 
 proc enablePrivilege*(privilegeName: string, enable: bool = true): string = 
-    
     let apis = initApis()
 
     var 
@@ -344,10 +340,11 @@ proc enablePrivilege*(privilegeName: string, enable: bool = true): string =
     return fmt"{action} {apis.privilegeToString(addr luid)}."
 
 #[
-    Steal the access token of a remote process
+    Steal the access token of a remote process and impersonate it
+    This requires SYSTEM privileges to work reliably. Even running as a regular Administrator user might not be sufficient to steal access tokens of other processes
+    A work-around is to impersonate NT AUTHORITY\SYSTEM first by stealing the token of a process like winlogon.exe, and then using this token to steal other user's tokens 
 ]#
 proc stealToken*(pid: int): string = 
-    
     let apis = initApis() 
     
     var 
