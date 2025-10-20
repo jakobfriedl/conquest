@@ -124,7 +124,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igDummy(vec2(0.0f, 10.0f))
 
         igText("Build log: ")
-        let buildLogHeight = 250.0f 
+        let buildLogHeight = igGetTextLineHeightWithSpacing() * 7.0f  + igGetStyle().ItemSpacing.y
         component.buildLog.draw(vec2(-1.0f, buildLogHeight))
 
         igDummy(vec2(0.0f, 10.0f))
