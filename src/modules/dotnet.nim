@@ -30,7 +30,7 @@ when not defined(agent):
 when defined(agent):
 
     import strutils, strformat
-    import ../agent/core/clr
+    import ../agent/core/[clr, io]
     import ../agent/protocol/result
     import ../common/[utils, serialize]
     
@@ -56,7 +56,7 @@ when defined(agent):
                 fileName = unpacker.getDataWithLengthPrefix()
                 assemblyBytes = unpacker.getDataWithLengthPrefix()
 
-            echo fmt"   [>] Executing .NET assembly {fileName}."
+            print fmt"   [>] Executing .NET assembly {fileName}."
             let (assemblyInfo, output) = dotnetInlineExecuteGetOutput(string.toBytes(assemblyBytes), arguments)
 
             if output != "":

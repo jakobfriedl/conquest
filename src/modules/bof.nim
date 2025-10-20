@@ -30,7 +30,7 @@ when not defined(agent):
 when defined(agent):
 
     import osproc, strutils, strformat
-    import ../agent/core/coff
+    import ../agent/core/[coff, io]
     import ../agent/protocol/result
     import ../common/[utils, serialize]
     
@@ -57,7 +57,7 @@ when defined(agent):
                 fileName = unpacker.getDataWithLengthPrefix()
                 objectFileContents = unpacker.getDataWithLengthPrefix()
 
-            echo fmt"   [>] Executing object file {fileName}."
+            print fmt"   [>] Executing object file {fileName}."
             let output = inlineExecuteGetOutput(string.toBytes(objectFileContents), arguments)
 
             if output != "":

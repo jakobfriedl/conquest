@@ -43,6 +43,7 @@ proc sendAgentBuild*(connection: WsConnection, buildInformation: AgentBuildInfor
             "sleepDelay": buildInformation.sleepDelay,
             "sleepTechnique": cast[uint8](buildInformation.sleepTechnique),
             "spoofStack": buildInformation.spoofStack,
+            "verbose": buildInformation.verbose,
             "modules": buildInformation.modules
         }
     )

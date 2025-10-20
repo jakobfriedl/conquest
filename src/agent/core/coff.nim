@@ -1,6 +1,6 @@
 import winim/lean
 import os, strformat, strutils, ptr_math
-import ./beacon
+import ./[beacon, io]
 import ../../common/[types, utils, serialize]
 
 #[
@@ -88,7 +88,7 @@ proc objectVirtualSize(objCtx: POBJECT_CTX): ULONG =
             # Check if symbol starts with `__ipm_` (imported functions)
             if ($symbol).startsWith("__imp_"): 
                 length += ULONG(sizeof(PVOID))
-            # echo $symbol
+            # print $symbol
 
             # Handle next relocation item/symbol
             objRel = cast[PIMAGE_RELOCATION](cast[int](objRel) + sizeof(IMAGE_RELOCATION))
@@ -156,7 +156,7 @@ proc objectResolveSymbol(symbol: var PSTR): PVOID =
         if resolved == NULL: 
             raise newException(CatchableError, fmt"Function {$function} not found in {$library}.")
 
-    echo fmt"    [>] {$symbol} @ 0x{resolved.repr}"
+    print fmt"    [>] {$symbol} @ 0x{resolved.repr}"
 
     RtlSecureZeroMemory(addr buffer[0], sizeof(buffer))
 
@@ -339,9 +339,9 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     objCtx.symTbl       = cast[PIMAGE_SYMBOL](cast[int](pObject) + cast[int](objCtx.union.header.PointerToSymbolTable))
     objCtx.sections     = cast[PIMAGE_SECTION_HEADER](cast[int](pObject) + sizeof(IMAGE_FILE_HEADER))
 
-    # echo objCtx.union.header.repr
-    # echo objCtx.symTbl.repr
-    # echo objCtx.sections.repr
+    # print objCtx.union.header.repr
+    # print objCtx.symTbl.repr
+    # print objCtx.sections.repr
 
     # Verifying that the object file's architecture is x64
     when defined(amd64): 
@@ -354,7 +354,7 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
 
     # Calculate required virtual memory
     virtSize = objectVirtualSize(addr objCtx)
-    echo fmt"[*] Virtual size of object file: {virtSize} bytes"
+    print fmt"[*] Virtual size of object file: {virtSize} bytes"
 
     # Allocate memory 
     virtAddr = VirtualAlloc(NULL, virtSize, MEM_RESERVE or MEM_COMMIT, PAGE_READWRITE)
@@ -370,7 +370,7 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
         raise newException(CatchableError, $GetLastError())
     defer: HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, objCtx.secMap)
 
-    echo fmt"[*] Virtual memory allocated for object file at 0x{virtAddr.repr} ({virtSize} bytes)"
+    print fmt"[*] Virtual memory allocated for object file at 0x{virtAddr.repr} ({virtSize} bytes)"
     
     # Set the section base to the allocated memory
     secBase = virtAddr
@@ -380,7 +380,7 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
         sections = cast[ptr UncheckedArray[IMAGE_SECTION_HEADER]](objCtx.sections)
         secMap = cast[ptr UncheckedArray[SECTION_MAP]](objCtx.secMap)
 
-    echo "[*] Copying over sections."
+    print "[*] Copying over sections."
     for i in 0 ..< int(objCtx.union.header.NumberOfSections): 
         secSize = sections[i].SizeOfRawData
         secMap[i].size = secSize
@@ -388,7 +388,7 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
 
         # Copy over section data
         copyMem(secBase, cast[PVOID](objCtx.union.base + cast[int](sections[i].PointerToRawData)), secSize)
-        echo fmt"    [>] {$(addr sections[i].Name)} @ 0x{secBase.repr} ({secSize} bytes))"
+        print fmt"    [>] {$(addr sections[i].Name)} @ 0x{secBase.repr} ({secSize} bytes))"
 
         # Get the next page entry
         secBase = cast[PVOID](PAGE_ALIGN(cast[uint](secBase) + uint(secSize)))
@@ -396,17 +396,17 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     # The last page of the memory is the symbol/function map
     objCtx.symMap = cast[ptr PVOID](secBase)
 
-    echo "[*] Processing sections and performing relocations."
+    print "[*] Processing sections and performing relocations."
     if not objectProcessSection(addr objCtx): 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
         raise newException(CatchableError, "Failed to process sections.")
 
     # Executing the object file 
-    echo "[*] Executing."
+    print "[*] Executing."
     if not objectExecute(addr objCtx, entryFunction, args): 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
         raise newException(CatchableError, fmt"Failed to execute function {$entryFunction}.")
-    echo "[+] Object file executed successfully."
+    print "[+] Object file executed successfully."
     
     RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
 

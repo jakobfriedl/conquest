@@ -60,7 +60,7 @@ proc replaceAfterPrefix(content, prefix, value: string): string =
             it
     ).join("\n")
     
-proc compile(cq: Conquest, placeholderLength: int, modules: uint32): string = 
+proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: bool): string = 
     
     let 
         configFile = fmt"{CONQUEST_ROOT}/src/agent/nim.cfg"  
@@ -77,6 +77,7 @@ proc compile(cq: Conquest, placeholderLength: int, modules: uint32): string =
                     .replaceAfterPrefix("-d:CONFIGURATION=", placeholder)    
                     .replaceAfterPrefix("-o:", exeFile)
                     .replaceAfterPrefix("-d:MODULES=", $modules)
+                    .replaceAfterPrefix("-d:VERBOSE=", $verbose)
     writeFile(configFile, config)
 
     cq.info(fmt"Placeholder created ({placeholder.len()} bytes).")
@@ -146,7 +147,7 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): se
     return @[]
 
 # Agent generation 
-proc agentBuild*(cq: Conquest, listenerId: string, sleepDelay: int, sleepTechnique: SleepObfuscationTechnique, spoofStack: bool, modules: uint32): seq[byte] =
+proc agentBuild*(cq: Conquest, listenerId: string, sleepDelay: int, sleepTechnique: SleepObfuscationTechnique, spoofStack: bool, verbose: bool, modules: uint32): seq[byte] =
 
     # Verify that listener exists
     if not cq.dbListenerExists(listenerId.toUpperAscii): 
@@ -157,7 +158,7 @@ proc agentBuild*(cq: Conquest, listenerId: string, sleepDelay: int, sleepTechniq
     
     var config = cq.serializeConfiguration(listener, sleepDelay, sleepTechnique, spoofStack)
     
-    let unpatchedExePath = cq.compile(config.len, modules)
+    let unpatchedExePath = cq.compile(config.len, modules, verbose)
     if unpatchedExePath.isEmptyOrWhitespace():
         return 
 

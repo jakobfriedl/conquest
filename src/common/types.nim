@@ -361,6 +361,7 @@ type
         sleepDelay*: uint32
         sleepTechnique*: SleepObfuscationTechnique
         spoofStack*: bool
+        verbose*: bool
         modules*: uint32
 
     LootItemType* = enum 

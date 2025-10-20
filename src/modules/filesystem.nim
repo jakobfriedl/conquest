@@ -101,13 +101,14 @@ when not defined(agent):
 when defined(agent):
 
     import os, strutils, strformat, times, algorithm, winim
+    import ../agent/core/io
     import ../agent/protocol/result
     import ../common/utils
 
     # Retrieve current working directory
     proc executePwd(ctx: AgentCtx, task: Task): TaskResult = 
 
-        echo protect("   [>] Retrieving current working directory.")
+        print protect("   [>] Retrieving current working directory.")
 
         try: 
             # Get current working directory using GetCurrentDirectory
@@ -131,7 +132,7 @@ when defined(agent):
         # Parse arguments
         let targetDirectory = Bytes.toString(task.args[0].data)
 
-        echo protect("   [>] Changing current working directory to {targetDirectory}.")
+        print protect("   [>] Changing current working directory to {targetDirectory}.")
 
         try: 
             # Get current working directory using GetCurrentDirectory
@@ -168,7 +169,7 @@ when defined(agent):
             else:
                 discard
 
-            echo fmt"   [>] Listing files and directories in {targetDirectory}."
+            print fmt"   [>] Listing files and directories in {targetDirectory}."
                 
             # Prepare search pattern (target directory + \*)
             let searchPattern = targetDirectory & "\\*"
@@ -300,7 +301,7 @@ when defined(agent):
         # Parse arguments
         let target = Bytes.toString(task.args[0].data)
 
-        echo fmt"   [>] Deleting file {target}."
+        print fmt"   [>] Deleting file {target}."
 
         try: 
             if DeleteFile(target) == FALSE:         
@@ -318,7 +319,7 @@ when defined(agent):
         # Parse arguments
         let target = Bytes.toString(task.args[0].data)
 
-        echo fmt"   [>] Deleting directory {target}."
+        print fmt"   [>] Deleting directory {target}."
 
         try: 
             if RemoveDirectoryA(target) == FALSE:         
@@ -337,7 +338,7 @@ when defined(agent):
             lpExistingFileName = Bytes.toString(task.args[0].data)
             lpNewFileName = Bytes.toString(task.args[1].data)
 
-        echo fmt"   [>] Moving {lpExistingFileName} to {lpNewFileName}."
+        print fmt"   [>] Moving {lpExistingFileName} to {lpNewFileName}."
 
         try: 
             if MoveFile(lpExistingFileName, lpNewFileName) == FALSE:         
@@ -357,7 +358,7 @@ when defined(agent):
             lpExistingFileName = Bytes.toString(task.args[0].data)
             lpNewFileName = Bytes.toString(task.args[1].data)
 
-        echo fmt"   [>] Copying {lpExistingFileName} to {lpNewFileName}."
+        print fmt"   [>] Copying {lpExistingFileName} to {lpNewFileName}."
 
         try: 
             # Copy file to new location, overwrite if a file with the same name already exists

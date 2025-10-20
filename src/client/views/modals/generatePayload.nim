@@ -12,6 +12,7 @@ type
         sleepDelay: uint32 
         sleepMask: int32 
         spoofStack: bool 
+        verbose: bool
         sleepMaskTechniques: seq[string]
         moduleSelection: DualListSelectionWidget[Module]
         buildLog*: TextareaWidget
@@ -23,6 +24,7 @@ proc AgentModal*(): AgentModalComponent =
     result.sleepDelay = 5
     result.sleepMask = 0
     result.spoofStack = false
+    result.verbose = false
 
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
@@ -45,6 +47,7 @@ proc resetModalValues*(component: AgentModalComponent) =
     component.sleepDelay = 5
     component.sleepMask = 0
     component.spoofStack = false 
+    component.verbose = false
     component.moduleSelection.reset()
     component.buildLog.clear()
 
@@ -100,6 +103,12 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igCheckbox("##InputSpoofStack", addr component.spoofStack)
         igEndDisabled()
 
+        # Verbose mode checkbox
+        igText("Verbose:        ")
+        igSameLine(0.0f, textSpacing)
+        igSetNextItemWidth(availableSize.x)
+        igCheckbox("##InputVerbose", addr component.verbose)
+
         igDummy(vec2(0.0f, 10.0f))
         igSeparator()
         igDummy(vec2(0.0f, 10.0f))
@@ -139,6 +148,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
                 sleepDelay: component.sleepDelay,
                 sleepTechnique: cast[SleepObfuscationTechnique](component.sleepMask),
                 spoofStack: component.spoofStack,
+                verbose: component.verbose,
                 modules: modules
             )
         

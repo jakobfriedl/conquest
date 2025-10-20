@@ -1,5 +1,5 @@
 import httpclient, json, strformat, strutils, asyncdispatch, base64, tables, parsetoml, random
-
+import ./io
 import ../../common/[types, utils, profile]
 
 proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string = 
@@ -71,7 +71,7 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
 
     except CatchableError as err:
         # When the listener is not reachable, don't kill the application, but check in at the next time
-        echo "[-] " & err.msg 
+        print protect("[-] "), err.msg 
     
     finally:
         client.close()
@@ -103,7 +103,7 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
         discard waitFor client.request(fmt"http://{host}/{endpoint}", requestMethod, body)
     
     except CatchableError as err:
-        echo "[-] " & err.msg 
+        print protect("[-] "), err.msg 
         return false
     
     finally:

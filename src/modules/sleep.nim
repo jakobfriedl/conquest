@@ -42,6 +42,7 @@ when not defined(agent):
 when defined(agent): 
 
     import os, strutils, strformat
+    import ../agent/core/io
     import ../agent/protocol/result
     import ../common/utils
 
@@ -52,7 +53,7 @@ when defined(agent):
             let delay = int(Bytes.toUint32(task.args[0].data))
 
             # Updating sleep in agent context
-            echo fmt"   [>] Setting sleep delay to {delay} seconds."
+            print fmt"   [>] Setting sleep delay to {delay} seconds."
             ctx.sleep = delay
                     
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
@@ -63,7 +64,7 @@ when defined(agent):
     proc executeSleepmask(ctx: AgentCtx, task: Task): TaskResult = 
 
         try: 
-            echo fmt"   [>] Updating sleepmask settings."
+            print fmt"   [>] Updating sleepmask settings."
             
             case int(task.argCount): 
             of 0: 

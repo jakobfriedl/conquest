@@ -1,4 +1,5 @@
 import parsetoml, base64, system
+import ./io
 import ../../common/[types, utils, crypto, serialize]
 
 const CONFIGURATION {.strdefine.}: string = ""
@@ -38,7 +39,7 @@ proc deserializeConfiguration(config: string): AgentCtx =
 
     wipeKey(agentKeyPair.privateKey)
     
-    echo protect("[+] Profile configuration deserialized.")
+    print protect("[+] Profile configuration deserialized.")
     return ctx
 
 proc init*(T: type AgentCtx): AgentCtx = 
@@ -50,7 +51,7 @@ proc init*(T: type AgentCtx): AgentCtx =
         return deserializeConfiguration(CONFIGURATION)
 
     except CatchableError as err:
-        echo "[-] " & err.msg
+        print "[-] " & err.msg
         return nil
 
 
