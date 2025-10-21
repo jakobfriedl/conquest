@@ -149,12 +149,12 @@ proc objectResolveSymbol(symbol: var PSTR): PVOID =
         if hModule == 0:
             hModule = LoadLibraryA(library)
             if hModule == 0: 
-                raise newException(CatchableError, fmt"Library {$library} not found.")
+                raise newException(CatchableError, GetLastError().getError())
 
         # Resolve the function from the loaded library 
         resolved = GetProcAddress(hModule, function)
         if resolved == NULL: 
-            raise newException(CatchableError, fmt"Function {$function} not found in {$library}.")
+            raise newException(CatchableError, GetLastError().getError())
 
     print fmt"    [>] {$symbol} @ 0x{resolved.repr}"
 
@@ -295,7 +295,7 @@ proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]): bool =
 
             # Change the memory protection from [RW-] to [R-X]
             if VirtualProtect(secBase, secSize, PAGE_EXECUTE_READ, addr oldProtect) == 0: 
-                raise newException(CatchableError, $GetLastError())
+                raise newException(CatchableError, GetLastError().getError())
 
             # Execute BOF entry point 
             var entryPoint = cast[EntryPoint](cast[uint](secBase) + cast[uint](objSym.Value))
@@ -307,7 +307,7 @@ proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]): bool =
 
             # Revert the memory protection change
             if VirtualProtect(secBase, secSize, oldProtect, addr oldProtect) == 0: 
-                raise newException(CatchableError, $GetLastError())
+                raise newException(CatchableError, GetLastError().getError())
 
             return true
 
@@ -332,7 +332,7 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
 
     var pObject = addr objectFile[0]
     if pObject == NULL or entryFunction == NULL: 
-        raise newException(CatchableError, "Arguments pObject and entryFunction are required.")
+        raise newException(CatchableError, protect("Missing required arguments."))
 
     # Parsing the object file's file header, symbol table and sections
     objCtx.union.header = cast[PIMAGE_FILE_HEADER](pObject)
@@ -347,10 +347,10 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     when defined(amd64): 
         if objCtx.union.header.Machine != IMAGE_FILE_MACHINE_AMD64: 
             RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-            raise newException(CatchableError, "Only x64 object files are supported")
+            raise newException(CatchableError, protect("Only x64 object files are supported."))
     else: 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-        raise newException(CatchableError, "Only x64 object files are supported")
+        raise newException(CatchableError, protect("Only x64 object files are supported."))
 
     # Calculate required virtual memory
     virtSize = objectVirtualSize(addr objCtx)
@@ -360,14 +360,14 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     virtAddr = VirtualAlloc(NULL, virtSize, MEM_RESERVE or MEM_COMMIT, PAGE_READWRITE)
     if virtAddr == NULL: 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-        raise newException(CatchableError, $GetLastError())
+        raise newException(CatchableError, GetLastError().getError())
     defer: VirtualFree(virtAddr, 0, MEM_RELEASE)
 
     # Allocate heap memory to store section map array
     objCtx.secMap = cast[PSECTION_MAP](HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, int(objCtx.union.header.NumberOfSections) * sizeof(SECTION_MAP)))
     if objCtx.secMap == NULL: 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-        raise newException(CatchableError, $GetLastError())
+        raise newException(CatchableError, GetLastError().getError())
     defer: HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, objCtx.secMap)
 
     print fmt"[*] Virtual memory allocated for object file at 0x{virtAddr.repr} ({virtSize} bytes)"
@@ -399,7 +399,7 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     print "[*] Processing sections and performing relocations."
     if not objectProcessSection(addr objCtx): 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-        raise newException(CatchableError, "Failed to process sections.")
+        raise newException(CatchableError, protect("Failed to process sections."))
 
     # Executing the object file 
     print "[*] Executing."

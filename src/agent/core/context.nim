@@ -39,7 +39,7 @@ proc deserializeConfiguration(config: string): AgentCtx =
 
     wipeKey(agentKeyPair.privateKey)
     
-    print protect("[+] Profile configuration deserialized.")
+    print "[+] Profile configuration deserialized."
     return ctx
 
 proc init*(T: type AgentCtx): AgentCtx = 

