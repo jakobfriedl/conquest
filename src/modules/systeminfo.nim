@@ -38,7 +38,7 @@ when defined(agent):
 
     import winim
     import os, strutils, sequtils, strformat, tables, algorithm
-    import ../agent/core/io
+    import ../agent/utils/io
     import ../agent/protocol/result
     import ../common/utils
 

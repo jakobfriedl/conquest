@@ -1,5 +1,5 @@
 import httpclient, json, strformat, strutils, asyncdispatch, base64, tables, parsetoml, random
-import ./io
+import ../utils/io
 import ../../common/[types, utils, profile]
 
 proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string = 

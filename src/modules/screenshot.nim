@@ -30,7 +30,7 @@ when defined(agent):
     import winim/inc/wingdi
     import strutils, strformat, times, pixie
     import stb_image/write as stbiw
-    import ../agent/core/io
+    import ../agent/utils/io
     import ../agent/protocol/result
     import ../common/[utils, serialize]
 

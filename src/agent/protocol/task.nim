@@ -1,7 +1,7 @@
 import strutils, tables, json, strformat, zippy
 
 import ./result
-import ../core/io
+import ../utils/io
 import ../../modules/manager
 import ../../common/[types, serialize, sequence, crypto, utils]
 

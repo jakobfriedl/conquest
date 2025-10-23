@@ -30,7 +30,8 @@ when not defined(agent):
 when defined(agent):
 
     import strutils, strformat
-    import ../agent/core/[clr, io]
+    import ../agent/core/clr
+    import ../agent/utils/io
     import ../agent/protocol/result
     import ../common/[utils, serialize]
     

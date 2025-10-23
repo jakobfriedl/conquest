@@ -30,7 +30,7 @@ when not defined(agent):
 when defined(agent):
 
     import osproc, strutils, strformat
-    import ../agent/core/io
+    import ../agent/utils/io
     import ../agent/protocol/result
     import ../common/utils
     

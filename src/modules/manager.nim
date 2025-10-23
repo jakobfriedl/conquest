@@ -17,6 +17,16 @@ proc registerModule(module: Module) {.discardable.} =
         manager.commandsByType[cmd.commandType] = cmd
         manager.commandsByName[cmd.name] = cmd
 
+proc registerCommands(commands: seq[Command]) {.discardable.} = 
+    for cmd in commands: 
+        manager.commandsByType[cmd.commandType] = cmd
+        manager.commandsByName[cmd.name] = cmd 
+
+# Modules/commands
+
+import exit
+registerCommands(exit.commands)
+
 # Import all modules
 when (MODULES == cast[uint32](MODULE_ALL)):
     import 
@@ -68,7 +78,6 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
     import token
     registerModule(token.module)
 
-
 proc getCommandByType*(cmdType: CommandType): Command = 
     return manager.commandsByType[cmdType]
 
@@ -90,6 +99,10 @@ proc getModules*(modules: uint32 = 0): seq[Module] =
                 result.add(m)
 
 proc getCommands*(modules: uint32 = 0): seq[Command] = 
+    # House-keeping 
+    result.add(manager.commandsByType[CMD_EXIT])
+
+    # Modules
     if modules == 0:
         for m in manager.modules: 
             result.add(m.commands)

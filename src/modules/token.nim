@@ -88,7 +88,8 @@ when not defined(agent):
 when defined(agent):
 
     import winim, strutils, strformat
-    import ../agent/core/[token, io]
+    import ../agent/core/token
+    import ../agent/utils/io
     import ../agent/protocol/result
     import ../common/utils
     

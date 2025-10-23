@@ -41,7 +41,7 @@ when not defined(agent):
 when defined(agent):
 
     import os, std/paths, strutils, strformat
-    import ../agent/core/io
+    import ../agent/utils/io
     import ../agent/protocol/result
     import ../common/[utils, serialize]
 

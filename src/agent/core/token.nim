@@ -1,6 +1,6 @@
 import winim/lean 
 import strformat
-import ./io
+import ../utils/io
 import ../../common/[types, utils]
 
 #[

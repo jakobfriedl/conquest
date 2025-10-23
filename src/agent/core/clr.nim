@@ -1,6 +1,6 @@
 import winim/[lean, clr]
 import os, strformat, strutils, sequtils
-import ./[hwbp, io]
+import ../utils/[hwbp, io]
 import ../../common/[types, utils]
 
 #[ 
