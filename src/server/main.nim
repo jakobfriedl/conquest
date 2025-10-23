@@ -91,15 +91,8 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 cq.listenerStop(listenerId)
 
             of CLIENT_AGENT_BUILD:
-                let 
-                    listenerId = event.data["listenerId"].getStr()
-                    sleepDelay = event.data["sleepDelay"].getInt()
-                    sleepTechnique = cast[SleepObfuscationTechnique](event.data["sleepTechnique"].getInt())
-                    spoofStack = event.data["spoofStack"].getBool()
-                    verbose = event.data["verbose"].getBool()
-                    modules = cast[uint32](event.data["modules"].getInt())
-                
-                let payload = cq.agentBuild(listenerId, sleepDelay, sleepTechnique, spoofStack, verbose, modules)
+                let agentBuildInformation = event.data.to(AgentBuildInformation)
+                let payload = cq.agentBuild(agentBuildInformation)
                 if payload.len() != 0: 
                     cq.client.sendAgentPayload(payload)
 

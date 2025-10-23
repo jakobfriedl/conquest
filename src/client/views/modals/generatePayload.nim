@@ -9,7 +9,8 @@ export addItem
 type 
     AgentModalComponent* = ref object of RootObj
         listener: int32 
-        sleepDelay: uint32 
+        sleepDelay: uint32
+        jitter: int32 
         sleepMask: int32 
         spoofStack: bool 
         verbose: bool
@@ -22,6 +23,7 @@ proc AgentModal*(): AgentModalComponent =
     result = new AgentModalComponent
     result.listener = 0
     result.sleepDelay = 5
+    result.jitter = 15
     result.sleepMask = 0
     result.spoofStack = false
     result.verbose = false
@@ -45,6 +47,7 @@ proc AgentModal*(): AgentModalComponent =
 proc resetModalValues*(component: AgentModalComponent) = 
     component.listener = 0
     component.sleepDelay = 5
+    component.jitter = 15
     component.sleepMask = 0
     component.spoofStack = false 
     component.verbose = false
@@ -85,6 +88,12 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igSameLine(0.0f, textSpacing)
         igSetNextItemWidth(availableSize.x)
         igInputScalar("##InputSleepDelay", ImGuiDataType_U32.int32, addr component.sleepDelay, addr step, nil, "%hu", ImGui_InputTextFlags_CharsDecimal.int32)
+
+        # Jitter
+        igText("Jitter:         ")
+        igSameLine(0.0f, textSpacing)
+        igSetNextItemWidth(availableSize.x)
+        igSliderInt("##InputJitter", addr component.jitter, 0, 100, "%d%%", ImGui_SliderFlags_None.int32)
 
         # Agent sleep obfuscation technique dropdown selection
         igText("Sleep mask:     ")
@@ -145,9 +154,12 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
 
             result = AgentBuildInformation(
                 listenerId: listeners[component.listener].listenerId,
-                sleepDelay: component.sleepDelay,
-                sleepTechnique: cast[SleepObfuscationTechnique](component.sleepMask),
-                spoofStack: component.spoofStack,
+                sleepSettings: SleepSettings(
+                    sleepDelay: component.sleepDelay,
+                    jitter: cast[uint32](component.jitter), 
+                    sleepTechnique: cast[SleepObfuscationTechnique](component.sleepMask),
+                    spoofStack: component.spoofStack
+                ),
                 verbose: component.verbose,
                 modules: modules
             )

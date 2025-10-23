@@ -108,6 +108,7 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte], remoteAddress: string):
         pid = unpacker.getUint32() 
         isElevated = unpacker.getUint8()
         sleep = unpacker.getUint32()
+        jitter = unpacker.getUint32()
         modules = unpacker.getUint32()
 
     return Agent(
@@ -124,6 +125,7 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte], remoteAddress: string):
         pid: int(pid),
         elevated: isElevated != 0,
         sleep: int(sleep),
+        jitter: int(jitter),
         modules: modules,
         tasks: @[],  
         firstCheckin: now().toTime().toUnix(),

@@ -19,6 +19,7 @@ proc `%`*(agent: Agent): JsonNode =
     result["pid"] = %agent.pid
     result["elevated"] = %agent.elevated
     result["sleep"] = %agent.sleep
+    result["jitter"] = %agent.jitter
     result["modules"] = %agent.modules
     result["firstCheckin"] = %agent.firstCheckin
     result["latestCheckin"] = %agent.latestCheckin

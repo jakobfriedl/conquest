@@ -185,6 +185,7 @@ type
         pid*: uint32
         isElevated*: uint8
         sleep*: uint32
+        jitter*: uint32
         modules*: uint32
 
     AgentRegistrationData* = object
@@ -208,6 +209,7 @@ type
         pid*: int
         elevated*: bool 
         sleep*: int 
+        jitter*: int
         tasks*: seq[Task]
         modules*: uint32
         firstCheckin*: int64
@@ -229,6 +231,7 @@ type
         pid*: int
         elevated*: bool 
         sleep*: int 
+        jitter*: int
         modules*: uint32
         firstCheckin*: int64
         latestCheckin*: int64
@@ -312,13 +315,17 @@ type
         profile*: Profile
         client*: WsConnection
 
+    SleepSettings* = ref object 
+        sleepDelay*: uint32
+        jitter*: uint32
+        sleepTechnique*: SleepObfuscationTechnique
+        spoofStack*: bool
+
     AgentCtx* = ref object
         agentId*: string
         listenerId*: string
         hosts*: string
-        sleep*: int
-        sleepTechnique*: SleepObfuscationTechnique
-        spoofStack*: bool
+        sleepSettings*: SleepSettings
         sessionKey*: Key
         agentPublicKey*: Key
         profile*: Profile
@@ -357,10 +364,8 @@ type
         items*: seq[ConsoleItem]
 
     AgentBuildInformation* = ref object 
-        listenerId*: string 
-        sleepDelay*: uint32
-        sleepTechnique*: SleepObfuscationTechnique
-        spoofStack*: bool
+        listenerId*: string
+        sleepSettings*: SleepSettings 
         verbose*: bool
         modules*: uint32
 

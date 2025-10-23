@@ -38,14 +38,7 @@ proc sendAgentBuild*(connection: WsConnection, buildInformation: AgentBuildInfor
     let event = Event(
         eventType: CLIENT_AGENT_BUILD,
         timestamp: now().toTime().toUnix(), 
-        data: %*{
-            "listenerId": buildInformation.listenerId, 
-            "sleepDelay": buildInformation.sleepDelay,
-            "sleepTechnique": cast[uint8](buildInformation.sleepTechnique),
-            "spoofStack": buildInformation.spoofStack,
-            "verbose": buildInformation.verbose,
-            "modules": buildInformation.modules
-        }
+        data: %buildInformation
     )
     connection.ws.sendEvent(event, connection.sessionKey)
 

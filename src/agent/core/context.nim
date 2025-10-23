@@ -29,9 +29,12 @@ proc deserializeConfiguration(config: string): AgentCtx =
         agentId: generateUUID(),
         listenerId: Uuid.toString(unpacker.getUint32()),
         hosts: unpacker.getDataWithLengthPrefix(),
-        sleep: int(unpacker.getUint32()),
-        sleepTechnique: cast[SleepObfuscationTechnique](unpacker.getUint8()),
-        spoofStack: cast[bool](unpacker.getUint8()),
+        sleepSettings: SleepSettings(
+            sleepDelay: unpacker.getUint32(),
+            jitter: unpacker.getUint32(),
+            sleepTechnique: cast[SleepObfuscationTechnique](unpacker.getUint8()),
+            spoofStack: cast[bool](unpacker.getUint8())
+        ),
         sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),
         agentPublicKey: agentKeyPair.publicKey,
         profile: parseString(unpacker.getDataWithLengthPrefix())

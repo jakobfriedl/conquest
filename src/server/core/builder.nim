@@ -7,7 +7,7 @@ import ../../common/[types, utils, serialize, crypto]
 
 const PLACEHOLDER = "PLACEHOLDER"
 
-proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int, sleepTechnique: SleepObfuscationTechnique, spoofStack: bool): seq[byte] = 
+proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: SleepSettings): seq[byte] = 
     
     var packer = Packer.init()
 
@@ -19,9 +19,10 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int, sleepT
     packer.addDataWithLengthPrefix(string.toBytes(listener.hosts))
 
     # Sleep settings
-    packer.add(uint32(sleep))
-    packer.add(uint8(sleepTechnique))
-    packer.add(uint8(spoofStack))
+    packer.add(sleepSettings.sleepDelay)
+    packer.add(sleepSettings.jitter)
+    packer.add(uint8(sleepSettings.sleepTechnique))
+    packer.add(uint8(sleepSettings.spoofStack))
 
     # Public key for key exchange
     packer.addData(cq.keyPair.publicKey)
@@ -147,18 +148,18 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): se
     return @[]
 
 # Agent generation 
-proc agentBuild*(cq: Conquest, listenerId: string, sleepDelay: int, sleepTechnique: SleepObfuscationTechnique, spoofStack: bool, verbose: bool, modules: uint32): seq[byte] =
+proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation): seq[byte] =
 
     # Verify that listener exists
-    if not cq.dbListenerExists(listenerId.toUpperAscii): 
-        cq.error(fmt"Listener {listenerId.toUpperAscii} does not exist.")
+    if not cq.dbListenerExists(agentBuildInformation.listenerId): 
+        cq.error(fmt"Listener {agentBuildInformation.listenerId} does not exist.")
         return
 
-    let listener = cq.listeners[listenerId.toUpperAscii]
+    let listener = cq.listeners[agentBuildInformation.listenerId]
     
-    var config = cq.serializeConfiguration(listener, sleepDelay, sleepTechnique, spoofStack)
+    var config = cq.serializeConfiguration(listener, agentBuildInformation.sleepSettings)
     
-    let unpatchedExePath = cq.compile(config.len, modules, verbose)
+    let unpatchedExePath = cq.compile(config.len(), agentBuildInformation.modules, agentBuildInformation.verbose)
     if unpatchedExePath.isEmptyOrWhitespace():
         return 
 

