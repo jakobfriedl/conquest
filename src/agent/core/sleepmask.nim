@@ -4,11 +4,15 @@ import os, system, strformat, random
 import ../utils/[cfg, io] 
 import ../../common/[types, utils, crypto]
 
-# Different sleep obfuscation techniques, reimplemented in Nim (Ekko, Zilean, Foliage) 
-# The code in this file was taken from the new MalDev Academy modules and translated from C to Nim
-# https://maldevacademy.com/new/modules/54
-# https://maldevacademy.com/new/modules/55
-# https://maldevacademy.com/new/modules/56
+#[
+    Different sleep obfuscation techniques, reimplemented in Nim (Ekko, Zilean, Foliage) 
+    The code in this file was taken from the new MalDev Academy modules and translated from C to Nim
+    
+    References: 
+    - https://maldevacademy.com/new/modules/54
+    - https://maldevacademy.com/new/modules/55
+    - https://maldevacademy.com/new/modules/56
+]#
 
 type 
     USTRING* {.bycopy.} = object 
