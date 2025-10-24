@@ -25,7 +25,6 @@ type
         LONG = 3'u8
         BOOL = 4'u8 
         BINARY = 5'u8 
-        # FLAG = 6'u8
 
     HeaderFlags* = enum 
         # Flags should be powers of 2 so they can be connected with or operators

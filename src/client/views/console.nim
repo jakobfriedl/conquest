@@ -186,6 +186,9 @@ proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
     component.console.addItem(LOG_OUTPUT, "")
 
 proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, input: string) =
+    # Add command to console
+    component.console.addItem(LOG_COMMAND, input)
+
     # Convert user input into sequence of string arguments
     let parsedArgs = parseInput(input)
     
@@ -291,9 +294,6 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
 
         let command = ($(addr component.inputBuffer[0])).strip()
         if not command.isEmptyOrWhitespace(): 
-
-            component.console.addItem(LOG_COMMAND, command)
-
             # Send command to team server
             component.handleAgentCommand(connection, command)
 

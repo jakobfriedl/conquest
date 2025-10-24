@@ -2,7 +2,9 @@ import times, tables, strformat, strutils, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 
 import ./console
+import ../core/[task, websocket]
 import ../utils/[appImGui, colors]
+import ../../modules/manager
 import ../../common/[types, utils]
 
 type 
@@ -43,7 +45,7 @@ proc interact(component: SessionsTableComponent) =
     
     component.selection.ImGuiSelectionBasicStorage_Clear()
 
-proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
+proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connection: WsConnection) = 
     igBegin(component.title, showComponent, 0)
 
     let textSpacing = igGetStyle().ItemSpacing.x
@@ -156,6 +158,35 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
                 component.interact()
                 igCloseCurrentPopup()
         
+            if igBeginMenu("Exit", true):
+                if igMenuItem("Process", nil, false, true): 
+                    for i, agent in component.agents:
+                        if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                            if component.consoles[].hasKey(agent.agentId):
+                                component.consoles[][agent.agentId].handleAgentCommand(connection, "exit process")
+                            else: 
+                                let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_EXIT), @["process"])
+                                connection.sendAgentTask(agent.agentId, "exit process", task)
+
+                    ImGuiSelectionBasicStorage_Clear(component.selection)
+                    igCloseCurrentPopup()
+
+                if igMenuItem("Thread", nil, false, true):
+                    for i, agent in component.agents:
+                        if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                            if component.consoles[].hasKey(agent.agentId):
+                                component.consoles[][agent.agentId].handleAgentCommand(connection, "exit thread") 
+                            else: 
+                                let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_EXIT), @["thread"])
+                                connection.sendAgentTask(agent.agentId, "exit thread", task)
+
+                    ImGuiSelectionBasicStorage_Clear(component.selection)
+                    igCloseCurrentPopup()
+
+                igEndMenu()
+
+            igSeparator()
+
             if igMenuItem("Remove", nil, false, true): 
                 # Update agents table with only non-selected ones
                 var newAgents: seq[UIAgent] = @[]
