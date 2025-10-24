@@ -25,6 +25,7 @@ type
         LONG = 3'u8
         BOOL = 4'u8 
         BINARY = 5'u8 
+        # FLAG = 6'u8
 
     HeaderFlags* = enum 
         # Flags should be powers of 2 so they can be connected with or operators
@@ -95,6 +96,10 @@ type
         EKKO = 1'u8 
         ZILEAN = 2'u8
         FOLIAGE = 3'u8
+
+    ExitType* {.size: sizeof(uint8).} = enum 
+        EXIT_PROCESS = "process"
+        EXIT_THREAD = "thread"
 
     ModuleType* = enum 
         MODULE_ALL = 0'u32

