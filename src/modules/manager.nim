@@ -22,7 +22,9 @@ proc registerCommands(commands: seq[Command]) {.discardable.} =
         manager.commandsByType[cmd.commandType] = cmd
         manager.commandsByName[cmd.name] = cmd 
 
-# Modules/commands
+#[
+    Modules/commands
+]# 
 
 import exit
 registerCommands(exit.commands)
@@ -101,6 +103,7 @@ proc getModules*(modules: uint32 = 0): seq[Module] =
 proc getCommands*(modules: uint32 = 0): seq[Command] = 
     # House-keeping 
     result.add(manager.commandsByType[CMD_EXIT])
+    result.add(manager.commandsByType[CMD_SELF_DESTROY])
 
     # Modules
     if modules == 0:

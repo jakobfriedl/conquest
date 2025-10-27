@@ -59,6 +59,7 @@ type
         CMD_ENABLE_PRIV = 22'u16
         CMD_DISABLE_PRIV = 23'u16
         CMD_EXIT = 24'u16
+        CMD_SELF_DESTROY = 25'u16
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
@@ -276,6 +277,7 @@ type
         CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
         CLIENT_LOOT_REMOVE = 5'u8           # Remove loot on the team server
         CLIENT_LOOT_GET = 6'u8              # Request file/screenshot from the team server for preview or download
+        CLIENT_AGENT_REMOVE = 7'u8          # Delete agent from the team server database
 
         # Sent by team server
         CLIENT_PROFILE = 100'u8             # Team server profile and configuration 

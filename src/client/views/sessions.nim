@@ -193,6 +193,9 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                 for i, agent in component.agents:
                     if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                         newAgents.add(agent)
+                    else: 
+                        # Send message to team server to remove delete the agent from the database and stop it from re-appearing when the client is restarted
+                        connection.sendAgentRemove(agent.agentId)
 
                 component.agents = newAgents
                 ImGuiSelectionBasicStorage_Clear(component.selection)

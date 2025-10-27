@@ -2,25 +2,35 @@ import ../common/[types, utils]
 
 # Define function prototype
 proc executeExit(ctx: AgentCtx, task: Task): TaskResult 
+proc executeSelfDestroy(ctx: AgentCtx, task: Task): TaskResult 
 
 # Module definition
 let commands* = @[
         Command(
             name: protect("exit"),
             commandType: CMD_EXIT,
-            description: protect("Exit the agent process."),
+            description: protect("Exit the agent."),
             example: protect("exit process"),
             arguments: @[
-                Argument(name: protect("exitType"), description: protect("Available options: PROCESS/THREAD. Default: PROCESS."), argumentType: STRING, isRequired: false),
-                Argument(name: protect("selfDelete"), description: protect("Attempt to delete the binary within which is the agent was running from disk. Default: false"), argumentType: BOOL, isRequired: false),
+                Argument(name: protect("type"), description: protect("Available options: PROCESS/THREAD. Default: PROCESS."), argumentType: STRING, isRequired: false),
             ],
             execute: executeExit
+        ),
+        Command(
+            name: protect("self-destroy"),
+            commandType: CMD_SELF_DESTROY,
+            description: protect("Exit the agent and delete the executable from disk."),
+            example: protect("self-destroy"),
+            arguments: @[
+            ],
+            execute: executeSelfDestroy
         )
     ] 
 
 # Implement execution functions
 when not defined(agent):
     proc executeExit(ctx: AgentCtx, task: Task): TaskResult = nil
+    proc executeSelfDestroy(ctx: AgentCtx, task: Task): TaskResult = nil 
 
 when defined(agent):
 
@@ -34,16 +44,20 @@ when defined(agent):
         try: 
             print "   [>] Exiting."
 
-            case task.argCount: 
-            of 0: 
+            if task.argCount == 0: 
                 exit()
-            of 1: 
-                let exitType = parseEnum[ExitType](Bytes.toString(task.args[0].data))
-                exit(exitType)
             else: 
                 let exitType = parseEnum[ExitType](Bytes.toString(task.args[0].data))
-                let selfDelete = cast[bool](task.args[1].data[0])
-                exit(exitType, selfDelete)
+                exit(exitType)
 
         except CatchableError as err:
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+        
+    proc executeSelfDestroy(ctx: AgentCtx, task: Task): TaskResult =
+        try: 
+            print "   [>] Self-destroying."
+            exit(EXIT_PROCESS, true)
+
+        except CatchableError as err:
+            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+        
