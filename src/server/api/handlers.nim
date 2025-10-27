@@ -47,38 +47,33 @@ proc getTasks*(heartbeat: seq[byte]): tuple[agentId: string, tasks: seq[seq[byte
 
     {.cast(gcsafe).}:
 
-        try:
-            # Deserialize checkin request to obtain agentId and listenerId 
-            let 
-                request: Heartbeat = cq.deserializeHeartbeat(heartbeat)
-                agentId = Uuid.toString(request.header.agentId)
-                listenerId = Uuid.toString(request.listenerId)
-                timestamp = request.timestamp
+        # Deserialize checkin request to obtain agentId and listenerId 
+        let 
+            request: Heartbeat = cq.deserializeHeartbeat(heartbeat)
+            agentId = Uuid.toString(request.header.agentId)
+            listenerId = Uuid.toString(request.listenerId)
+            timestamp = request.timestamp
 
-            var tasks: seq[seq[byte]]
+        var tasks: seq[seq[byte]]
 
-            # Check if listener exists
-            if not cq.dbListenerExists(listenerId): 
-                raise newException(ValueError, fmt"Task-retrieval request made to non-existent listener: {listenerId}." & "\n")
+        # Check if listener exists
+        if not cq.dbListenerExists(listenerId): 
+            raise newException(ValueError, fmt"Task-retrieval request made to non-existent listener: {listenerId}." & "\n")
 
-            # Check if agent exists
-            if not cq.dbAgentExists(agentId): 
-                raise newException(ValueError, fmt"Task-retrieval request made to non-existent agent: {agentId}." & "\n")
+        # Check if agent exists
+        if not cq.dbAgentExists(agentId): 
+            raise newException(ValueError, fmt"Task-retrieval request made to non-existent agent: {agentId}." & "\n")
 
-            # Update the last check-in date for the accessed agent
-            cq.agents[agentId].latestCheckin = cast[int64](timestamp)
-            cq.client.sendAgentCheckin(agentId)
+        # Update the last check-in date for the accessed agent
+        cq.agents[agentId].latestCheckin = cast[int64](timestamp)
+        cq.client.sendAgentCheckin(agentId)
 
-            # Return tasks
-            for task in cq.agents[agentId].tasks.mitems: # Iterate over agents as mutable items in order to modify GMAC tag
-                let taskData = cq.serializeTask(task)
-                tasks.add(taskData)
-            
-            return (agentId, tasks)
-
-        except CatchableError as err:
-            cq.error(err.msg) 
-            return ("", @[])
+        # Return tasks
+        for task in cq.agents[agentId].tasks.mitems: # Iterate over agents as mutable items in order to modify GMAC tag
+            let taskData = cq.serializeTask(task)
+            tasks.add(taskData)
+        
+        return (agentId, tasks)
 
 proc handleResult*(resultData: seq[byte]) = 
 

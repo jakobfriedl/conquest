@@ -37,7 +37,8 @@ proc deserializeConfiguration(config: string): AgentCtx =
         ),
         sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),
         agentPublicKey: agentKeyPair.publicKey,
-        profile: parseString(unpacker.getDataWithLengthPrefix())
+        profile: parseString(unpacker.getDataWithLengthPrefix()),
+        registered: false
     ) 
 
     wipeKey(agentKeyPair.privateKey)

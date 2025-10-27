@@ -336,6 +336,7 @@ type
         sessionKey*: Key
         agentPublicKey*: Key
         profile*: Profile
+        registered*: bool
         
 # Structure for command module definitions 
 type
