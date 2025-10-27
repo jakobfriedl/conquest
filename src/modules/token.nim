@@ -56,7 +56,7 @@ let module* = Module(
         Command(
             name: protect("enable-privilege"),
             commandType: CMD_ENABLE_PRIV,
-            description: protect("enable a token privilege."),
+            description: protect("Enable a token privilege."),
             example: protect("enable-privilege SeImpersonatePrivilege"),
             arguments: @[
                 Argument(name: protect("privilege"), description: protect("Privilege to enable."), argumentType: STRING, isRequired: true)
@@ -66,7 +66,7 @@ let module* = Module(
         Command(
             name: protect("disable-privilege"),
             commandType: CMD_DISABLE_PRIV,
-            description: protect("disable a token privilege."),
+            description: protect("Disable a token privilege."),
             example: protect("disable-privilege SeImpersonatePrivilege"),
             arguments: @[
                 Argument(name: protect("privilege"), description: protect("Privilege to disable."), argumentType: STRING, isRequired: true)
