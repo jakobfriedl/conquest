@@ -1,10 +1,10 @@
-import strutils, sequtils, times
+import strutils, strformat, sequtils, times
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
 import ../../../common/[types, profile, utils]
 import ../../../modules/manager
 import ../widgets/[dualListSelection, textarea]
-import ./configureKillDate
+import ./[configureKillDate, configureWorkingHours]
 export addItem
 
 type 
@@ -16,11 +16,14 @@ type
         spoofStack: bool 
         killDateEnabled: bool 
         killDate: int64
+        workingHoursEnabled: bool
+        workingHours: WorkingHours
         verbose: bool
         sleepMaskTechniques: seq[string]
         moduleSelection: DualListSelectionWidget[Module]
         buildLog*: TextareaWidget
         killDateModal*: KillDateModalComponent
+        workingHoursModal*: WorkingHoursModalComponent
 
 
 proc AgentModal*(): AgentModalComponent =
@@ -32,6 +35,14 @@ proc AgentModal*(): AgentModalComponent =
     result.spoofStack = false
     result.killDateEnabled = false
     result.killDate = 0
+    result.workingHoursEnabled = false 
+    result.workingHours = WorkingHours(
+        enabled: false, 
+        startHour: 0,
+        startMinute: 0,
+        endHour: 0,
+        endMinute: 0
+    )
     result.verbose = false
 
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
@@ -50,6 +61,7 @@ proc AgentModal*(): AgentModalComponent =
     result.moduleSelection = DualListSelection(modules, moduleName, compareModules, moduleDesc)
     result.buildLog = Textarea(showTimestamps = false)
     result.killDateModal = KillDateModal()
+    result.workingHoursModal = WorkingHoursModal()
 
 proc resetModalValues*(component: AgentModalComponent) = 
     component.listener = 0
@@ -59,6 +71,14 @@ proc resetModalValues*(component: AgentModalComponent) =
     component.spoofStack = false 
     component.killDateEnabled = false
     component.killDate = 0
+    component.workingHoursEnabled = false
+    component.workingHours = WorkingHours(
+        enabled: false, 
+        startHour: 0,
+        startMinute: 0,
+        endHour: 0,
+        endMinute: 0
+    )
     component.verbose = false
     component.moduleSelection.reset()
     component.buildLog.clear()
@@ -136,16 +156,36 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igSameLine(0.0f, textSpacing)
         igCheckbox("##InputKillDate", addr component.killDateEnabled)        
         igSameLine(0.0f, textSpacing)
+        
         igBeginDisabled(not component.killDateEnabled)
         igGetContentRegionAvail(addr availableSize)
         igSetNextItemWidth(availableSize.x)
-        if igButton(if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss") else: "Configure", vec2(-1.0f, 0.0f)):
+        if igButton(if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss")  & " UTC" else: "Configure##KillDate", vec2(-1.0f, 0.0f)):
             igOpenPopup_str("Configure Kill Date", ImGui_PopupFlags_None.int32) 
         igEndDisabled()
 
         let killDate = component.killDateModal.draw()
         if killDate != 0: 
             component.killDate = killDate
+
+        # Working hours
+        igText("Working Hours:  ")
+        igSameLine(0.0f, textSpacing)
+        igCheckbox("##InputWorkingHours", addr component.workingHoursEnabled)        
+        igSameLine(0.0f, textSpacing)
+        
+        igBeginDisabled(not component.workingHoursEnabled)
+        igGetContentRegionAvail(addr availableSize)
+        igSetNextItemWidth(availableSize.x)
+
+        let workingHoursLabel = fmt"{component.workingHours.startHour:02}:{component.workingHours.startMinute:02} - {component.workingHours.endHour:02}:{component.workingHours.endMinute:02}"
+        if igButton(if component.workingHours.enabled: workingHoursLabel else: "Configure##WorkingHours", vec2(-1.0f, 0.0f)):
+            igOpenPopup_str("Configure Working Hours", ImGui_PopupFlags_None.int32) 
+        igEndDisabled()
+
+        let workingHours = component.workingHoursModal.draw()
+        if workingHours.enabled: 
+            component.workingHours = workingHours
 
         igDummy(vec2(0.0f, 10.0f))
         igSeparator()
@@ -187,7 +227,8 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
                     sleepDelay: component.sleepDelay,
                     jitter: cast[uint32](component.jitter), 
                     sleepTechnique: cast[SleepObfuscationTechnique](component.sleepMask),
-                    spoofStack: component.spoofStack
+                    spoofStack: component.spoofStack,
+                    workingHours: if component.workingHoursEnabled: component.workingHours else: WorkingHours(enabled: false, startHour: 0, startMinute: 0, endHour: 0, endMinute: 0)
                 ),
                 verbose: component.verbose,
                 killDate: if component.killDateEnabled: component.killDate else: 0, 

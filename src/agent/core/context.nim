@@ -33,7 +33,14 @@ proc deserializeConfiguration(config: string): AgentCtx =
             sleepDelay: unpacker.getUint32(),
             jitter: unpacker.getUint32(),
             sleepTechnique: cast[SleepObfuscationTechnique](unpacker.getUint8()),
-            spoofStack: cast[bool](unpacker.getUint8())
+            spoofStack: cast[bool](unpacker.getUint8()),
+            workingHours: WorkingHours(
+                enabled: cast[bool](unpacker.getUint8()),
+                startHour: cast[int32](unpacker.getUint32()),
+                startMinute: cast[int32](unpacker.getUint32()),
+                endHour: cast[int32](unpacker.getUint32()),
+                endMinute: cast[int32](unpacker.getUint32())
+            )
         ),
         killDate: cast[int64](unpacker.getUint64()),
         sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),

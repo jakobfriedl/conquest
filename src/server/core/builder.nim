@@ -23,6 +23,13 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: Sle
     packer.add(sleepSettings.jitter)
     packer.add(uint8(sleepSettings.sleepTechnique))
     packer.add(uint8(sleepSettings.spoofStack))
+    
+    # Working hours
+    packer.add(uint8(sleepSettings.workingHours.enabled))
+    packer.add(uint32(sleepSettings.workingHours.startHour))
+    packer.add(uint32(sleepSettings.workingHours.startMinute))
+    packer.add(uint32(sleepSettings.workingHours.endHour))
+    packer.add(uint32(sleepSettings.workingHours.endMinute))
 
     # Kill date
     packer.add(uint64(killDate))

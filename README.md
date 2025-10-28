@@ -49,6 +49,7 @@ TBD
 - Looting and loot management
 - Logging of all operator activity
 - Self-deletion 
+- Agent kill date & working hours
 
 ## Screenshots
 
