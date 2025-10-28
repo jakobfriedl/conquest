@@ -35,6 +35,7 @@ proc deserializeConfiguration(config: string): AgentCtx =
             sleepTechnique: cast[SleepObfuscationTechnique](unpacker.getUint8()),
             spoofStack: cast[bool](unpacker.getUint8())
         ),
+        killDate: cast[int64](unpacker.getUint64()),
         sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),
         agentPublicKey: agentKeyPair.publicKey,
         profile: parseString(unpacker.getDataWithLengthPrefix()),

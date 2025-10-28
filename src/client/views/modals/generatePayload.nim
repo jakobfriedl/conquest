@@ -4,6 +4,7 @@ import ../../utils/[appImGui, colors]
 import ../../../common/[types, profile, utils]
 import ../../../modules/manager
 import ../widgets/[dualListSelection, textarea]
+import ./configureKillDate
 export addItem
 
 type 
@@ -13,10 +14,13 @@ type
         jitter: int32 
         sleepMask: int32 
         spoofStack: bool 
+        killDateEnabled: bool 
+        killDate: int64
         verbose: bool
         sleepMaskTechniques: seq[string]
         moduleSelection: DualListSelectionWidget[Module]
         buildLog*: TextareaWidget
+        killDateModal*: KillDateModalComponent
 
 
 proc AgentModal*(): AgentModalComponent =
@@ -26,6 +30,8 @@ proc AgentModal*(): AgentModalComponent =
     result.jitter = 15
     result.sleepMask = 0
     result.spoofStack = false
+    result.killDateEnabled = false
+    result.killDate = 0
     result.verbose = false
 
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
@@ -43,6 +49,7 @@ proc AgentModal*(): AgentModalComponent =
 
     result.moduleSelection = DualListSelection(modules, moduleName, compareModules, moduleDesc)
     result.buildLog = Textarea(showTimestamps = false)
+    result.killDateModal = KillDateModal()
 
 proc resetModalValues*(component: AgentModalComponent) = 
     component.listener = 0
@@ -50,6 +57,8 @@ proc resetModalValues*(component: AgentModalComponent) =
     component.jitter = 15
     component.sleepMask = 0
     component.spoofStack = false 
+    component.killDateEnabled = false
+    component.killDate = 0
     component.verbose = false
     component.moduleSelection.reset()
     component.buildLog.clear()
@@ -122,6 +131,26 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igSeparator()
         igDummy(vec2(0.0f, 10.0f))
 
+        # Kill date (checkbox & button to choose date)
+        igText("Kill date:      ")
+        igSameLine(0.0f, textSpacing)
+        igCheckbox("##InputKillDate", addr component.killDateEnabled)        
+        igSameLine(0.0f, textSpacing)
+        igBeginDisabled(not component.killDateEnabled)
+        igGetContentRegionAvail(addr availableSize)
+        igSetNextItemWidth(availableSize.x)
+        if igButton(if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss") else: "Configure", vec2(-1.0f, 0.0f)):
+            igOpenPopup_str("Configure Kill Date", ImGui_PopupFlags_None.int32) 
+        igEndDisabled()
+
+        let killDate = component.killDateModal.draw()
+        if killDate != 0: 
+            component.killDate = killDate
+
+        igDummy(vec2(0.0f, 10.0f))
+        igSeparator()
+        igDummy(vec2(0.0f, 10.0f))
+
         igText("Modules: ")
         
         component.moduleSelection.draw()
@@ -161,6 +190,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
                     spoofStack: component.spoofStack
                 ),
                 verbose: component.verbose,
+                killDate: if component.killDateEnabled: component.killDate else: 0, 
                 modules: modules
             )
         

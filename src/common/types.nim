@@ -59,7 +59,7 @@ type
         CMD_ENABLE_PRIV = 22'u16
         CMD_DISABLE_PRIV = 23'u16
         CMD_EXIT = 24'u16
-        CMD_SELF_DESTROY = 25'u16
+        CMD_SELF_DESTRUCT = 25'u16
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
@@ -112,17 +112,6 @@ type
         MODULE_SCREENSHOT = 64'u32
         MODULE_SITUATIONAL_AWARENESS = 128'u32 
         MODULE_TOKEN = 256'u32
-
-# Custom iterator for ModuleType, as it uses powers of 2 instead of standard increments
-iterator items*(e: typedesc[ModuleType]): ModuleType =
-    yield MODULE_SLEEP
-    yield MODULE_SHELL
-    yield MODULE_BOF
-    yield MODULE_DOTNET
-    yield MODULE_FILESYSTEM
-    yield MODULE_FILETRANSFER
-    yield MODULE_SCREENSHOT
-    yield MODULE_SITUATIONAL_AWARENESS
 
 # Encryption 
 type    
@@ -333,6 +322,7 @@ type
         listenerId*: string
         hosts*: string
         sleepSettings*: SleepSettings
+        killDate*: int64
         sessionKey*: Key
         agentPublicKey*: Key
         profile*: Profile
@@ -373,8 +363,9 @@ type
 
     AgentBuildInformation* = ref object 
         listenerId*: string
-        sleepSettings*: SleepSettings 
+        sleepSettings*: SleepSettings
         verbose*: bool
+        killDate*: int64
         modules*: uint32
 
     LootItemType* = enum 

@@ -103,7 +103,7 @@ proc getModules*(modules: uint32 = 0): seq[Module] =
 proc getCommands*(modules: uint32 = 0): seq[Command] = 
     # House-keeping 
     result.add(manager.commandsByType[CMD_EXIT])
-    result.add(manager.commandsByType[CMD_SELF_DESTROY])
+    result.add(manager.commandsByType[CMD_SELF_DESTRUCT])
 
     # Modules
     if modules == 0:

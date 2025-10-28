@@ -3,6 +3,7 @@ switch "o", "bin/client"
 switch "d", "ssl"
 switch "d", "client"
 switch "d", "ImGuiTextSelect"
+switch "d", "ImPlotEnable"
 
 # Select compiler
 var TC = "gcc"                

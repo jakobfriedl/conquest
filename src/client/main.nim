@@ -11,6 +11,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
     var app = createApp(1024, 800, imnodes = true, title = "Conquest", docking = true)
     defer: app.destroyApp()
 
+    var imPlotContext = ImPlot_CreateContext()
+    defer: imPlotContext.ImPlotDestroyContext()
+ 
     var 
         profile: Profile
         views: Table[string, ptr bool]

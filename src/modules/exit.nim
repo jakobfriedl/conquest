@@ -17,10 +17,10 @@ let commands* = @[
             execute: executeExit
         ),
         Command(
-            name: protect("self-destroy"),
-            commandType: CMD_SELF_DESTROY,
+            name: protect("self-destruct"),
+            commandType: CMD_SELF_DESTRUCT,
             description: protect("Exit the agent and delete the executable from disk."),
-            example: protect("self-destroy"),
+            example: protect("self-destruct"),
             arguments: @[
             ],
             execute: executeSelfDestroy
@@ -55,7 +55,7 @@ when defined(agent):
         
     proc executeSelfDestroy(ctx: AgentCtx, task: Task): TaskResult =
         try: 
-            print "   [>] Self-destroying."
+            print "   [>] Self-destructing."
             exit(EXIT_PROCESS, true)
 
         except CatchableError as err:

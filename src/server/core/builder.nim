@@ -7,7 +7,7 @@ import ../../common/[types, utils, serialize, crypto]
 
 const PLACEHOLDER = "PLACEHOLDER"
 
-proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: SleepSettings): seq[byte] = 
+proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: SleepSettings, killDate: int64): seq[byte] = 
     
     var packer = Packer.init()
 
@@ -23,6 +23,9 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: Sle
     packer.add(sleepSettings.jitter)
     packer.add(uint8(sleepSettings.sleepTechnique))
     packer.add(uint8(sleepSettings.spoofStack))
+
+    # Kill date
+    packer.add(uint64(killDate))
 
     # Public key for key exchange
     packer.addData(cq.keyPair.publicKey)
@@ -157,7 +160,7 @@ proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation): se
 
     let listener = cq.listeners[agentBuildInformation.listenerId]
     
-    var config = cq.serializeConfiguration(listener, agentBuildInformation.sleepSettings)
+    var config = cq.serializeConfiguration(listener, agentBuildInformation.sleepSettings, agentBuildInformation.killDate)
     
     let unpatchedExePath = cq.compile(config.len(), agentBuildInformation.modules, agentBuildInformation.verbose)
     if unpatchedExePath.isEmptyOrWhitespace():
