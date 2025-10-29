@@ -148,30 +148,6 @@ proc sendBuildlogItem*(client: WsConnection, logType: LogType, message: string) 
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
-proc createThumbnail(data: string, maxHeight: int = 1024, quality: int = 80): string =
-    let img: Image = decodeImage(data)
-    
-    # Resize image
-    let aspectRatio = img.width.float / img.height.float
-    let
-        height = min(maxHeight, img.height)
-        width = int(height.float * aspectRatio)
-    let thumbnail = img.resize(width, height)
-
-    # Convert to JPEG image for smaller file size
-    var rgbaData = newSeq[byte](width * height * 4)
-    var i = 0
-    for y in 0..<height:
-        for x in 0..<width:
-            let color = thumbnail[x, y]
-            rgbaData[i] = color.r
-            rgbaData[i + 1] = color.g
-            rgbaData[i + 2] = color.b
-            rgbaData[i + 3] = color.a
-            i += 4
-    
-    return Bytes.toString(stbiw.writeJPG(width, height, 4, rgbaData, quality))
-
 proc sendLoot*(client: WsConnection, loot: LootItem) = 
     let event = Event(
         eventType: CLIENT_LOOT_ADD,

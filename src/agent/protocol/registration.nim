@@ -33,11 +33,12 @@ proc getUsername(): string =
     if getDomain() != "": 
         # If domain-joined, return username in format DOMAIN\USERNAME
         GetUserNameExW(NameSamCompatible, &buffer, &dwSize)
+        return $buffer[0 ..< int(dwSize)]
     else: 
         # If not domain-joined, only return USERNAME
         discard GetUsernameW(&buffer, &dwSize)
+        return $buffer[0 ..< int(dwSize) - 1]
 
-    return $buffer[0 ..< int(dwSize) - 1]
 
 # Current process name
 proc getProcessExe(): string = 

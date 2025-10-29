@@ -101,4 +101,4 @@ proc toKey*(value: string): Key =
     if value.len != 32:
         raise newException(ValueError, protect("Invalid key length."))
   
-    copyMem(result[0].addr, value[0].unsafeAddr, 32)
+    copyMem(addr result[0], addr value[0], 32)

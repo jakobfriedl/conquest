@@ -38,7 +38,7 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
             # Convert session key blob back to array
             var sessionKey: Key
             if sessionKeyBlob.len == 32:
-                copyMem(sessionKey[0].addr, sessionKeyBlob[0].unsafeAddr, 32)
+                copyMem(addr sessionKey[0], addr sessionKeyBlob[0], 32)
             else:
                 # Handle invalid session key - log error but continue
                 cq.warning("Invalid session key length for agent: ", agentId)

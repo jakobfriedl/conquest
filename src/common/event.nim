@@ -10,9 +10,7 @@ proc sendEvent*(ws: WebSocket, event: Event, key: Key = default(Key)) =
     var packer = Packer.init() 
 
     let iv = generateBytes(Iv)
-
-    var 
-        data = string.toBytes($event.data)
+    var data = string.toBytes($event.data)
 
     packer.add(cast[uint8](event.eventType))
     packer.add(cast[uint32](event.timestamp))

