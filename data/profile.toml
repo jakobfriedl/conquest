@@ -9,27 +9,23 @@ database-file = "data/conquest.db"
 [team-server]
 port = 37573
 
-[team-server.users]
-
-
-# General agent settings 
-[agent]
-sleep = 5
-jitter = 15
-user-agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+# [team-server.users]
 
 # ----------------------------------------------------------
 # HTTP GET 
 # ----------------------------------------------------------
 # Defines URI endpoints for HTTP GET requests
 [http-get]
+user-agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+
+# Defines URI endpoints for HTTP GET requests
 endpoints = [
     "/get",
     "/api/v1.2/status.js"
 ]
 
 # Defines where the heartbeat is placed within the HTTP GET request
-# Allows for data transformation using encoding (base64, base64url, ...), appending and prepending of strings
+# Allows for data transformation using encoding (base64, ...), appending and prepending of strings
 # Metadata can be stored in a Header (e.g. JWT Token, Session Cookie), URI parameter, appended to the URI or request body 
 # Encoding is only applied to the payload and not the prepended or appended strings
 [http-get.agent.heartbeat]
@@ -51,7 +47,10 @@ suffix = ".######################################-####"
 # Defines arbitrary URI parameters that are added to the request
 [http-get.agent.parameters]
 id = "#####-#####"
-lang = "en-US"
+lang = [
+    "en-US",
+    "de-AT"
+]
 
 # Defines arbitrary headers that are added by the agent when performing a HTTP GET request 
 [http-get.agent.headers]
@@ -82,6 +81,8 @@ placement = { type = "body" }
 # HTTP POST 
 # ----------------------------------------------------------
 [http-post]
+user-agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+
 # Defines URI endpoints for HTTP POST requests
 endpoints = [
     "/post",
