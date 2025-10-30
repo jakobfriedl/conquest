@@ -37,7 +37,7 @@ proc main() =
             # Register
             if not ctx.registered: 
                 # Create registration payload   
-                var registration: AgentRegistrationData = ctx.collectAgentMetadata()
+                var registration: Registration = ctx.collectAgentMetadata()
                 let registrationBytes = ctx.serializeRegistrationData(registration)
 
                 if ctx.httpPost(registrationBytes): 

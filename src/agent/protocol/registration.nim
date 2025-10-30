@@ -194,9 +194,9 @@ proc getOSVersion(): string =
     else:
         return protect("Unknown")
 
-proc collectAgentMetadata*(ctx: AgentCtx): AgentRegistrationData = 
+proc collectAgentMetadata*(ctx: AgentCtx): Registration = 
     
-    return AgentRegistrationData(
+    return Registration(
         header: Header(
             magic: MAGIC,
             version: VERSION, 
@@ -225,7 +225,7 @@ proc collectAgentMetadata*(ctx: AgentCtx): AgentRegistrationData =
         )
     )
 
-proc serializeRegistrationData*(ctx: AgentCtx, data: var AgentRegistrationData): seq[byte] = 
+proc serializeRegistrationData*(ctx: AgentCtx, data: var Registration): seq[byte] = 
 
     var packer = Packer.init()
 

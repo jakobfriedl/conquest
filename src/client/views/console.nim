@@ -8,7 +8,7 @@ import ../core/[task, websocket]
 import ./widgets/textarea
 export addItem
 
-const MAX_INPUT_LENGTH = 512
+const MAX_INPUT_LENGTH = 4096 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets)
 type 
     ConsoleComponent* = ref object of RootObj
         agent*: UIAgent

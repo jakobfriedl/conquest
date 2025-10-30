@@ -130,7 +130,7 @@ type
         packetType*: uint8          # [1 byte  ] message type 
         flags*: uint16              # [2 bytes ] message flags
         size*: uint32               # [4 bytes ] size of the payload body
-        agentId*: Uuid              # [4 bytes ] agent id, used as AAD for encryptio
+        agentId*: Uuid              # [4 bytes ] agent id, used as AAD for encryption
         seqNr*: uint32              # [4 bytes ] sequence number, used as AAD for encryption
         iv*: Iv                     # [12 bytes] random IV for AES256 GCM encryption
         gmac*: AuthenticationTag    # [16 bytes] authentication tag for AES256 GCM encryption
@@ -183,7 +183,7 @@ type
         jitter*: uint32
         modules*: uint32
 
-    AgentRegistrationData* = object
+    Registration* = object
         header*: Header
         agentPublicKey*: Key        # [32 bytes ] Public key of the connecting agent for key exchange
         metadata*: AgentMetadata
