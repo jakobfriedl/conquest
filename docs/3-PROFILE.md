@@ -1,4 +1,4 @@
-# Profiles <!-- omit from toc -->
+# Malleable C2 Profiles <!-- omit from toc -->
 
 ## Contents <!-- omit from toc -->
 

@@ -7,4 +7,3 @@
 5. [Listeners](./5-LISTENER.md)
 6. [Monarch Agent](./6-AGENT.md)
 7. [Modules and Commands](./7-MODULES.md)
-8. [Gallery](./8-GALLERY.md)
