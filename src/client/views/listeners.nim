@@ -1,10 +1,9 @@
-import whisky
 import strutils
 import imguin/[cimgui, glfw_opengl, simple]
-import ../utils/appImGui
-import ../../common/[types, utils]
 import ./modals/[startListener, generatePayload]
-import ../websocket
+import ../utils/appImGui
+import ../core/websocket
+import ../../common/types
 
 type 
     ListenersTableComponent* = ref object of RootObj
@@ -23,7 +22,7 @@ proc ListenersTable*(title: string): ListenersTableComponent =
     result.generatePayloadModal = AgentModal()
 
 proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connection: WsConnection) = 
-    igBegin(component.title, showComponent, 0)
+    igBegin(component.title.cstring, showComponent, 0)
     defer: igEnd() 
 
     let textSpacing = igGetStyle().ItemSpacing.x    
@@ -64,12 +63,13 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
         ImGui_TableFlags_SizingStretchSame.int32
     )
 
-    let cols: int32 = 4
+    let cols: int32 = 5
     if igBeginTable("Listeners", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
         igTableSetupColumn("ListenerID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
         igTableSetupColumn("Address", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Port", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Callback Hosts", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Protocol", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
 
         igTableSetupScrollFreeze(0, 1)
@@ -86,14 +86,17 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
                 # Enable multi-select functionality       
                 igSetNextItemSelectionUserData(i)
                 var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i))
-                discard igSelectable_Bool(listener.listenerId, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
+                discard igSelectable_Bool(listener.listenerId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
                 
             if igTableSetColumnIndex(1): 
-                igText(listener.address)
+                igText(listener.address.cstring)
             if igTableSetColumnIndex(2): 
-                igText($listener.port)
+                igText(($listener.port).cstring)
             if igTableSetColumnIndex(3): 
-                igText($listener.protocol)
+                for host in listener.hosts.split(";"):
+                    igText(host.cstring)
+            if igTableSetColumnIndex(4): 
+                igText(($listener.protocol).cstring)
 
         # Handle right-click context menu
         # Right-clicking the table header to hide/show columns or reset the layout is only possible when no sessions are selected

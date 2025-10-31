@@ -7,6 +7,7 @@ proc nextSequence*(agentId: uint32): uint32 =
     sequenceTable[agentId] = sequenceTable.getOrDefault(agentId, 0'u32) + 1
     return sequenceTable[agentId]
 
+# Sequence tracking is currently broken and needs to be reworked
 proc validateSequence(agentId: uint32, seqNr: uint32, packetType: uint8): bool = 
     # let lastSeqNr = sequenceTable.getOrDefault(agentId, 0'u32)
 
@@ -20,7 +21,7 @@ proc validateSequence(agentId: uint32, seqNr: uint32, packetType: uint8): bool =
     #     return true
 
     # # Validate that the sequence number of the current packet is higher than the currently stored one 
-    # if seqNr <= lastSeqNr: 
+    # if seqNr < lastSeqNr: 
     #     return false 
 
     # # Update sequence number

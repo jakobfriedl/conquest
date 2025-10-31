@@ -1,6 +1,6 @@
-import tables
+import tables, strutils
 import imguin/[cimgui, glfw_opengl, simple]
-import ../utils/appImGui
+import ../utils/[appImGui, globals]
 
 type 
     DockspaceComponent* = ref object of RootObj
@@ -53,9 +53,11 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[
             discard igDockBuilderSplitNode(dockspaceId, ImGuiDir_Down, 5.0f, dockBottom, dockTop)
             discard igDockBuilderSplitNode(dockTop[], ImGuiDir_Right, 0.5f, dockTopRight, dockTopLeft)
 
-            igDockBuilderDockWindow("Sessions [Table View]", dockTopLeft[])
-            igDockBuilderDockWindow("Listeners", dockBottom[])
-            igDockBuilderDockWindow("Eventlog", dockTopRight[])
+            igDockBuilderDockWindow(WIDGET_SESSIONS, dockTopLeft[])
+            igDockBuilderDockWindow(WIDGET_LISTENERS, dockBottom[])
+            igDockBuilderDockWindow(WIDGET_EVENTLOG, dockTopRight[])
+            igDockBuilderDockWindow(WIDGET_DOWNLOADS, dockBottom[])
+            igDockBuilderDockWindow(WIDGET_SCREENSHOTS, dockBottom[])
             igDockBuilderDockWindow("Dear ImGui Demo", dockTopRight[])
             
             igDockBuilderFinish(dockspaceId)
@@ -74,8 +76,18 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[
         if igBeginMenu("Views", true): 
             # Create a menu item to toggle each of the main views of the application
             for view, showView in views: 
-                if igMenuItem(view, nil, showView[], showView != nil):
-                    showView[] = not showView[]
+                if not view.startsWith("Loot:"):
+                    if igMenuItem(view.cstring, nil, showView[], showView != nil):
+                        showView[] = not showView[]        
+                
+            if igBeginMenu("Loot", true):
+                for view, showView in views: 
+                    if view.startsWith("Loot:"):
+                        let itemName = view.split(":")[1]
+                        if igMenuItem(itemName.cstring, nil, showView[], showView != nil):
+                            showView[] = not showView[]        
+                igEndMenu()
+
             igEndMenu()
 
         igEndMenuBar()

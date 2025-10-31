@@ -3,9 +3,8 @@ import strutils, base64
 
 import ./handlers
 import ../globals
-import ../core/logger
+import ../core/[logger, websocket]
 import ../../common/[types, utils, serialize, profile]
-import ../websocket
 
 # Not Found
 proc error404*(request: Request) =  
@@ -120,12 +119,6 @@ proc httpGet*(request: Request) =
 ]#
 proc httpPost*(request: Request) = 
     {.cast(gcsafe).}:
-
-        # Check headers
-        # If POST data is not binary data, return 404 error code
-        if request.headers.get("Content-Type") != "application/octet-stream": 
-            request.respond(404, body = "")
-            return
 
         try:        
             # Differentiate between registration and task result packet

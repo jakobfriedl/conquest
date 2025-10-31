@@ -16,6 +16,7 @@ proc toBytes*(T: type string, data: string): seq[byte] =
 #[
     Compile-time string encryption using simple XOR
     This is done to hide sensitive strings, such as C2 profile settings in the binary 
+    Original: https://github.com/S3cur3Th1sSh1t/nim-strenc/blob/main/src/strenc.nim
 ]#
 proc calculate(str: string, key: int): string {.noinline.} = 
     var k = key 
@@ -101,4 +102,4 @@ proc toKey*(value: string): Key =
     if value.len != 32:
         raise newException(ValueError, protect("Invalid key length."))
   
-    copyMem(result[0].addr, value[0].unsafeAddr, 32)
+    copyMem(addr result[0], addr value[0], 32)

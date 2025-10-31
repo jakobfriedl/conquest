@@ -1,6 +1,5 @@
-import whisky 
-import times, tables, json, base64
-import ../common/[types, utils, serialize, event]
+import times, json, base64
+import ../../common/[types, utils, event]
 export sendHeartbeat, recvEvent
 
 #[
@@ -38,23 +37,49 @@ proc sendAgentBuild*(connection: WsConnection, buildInformation: AgentBuildInfor
     let event = Event(
         eventType: CLIENT_AGENT_BUILD,
         timestamp: now().toTime().toUnix(), 
-        data: %*{
-            "listenerId": buildInformation.listenerId, 
-            "sleepDelay": buildInformation.sleepDelay,
-            "sleepTechnique": cast[uint8](buildInformation.sleepTechnique),
-            "spoofStack": buildInformation.spoofStack,
-            "modules": buildInformation.modules
-        }
+        data: %buildInformation
     )
     connection.ws.sendEvent(event, connection.sessionKey)
 
-proc sendAgentTask*(connection: WsConnection, agentId: string, task: Task) = 
+proc sendAgentTask*(connection: WsConnection, agentId: string, command: string, task: Task) = 
     let event = Event(
         eventType: CLIENT_AGENT_TASK,
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
+            "command": command,
             "task": task    
         }
     )
     connection.ws.sendEvent(event, connection.sessionKey)
+
+proc sendAgentRemove*(connection: WsConnection, agentId: string) = 
+    let event = Event(
+        eventType: CLIENT_AGENT_REMOVE, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)
+
+proc sendRemoveLoot*(connection: WsConnection, lootId: string) = 
+    let event = Event(
+        eventType: CLIENT_LOOT_REMOVE, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "lootId": lootId
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)
+
+proc sendGetLoot*(connection: WsConnection, lootId: string) = 
+    let event = Event(
+        eventType: CLIENT_LOOT_GET, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "lootId": lootId
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)
+

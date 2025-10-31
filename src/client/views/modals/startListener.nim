@@ -1,5 +1,5 @@
 import strutils
-import imguin/[cimgui, glfw_opengl, simple]
+import imguin/[cimgui, glfw_opengl]
 import ../../utils/appImGui
 import ../../../common/[types, utils]
 
@@ -7,22 +7,25 @@ const DEFAULT_PORT = 8080'u16
 
 type 
     ListenerModalComponent* = ref object of RootObj
-        address: array[256, char]
-        port: uint16 
+        callbackHosts: array[256 * 32, char]
+        bindAddress: array[256, char]
+        bindPort: uint16 
         protocol: int32
         protocols: seq[string]
 
 proc ListenerModal*(): ListenerModalComponent =
     result = new ListenerModalComponent
-    zeroMem(addr result.address[0], 256)
-    result.port = DEFAULT_PORT
+    zeroMem(addr result.callbackHosts[0], 256 * 32)
+    zeroMem(addr result.bindAddress[0], 256)
+    result.bindPort = DEFAULT_PORT
     result.protocol = 0
     for p in Protocol.low .. Protocol.high:
         result.protocols.add($p)
 
 proc resetModalValues(component: ListenerModalComponent) = 
-    zeroMem(addr component.address[0], 256)
-    component.port = DEFAULT_PORT
+    zeroMem(addr component.callbackHosts[0], 256 * 32)
+    zeroMem(addr component.bindAddress[0], 256)
+    component.bindPort = DEFAULT_PORT
     component.protocol = 0
 
 proc draw*(component: ListenerModalComponent): UIListener =
@@ -43,28 +46,41 @@ proc draw*(component: ListenerModalComponent): UIListener =
         defer: igEndPopup()
         
         var availableSize: ImVec2
-        igGetContentRegionAvail(addr availableSize)
 
-        # Listener address 
-        igText("Host:     ")
+        # Listener protocol/type dropdown selection
+        igText("Protocol:         ")
         igSameLine(0.0f, textSpacing)
         igGetContentRegionAvail(addr availableSize)
-        igSetNextItemWidth(availableSize.x)
-        igInputTextWithHint("##InputAddress", "127.0.0.1", addr component.address[0], 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
-
-        # Listener port 
-        let step: uint16 = 1
-        igText("Port:     ")
-        igSameLine(0.0f, textSpacing)
-        igSetNextItemWidth(availableSize.x)
-        igInputScalar("##InputPort", ImGuiDataType_U16.int32, addr component.port, addr step, nil, "%hu", ImGui_InputTextFlags_CharsDecimal.int32)
-
-        # Listener protocol dropdown selection
-        igText("Protocol: ")
-        igSameLine(0.0f, textSpacing)
         igSetNextItemWidth(availableSize.x)
         igCombo_Str("##InputProtocol", addr component.protocol, (component.protocols.join("\0") & "\0").cstring , component.protocols.len().int32)
+        
+        igDummy(vec2(0.0f, 10.0f))
+        igSeparator()
+        igDummy(vec2(0.0f, 10.0f))
 
+        # HTTP Listener settings
+        if component.protocols[component.protocol] == $HTTP:
+            # Listener bindAddress 
+            igText("Host (Bind):      ")
+            igSameLine(0.0f, textSpacing)
+            igGetContentRegionAvail(addr availableSize)
+            igSetNextItemWidth(availableSize.x)
+            igInputTextWithHint("##InputAddressBind", "0.0.0.0", cast[cstring](addr component.bindAddress[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
+
+            # Listener bindPort 
+            let step: uint16 = 1
+            igText("Port (Bind):      ")
+            igSameLine(0.0f, textSpacing)
+            igSetNextItemWidth(availableSize.x)
+            igInputScalar("##InputPortBind", ImGuiDataType_U16.int32, addr component.bindPort, addr step, nil, "%hu", ImGui_InputTextFlags_CharsDecimal.int32)
+
+            # Callback hosts
+            igText("Hosts (Callback): ")
+            igSameLine(0.0f, textSpacing)
+            igGetContentRegionAvail(addr availableSize)
+            igSetNextItemWidth(availableSize.x)
+            igInputTextMultiline("##InputCallbackHosts", cast[cstring](addr component.callbackHosts[0]), 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
+      
         igGetContentRegionAvail(addr availableSize)
 
         igDummy(vec2(0.0f, 10.0f))
@@ -72,13 +88,43 @@ proc draw*(component: ListenerModalComponent): UIListener =
         igDummy(vec2(0.0f, 10.0f))
 
         # Only enabled the start button when valid values have been entered
-        igBeginDisabled(($(addr component.address[0]) == "") or (component.port <= 0))
+        igBeginDisabled(($cast[cstring]((addr component.bindAddress[0])) == "") or (component.bindPort <= 0))
 
-        if igButton("Start", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+        if igButton("Start", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)): 
+
+            # Process input values
+            var hosts: string = ""
+            let 
+                callbackHosts = $cast[cstring]((addr component.callbackHosts[0]))
+                bindAddress = $cast[cstring]((addr component.bindAddress[0]))
+                bindPort =  int(component.bindPort)
+
+            if callbackHosts.isEmptyOrWhitespace(): 
+                hosts &= bindAddress & ":"  & $bindPort
+
+            else: 
+                for host in callbackHosts.splitLines():
+                    if host.isEmptyOrWhitespace(): 
+                        continue
+
+                    hosts &= ";"
+                    let hostParts = host.split(":")
+                    if hostParts.len() == 2:
+                        if not hostParts[1].isEmptyOrWhitespace():  
+                            hosts &= hostParts[0] & ":" & hostParts[1]
+                        else: 
+                            hosts &= hostParts[0] & ":" & $bindPort
+                    elif hostParts.len() == 1 and not hostParts[0].isEmptyOrWhitespace(): 
+                        hosts &= hostParts[0] & ":" & $bindPort
+            
+                hosts.removePrefix(";")
+
+            # Return new listener object
             result = UIListener(
                 listenerId: generateUUID(),
-                address: $(addr component.address[0]),
-                port: int(component.port),
+                hosts: hosts,
+                address: bindAddress,
+                port: bindPort,
                 protocol: cast[Protocol](component.protocol)
             )
             component.resetModalValues()

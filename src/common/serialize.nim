@@ -17,7 +17,7 @@ proc add*[T: uint8 | uint16 | uint32 | uint64](packer: Packer, value: T): Packer
     return packer 
 
 proc addData*(packer: Packer, data: openArray[byte]): Packer {.discardable.} = 
-    packer.stream.writeData(data[0].unsafeAddr, data.len)
+    packer.stream.writeData(addr data[0], data.len)
     return packer
 
 proc addArgument*(packer: Packer, arg: TaskArg): Packer {.discardable.} = 
@@ -97,7 +97,7 @@ proc getBytes*(unpacker: Unpacker, length: int): seq[byte] =
         return @[]
 
     result = newSeq[byte](length)
-    let bytesRead = unpacker.stream.readData(result[0].addr, length)
+    let bytesRead = unpacker.stream.readData(addr result[0], length)
     unpacker.position += bytesRead
     
     if bytesRead != length:
@@ -106,7 +106,7 @@ proc getBytes*(unpacker: Unpacker, length: int): seq[byte] =
 proc getByteArray*(unpacker: Unpacker, T: typedesc[Key | Iv | AuthenticationTag]): array = 
     var bytes: array[sizeof(T), byte]
 
-    let bytesRead = unpacker.stream.readData(bytes[0].unsafeAddr, sizeof(T))
+    let bytesRead = unpacker.stream.readData(addr bytes[0], sizeof(T))
     unpacker.position += bytesRead
     
     if bytesRead != sizeof(T):

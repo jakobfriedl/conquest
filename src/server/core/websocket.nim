@@ -1,5 +1,7 @@
-import times, json, base64, parsetoml
-import ../common/[types, utils, event]
+import times, json, base64, parsetoml, strformat, pixie
+import stb_image/write as stbiw
+import ./logger
+import ../../common/[types, utils, event]
 export sendHeartbeat, recvEvent
 
 proc `%`*(agent: Agent): JsonNode =
@@ -7,6 +9,7 @@ proc `%`*(agent: Agent): JsonNode =
     result["agentId"] = %agent.agentId
     result["listenerId"] = %agent.listenerId
     result["username"] = %agent.username
+    result["impersonationToken"] = %agent.impersonationToken
     result["hostname"] = %agent.hostname
     result["domain"] = %agent.domain
     result["ipInternal"] = %agent.ipInternal
@@ -16,6 +19,7 @@ proc `%`*(agent: Agent): JsonNode =
     result["pid"] = %agent.pid
     result["elevated"] = %agent.elevated
     result["sleep"] = %agent.sleep
+    result["jitter"] = %agent.jitter
     result["modules"] = %agent.modules
     result["firstCheckin"] = %agent.firstCheckin
     result["latestCheckin"] = %agent.latestCheckin
@@ -23,6 +27,7 @@ proc `%`*(agent: Agent): JsonNode =
 proc `%`*(listener: Listener): JsonNode =
     result = newJObject()
     result["listenerId"] = %listener.listenerId
+    result["hosts"] = %listener.hosts
     result["address"] = %listener.address
     result["port"] = %listener.port 
     result["protocol"] = %listener.protocol
@@ -61,6 +66,11 @@ proc sendEventlogItem*(client: WsConnection, logType: LogType, message: string) 
             "message": message
         }
     )
+
+    # Log event
+    let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+    log(fmt"[{timestamp}]{$logType}{message}")
+
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
@@ -101,6 +111,7 @@ proc sendAgentPayload*(client: WsConnection, bytes: seq[byte]) =
             "payload": encode(bytes)
         }
     )
+    
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
@@ -114,6 +125,14 @@ proc sendConsoleItem*(client: WsConnection, agentId: string, logType: LogType, m
             "message": message
         }
     )
+
+    # Log agent console item 
+    let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+    if logType != LOG_OUTPUT: 
+        log(fmt"[{timestamp}]{$logType}{message}", agentId)
+    else: 
+        log(message, agentId)
+
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
@@ -124,6 +143,50 @@ proc sendBuildlogItem*(client: WsConnection, logType: LogType, message: string) 
         data: %*{
             "logType": cast[uint8](logType),
             "message": message
+        }
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)
+
+proc sendLoot*(client: WsConnection, loot: LootItem) = 
+    let event = Event(
+        eventType: CLIENT_LOOT_ADD,
+        timestamp: now().toTime().toUnix(),
+        data: %loot
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)
+
+proc sendLootData*(client: WsConnection, loot: LootItem, data: string) = 
+    let event = Event(
+        eventType: CLIENT_LOOT_DATA,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "loot": %loot,
+            "data": encode(data)
+        }
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)
+
+proc sendImpersonateToken*(client: WsConnection, agentId: string, username: string) = 
+    let event = Event(
+        eventType: CLIENT_IMPERSONATE_TOKEN,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "username": username
+        }
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)
+
+proc sendRevertToken*(client: WsConnection, agentId: string) = 
+    let event = Event(
+        eventType: CLIENT_REVERT_TOKEN,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId
         }
     )
     if client != nil: 

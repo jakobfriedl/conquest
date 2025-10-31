@@ -1,6 +1,6 @@
 import std/paths
-import strutils, sequtils, times, tables
-import ../common/[types, sequence, crypto, utils, serialize]
+import strutils, sequtils, times
+import ../../common/[types, sequence, crypto, utils, serialize]
 
 proc parseInput*(input: string): seq[string] = 
     var i = 0

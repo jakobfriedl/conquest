@@ -67,15 +67,15 @@ proc crypto_wipe*(data: ptr byte, size: csize_t) {.importc, cdecl.}
 
 # Generate X25519 public key from private key
 proc getPublicKey*(privateKey: Key): Key =
-    crypto_x25519_public_key(result[0].addr, privateKey[0].addr)
+    crypto_x25519_public_key(addr result[0], addr privateKey[0])
 
 # Perform X25519 key exchange
 proc keyExchange*(privateKey: Key, publicKey: Key): Key =
-    crypto_x25519(result[0].addr, privateKey[0].addr, publicKey[0].addr)
+    crypto_x25519(addr result[0], addr privateKey[0], addr publicKey[0])
 
 # Calculate Blake2b hash
 func pointerAndLength*(bytes: openArray[byte]): (ptr[byte], uint) =
-    result = (cast[ptr[byte]](unsafeAddr bytes), uint(len(bytes)))
+    result = (cast[ptr[byte]](addr bytes), uint(len(bytes)))
 
 func blake2b*(message: openArray[byte], key: openArray[byte] = []): array[64, byte] =
     let (messagePtr, messageLen) = pointerAndLength(message)
@@ -86,7 +86,7 @@ func blake2b*(message: openArray[byte], key: openArray[byte] = []): array[64, by
 # Secure memory wiping
 proc wipeKey*(data: var openArray[byte]) =
     if data.len > 0:
-        crypto_wipe(data[0].addr, data.len.csize_t)
+        crypto_wipe(addr data[0], data.len.csize_t)
 
 # Key pair generation
 proc generateKeyPair*(): KeyPair = 
@@ -114,7 +114,7 @@ proc deriveSessionKey*(keyPair: KeyPair, publicKey: Key): Key =
 
     # Calculate Blake2b hash and extract the first 32 bytes for the AES key (https://monocypher.org/manual/blake2b)
     let hash = blake2b(hashMessage, sharedSecret)
-    copyMem(key[0].addr, hash[0].addr, sizeof(Key))
+    copyMem(addr key[0], addr hash[0], sizeof(Key))
 
     # Cleanup 
     wipeKey(sharedSecret)

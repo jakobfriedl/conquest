@@ -2,14 +2,17 @@ import times, tables, strformat, strutils, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 
 import ./console
+import ../core/[task, websocket]
 import ../utils/[appImGui, colors]
-import ../../common/[types, utils]
+import ../../modules/manager
+import ../../common/types
 
 type 
     SessionsTableComponent* = ref object of RootObj
         title: string 
         agents*: seq[UIAgent]
-        agentActivity*: Table[string, int64]            # Direct O(1) access to latest checkin
+        agentActivity*: Table[string, int64]                # Direct O(1) access to latest checkin
+        agentImpersonation*: Table[string, string]
         selection: ptr ImGuiSelectionBasicStorage
         consoles: ptr Table[string, ConsoleComponent]
 
@@ -38,12 +41,14 @@ proc interact(component: SessionsTableComponent) =
 
         # Focus the existing console window
         else:
-            igSetWindowFocus_Str(fmt"[{agent.agentId}] {agent.username}@{agent.hostname}")
+            igSetWindowFocus_Str(fmt"[{agent.agentId}] {agent.username}@{agent.hostname}".cstring)
     
     component.selection.ImGuiSelectionBasicStorage_Clear()
 
-proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
-    igBegin(component.title, showComponent, 0)
+proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connection: WsConnection) = 
+    igBegin(component.title.cstring, showComponent, 0)
+
+    let textSpacing = igGetStyle().ItemSpacing.x
 
     let tableFlags = (
         ImGuiTableFlags_Resizable.int32 or 
@@ -64,8 +69,8 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
 
         igTableSetupColumn("AgentID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
         igTableSetupColumn("ListenerID", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
-        igTableSetupColumn("Internal", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-        igTableSetupColumn("External", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
+        igTableSetupColumn("IP (Internal)", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("IP (External)", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
         igTableSetupColumn("Username", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Hostname", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Domain", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
@@ -84,47 +89,58 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
         # Sort sessions table based on first checkin
         component.agents.sort(cmp)
         for row, agent in component.agents: 
-            
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
             if igTableSetColumnIndex(0):          
                 # Enable multi-select functionality       
                 igSetNextItemSelectionUserData(row)
                 var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](row))
-                discard igSelectable_Bool(agent.agentId, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
                 
+                # Highlight high integrity sessions in red
+                if agent.elevated: 
+                    igPushStyleColor_Vec4(ImGui_Col_Text.cint, CONSOLE_ERROR)
+
+                discard igSelectable_Bool(agent.agentId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
+                
+                if agent.elevated:
+                    igPopStyleColor(1)
+
                 # Interact with session on double-click
                 if igIsMouseDoubleClicked_Nil(ImGui_MouseButton_Left.int32):
                     component.interact()
 
             if igTableSetColumnIndex(1): 
-                igText(agent.listenerId)
+                igText(agent.listenerId.cstring)
             if igTableSetColumnIndex(2): 
-                igText(agent.ipInternal)
+                igText(agent.ipInternal.cstring)
             if igTableSetColumnIndex(3): 
-                igText(agent.ipExternal)
+                igText(agent.ipExternal.cstring)
             if igTableSetColumnIndex(4): 
-                igText(agent.username)
+
+                igText(agent.username.cstring)
+                if component.agentImpersonation.hasKey(agent.agentId):
+                    igSameLine(0.0f, textSpacing)
+                    igText(fmt"[{component.agentImpersonation[agent.agentId]}]".cstring)
+
             if igTableSetColumnIndex(5): 
-                igText(agent.hostname)
+                igText(agent.hostname.cstring)
             if igTableSetColumnIndex(6): 
-                igText(if agent.domain.isEmptyOrWhitespace(): "-" else: agent.domain)
+                igText(agent.domain.cstring)
             if igTableSetColumnIndex(7): 
-                igText(agent.os)
+                igText(agent.os.cstring)
             if igTableSetColumnIndex(8): 
-                igText(agent.process)
+                igText(agent.process.cstring)
             if igTableSetColumnIndex(9): 
-                igText($agent.pid)
+                igText(($agent.pid).cstring)
             if igTableSetColumnIndex(10): 
                 let duration = now() - agent.firstCheckin.fromUnix().local()
                 let totalSeconds = duration.inSeconds
-                
+                    
                 let hours = totalSeconds div 3600
                 let minutes = (totalSeconds mod 3600) div 60
                 let seconds = totalSeconds mod 60
                 
-                let timeText = dateTime(2000, mJan, 1, hours.int, minutes.int, seconds.int).format("HH:mm:ss")
-                igText(fmt"{timeText} ago")
+                igText(fmt"{hours:02d}:{minutes:02d}:{seconds:02d} ago".cstring)
 
             if igTableSetColumnIndex(11): 
                 let duration = now() - component.agentActivity[agent.agentId].fromUnix().local()
@@ -134,12 +150,11 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
                 let minutes = (totalSeconds mod 3600) div 60
                 let seconds = totalSeconds mod 60
                 
-                let timeText = dateTime(2000, mJan, 1, hours.int, minutes.int, seconds.int).format("HH:mm:ss")
-
+                let timeText = fmt"{hours:02d}:{minutes:02d}:{seconds:02d} ago"
                 if totalSeconds > agent.sleep: 
-                    igTextColored(GRAY, fmt"{timeText} ago")
+                    igTextColored(GRAY, timeText.cstring)
                 else: 
-                    igText(fmt"{timeText} ago")
+                    igText(timeText.cstring)
 
         # Handle right-click context menu
         # Right-clicking the table header to hide/show columns or reset the layout is only possible when no sessions are selected
@@ -149,12 +164,44 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
                 component.interact()
                 igCloseCurrentPopup()
         
+            if igBeginMenu("Exit", true):
+                if igMenuItem("Process", nil, false, true): 
+                    for i, agent in component.agents:
+                        if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                            if component.consoles[].hasKey(agent.agentId):
+                                component.consoles[][agent.agentId].handleAgentCommand(connection, "exit process")
+                            else: 
+                                let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_EXIT), @["process"])
+                                connection.sendAgentTask(agent.agentId, "exit process", task)
+
+                    ImGuiSelectionBasicStorage_Clear(component.selection)
+                    igCloseCurrentPopup()
+
+                if igMenuItem("Thread", nil, false, true):
+                    for i, agent in component.agents:
+                        if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                            if component.consoles[].hasKey(agent.agentId):
+                                component.consoles[][agent.agentId].handleAgentCommand(connection, "exit thread") 
+                            else: 
+                                let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_EXIT), @["thread"])
+                                connection.sendAgentTask(agent.agentId, "exit thread", task)
+
+                    ImGuiSelectionBasicStorage_Clear(component.selection)
+                    igCloseCurrentPopup()
+
+                igEndMenu()
+
+            igSeparator()
+
             if igMenuItem("Remove", nil, false, true): 
                 # Update agents table with only non-selected ones
                 var newAgents: seq[UIAgent] = @[]
                 for i, agent in component.agents:
                     if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                         newAgents.add(agent)
+                    else: 
+                        # Send message to team server to remove delete the agent from the database and stop it from re-appearing when the client is restarted
+                        connection.sendAgentRemove(agent.agentId)
 
                 component.agents = newAgents
                 ImGuiSelectionBasicStorage_Clear(component.selection)

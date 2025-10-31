@@ -147,3 +147,52 @@ when not defined(SDL):
     else:
       echo "Not found: ",iconName
       glfw.setWindowIcon(window, 0, nil)
+
+# Load a texture from a byte sequence, as this is the data type that is received by the team server
+proc loadTextureFromBytes*(imageBytes: seq[byte], textureID: var uint32): tuple[width: int, height: int] =
+  var width, height, channels: int
+  
+  var imageLen = imageBytes.len()
+
+  # Decode image from memory
+  let imageData = stbi.load_from_memory(
+    imageBytes,
+    width,
+    height,
+    channels,
+    stbi.RGBA  
+    )
+  
+  if imageData == @[]:
+    raise newException(IOError, "Failed to decode image from bytes")
+  
+  # Create texture if needed
+  if textureID == 0:
+    glGenTextures(1, addr textureID)
+  
+  glBindTexture(GL_TEXTURE_2D, textureID)
+  
+  # Setup filtering parameters
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR.GLint)
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR.GLint)
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE.GLint)
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE.GLint)
+  
+  glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
+  
+  # Upload texture
+  glTexImage2D(GL_TEXTURE_2D,
+               0,
+               GL_RGBA.GLint,
+               width.GLSizei,
+               height.GLSizei,
+               0,
+               GL_RGBA,
+               GL_UNSIGNED_BYTE,
+               addr imageData[0])
+  
+  let err = glGetError().int
+  if err != 0:
+    raise newException(IOError, fmt"OpenGL Error [0x{err:X}]: glTexImage2D()")
+  
+  result = (width: width, height: height)

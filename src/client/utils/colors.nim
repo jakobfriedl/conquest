@@ -1,4 +1,4 @@
-import imguin/[cimgui, glfw_opengl, simple]
+import imguin/cimgui
 import ../utils/appImGui
 
 # https://rgbcolorpicker.com/0-1

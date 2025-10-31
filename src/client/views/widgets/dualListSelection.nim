@@ -1,10 +1,9 @@
-import strutils, sequtils, algorithm
-import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/[appImGui, colors, utils]
-import ../../../common/[types, utils]
+import sequtils, algorithm
+import imguin/[cimgui, glfw_opengl]
+import ../../utils/[appImGui, colors]
 
 type 
-    DualListSelectionComponent*[T] = ref object of RootObj
+    DualListSelectionWidget*[T] = ref object of RootObj
         items*: array[2, seq[T]]
         selection: array[2, ptr ImGuiSelectionBasicStorage]
         display: proc(item: T): string
@@ -14,8 +13,8 @@ type
 proc defaultDisplay[T](item: T): string = 
     return $item
 
-proc DualListSelection*[T](items: seq[T], display: proc(item: T): string = defaultDisplay, compare: proc(x, y: T): int,  tooltip: proc(item: T): string = nil): DualListSelectionComponent[T] = 
-    result = new DualListSelectionComponent[T]
+proc DualListSelection*[T](items: seq[T], display: proc(item: T): string = defaultDisplay, compare: proc(x, y: T): int,  tooltip: proc(item: T): string = nil): DualListSelectionWidget[T] = 
+    result = new DualListSelectionWidget[T]
     result.items[0] = items
     result.items[1] = @[]
     result.selection[0] = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
@@ -24,7 +23,7 @@ proc DualListSelection*[T](items: seq[T], display: proc(item: T): string = defau
     result.compare = compare
     result.tooltip = tooltip
 
-proc moveAll[T](component: DualListSelectionComponent[T], src, dst: int) = 
+proc moveAll[T](component: DualListSelectionWidget[T], src, dst: int) = 
     for m in component.items[src]: 
         component.items[dst].add(m)
     component.items[dst].sort(component.compare)
@@ -33,7 +32,7 @@ proc moveAll[T](component: DualListSelectionComponent[T], src, dst: int) =
     ImGuiSelectionBasicStorage_Swap(component.selection[src], component.selection[dst])
     ImGuiSelectionBasicStorage_Clear(component.selection[src])
 
-proc moveSelection[T](component: DualListSelectionComponent[T], src, dst: int) = 
+proc moveSelection[T](component: DualListSelectionWidget[T], src, dst: int) = 
     var keep: seq[T]
     for i in 0 ..< component.items[src].len(): 
         let item = component.items[src][i]
@@ -47,10 +46,10 @@ proc moveSelection[T](component: DualListSelectionComponent[T], src, dst: int) =
     ImGuiSelectionBasicStorage_Swap(component.selection[src], component.selection[dst])
     ImGuiSelectionBasicStorage_Clear(component.selection[src])
 
-proc reset*[T](component: DualListSelectionComponent[T]) = 
+proc reset*[T](component: DualListSelectionWidget[T]) = 
     component.moveAll(1, 0)
 
-proc draw*[T](component: DualListSelectionComponent[T]) = 
+proc draw*[T](component: DualListSelectionWidget[T]) = 
 
     if igBeginTable("split", 3, ImGuiTableFlags_None.int32, vec2(0.0f, 0.0f), 0.0f): 
 
@@ -70,9 +69,9 @@ proc draw*[T](component: DualListSelectionComponent[T]) =
         # Header
         var text = "Available"
         var textSize: ImVec2
-        igCalcTextSize(addr textSize, text, nil, false, 0.0f)
+        igCalcTextSize(addr textSize, text.cstring, nil, false, 0.0f)
         igSetCursorPosX(igGetCursorPosX() + (igGetColumnWidth(0) - textSize.x) * 0.5f)
-        igTextColored(GRAY, text)
+        igTextColored(GRAY, text.cstring)
         
         # Set the size of selection box to fit all modules
         igSetNextWindowContentSize(vec2(0.0f, float(modules.len()) * igGetTextLineHeightWithSpacing()))
@@ -86,7 +85,7 @@ proc draw*[T](component: DualListSelectionComponent[T]) =
             for row in 0 ..< modules.len().int32: 
                 var isSelected = ImGuiSelectionBasicStorage_Contains(selection, cast[ImGuiID](row))
                 igSetNextItemSelectionUserData(row)
-                discard igSelectable_Bool(component.display(modules[row]), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+                discard igSelectable_Bool(component.display(modules[row]).cstring, isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
                 
                 if not component.tooltip.isNil():
                     setTooltip(component.tooltip(modules[row]))
@@ -125,9 +124,9 @@ proc draw*[T](component: DualListSelectionComponent[T]) =
 
         # Header
         text = "Selected"
-        igCalcTextSize(addr textSize, text, nil, false, 0.0f)
+        igCalcTextSize(addr textSize, text.cstring, nil, false, 0.0f)
         igSetCursorPosX(igGetCursorPosX() + (igGetColumnWidth(2) - textSize.x) * 0.5f)
-        igTextColored(GRAY, text)
+        igTextColored(GRAY, text.cstring)
         
         # Set the size of selection box to fit all modules
         igSetNextWindowContentSize(vec2(0.0f, float(modules.len()) * igGetTextLineHeightWithSpacing()))
@@ -139,7 +138,7 @@ proc draw*[T](component: DualListSelectionComponent[T]) =
             for row in 0 ..< modules.len().int32:         
                 var isSelected = ImGuiSelectionBasicStorage_Contains(selection, cast[ImGuiID](row))
                 igSetNextItemSelectionUserData(row)
-                discard igSelectable_Bool(component.display(modules[row]), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+                discard igSelectable_Bool(component.display(modules[row]).cstring, isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
 
                 if not component.tooltip.isNil():
                     setTooltip(component.tooltip(modules[row]))
