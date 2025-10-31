@@ -34,11 +34,10 @@ when not defined(agent):
 
 when defined(agent):
 
-    import strutils, strformat
+    import strutils
     import ../agent/utils/io
     import ../agent/core/exit
     import ../agent/protocol/result
-    import ../common/[utils, serialize]
 
     proc executeExit(ctx: AgentCtx, task: Task): TaskResult = 
         try: 

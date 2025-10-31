@@ -1,6 +1,6 @@
 import winim/lean
 import winim/inc/tlhelp32
-import os, system, strformat, random
+import os, system, random, strformat
 import ../utils/[cfg, io] 
 import ../../common/[types, utils, crypto]
 

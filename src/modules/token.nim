@@ -91,7 +91,6 @@ when defined(agent):
     import ../agent/core/token
     import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/utils
     
     proc executeMakeToken(ctx: AgentCtx, task: Task): TaskResult =  
         try: 

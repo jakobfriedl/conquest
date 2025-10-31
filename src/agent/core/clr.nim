@@ -1,7 +1,7 @@
 import winim/[lean, clr]
-import os, strformat, strutils, sequtils
+import os
 import ../utils/[hwbp, io]
-import ../../common/[types, utils]
+import ../../common/utils
 
 #[ 
     Executing .NET assemblies in memory

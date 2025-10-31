@@ -1,5 +1,4 @@
-import strutils, tables, json, strformat, zippy
-
+import zippy, strformat
 import ./result
 import ../utils/io
 import ../../modules/manager

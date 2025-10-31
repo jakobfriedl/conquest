@@ -449,7 +449,7 @@ proc generateCoffArguments*(args: seq[TaskArg]): seq[byte] =
                     prefix = Bytes.toString(arg.data)[0..3]
                     value = Bytes.toString(arg.data)[4..^1]
 
-                # Check the first two characters for a type specification 
+                # Check the prefix for a type specification 
                 case prefix: 
                 of protect("[i]:"): 
                     # Handle argument as integer
@@ -465,8 +465,7 @@ proc generateCoffArguments*(args: seq[TaskArg]): seq[byte] =
                     # Handle argument as wide string  
                     # Add terminating NULL byte to the end of string arguments
                     let wStrData = cast[seq[byte]](+$value) # +$ converts a string to a wstring
-                    packer.add(uint32(wStrData.len()))
-                    packer.addData(wStrData)
+                    packer.addDataWithLengthPrefix(wStrData)
 
                 else: 
                     # In case no prefix is specified, handle the argument as a regular string
@@ -476,8 +475,7 @@ proc generateCoffArguments*(args: seq[TaskArg]): seq[byte] =
                 # Handle argument as regular string
                 # Add terminating NULL byte to the end of string arguments
                 let data = arg.data & @[uint8(0)]
-                packer.add(uint32(data.len()))
-                packer.addData(data)
+                packer.addDataWithLengthPrefix(data)
     
         else: 
             # Argument is not passed as a string, but instead directly as a int or short 

@@ -1,7 +1,7 @@
 import strformat, strutils, times, os, tables, native_dialogs
 import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/[appImGui, colors]
-import ../../../common/[types, utils]
+import ../../utils/appImGui
+import ../../../common/types
 import ../../core/websocket
 import ../widgets/textarea
 
@@ -23,12 +23,11 @@ proc LootDownloads*(title: string): DownloadsComponent =
     result.textarea = Textarea(showTimestamps = false, autoScroll = false)
 
 proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: WsConnection) =
-    igBegin(component.title, showComponent, 0)
+    igBegin(component.title.cstring, showComponent, 0)
     defer: igEnd()
 
     var availableSize: ImVec2
     igGetContentRegionAvail(addr availableSize)
-    let textSpacing = igGetStyle().ItemSpacing.x    
         
     # Left panel (file table) 
     let childFlags = ImGui_ChildFlags_ResizeX.int32 or ImGui_ChildFlags_NavFlattened.int32
@@ -75,19 +74,19 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: W
                     igPopID()
 
                 if igTableSetColumnIndex(1):
-                    igText(item.agentId)
+                    igText(item.agentId.cstring)
 
                 if igTableSetColumnIndex(2):
                     igText(item.host.cstring)
                 
                 if igTableSetColumnIndex(3):
-                    igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/"))
+                    igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/").cstring)
 
                 if igTableSetColumnIndex(4):
-                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
+                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss").cstring)
 
                 if igTableSetColumnIndex(5):
-                    igText($item.size)
+                    igText(($item.size).cstring)
                                         
             # Handle right-click context menu
             if component.selectedIndex >= 0 and component.selectedIndex < component.items.len and igBeginPopupContextWindow("Downloads", ImGui_PopupFlags_MouseButtonRight.int32): 
@@ -127,9 +126,9 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: W
                 component.contents[item.lootId] = ""       # Ensure that the sendGetLoot() function is sent only once by setting a value for the table key
 
             else: 
-                igText(fmt("[{item.host}] "))
+                igText(fmt"[{item.host}] ".cstring)
                 igSameLine(0.0f, 0.0f)
-                igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/"))
+                igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/").cstring)
                 
                 igDummy(vec2(0.0f, 5.0f))
                 igSeparator()

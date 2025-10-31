@@ -28,11 +28,11 @@ when defined(agent):
 
     import winim/lean
     import winim/inc/wingdi
-    import strutils, strformat, times, pixie
+    import strformat, times, pixie
     import stb_image/write as stbiw
     import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/[utils, serialize]
+    import ../common/serialize
 
     proc bmpToJpeg(data: seq[byte], quality: int = 80): seq[byte] =
         let img: Image = decodeImage(Bytes.toString(data))

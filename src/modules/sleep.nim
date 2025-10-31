@@ -41,10 +41,9 @@ when not defined(agent):
 
 when defined(agent): 
 
-    import os, strutils, strformat
+    import strutils, strformat
     import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/utils
 
     proc executeSleep(ctx: AgentCtx, task: Task): TaskResult = 
 

@@ -1,10 +1,10 @@
 import strutils, strformat, sequtils, times
-import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/[appImGui, colors]
-import ../../../common/[types, profile, utils]
-import ../../../modules/manager
+import imguin/[cimgui, glfw_opengl]
 import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
+import ../../utils/appImGui
+import ../../../common/types
+import ../../../modules/manager
 export addItem
 
 type 
@@ -160,7 +160,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igBeginDisabled(not component.killDateEnabled)
         igGetContentRegionAvail(addr availableSize)
         igSetNextItemWidth(availableSize.x)
-        if igButton(if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss")  & " UTC" else: "Configure##KillDate", vec2(-1.0f, 0.0f)):
+        if igButton((if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss")  & " UTC" else: "Configure##KillDate").cstring, vec2(-1.0f, 0.0f)):
             igOpenPopup_str("Configure Kill Date", ImGui_PopupFlags_None.int32) 
         igEndDisabled()
 
@@ -179,7 +179,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igSetNextItemWidth(availableSize.x)
 
         let workingHoursLabel = fmt"{component.workingHours.startHour:02}:{component.workingHours.startMinute:02} - {component.workingHours.endHour:02}:{component.workingHours.endMinute:02}"
-        if igButton(if component.workingHours.enabled: workingHoursLabel else: "Configure##WorkingHours", vec2(-1.0f, 0.0f)):
+        if igButton((if component.workingHours.enabled: workingHoursLabel else: "Configure##WorkingHours").cstring, vec2(-1.0f, 0.0f)):
             igOpenPopup_str("Configure Working Hours", ImGui_PopupFlags_None.int32) 
         igEndDisabled()
 

@@ -10,7 +10,7 @@ import ../../common/[types, profile]
 proc serve(listener: Listener) {.thread.} = 
     try: 
         listener.server.serve(Port(listener.port), listener.address)
-    except Exception as err:
+    except Exception:
         discard 
 
 proc listenerStart*(cq: Conquest, listenerId: string, hosts: string, address: string, port: int, protocol: Protocol) = 

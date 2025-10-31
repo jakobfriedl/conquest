@@ -1,4 +1,4 @@
-import httpclient, json, strformat, strutils, asyncdispatch, base64, tables, parsetoml, random
+import httpclient, strformat, strutils, asyncdispatch, base64, tables, parsetoml, random
 import ../utils/io
 import ../../common/[types, utils, profile]
 

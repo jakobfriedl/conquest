@@ -100,10 +100,9 @@ when not defined(agent):
 
 when defined(agent):
 
-    import os, strutils, strformat, times, algorithm, winim
+    import strutils, strformat, algorithm, winim
     import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/utils
 
     # Retrieve current working directory
     proc executePwd(ctx: AgentCtx, task: Task): TaskResult = 
@@ -173,7 +172,7 @@ when defined(agent):
                 
             # Prepare search pattern (target directory + \*)
             let searchPattern = targetDirectory & "\\*"
-            let searchPatternW = newWString(searchPattern)
+            let searchPatternW = +$searchPattern
             
             var 
                 findData: WIN32_FIND_DATAW

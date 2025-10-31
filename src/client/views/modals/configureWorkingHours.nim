@@ -1,6 +1,5 @@
-import strutils, sequtils, times
-import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/[appImGui, colors]
+import imguin/[cimgui, glfw_opengl]
+import ../../utils/appImGui
 import ../../../common/types
 
 type 

@@ -1,5 +1,5 @@
 import strutils
-import imguin/[cimgui, glfw_opengl, simple]
+import imguin/[cimgui, glfw_opengl]
 import ../../utils/appImGui
 import ../../../common/[types, utils]
 
@@ -65,7 +65,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igSameLine(0.0f, textSpacing)
             igGetContentRegionAvail(addr availableSize)
             igSetNextItemWidth(availableSize.x)
-            igInputTextWithHint("##InputAddressBind", "0.0.0.0", addr component.bindAddress[0], 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
+            igInputTextWithHint("##InputAddressBind", "0.0.0.0", cast[cstring](addr component.bindAddress[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
 
             # Listener bindPort 
             let step: uint16 = 1
@@ -79,7 +79,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igSameLine(0.0f, textSpacing)
             igGetContentRegionAvail(addr availableSize)
             igSetNextItemWidth(availableSize.x)
-            igInputTextMultiline("##InputCallbackHosts", addr component.callbackHosts[0], 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
+            igInputTextMultiline("##InputCallbackHosts", cast[cstring](addr component.callbackHosts[0]), 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
       
         igGetContentRegionAvail(addr availableSize)
 
@@ -88,15 +88,15 @@ proc draw*(component: ListenerModalComponent): UIListener =
         igDummy(vec2(0.0f, 10.0f))
 
         # Only enabled the start button when valid values have been entered
-        igBeginDisabled(($(addr component.bindAddress[0]) == "") or (component.bindPort <= 0))
+        igBeginDisabled(($cast[cstring]((addr component.bindAddress[0])) == "") or (component.bindPort <= 0))
 
         if igButton("Start", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)): 
 
             # Process input values
             var hosts: string = ""
             let 
-                callbackHosts = $(addr component.callbackHosts[0])
-                bindAddress = $(addr component.bindAddress[0])
+                callbackHosts = $cast[cstring]((addr component.callbackHosts[0]))
+                bindAddress = $cast[cstring]((addr component.bindAddress[0]))
                 bindPort =  int(component.bindPort)
 
             if callbackHosts.isEmptyOrWhitespace(): 

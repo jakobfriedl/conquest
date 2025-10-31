@@ -77,14 +77,14 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[
             # Create a menu item to toggle each of the main views of the application
             for view, showView in views: 
                 if not view.startsWith("Loot:"):
-                    if igMenuItem(view, nil, showView[], showView != nil):
+                    if igMenuItem(view.cstring, nil, showView[], showView != nil):
                         showView[] = not showView[]        
                 
             if igBeginMenu("Loot", true):
                 for view, showView in views: 
                     if view.startsWith("Loot:"):
                         let itemName = view.split(":")[1]
-                        if igMenuItem(itemName, nil, showView[], showView != nil):
+                        if igMenuItem(itemName.cstring, nil, showView[], showView != nil):
                             showView[] = not showView[]        
                 igEndMenu()
 

@@ -1,5 +1,4 @@
-import whisky
-import strformat, strutils, times, json, tables, sequtils
+import strformat, strutils, sequtils
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, colors]
 import ../../common/[types, utils]
@@ -34,9 +33,6 @@ proc Console*(agent: UIAgent): ConsoleComponent =
 #[
     Text input callback function for managing console history and autocompletion 
 ]#
-var currentCompletionIndex: int = -1
-var lastMatches: seq[string] = @[]
-
 proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} = 
 
     let component = cast[ConsoleComponent](data.UserData)
@@ -282,7 +278,7 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
     #[
         Input field with prompt indicator
     ]#
-    igText(fmt"[{component.agent.agentId}]") 
+    igText(fmt"[{component.agent.agentId}]".cstring) 
     igSameLine(0.0f, textSpacing)
     
     # Calculate available width for input
@@ -290,9 +286,9 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
     igSetNextItemWidth(availableSize.x)
     
     let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32 or ImGuiInputTextFlags_CallbackHistory.int32 or ImGuiInputTextFlags_CallbackCompletion.int32
-    if igInputText("##Input", addr component.inputBuffer[0], MAX_INPUT_LENGTH, inputFlags, callback, cast[pointer](component)):
+    if igInputText("##Input", cast[cstring](addr component.inputBuffer[0]), MAX_INPUT_LENGTH, inputFlags, callback, cast[pointer](component)):
 
-        let command = ($(addr component.inputBuffer[0])).strip()
+        let command = ($cast[cstring]((addr component.inputBuffer[0]))).strip()
         if not command.isEmptyOrWhitespace(): 
             # Send command to team server
             component.handleAgentCommand(connection, command)

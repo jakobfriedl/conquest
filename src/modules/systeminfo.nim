@@ -37,10 +37,9 @@ when not defined(agent):
 when defined(agent): 
 
     import winim
-    import os, strutils, sequtils, strformat, tables, algorithm
+    import os, strutils, strformat, tables, algorithm
     import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/utils
 
     # TODO: Add user context to process information
     type 

@@ -58,7 +58,7 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
                 os: os,
                 elevated: elevated,
                 firstCheckin: cast[int64](firstCheckin),
-                latestCheckin: cast[int64](firstCheckin),
+                latestCheckin: cast[int64](latestCheckin),
                 process: process,
                 modules: cast[uint32](modules),
                 sessionKey: sessionKey,

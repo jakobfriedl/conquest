@@ -6,8 +6,8 @@ import imguin/[cimgui, glfw_opengl, simple]
 export cimgui, glfw_opengl, simple
 
 import ./globals
-import ./opengl/[zoomglass, loadImage]
-export zoomglass, loadImage
+import ./opengl/loadImage
+export loadImage
 import ./[saveImage, setupFonts, utils, vecs]
 export saveImage, setupFonts, utils, vecs
 

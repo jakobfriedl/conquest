@@ -29,11 +29,11 @@ when not defined(agent):
 
 when defined(agent):
 
-    import osproc, strutils, strformat
+    import strformat
     import ../agent/core/coff
     import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/[utils, serialize]
+    import ../common/serialize
     
     proc executeBof(ctx: AgentCtx, task: Task): TaskResult = 
         try: 

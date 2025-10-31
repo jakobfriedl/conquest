@@ -1,6 +1,6 @@
-import strutils, sequtils, times
-import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/[appImGui, colors]
+import times
+import imguin/[cimgui, glfw_opengl]
+import ../../utils/appImGui
 
 type 
     KillDateModalComponent* = ref object of RootObj
@@ -75,7 +75,7 @@ proc draw*(component: KillDateModalComponent): int64 =
         let charWidth = charSize.x + 10.0f
         
         let dateText = component.killDateTime.S.fromUnix().utc().format("dd. MMMM yyyy") & '\0' 
-        igInputText("##Text", dateText, dateText.len().csize_t, ImGui_InputTextFlags_ReadOnly.int32, nil, nil)
+        igInputText("##Text", dateText.cstring, dateText.len().csize_t, ImGui_InputTextFlags_ReadOnly.int32, nil, nil)
         igSameLine(0.0f, textSpacing)
     
         igPushItemWidth(charWidth)

@@ -1,5 +1,4 @@
-import strformat, os, times, system, base64, random
-
+import times, system, random, strformat
 import core/[http, context, sleepmask, exit]
 import utils/io
 import protocol/[task, result, heartbeat, registration]

@@ -29,10 +29,9 @@ when not defined(agent):
 
 when defined(agent):
 
-    import osproc, strutils, strformat
+    import osproc, strformat
     import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/utils
     
     proc executeShell(ctx: AgentCtx, task: Task): TaskResult = 
         try: 

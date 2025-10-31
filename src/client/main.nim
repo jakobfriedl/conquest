@@ -1,5 +1,5 @@
 import whisky
-import tables, times, strutils, strformat, json, parsetoml, base64, os, native_dialogs
+import tables, times, strutils, strformat, json, parsetoml, base64, native_dialogs
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console]
 import ./views/loot/[screenshots, downloads]

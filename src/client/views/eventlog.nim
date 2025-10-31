@@ -1,8 +1,6 @@
-import strformat, strutils, times
-import imguin/[cimgui, glfw_opengl, simple]
-import ../utils/[appImGui, colors]
+import imguin/[cimgui, glfw_opengl]
 import ./widgets/textarea
-import ../../common/types
+import ../utils/appImGui
 export addItem
 
 type 
@@ -16,7 +14,7 @@ proc Eventlog*(title: string): EventlogComponent =
     result.textarea = Textarea(showTimestamps = false)
 
 proc draw*(component: EventlogComponent, showComponent: ptr bool) = 
-    igBegin(component.title, showComponent, 0)
+    igBegin(component.title.cstring, showComponent, 0)
     defer: igEnd() 
 
     component.textarea.draw(vec2(-1.0f, -1.0f))

@@ -40,10 +40,10 @@ when not defined(agent):
 
 when defined(agent):
 
-    import os, std/paths, strutils, strformat
+    import os, std/paths, strformat
     import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/[utils, serialize]
+    import ../common/serialize
 
     proc executeDownload(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
@@ -60,9 +60,9 @@ when defined(agent):
             packer.addDataWithLengthPrefix(string.toBytes(filePath))
             packer.addDataWithLengthPrefix(string.toBytes(fileBytes))
 
-            let result = packer.pack() 
+            let data = packer.pack() 
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, result)
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, data)
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

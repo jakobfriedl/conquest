@@ -1,7 +1,7 @@
-import strutils, sequtils, algorithm, times
-import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/[appImGui, colors, utils]
-import ../../../common/[types, utils]
+import strutils, times
+import imguin/[cimgui, glfw_opengl]
+import ../../utils/[appImGui, colors]
+import ../../../common/types
 
 type 
     TextareaWidget* = ref object of RootObj
@@ -14,9 +14,9 @@ type
 # Text highlighting
 proc getText(item: ConsoleItem): cstring = 
     if item.itemType != LOG_OUTPUT: 
-        return "[" & item.timestamp & "]" & $item.itemType & item.text
+        return ("[" & item.timestamp & "]" & $item.itemType & item.text).cstring
     else: 
-        return $item.itemType & item.text
+        return ($item.itemType & item.text).cstring
 
 proc getNumLines(data: pointer): csize_t {.cdecl.} =
     if data.isNil:
@@ -63,22 +63,22 @@ proc isEmpty*(component: TextareaWidget): bool =
 # Drawing
 proc print(component: TextareaWidget, item: ConsoleItem) =     
     if item.itemType != LOG_OUTPUT and component.showTimestamps:
-        igTextColored(GRAY, "[" & item.timestamp & "]", nil)
+        igTextColored(GRAY, ("[" & item.timestamp & "]").cstring, nil)
         igSameLine(0.0f, 0.0f)
     
     case item.itemType:
     of LOG_INFO, LOG_INFO_SHORT: 
-        igTextColored(CONSOLE_INFO, $item.itemType)
+        igTextColored(CONSOLE_INFO, ($item.itemType).cstring)
     of LOG_ERROR, LOG_ERROR_SHORT: 
-        igTextColored(CONSOLE_ERROR, $item.itemType)
+        igTextColored(CONSOLE_ERROR, ($item.itemType).cstring)
     of LOG_SUCCESS, LOG_SUCCESS_SHORT: 
-        igTextColored(CONSOLE_SUCCESS, $item.itemType)
+        igTextColored(CONSOLE_SUCCESS, ($item.itemType).cstring)
     of LOG_WARNING, LOG_WARNING_SHORT: 
-        igTextColored(CONSOLE_WARNING, $item.itemType)
+        igTextColored(CONSOLE_WARNING, ($item.itemType).cstring)
     of LOG_COMMAND: 
-        igTextColored(CONSOLE_COMMAND, $item.itemType)
+        igTextColored(CONSOLE_COMMAND, ($item.itemType).cstring)
     of LOG_OUTPUT: 
-        igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), $item.itemType)
+        igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), ($item.itemType).cstring)
 
     igSameLine(0.0f, 0.0f)
     igTextUnformatted(item.text.cstring, nil)

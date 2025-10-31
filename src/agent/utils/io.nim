@@ -1,7 +1,7 @@
 import winim/lean
 import macros
 import strutils, strformat
-import ../../common/[types, utils]
+import ../../common/utils
 
 const VERBOSE* {.booldefine.} = false
 

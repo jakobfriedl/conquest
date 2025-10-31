@@ -29,11 +29,11 @@ when not defined(agent):
 
 when defined(agent):
 
-    import strutils, strformat
+    import strformat
     import ../agent/core/clr
     import ../agent/utils/io
     import ../agent/protocol/result
-    import ../common/[utils, serialize]
+    import ../common/serialize
     
     proc executeAssembly(ctx: AgentCtx, task: Task): TaskResult = 
         try: 

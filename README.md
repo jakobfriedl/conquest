@@ -49,7 +49,7 @@ The following projects and people have significantly inspired and/or helped with
   - [Cobalt Strike](https://www.cobaltstrike.com)
   - [AdaptixC2](https://github.com/Adaptix-Framework/AdaptixC2/)
 - Development:
-  - [imguin](https://github.com/dinau/imguin) by [dinau](github.com/dinau/) (ImGui Wrapper for Nim)
+  - [imguin](https://github.com/dinau/imguin) by [dinau](https://github.com/dinau/) (ImGui Wrapper for Nim)
   - [MalDev Academy](https://maldevacademy.com/)
   - [Creds](https://github.com/S3cur3Th1sSh1t/Creds) by [S3cur3Th1sSh1t](https://github.com/S3cur3Th1sSh1t/)
   - [malware](https://github.com/m4ul3r/malware/) by [m4ul3r](https://github.com/m4ul3r/)

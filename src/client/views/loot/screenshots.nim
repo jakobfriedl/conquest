@@ -1,6 +1,6 @@
-import strformat, strutils, times, os, tables, native_dialogs
+import times, tables, native_dialogs
 import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/[appImGui, colors]
+import ../../utils/appImGui
 import ../../../common/[types, utils]
 import ../../core/websocket
 
@@ -35,12 +35,11 @@ proc addTexture*(component: ScreenshotsComponent, lootId: string, data: string) 
     )
 
 proc draw*(component: ScreenshotsComponent, showComponent: ptr bool, connection: WsConnection) =
-    igBegin(component.title, showComponent, 0)
+    igBegin(component.title.cstring, showComponent, 0)
     defer: igEnd()
 
     var availableSize: ImVec2
     igGetContentRegionAvail(addr availableSize)
-    let textSpacing = igGetStyle().ItemSpacing.x    
         
     # Left panel (file table) 
     let childFlags = ImGui_ChildFlags_ResizeX.int32 or ImGui_ChildFlags_NavFlattened.int32
@@ -85,16 +84,16 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool, connection:
                     igPopID()                
 
                 if igTableSetColumnIndex(1):
-                    igText(item.agentId)
+                    igText(item.agentId.cstring)
 
                 if igTableSetColumnIndex(2):
                     igText(item.host.cstring)
 
                 if igTableSetColumnIndex(3):
-                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
+                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss").cstring)
 
                 if igTableSetColumnIndex(4):
-                    igText($item.size)
+                    igText(($item.size).cstring)
 
             # Handle right-click context menu
             if component.selectedIndex >= 0 and component.selectedIndex < component.items.len and igBeginPopupContextWindow("Downloads", ImGui_PopupFlags_MouseButtonRight.int32): 

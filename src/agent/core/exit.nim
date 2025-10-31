@@ -27,7 +27,7 @@ const
     - https://maldevacademy.com/modules/72
 ]#
 proc deleteSelfFromDisk*() = 
-    let newStream = newWString(fmt":{uint(rand(RAND_MAX)):x}{uint(rand(RAND_MAX)):x}")
+    let newStream = +$(fmt":{uint(rand(RAND_MAX)):x}{uint(rand(RAND_MAX)):x}")  # Convert to wString
     var 
         szFileName: array[MAX_PATH * 2, WCHAR]
         fileRenameInfo2: FILE_RENAME_INFO2

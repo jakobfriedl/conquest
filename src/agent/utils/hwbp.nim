@@ -1,6 +1,5 @@
 import winim/lean
 import ./io
-import ../../common/utils
 
 # From: https://github.com/m4ul3r/malware/blob/main/nim/hardware_breakpoints/hardwarebreakpoints.nim
 

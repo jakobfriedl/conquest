@@ -1,7 +1,6 @@
-import strutils, sequtils, algorithm
-import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/[appImGui, colors, utils]
-import ../../../common/[types, utils]
+import sequtils, algorithm
+import imguin/[cimgui, glfw_opengl]
+import ../../utils/[appImGui, colors]
 
 type 
     DualListSelectionWidget*[T] = ref object of RootObj
@@ -70,9 +69,9 @@ proc draw*[T](component: DualListSelectionWidget[T]) =
         # Header
         var text = "Available"
         var textSize: ImVec2
-        igCalcTextSize(addr textSize, text, nil, false, 0.0f)
+        igCalcTextSize(addr textSize, text.cstring, nil, false, 0.0f)
         igSetCursorPosX(igGetCursorPosX() + (igGetColumnWidth(0) - textSize.x) * 0.5f)
-        igTextColored(GRAY, text)
+        igTextColored(GRAY, text.cstring)
         
         # Set the size of selection box to fit all modules
         igSetNextWindowContentSize(vec2(0.0f, float(modules.len()) * igGetTextLineHeightWithSpacing()))
@@ -86,7 +85,7 @@ proc draw*[T](component: DualListSelectionWidget[T]) =
             for row in 0 ..< modules.len().int32: 
                 var isSelected = ImGuiSelectionBasicStorage_Contains(selection, cast[ImGuiID](row))
                 igSetNextItemSelectionUserData(row)
-                discard igSelectable_Bool(component.display(modules[row]), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+                discard igSelectable_Bool(component.display(modules[row]).cstring, isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
                 
                 if not component.tooltip.isNil():
                     setTooltip(component.tooltip(modules[row]))
@@ -125,9 +124,9 @@ proc draw*[T](component: DualListSelectionWidget[T]) =
 
         # Header
         text = "Selected"
-        igCalcTextSize(addr textSize, text, nil, false, 0.0f)
+        igCalcTextSize(addr textSize, text.cstring, nil, false, 0.0f)
         igSetCursorPosX(igGetCursorPosX() + (igGetColumnWidth(2) - textSize.x) * 0.5f)
-        igTextColored(GRAY, text)
+        igTextColored(GRAY, text.cstring)
         
         # Set the size of selection box to fit all modules
         igSetNextWindowContentSize(vec2(0.0f, float(modules.len()) * igGetTextLineHeightWithSpacing()))
@@ -139,7 +138,7 @@ proc draw*[T](component: DualListSelectionWidget[T]) =
             for row in 0 ..< modules.len().int32:         
                 var isSelected = ImGuiSelectionBasicStorage_Contains(selection, cast[ImGuiID](row))
                 igSetNextItemSelectionUserData(row)
-                discard igSelectable_Bool(component.display(modules[row]), isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
+                discard igSelectable_Bool(component.display(modules[row]).cstring, isSelected, ImGuiSelectableFlags_AllowDoubleClick.int32, vec2(0.0f, 0.0f))
 
                 if not component.tooltip.isNil():
                     setTooltip(component.tooltip(modules[row]))
