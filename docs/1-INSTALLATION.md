@@ -1,12 +1,12 @@
 # Installation
 
-1. Clone the Conquest repository
+## 1. Clone the Conquest repository
 ```
 git clone https://github.com/jakobfriedl/conquest
 cd conquest
 ```
 
-2. Install Nim.
+## 2. Install Nim.
 
 ```bash
 curl https://nim-lang.org/choosenim/init.sh -sSf | sh
@@ -18,28 +18,40 @@ After it is installed, the Nim binaries need to be added to the PATH.
 export PATH=/home/kali/.nimble/bin:$PATH
 ```
 
-3. Install dependencies
+## 3. Install dependencies
 
-The operator client requires the following dependencies to be installed on Ubuntu/Debian systems.
+The Conquest binaries for team server and client are designed to be compiled and run on Ubuntu/Debian-based systems. The operator client requires the following dependencies to be installed.
+
 ```
 sudo apt update
 sudo apt install gcc g++ make git curl xz-utils
 sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 ```
 
-4. The Conquest binaries for team server and client are designed to be compiled on a UNIX system using the `nimble` command. This command installs and updates all dependencies and third-party libraries automatically.
+To run the client on a Windows host, install the dependencies in WSL. Furthermore, to use save file dialogs, the following package is also required 
+
+```
+sudo apt install libgtk2.0-0
+```
+
+## 4. Compile conquest 
+
+The Conquest binaries are compiled using the `nimble` command, which installs and updates all Nim libraries and dependencies automatically.
+
 ```
 nimble server
 nimble client
 ```
 
-Optionally, the required dependencies can be installed manually using the following command.
+Optionally, the required dependencies can be installed manually using the following command prior to the compilation.
 
 ```
 nimble install -d
 ```
 
-4. Start the Conquest team server with a C2 profile. The default profile is located in data/profile.toml and can be adapted by the operator.
+## 5. Start the Conquest team server with a C2 profile. 
+
+The default profile is located in [data/profile.toml](../data/profile.toml) and can be adapted by the operator.
 ```
 sudo bin/server -p data/profile
 ```
@@ -48,7 +60,8 @@ On the first start, the Conquest team server creates the Conquest database in th
 
 ![Team server start](../assets/install.png)
 
-5. Start the Conquest operator client
+## 6. Start the Conquest operator client
+
 ```
 bin/client
 ```

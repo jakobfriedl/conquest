@@ -1,5 +1,5 @@
 import whisky
-import tables, times, strutils, strformat, json, parsetoml, base64, os # native_dialogs
+import tables, times, strutils, strformat, json, parsetoml, base64, os, native_dialogs
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console]
 import ./views/loot/[screenshots, downloads]
@@ -123,11 +123,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
             of CLIENT_AGENT_PAYLOAD: 
                 let payload = decode(event.data["payload"].getStr())
                 try: 
-                    let path = fmt"{CONQUEST_ROOT}/bin/monarch.x64.exe"
-
-                    # TODO: Using native file dialogs to have the client select the output file path (does not work in WSL) 
-                    # let path = callDialogFileSave("Save Payload") 
-
+                    let path = callDialogFileSave("Save Payload")
                     writeFile(path, payload)
                 except IOError:
                     discard 

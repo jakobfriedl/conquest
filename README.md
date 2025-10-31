@@ -9,34 +9,9 @@
 
 ## Getting Started
 
-The Conquest team server and operator client are meant to be compiled and used on a UNIX operating system.
+The Conquest team server and operator client are currently meant to be compiled and used on a Ubuntu/Debian-based operating system. For getting the framework up and running, follow the [installation instructions](./docs/1-INSTALLATION.md). 
 
-1. Install Nim
-
-```
-curl https://nim-lang.org/choosenim/init.sh -sSf | sh
-```
-
-2. Build the Conquest team server and client. When first used, these commands download all required dependencies and libraries.
-
-```
-nimble server
-nimble client
-```
-
-3. Start the team server with a C2 profile. 
-
-```
-sudo bin/server -p data/profile.toml
-```
-
-4. Start the operator client and connect it to a team server
-
-```
-bin/client [-i <address> (default: localhost)] [-p <port> (default: 37573)]
-```
-
-For more information, check out the [docs](./docs/README.md)!
+For more information about architecture, usage and features, check out the [documentation](./docs/README.md)!
 
 ## Features
 

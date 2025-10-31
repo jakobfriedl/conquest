@@ -1,4 +1,4 @@
-import strformat, strutils, times, os, tables # native_dialogs
+import strformat, strutils, times, os, tables, native_dialogs
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, colors]
 import ../../../common/[types, utils]
@@ -104,11 +104,7 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool, connection:
                 if igMenuItem("Download", nil, false, true):                     
                     # Download screenshot 
                     try: 
-                        let path = item.path & "_download.jpeg"
-
-                        # TODO: Use native dialogs to select the download location
-                        # let path = callDialogFileSave("Save File") 
-                        
+                        let path = callDialogFileSave("Save File") 
                         let data = component.textures[item.lootId].data
                         writeFile(path, data)
                     except IOError: 
