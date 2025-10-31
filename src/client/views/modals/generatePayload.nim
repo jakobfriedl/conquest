@@ -169,7 +169,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
             component.killDate = killDate
 
         # Working hours
-        igText("Working Hours:  ")
+        igText("Working hours:  ")
         igSameLine(0.0f, textSpacing)
         igCheckbox("##InputWorkingHours", addr component.workingHoursEnabled)        
         igSameLine(0.0f, textSpacing)

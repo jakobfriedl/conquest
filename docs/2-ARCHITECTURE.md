@@ -20,7 +20,7 @@
 
 The Conquest command & control framework consist of three major components that interact with each other in different ways. Together, they enable penetration tester and red teamers to remotely control systems, transfer files and more. The diagram below shows Conquests's overall architecture.
 
-![Architecture](../assets/cq-architecture.png)
+![Architecture](../assets/architecture-1.png)
 
 ### Team Server
 
@@ -45,7 +45,7 @@ The Conquest client is used by the operator to conduct the engagement. It is use
 bin/client -i <team-server-ip> -p <team-server-port>
 ```
 
-![Operator Client](../assets/ui.png)
+![Operator Client](../assets/architecture-2.png)
 
 More information about the user interface can be found [here](./4-CLIENT.md)
 
@@ -349,4 +349,4 @@ The `teamserver.log` records other events, that don't involve an interaction wit
 
 In Conquest, the term loot encompasses file downloads and screenshots retrieved from an agent. While metadata about these loot items is stored in the database, the actual files and images are also stored on disk on the team server in the data/loot directory.
 
-![Loot](../assets/loot.png)
+![Loot](../assets/architecture-3.png)

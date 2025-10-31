@@ -29,6 +29,18 @@ else: # for Linux
 
 when STATIC_LINK_GLFW: # GLFW static link
     switch "define","glfwStaticLib"
+    when defined(windows):
+        discard  # Windows-specific handling if needed
+    else:  # Linux
+        switch "passL","-lglfw"
+        switch "passL","-lX11"
+        switch "passL","-lXrandr"
+        switch "passL","-lXinerama"
+        switch "passL","-lXcursor"
+        switch "passL","-lXi"
+        switch "passL","-lpthread"
+        switch "passL","-ldl"
+        switch "passL","-lm"
 else: # shared/dll
     when defined(windows):
         if TC == "vcc":
@@ -39,6 +51,8 @@ else: # shared/dll
             #switch "define","cimguiDLL"
     else:
         switch "passL","-lglfw"
+        # Add X11 libs for shared linking too
+        switch "passL","-lX11"
 
 when STATIC_LINK_CC: # gcc static link
     case TC
@@ -76,3 +90,4 @@ case TC
         switch "cc.exe","clang"
         switch "cc.linkerexe","clang"
         switch "cc",TC
+

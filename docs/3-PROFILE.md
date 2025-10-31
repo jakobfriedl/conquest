@@ -79,7 +79,7 @@ prefix = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
 suffix = ".######################################-####"
 ```
 
-![Heartbeat in Authorization Header](../assets/get.png)
+![Heartbeat in Authorization Header](../assets/profile-1.png)
 
 Check the [default profile](../data/profile.toml) for more examples.
 
@@ -107,7 +107,7 @@ Connection = "Keep-Alive"
 Cache-Control = "no-cache"
 ```
 
-![GET Traffic with C2 Profiles](../assets/traffic.png)
+![GET Traffic with C2 Profiles](../assets/profile-2.png)
 
 
 ### Response options
@@ -165,4 +165,4 @@ Server = "nginx"
 placement = { type = "body" }
 ```
 
-![POST request with task data](../assets/post.png)
+![POST request with task data](../assets/profile-3.png)

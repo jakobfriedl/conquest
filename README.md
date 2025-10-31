@@ -27,7 +27,7 @@ nimble client
 3. Start the team server with a C2 profile. 
 
 ```
-bin/server -p data/profile.toml
+sudo bin/server -p data/profile.toml
 ```
 
 4. Start the operator client and connect it to a team server

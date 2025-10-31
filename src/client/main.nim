@@ -123,12 +123,12 @@ proc main(ip: string = "localhost", port: int = 37573) =
             of CLIENT_AGENT_PAYLOAD: 
                 let payload = decode(event.data["payload"].getStr())
                 try: 
-                    let outFilePath = fmt"{CONQUEST_ROOT}/bin/monarch.x64.exe"
+                    let path = fmt"{CONQUEST_ROOT}/bin/monarch.x64.exe"
 
                     # TODO: Using native file dialogs to have the client select the output file path (does not work in WSL) 
-                    # let outFilePath = callDialogFileSave("Save Payload") 
+                    # let path = callDialogFileSave("Save Payload") 
 
-                    writeFile(outFilePath, payload)
+                    writeFile(path, payload)
                 except IOError:
                     discard 
 

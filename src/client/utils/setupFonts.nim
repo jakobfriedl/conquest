@@ -25,13 +25,13 @@ when defined(windows):
                 ("segoeui.ttf", "Seoge UI", 14.4), 
             ]
         )
-else: # For Debian/Ubuntu/Mint
+else: # Linux
     const
         fontInfo = TFontInfo(
             osRootDir: "/",
             fontDir: "usr/share/fonts",
             fontTable: @[
-                ("truetype/noto/NotoSansMono-Regular.ttf", "Noto Sans Mono", 20.0) 
+                ("truetype/noto/NotoSansMono-Regular.ttf", "Noto Sans Mono", 14.4) 
             ]
         )
 
