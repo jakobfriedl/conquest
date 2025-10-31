@@ -2,7 +2,7 @@
 
 **Conquest** is a feature-rich, extensible and malleable command & control/post-exploitation framework developed for penetration testing and adversary simulation. Conquest's team server, operator client and agent have all been developed from scratch using the Nim programming language and are designed with modularity and flexibility in mind. It features custom C2 communication via binary packets over HTTP, a client GUI developed using Dear ImGui and the `Monarch` agent, a modular C2 implant aimed at Windows targets.
 
-![Conquest Client](assets/conquest.png)
+![Conquest Client](assets/readme-1.png)
 
 > [!CAUTION]
 > Conquest is designed to be only used for educational purposes, research and authorized security testing of systems that you own or have an explicit permission to attack. The author provides no warranty and accepts no liability for misuse.
@@ -34,9 +34,9 @@ For more information about architecture, usage and features, check out the [docu
 
 ## Screenshots
 
-![Payload generation](assets/payload_generation.png)
+![Payload generation](assets/readme-2.png)
 
-![Screenshot Preview](assets/screenshot.png)
+![Screenshot Preview](assets/readme-3.png)
 
 
 ## Acknowledgements

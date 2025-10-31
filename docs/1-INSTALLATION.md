@@ -34,7 +34,7 @@ To run the client on a Windows host, install the dependencies in WSL. Furthermor
 sudo apt install libgtk2.0-0
 ```
 
-## 4. Compile conquest 
+## 4. Compile Conquest binaries 
 
 The Conquest binaries are compiled using the `nimble` command, which installs and updates all Nim libraries and dependencies automatically.
 
@@ -66,7 +66,7 @@ On the first start, the Conquest team server creates the Conquest database in th
 bin/client
 ```
 
-By default, the Conquest client connects to localhost:37573 to connect to the team server. The address and port can be specified from the command-line using the `-i` and `-p` flags, in order to connect to a remote team server. The team server port is specified in the malleable C2 profile.
+By default, the Conquest client connects to localhost:37573 to connect to the team server. In order to connect to a remote team server, the address and port can be specified from the command-line using the `-i` and `-p` flags. The team server port can be configured in the malleable C2 profile used by the server.
 
 ```
 bin/client -i <team-server-address> -p <team-server-port>
