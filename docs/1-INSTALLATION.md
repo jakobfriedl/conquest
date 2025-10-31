@@ -20,18 +20,12 @@ export PATH=/home/kali/.nimble/bin:$PATH
 
 ## 3. Install dependencies
 
-The Conquest binaries for team server and client are designed to be compiled and run on Ubuntu/Debian-based systems. The operator client requires the following dependencies to be installed.
+The Conquest binaries for team server and client are designed to be compiled and run on Ubuntu/Debian-based systems. The operator client requires the subsequent dependencies to be installed. To run the client on a Windows host, install the same dependencies in WSL.
 
 ```
 sudo apt update
 sudo apt install gcc g++ make git curl xz-utils
-sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
-```
-
-To run the client on a Windows host, install the dependencies in WSL. Furthermore, to use save file dialogs, the following package is also required 
-
-```
-sudo apt install libgtk2.0-0
+sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgtk2.0-0
 ```
 
 ## 4. Compile Conquest binaries 

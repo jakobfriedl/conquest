@@ -39,7 +39,6 @@ For more information about architecture, usage and features, check out the [docu
 
 ![Screenshot Preview](assets/readme-3.png)
 
-
 ## Acknowledgements
 
 The following projects and people have significantly inspired and/or helped with the development of this framework.
