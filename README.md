@@ -27,7 +27,7 @@ For more information about architecture, usage and features, check out the [docu
 - AMSI/ETW patching using hardware breakpoints
 - Compile-time string obfuscation 
 - Wide selection of built-in post-exploitation modules
-- Looting and loot management
+- Looting and loot management (downloads & screenshots)
 - Logging of all operator activity
 - Self-destruct functionality
 - Agent kill date & working hours

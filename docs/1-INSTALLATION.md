@@ -12,10 +12,10 @@ cd conquest
 curl https://nim-lang.org/choosenim/init.sh -sSf | sh
 ```
 
-After it is installed, the Nim binaries need to be added to the PATH.
+After it is installed, the Nim binaries need to be added to the PATH. This is done by adding the following line to the `.bashrc`/`.zshrc`/`.profile` configuration.
 
 ```
-export PATH=/home/kali/.nimble/bin:$PATH
+export PATH=/home/<user>/.nimble/bin:$PATH
 ```
 
 ## 3. Install dependencies
@@ -26,6 +26,12 @@ The Conquest binaries for team server and client are designed to be compiled and
 sudo apt update
 sudo apt install gcc g++ make git curl xz-utils
 sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgtk2.0-0
+```
+
+In some cases, the agent build process fails due to insufficient permissions. Execute the following command to make the build script executable.
+
+```
+chmod +x src/agent/build.sh
 ```
 
 ## 4. Compile Conquest binaries 
@@ -47,7 +53,7 @@ nimble install -d
 
 The default profile is located in [data/profile.toml](../data/profile.toml) and can be adapted by the operator.
 ```
-sudo bin/server -p data/profile
+bin/server -p data/profile
 ```
 
 On the first start, the Conquest team server creates the Conquest database in the data directory, as well as the team server's private key in data/keys, which is used for the key exchange between team server, client and agent. 
