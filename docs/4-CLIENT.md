@@ -34,7 +34,7 @@ It is also possible to select multiple rows by dragging or holding CTRL/SHIFT an
 
 ## Agent Console 
 
-An **Agent Console** is opened in the bottom panel when an agent is interacted with. It features an input field at the bottom where the command can be entered, a large textarea, where output can by selected and copied, as well as a search field for filtering the output. 
+An **Agent Console** is opened in the bottom panel when an agent is interacted with. It features an input field at the bottom where the command can be entered, a large textarea, where output can by selected and copied, as well as a search field for filtering the output. The console input field features tab-autocompletion for commands and supports searching through the command history using the up and down arrow keys. 
 
 ![Console View](../assets/client-3.png)
 ![Console Filter](../assets/client-5.png)

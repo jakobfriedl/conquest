@@ -15,22 +15,23 @@ For more information about architecture, usage and features, check out the [docu
 
 ## Features
 
-- Flexible operator GUI client written with Dear ImGui in Nim
+- Flexible operator GUI client developed using Dear ImGui
 - HTTP listeners with support for callback hosts (Redirectors)
 - Support for malleable C2 profiles (TOML)
 - Customizable payload generation  
 - Encrypted C2 communication leveraging AES256-GCM and X25519 key exchange
 - Sleep obfuscation via Ekko, Zilean or Foliage with support for call stack spoofing
-- Inline-execution of COFF/BOF files
-- Inline-execution of .NET assemblies
+- In-memory execution of COFF/BOF files
+- In-memory execution of .NET assemblies
 - Token impersonation 
-- AMSI/ETW patch using hardware breakpoints
+- AMSI/ETW patching using hardware breakpoints
 - Compile-time string obfuscation 
 - Wide selection of built-in post-exploitation modules
 - Looting and loot management
 - Logging of all operator activity
 - Self-destruct functionality
 - Agent kill date & working hours
+- Fully written in Nim
 
 ## Screenshots
 
