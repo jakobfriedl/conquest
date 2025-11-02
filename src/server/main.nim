@@ -44,10 +44,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
             # Send the public key for the key exchange, all other information with be transmitted when the key exchange is completed
             cq.client.sendPublicKey(cq.keyPair.publicKey)
     
-        of MessageEvent:
-            # Continuously send heartbeat messages
-            ws.sendHeartbeat() 
-
+        of MessageEvent:            
             let event = message.recvEvent(cq.client.sessionKey)
 
             case event.eventType: 
