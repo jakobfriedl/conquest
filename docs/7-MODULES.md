@@ -304,13 +304,14 @@ Arguments:
 ### upload 
 Upload a file from the operator Desktop to the targe system.
 ```
-Usage    : upload <file>
+Usage    : upload <file> [destination]
 Example  : upload /path/to/payload.exe
 
 Arguments:
    Name            Type   Required Description
    --------------- ------ -------- --------------------
  * file            BINARY      YES Path to file to upload to the target machine.
+ * destination     STRING       NO Path to upload the file to. By default, uploads to current directory.
  ```
 
 ## SCREENSHOT 

