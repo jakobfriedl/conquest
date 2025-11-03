@@ -7,9 +7,8 @@ database-file = "data/conquest.db"
 
 # Team server settings (WebSocket server port, users, ...)
 [team-server]
+host = "0.0.0.0"
 port = 37573
-
-# [team-server.users]
 
 # ----------------------------------------------------------
 # HTTP GET 

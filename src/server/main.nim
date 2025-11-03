@@ -163,7 +163,7 @@ proc startServer*(profilePath: string) =
         
         # Increased websocket message length in order to support dotnet assembly execution (1GB)
         let server = newServer(router, websocketHandler, maxBodyLen = 1024 * 1024 * 1024, maxMessageLen = 1024 * 1024 * 1024)
-        server.serve(Port(cq.profile.getInt("team-server.port")), "0.0.0.0")
+        server.serve(Port(cq.profile.getInt("team-server.port")), cq.profile.getString("team-server.host"))
 
     except CatchableError as err:
         echo err.msg

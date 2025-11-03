@@ -23,10 +23,11 @@ database-file = "data/conquest.db"
 ```
 
 ## Team server settings 
-The team server settings currently only include the port that the team server uses for the Websocket handler. It is set under the `[toml-server]` block. 
+The team server settings currently only include the host and port that the team server uses for the Websocket handler. It is set under the `[toml-server]` block. By default, the team server listens on all interfaces on port 37573 for client connections.
 
 ```toml
 [team-server]
+host = "0.0.0.0"
 port = 37573
 ``` 
 
