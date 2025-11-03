@@ -256,9 +256,37 @@ proc BeaconRevertToken(): void {.stdcall.} =
     RevertToSelf()
 
 # BOOL BeaconIsAdmin();
+type 
+    NtQueryInformationToken = proc(hToken: HANDLE, tokenInformationClass: TOKEN_INFORMATION_CLASS, tokenInformation: PVOID, tokenInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}
+    NtOpenThreadToken = proc(threadHandle: HANDLE, desiredAccess: ACCESS_MASK, openAsSelf: BOOLEAN, tokenHandle: PHANDLE): NTSTATUS {.stdcall.}
+    NtOpenProcessToken = proc(processHandle: HANDLE, desiredAccess: ACCESS_MASK, tokenHandle: PHANDLE): NTSTATUS {.stdcall.}
+
 proc BeaconIsAdmin(): BOOL {.stdcall.}=
-    # Not implemented
-    return FALSE
+    let 
+        hNtdll = GetModuleHandleA(protect("ntdll"))
+        pNtOpenProcessToken = cast[NtOpenProcessToken](GetProcAddress(hNtdll, protect("NtOpenProcessToken")))
+        pNtOpenThreadToken = cast[NtOpenThreadToken](GetProcAddress(hNtdll, protect("NtOpenThreadToken")))
+        pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(hNtdll, protect("NtQueryInformationToken")))
+    
+    var 
+        status: NTSTATUS = 0
+        hToken: HANDLE 
+        returnLength: ULONG = 0
+        pElevation: TOKEN_ELEVATION 
+
+    # https://ntdoc.m417z.com/ntopenthreadtoken
+    status = pNtOpenThreadToken(cast[HANDLE](-2), TOKEN_QUERY, TRUE, addr hToken)
+    if status != STATUS_SUCCESS:
+        status = pNtOpenProcessToken(cast[HANDLE](-1), TOKEN_QUERY, addr hToken)
+        if status != STATUS_SUCCESS: 
+            return FALSE
+        
+    # Get elevation
+    status = pNtQueryInformationToken(hToken, tokenElevation, addr pElevation, cast[ULONG](sizeof(pElevation)), addr returnLength)
+    if status != STATUS_SUCCESS: 
+        return FALSE
+
+    return cast[bool](pElevation.TokenIsElevated)
 
 #[ 
     Spawn+Inject Functions

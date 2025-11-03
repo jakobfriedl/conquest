@@ -61,7 +61,7 @@ proc getCurrentToken*(desiredAccess: ACCESS_MASK = TOKEN_QUERY): HANDLE =
         status: NTSTATUS = 0
         hToken: HANDLE 
 
-    # https://ntdoc.m417z.com/ntopenthreadtoken, token-info fails with error ACCESS_DENIED if OpenAsSelf is set to
+    # https://ntdoc.m417z.com/ntopenthreadtoken, token-info fails with error ACCESS_DENIED if OpenAsSelf is set to FALSE
     status = apis.NtOpenThreadToken(CURRENT_THREAD, desiredAccess, TRUE, addr hToken)
     if status != STATUS_SUCCESS:
         status = apis.NtOpenProcessToken(CURRENT_PROCESS, desiredAccess, addr hToken)
