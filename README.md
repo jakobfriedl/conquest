@@ -58,3 +58,4 @@ The following projects and people have significantly inspired and/or helped with
   - [NimPlant](https://github.com/chvancooten/NimPlant)
   - [Nimhawk](https://github.com/hdbreaker/Nimhawk)
   - [grc2](https://github.com/andreiverse/grc2)
+  - [Nimbo-C2](https://github.com/itaymigdal/Nimbo-C2)

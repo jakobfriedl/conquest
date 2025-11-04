@@ -75,7 +75,7 @@ proc sidToString(apis: Apis, sid: PSID): string =
     discard apis.ConvertSidToStringSidA(sid, addr stringSid)
     return $stringSid
 
-proc sidToName(apis: Apis, sid: PSID): string = 
+proc sidToName*(sid: PSID): string = 
     var 
         usernameSize: DWORD = 0
         domainSize: DWORD = 0
@@ -139,7 +139,7 @@ proc getTokenUser(apis: Apis, hToken: HANDLE): tuple[username, sid: string] =
     if status != STATUS_SUCCESS:
         raise newException(CatchableError, status.getNtError())
     
-    return (apis.sidToName(pUser.User.Sid), apis.sidToString(pUser.User.Sid))
+    return (sidToName(pUser.User.Sid), apis.sidToString(pUser.User.Sid))
 
 proc getTokenElevation(apis: Apis, hToken: HANDLE): bool = 
     var 
@@ -178,7 +178,7 @@ proc getTokenGroups(apis: Apis, hToken: HANDLE): string =
 
     result &= fmt"Group memberships ({groupCount})" & "\n"
     for i, group in groups.toOpenArray(0, int(groupCount) - 1): 
-        result &= fmt" - {apis.sidToString(group.Sid):<50} {apis.sidToName(group.Sid)}" & "\n"
+        result &= fmt" - {apis.sidToString(group.Sid):<50} {sidToName(group.Sid)}" & "\n"
 
 proc getTokenPrivileges(apis: Apis, hToken: HANDLE): string = 
     var

