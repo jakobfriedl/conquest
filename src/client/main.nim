@@ -201,6 +201,10 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     console.draw(connection)    
                     newConsoleTable[agentId] = console
                 
+            if sessionsTable.focusedConsole.len() > 0: 
+                igSetWindowFocus_Str(sessionsTable.focusedConsole.cstring)
+                sessionsTable.focusedConsole = ""
+
             # Update the consoles table with only those sessions that have not been closed yet
             # This is done to ensure that closed console windows can be opened again
             consoles = newConsoleTable

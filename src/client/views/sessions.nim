@@ -15,6 +15,7 @@ type
         agentImpersonation*: Table[string, string]
         selection: ptr ImGuiSelectionBasicStorage
         consoles: ptr Table[string, ConsoleComponent]
+        focusedConsole*: string
 
 proc SessionsTable*(title: string, consoles: ptr Table[string, ConsoleComponent]): SessionsTableComponent = 
     result = new SessionsTableComponent
@@ -23,6 +24,7 @@ proc SessionsTable*(title: string, consoles: ptr Table[string, ConsoleComponent]
     result.agentActivity = initTable[string, int64]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.consoles = consoles
+    result.focusedConsole = ""
 
 proc cmp(x, y: UIAgent): int =
     return cmp(x.firstCheckin, y.firstCheckin)
@@ -39,9 +41,7 @@ proc interact(component: SessionsTableComponent) =
         if not component.consoles[].hasKey(agent.agentId):
             component.consoles[][agent.agentId] = Console(agent)
 
-        # Focus the existing console window
-        else:
-            igSetWindowFocus_Str(fmt"[{agent.agentId}] {agent.username}@{agent.hostname}".cstring)
+        component.focusedConsole = fmt"[{agent.agentId}] {agent.username}@{agent.hostname}"
     
     component.selection.ImGuiSelectionBasicStorage_Clear()
 

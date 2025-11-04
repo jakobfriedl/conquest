@@ -1,4 +1,4 @@
-import winim, os, net, strutils, registry, zippy
+import winim, os, net, strutils, registry, zippy, strformat
 
 import ../../common/[types, serialize, sequence, crypto, utils]
 import ../../modules/manager
@@ -69,90 +69,94 @@ proc getIPv4Address(): string =
     # getPrimaryIPAddr from the 'net' module finds the local IP address, usually assigned to eth0 on LAN or wlan0 on WiFi, used to reach an external address. No traffic is sent
     return $getPrimaryIpAddr()
 
-# Windows Version fingerprinting
-type 
-    ProductType = enum
-        UNKNOWN = 0
-        WORKSTATION = 1
-        DC = 2
-        SERVER = 3
-
 # API Structs
-type OSVersionInfoExW {.importc: protect("OSVERSIONINFOEXW"), header: protect("<windows.h>").} = object
-    dwOSVersionInfoSize: ULONG
-    dwMajorVersion: ULONG
-    dwMinorVersion: ULONG
-    dwBuildNumber: ULONG
-    dwPlatformId: ULONG
-    szCSDVersion: array[128, WCHAR]
-    wServicePackMajor: USHORT
-    wServicePackMinor: USHORT
-    wSuiteMask: USHORT
-    wProductType: UCHAR
-    wReserved: UCHAR
+type 
+    OSVersionInfoExW {.importc: protect("OSVERSIONINFOEXW"), header: protect("<windows.h>").} = object
+        dwOSVersionInfoSize: ULONG
+        dwMajorVersion: ULONG
+        dwMinorVersion: ULONG
+        dwBuildNumber: ULONG
+        dwPlatformId: ULONG
+        szCSDVersion: array[128, WCHAR]
+        wServicePackMajor: USHORT
+        wServicePackMinor: USHORT
+        wSuiteMask: USHORT
+        wProductType: UCHAR
+        wReserved: UCHAR
 
-proc getWindowsVersion(info: OSVersionInfoExW, productType: ProductType): string =
-    let
-        major = info.dwMajorVersion
-        minor = info.dwMinorVersion
-        build = info.dwBuildNumber
-        spMajor = info.wServicePackMajor
+    # Windows Version fingerprinting
+    ProductType {.size: sizeof(uint8).} = enum
+        UNKNOWN = "Unknown"
+        WORKSTATION = "Workstation"
+        DC = "Domain Controller"
+        SERVER = "Server"
+
+    WindowsVersion = object
+        major: DWORD
+        minor: DWORD
+        buildMin: DWORD  # Minimum build number (0 = any)
+        buildMax: DWORD  # Maximum build number (0 = any)
+        productType: ProductType
+        name: string
+
+const VERSIONS = [
+    # Windows 11 / Server 2022+
+    # WindowsVersion(major: 10, minor: 0, buildMin: 22631, buildMax: 0, productType: WORKSTATION, name: protect("Windows 11 23H2")),
+    # WindowsVersion(major: 10, minor: 0, buildMin: 22621, buildMax: 22630, productType: WORKSTATION, name: protect("Windows 11 22H2")),
+    WindowsVersion(major: 10, minor: 0, buildMin: 22000, buildMax: 0, productType: WORKSTATION, name: protect("Windows 11")),
+    WindowsVersion(major: 10, minor: 0, buildMin: 26100, buildMax: 0, productType: SERVER, name: protect("Windows Server 2025")),
+    WindowsVersion(major: 10, minor: 0, buildMin: 20348, buildMax: 26099, productType: SERVER, name: protect("Windows Server 2022")),
+
+    # Windows 10 / Server 2016-2019
+    WindowsVersion(major: 10, minor: 0, buildMin: 19041, buildMax: 19045, productType: WORKSTATION, name: protect("Windows 10 2004/20H2/21H1/21H2/22H2")),
+    WindowsVersion(major: 10, minor: 0, buildMin: 17763, buildMax: 19040, productType: WORKSTATION, name: protect("Windows 10 1809+")),
+    WindowsVersion(major: 10, minor: 0, buildMin: 10240, buildMax: 17762, productType: WORKSTATION, name: protect("Windows 10")),
+    WindowsVersion(major: 10, minor: 0, buildMin: 17763, buildMax: 17763, productType: SERVER, name: protect("Windows Server 2019")),
+    WindowsVersion(major: 10, minor: 0, buildMin: 14393, buildMax: 14393, productType: SERVER, name: protect("Windows Server 2016")),
+    WindowsVersion(major: 10, minor: 0, buildMin: 0, buildMax: 0, productType: SERVER, name: protect("Windows Server (Unknown Build)")),
+
+    # Windows 8.x / Server 2012
+    WindowsVersion(major: 6, minor: 3, buildMin: 0, buildMax: 0, productType: WORKSTATION, name: protect("Windows 8.1")),
+    WindowsVersion(major: 6, minor: 3, buildMin: 0, buildMax: 0, productType: SERVER, name: protect("Windows Server 2012 R2")),
+    WindowsVersion(major: 6, minor: 2, buildMin: 0, buildMax: 0, productType: WORKSTATION, name: protect("Windows 8")),
+    WindowsVersion(major: 6, minor: 2, buildMin: 0, buildMax: 0, productType: SERVER, name: protect("Windows Server 2012")),
+
+    # Windows 7 / Server 2008 R2
+    WindowsVersion(major: 6, minor: 1, buildMin: 0, buildMax: 0, productType: WORKSTATION, name: protect("Windows 7")),
+    WindowsVersion(major: 6, minor: 1, buildMin: 0, buildMax: 0, productType: SERVER, name: protect("Windows Server 2008 R2")),
+
+    # Windows Vista / Server 2008
+    WindowsVersion(major: 6, minor: 0, buildMin: 0, buildMax: 0, productType: WORKSTATION, name: protect("Windows Vista")),
+    WindowsVersion(major: 6, minor: 0, buildMin: 0, buildMax: 0, productType: SERVER, name: protect("Windows Server 2008")),
+
+    # Windows XP / Server 2003
+    WindowsVersion(major: 5, minor: 2, buildMin: 0, buildMax: 0, productType: WORKSTATION, name: protect("Windows XP x64 Edition")),
+    WindowsVersion(major: 5, minor: 2, buildMin: 0, buildMax: 0, productType: SERVER, name: protect("Windows Server 2003")),
+    WindowsVersion(major: 5, minor: 1, buildMin: 0, buildMax: 0, productType: WORKSTATION, name: protect("Windows XP")),
+]
+
+proc matchesVersion(version: WindowsVersion, info: OSVersionInfoExW, productType: ProductType): bool = 
+    if info.dwMajorVersion != version.major or info.dwMinorVersion != version.minor: 
+        return false 
+    if productType != version.productType: 
+        return false 
+    if version.buildMin > 0 and info.dwBuildNumber < version.buildMin:
+        return false
+    if version.buildMax > 0 and info.dwBuildNumber > version.buildMax:
+        return false
+    return true
+
+proc getWindowsVersion(info: OSVersionInfoExW, productType: ProductType): string = 
+    for version in VERSIONS: 
+        if version.matchesVersion(info, if productType == DC: SERVER else: productType): # Process domain controllers as servers, otherwise they show up as unknown
+            if productType == DC:
+                return version.name & protect(" (Domain Controller)")
+            else: 
+                return version.name
     
-    if major == 10 and minor == 0:
-        if productType == WORKSTATION:
-            if build >= 22000:
-                return protect("Windows 11")
-            else:
-                return protect("Windows 10")
+    # Unknown windows version, return as much information as possible
+    return fmt"Windows {$int(info.dwMajorVersion)}.{$int(info.dwMinorVersion)} {$productType} (Build: {$int(info.dwBuildNumber)})"
 
-        else:
-            case build:
-                of 20348:
-                    return protect("Windows Server 2022")
-                of 17763:
-                    return protect("Windows Server 2019")
-                of 14393:
-                    return protect("Windows Server 2016")
-                else:
-                    return protect("Windows Server 10.x (Build: ") & $build & protect(")")
-
-    elif major == 6:
-        case minor:
-        of 3:
-            if productType == WORKSTATION:
-                return protect("Windows 8.1")
-            else:
-                return protect("Windows Server 2012 R2")
-        of 2:
-            if productType == WORKSTATION:
-                return protect("Windows 8")
-            else:
-                return protect("Windows Server 2012")
-        of 1:
-            if productType == WORKSTATION:
-                return protect("Windows 7")
-            else:
-                return protect("Windows Server 2008 R2") 
-        of 0:
-            if productType == WORKSTATION:
-                return protect("Windows Vista")
-            else:
-                return protect("Windows Server 2008") 
-        else: 
-            discard
-
-    elif major == 5:
-        if minor == 2:
-            if productType == WORKSTATION:
-                return protect("Windows XP x64 Edition")
-            else:
-                return protect("Windows Server 2003")
-        elif minor == 1:
-            return protect("Windows XP")
-    else: 
-        discard 
-
-    return protect("Unknown Windows Version") 
 
 proc getProductType(): ProductType =
     # The product key is retrieved from the registry
