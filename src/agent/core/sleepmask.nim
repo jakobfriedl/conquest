@@ -643,7 +643,7 @@ proc sleepObfuscate*(sleepSettings: SleepSettings) =
     img.Length = imageSize
 
     # Generate random encryption key
-    var keyBuffer: string = Bytes.toString(generateBytes(Key16)) 
+    var keyBuffer: string = Bytes.toString(generateBytes(KeyRC4)) 
     key.Buffer = addr keyBuffer
     key.Length = cast[DWORD](keyBuffer.len())
 

@@ -7,7 +7,7 @@ import ./[types, utils]
     Symmetric AES256 GCM encryption for secure C2 traffic
     Ensures both confidentiality and integrity of the packet 
 ]#
-proc generateBytes*(T: typedesc[Key | Iv | Key16]): array =
+proc generateBytes*(T: typedesc[Key | Iv | KeyRC4]): array =
     var bytes: T
     if randomBytes(bytes) != sizeof(T): 
         raise newException(CatchableError, protect("Failed to generate byte array."))

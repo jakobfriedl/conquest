@@ -71,14 +71,6 @@ type
         RESULT_BINARY = 1'u8
         RESULT_NO_OUTPUT = 2'u8
 
-    ConfigType* = enum 
-        CONFIG_LISTENER_UUID = 0'u8
-        CONFIG_LISTENER_IP = 1'u8 
-        CONFIG_LISTENER_PORT = 2'u8
-        CONFIG_SLEEP_DELAY = 3'u8  
-        CONFIG_PUBLIC_KEY = 4'u8
-        CONFIG_PROFILE = 5'u8
-
     LogType* {.size: sizeof(uint8).} = enum 
         LOG_INFO = "[INFO] "
         LOG_ERROR = "[FAIL] "
@@ -120,7 +112,7 @@ type
     Key* = array[32, byte]
     Iv* = array[12, byte]
     AuthenticationTag* = array[16, byte]
-    Key16* = array[16, byte]
+    KeyRC4* = array[16, byte]
 
 # Packet structure
 type 

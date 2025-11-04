@@ -129,7 +129,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
                     # Close and reset the payload generation modal window when the payload was received
                     listenersTable.generatePayloadModal.resetModalValues()
-                    igClosePopupToLevel(0, false)
+                    listenersTable.generatePayloadModal.show = false
 
                 of CLIENT_CONSOLE_ITEM: 
                     let agentId = event.data["agentId"].getStr() 

@@ -9,6 +9,7 @@ export addItem
 
 type 
     AgentModalComponent* = ref object of RootObj
+        show*: bool
         listener: int32 
         sleepDelay: uint32
         jitter: int32 
@@ -28,6 +29,7 @@ type
 
 proc AgentModal*(): AgentModalComponent =
     result = new AgentModalComponent
+    result.show = false
     result.listener = 0
     result.sleepDelay = 5
     result.jitter = 15
@@ -96,11 +98,13 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
     let modalWidth = max(500.0f, vp.Size.x * 0.25)
     igSetNextWindowSize(vec2(modalWidth, 0.0f), ImGuiCond_Always.int32)
     
-    var show = true
+    var show = component.show
     let windowFlags = ImGuiWindowFlags_None.int32 # or ImGuiWindowFlags_NoMove.int32
     if igBeginPopupModal("Generate Payload", addr show, windowFlags):
         defer: igEndPopup()
         
+        component.show = show
+
         var availableSize: ImVec2
         igGetContentRegionAvail(addr availableSize)
 
@@ -234,7 +238,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
                 killDate: if component.killDateEnabled: component.killDate else: 0, 
                 modules: modules
             )
-        
+
         igEndDisabled()
         igSameLine(0.0f, textSpacing)
 

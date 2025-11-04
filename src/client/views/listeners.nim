@@ -34,7 +34,8 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
 
     # Payload generation modal (only enabled when at least one listener is active)
     igBeginDisabled(component.listeners.len() <= 0)
-    if igButton("Generate Payload", vec2(0.0f, 0.0f)):          
+    if igButton("Generate Payload", vec2(0.0f, 0.0f)):  
+        component.generatePayloadModal.show = true        
         igOpenPopup_str("Generate Payload", ImGui_PopupFlags_None.int32) 
     igEndDisabled()
 

