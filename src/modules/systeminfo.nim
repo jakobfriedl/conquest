@@ -40,18 +40,7 @@ when defined(agent):
     import os, strutils, strformat, tables, algorithm
     import ../agent/utils/io
     import ../agent/protocol/result
-    import ../agent/core/token
-
-    # TODO: Add user context to process information
-    type 
-        ProcessInfo = object 
-            pid: DWORD
-            ppid: DWORD 
-            name: string 
-            user: string
-            children: seq[DWORD]
-
-        NtQueryInformationToken = proc(hToken: HANDLE, tokenInformationClass: TOKEN_INFORMATION_CLASS, tokenInformation: PVOID, tokenInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}
+    import ../agent/core/process
 
     proc executePs(ctx: AgentCtx, task: Task): TaskResult = 
         
@@ -59,74 +48,12 @@ when defined(agent):
         
         try: 
             var processes: seq[DWORD] = @[]
-            var procMap = initTable[DWORD, ProcessInfo]()
             var output: string = ""
-
-            # Take a snapshot of running processes
-            let hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
-            if hSnapshot == INVALID_HANDLE_VALUE: 
-                raise newException(CatchableError, GetLastError().getError)
             
-            # Close handle after object is no longer used
-            defer: CloseHandle(hSnapshot)
+            var procMap = processList() 
 
-            var pe32: PROCESSENTRY32
-            pe32.dwSize = DWORD(sizeof(PROCESSENTRY32))
-
-            # Loop over processes to fill the map            
-            if Process32First(hSnapshot, addr pe32) == FALSE:
-                raise newException(CatchableError, GetLastError().getError)
-            
-            while true: 
-                # Retrieve information about the process
-                var 
-                    hToken: HANDLE 
-                    hProcess: HANDLE
-                    user: string
-                
-                # User context
-                hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pe32.th32ProcessID)
-                if hProcess != 0: 
-                    if OpenProcessToken(hProcess, TOKEN_QUERY, addr hToken): 
-                        var
-                            status: NTSTATUS = 0
-                            returnLength: ULONG = 0
-                            pUser: PTOKEN_USER
-
-                        let pNtQueryInformationToken = cast[NtQueryInformationToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationToken")))
-
-                        status = pNtQueryInformationToken(hToken, tokenUser, NULL, 0, addr returnLength)
-                        if status != STATUS_SUCCESS and status != STATUS_BUFFER_TOO_SMALL:
-                            raise newException(CatchableError, status.getNtError())
-                        
-                        pUser = cast[PTOKEN_USER](LocalAlloc(LMEM_FIXED, returnLength))
-                        if pUser == NULL:
-                            raise newException(CatchableError, GetLastError().getError())
-                        defer: LocalFree(cast[HLOCAL](pUser))
-                        
-                        status = pNtQueryInformationToken(hToken, tokenUser, cast[PVOID](pUser), returnLength, addr returnLength)
-                        if status != STATUS_SUCCESS:
-                            raise newException(CatchableError, status.getNtError())
-
-                        user = sidToName(pUser.User.Sid)
-                
-                var procInfo = ProcessInfo(
-                    pid: pe32.th32ProcessID,
-                    ppid: pe32.th32ParentProcessID,
-                    name: $cast[WideCString](addr pe32.szExeFile[0]),
-                    user: user,
-                    children: @[]
-                )
-                procMap[pe32.th32ProcessID] = procInfo
-
-                if Process32Next(hSnapshot, addr pe32) == FALSE: 
-                    break 
-
-            # Build child-parent relationship
             for pid, procInfo in procMap.mpairs():
-                if procMap.contains(procInfo.ppid):
-                    procMap[procInfo.ppid].children.add(pid)
-                else: 
+                if not procMap.contains(procInfo.ppid):
                     processes.add(pid)
 
             # Add header row
