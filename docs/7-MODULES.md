@@ -334,6 +334,8 @@ Usage    : ps
 Example  : ps
 ```
 
+![Ps command](../assets/modules-10.png)
+
 ### env
 Display environment variables.
 ```

