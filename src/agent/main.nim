@@ -19,7 +19,7 @@ proc main() =
         3. Register to the team server if not already connected
         4. Retrieve tasks via checkin request to a GET endpoint
         5. Execute task and post result
-        6. If additional tasks have been fetched, go to 3.
+        6. If additional tasks have been fetched, go to 6.
         7. If no more tasks need to be executed, go to 1. 
     ]#
     while true: 

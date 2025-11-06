@@ -1,4 +1,4 @@
-import parsetoml, system
+import parsetoml
 import ../utils/io
 import ../../common/[types, utils, crypto, serialize]
 

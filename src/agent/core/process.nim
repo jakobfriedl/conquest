@@ -1,7 +1,7 @@
 import winim/lean 
-import strutils, strformat, tables, algorithm
+import tables
 import ../utils/io
-import ../../common/[types, utils]
+import ../../common/utils
 import token
 
 type 

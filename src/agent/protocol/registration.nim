@@ -99,7 +99,7 @@ type
         productType: ProductType
         name: string
 
-const VERSIONS = [
+let versions = [
     # Windows 11 / Server 2022+
     # WindowsVersion(major: 10, minor: 0, buildMin: 22631, buildMax: 0, productType: WORKSTATION, name: protect("Windows 11 23H2")),
     # WindowsVersion(major: 10, minor: 0, buildMin: 22621, buildMax: 22630, productType: WORKSTATION, name: protect("Windows 11 22H2")),
@@ -135,7 +135,7 @@ const VERSIONS = [
     WindowsVersion(major: 5, minor: 1, buildMin: 0, buildMax: 0, productType: WORKSTATION, name: protect("Windows XP")),
 ]
 
-proc matchesVersion(version: WindowsVersion, info: OSVersionInfoExW, productType: ProductType): bool = 
+proc matchVersion(version: WindowsVersion, info: OSVersionInfoExW, productType: ProductType): bool = 
     if info.dwMajorVersion != version.major or info.dwMinorVersion != version.minor: 
         return false 
     if productType != version.productType: 
@@ -147,8 +147,8 @@ proc matchesVersion(version: WindowsVersion, info: OSVersionInfoExW, productType
     return true
 
 proc getWindowsVersion(info: OSVersionInfoExW, productType: ProductType): string = 
-    for version in VERSIONS: 
-        if version.matchesVersion(info, if productType == DC: SERVER else: productType): # Process domain controllers as servers, otherwise they show up as unknown
+    for version in versions: 
+        if version.matchVersion(info, if productType == DC: SERVER else: productType): # Process domain controllers as servers, otherwise they show up as unknown
             if productType == DC:
                 return version.name & protect(" (Domain Controller)")
             else: 

