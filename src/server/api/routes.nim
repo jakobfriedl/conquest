@@ -110,7 +110,7 @@ proc httpGet*(request: Request) =
             cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$response.len} bytes sent.")
             cq.info(fmt"{$response.len} bytes sent.")
 
-        except CatchableError:
+        except CatchableError as err:
             request.respond(404, body = "")
 
 #[
@@ -124,6 +124,9 @@ proc httpPost*(request: Request) =
             # Differentiate between registration and task result packet
             var unpacker = Unpacker.init(request.body)
             let header = unpacker.deserializeHeader()
+
+            # Reverse data transformation to get payload
+
 
             # Add response headers, as defined in team server profile
             var headers: HttpHeaders

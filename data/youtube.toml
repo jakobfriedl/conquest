@@ -1,0 +1,125 @@
+# Conquest default configuration file 
+name = "youtube-video-profile"
+
+# Important file paths and locations
+private-key-file = "data/keys/conquest-server_x25519_private.key"
+database-file = "data/conquest.db"
+
+# Team server settings (WebSocket server port, users, ...)
+[team-server]
+host = "0.0.0.0"
+port = 37573
+
+# ----------------------------------------------------------
+# HTTP GET 
+# ----------------------------------------------------------
+# Defines URI endpoints for HTTP GET requests
+[http-get]
+user-agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+
+# Defines URI endpoints for HTTP GET requests
+endpoints = [
+    "/watch"
+]
+
+# Defines where the heartbeat is placed within the HTTP GET request
+[http-get.agent.heartbeat]
+placement = { type = "header", name = "Cookie" }
+encoding = { type = "base64", url-safe = true }
+prefix = "YSC=###########; SOCS=##############################################; VISITOR_PRIVACY_METADATA="
+suffix = "; __Secure-1PSIDTS=sidts-#######_##########################################_#########################; __Secure-3PSIDTS=sidts-#######_##########################################_#########################; HSID=####################;"               
+
+# Defines arbitrary URI parameters that are added to the request
+[http-get.agent.parameters]
+v = "###########"
+
+# Defines arbitrary headers that are added by the agent when performing a HTTP GET request 
+[http-get.agent.headers]
+Host = "www.youtube.com"
+Sec-Ch-Ua = "'Not.A/Brand';v='99', 'Chromium';v='136'"
+Sec-Ch-Ua-Mobile = "?0"
+Sec-Ch-Ua-Full-Version = "''"
+Sec-Ch-Ua-Arch = "''"
+Sec-Ch-Ua-Platform = "'Windows'"
+Sec-Ch-Ua-Platform-Version = "''"
+Sec-Ch-Ua-Model = "''"
+Sec-Ch-Ua-Bitness = "''"
+Sec-Ch-Ua-Wow64 = "?0"
+Accept-Language = [
+    "en-GB,en;q=0.9",
+    "en-US,en;q=0.9",
+    "de-AT,de;q=0.9,en;q=0.8"
+]
+Upgrade-Insecure-Requests = "1"
+Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+Service-Worker-Navigation-Preload = "true"
+Sec-Fetch-Site = "none"
+Sec-Fetch-Mode = "navigate"
+Sec-Fetch-User = "?1"
+Sec-Fetch-Dest = "document"
+# Accept-Encoding = "gzip, deflate, br"     # While this is in the normal request, it breaks the C2 communication, so its commented out
+Priority = "u=0, i"
+
+# Defines arbitrary headers that are added to the server's response
+[http-get.server.headers]
+Content-Type = "text/html; charset=utf-8"
+X-Content-Type-Options = "nosniff"
+Cache-Control = "no-cache, no-store, max-age=0, must-revalidate"
+Pragma = "no-cache"
+Expires = "Mon, 01 Jan 1990 00:00:00 GMT"
+Strict-Transport-Security = "max-age=31536000"
+X-Frame-Options = "SAMEORIGIN"
+Content-Security-Policy = "require-trusted-types-for 'script'"
+Server = "ESF"
+X-Xss-Protection = "0"
+P3p = "CP='This is not a P3P policy! See http://support.google.com/accounts/answer/151657?hl=de for more info.'"
+Alt-Svc = "h3=':443'; ma=2592000,h3-29=':443'; ma=2592000"
+Set-Cookie = "__Secure-YEC=##############################################################################; Domain=.youtube.com; Expires=Mon, 07-Dec-2026 11:39:54 GMT; Path=/; Secure; HttpOnly; SameSite=lax"
+
+# Defines how the server's response to the task retrieval request is rendered
+[http-get.server.output]
+placement = { type = "body" }
+encoding = { type = "base64" }
+prefix = "<!DOCTYPE html><html style='font-size: 10px;font-family: Roboto, Arial, sans-serif;' lang='de-DE'><head><script data-id='_gd' nonce='iqZzTrtVB86B0KRGblxg9Q'>window.WIZ_global_data = {'HiPsbb':0,'MUE6Ne':'youtube_web','MuJWjd':false};</script><meta http-equiv='origin-trial' content='"
+suffix = "'/><script nonce='iqZzTrtVB86B0KRGblxg9Q'>var ytcfg={d:function(){return window.yt&&yt.config_||ytcfg.data_||(ytcfg.data_={})},get:function(k,o){return k in ytcfg.d()?ytcfg.d()[k]:o},set:function(){var a=arguments;if(a.length>1)ytcfg.d()[a[0]]=a[1];else{var k;for(k in a[0])ytcfg.d()[k]=a[0][k]}}};window.ytcfg.set('EMERGENCY_BASE_URL', '/error_204?"
+
+# ----------------------------------------------------------
+# HTTP POST 
+# ----------------------------------------------------------
+[http-post]
+user-agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+
+# Defines URI endpoints for HTTP POST requests
+endpoints = [
+    "/youtubei/v1/like/like",
+    "/youtubei/v1/log_event",
+    "/youtubei/v1/player"
+]
+
+# Post request can also be sent with the HTTP verb PUT instead
+request-methods = "POST"
+
+[http-post.agent.headers]
+Host = "www.youtube.com"
+Referer = "https://www.youtube.com/watch?v=###########"
+Content-Type = "application/octet-stream" 
+Connection = "Keep-Alive"
+Cache-Control = "no-cache"
+Cookie = "YSC=###########; SOCS=##############################################; VISITOR_PRIVACY_METADATA=##################################################################; __Secure-1PSIDTS=sidts-#######_##########################################_#########################; __Secure-3PSIDTS=sidts-#######_##########################################_#########################; HSID=####################;"               
+
+[http-post.agent.output]
+placement = { type = "body" }
+
+[http-post.server.headers]
+Content-Type = "application/json; charset=utf-8"
+X-Content-Type-Options = "nosniff"
+Cache-Control = "no-cache, no-store, max-age=0, must-revalidate"
+Pragma = "no-cache"
+Expires = "Mon, 01 Jan 1990 00:00:00 GMT"
+Server = "ESF"
+X-Xss-Protection = "0"
+Strict-Transport-Security = "max-age=31536000"
+Alt-Svc = "h3=':443'; ma=2592000,h3-29=':443'; ma=2592000"
+
+[http-post.server.output]
+placement = { type = "body" }

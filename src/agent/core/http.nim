@@ -100,6 +100,8 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
 
     let body = Bytes.toString(data)
 
+    # Apply data transformation
+
     try:
         # Send post request to team server
         # Select random callback host

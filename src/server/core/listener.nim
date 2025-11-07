@@ -24,7 +24,7 @@ proc listenerStart*(cq: Conquest, listenerId: string, hosts: string, address: st
         # GET requests
         for endpoint in cq.profile.getArray("http-get.endpoints"): 
             router.addRoute("GET", endpoint.getStringValue(), routes.httpGet)
-        
+
         # POST requests
         var postMethods: seq[string]
         for reqMethod in cq.profile.getArray("http-post.request-methods"): 
