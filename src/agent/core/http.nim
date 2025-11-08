@@ -11,6 +11,8 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
     case ctx.profile.getString(protect("http-get.agent.heartbeat.encoding.type"), default = protect("none"))
     of protect("base64"):
         heartbeatString = encode(heartbeat, safe = ctx.profile.getBool(protect("http-get.agent.heartbeat.encoding.url-safe"))).replace("=", "")
+    of protect("hex"):
+        heartbeatString = Bytes.toString(heartbeat).toHex().toLowerAscii() 
     of protect("none"): 
         heartbeatString = Bytes.toString(heartbeat)
 
@@ -103,6 +105,8 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
     case ctx.profile.getString(protect("http-post.agent.output.encoding.type"), default = protect("none"))
     of protect("base64"): 
         output = encode(data, safe = ctx.profile.getBool(protect("http-post.agent.output.encoding.url-safe"))).replace("=", "")
+    of protect("hex"):
+        output = Bytes.toString(data).toHex().toLowerAscii() 
     of protect("none"): 
         output = Bytes.toString(data)
     

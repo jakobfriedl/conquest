@@ -1,5 +1,5 @@
-import mummy, terminal, strformat, parsetoml, tables
-import strutils, base64
+import mummy, terminal, parsetoml, tables
+import strutils, strformat, base64
 
 import ./handlers
 import ../globals
@@ -68,6 +68,8 @@ proc httpGet*(request: Request) =
         case cq.profile.getString("http-get.agent.heartbeat.encoding.type", default = "none"): 
         of "base64":
             heartbeat = string.toBytes(decode(encHeartbeat)) 
+        of "hex":
+            heartbeat = string.toBytes(parseHexStr(encHeartbeat))
         of "none":
             heartbeat = string.toBytes(encHeartbeat) 
 
@@ -157,6 +159,8 @@ proc httpPost*(request: Request) =
             case cq.profile.getString("http-post.agent.output.encoding.type", default = "none"): 
             of "base64":
                 data = string.toBytes(decode(encData)) 
+            of "hex":
+                data = string.toBytes(parseHexStr(encData))
             of "none":
                 data = string.toBytes(encData) 
 
