@@ -210,7 +210,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
             consoles = newConsoleTable
 
         except CatchableError as err:
-            echo "[-] ", err.msg
+            # echo "[-] ", err.msg
             discard
 
         # render

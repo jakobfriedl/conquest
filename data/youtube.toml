@@ -107,6 +107,12 @@ Connection = "Keep-Alive"
 Cache-Control = "no-cache"
 Cookie = "YSC=###########; SOCS=##############################################; VISITOR_PRIVACY_METADATA=##################################################################; __Secure-1PSIDTS=sidts-#######_##########################################_#########################; __Secure-3PSIDTS=sidts-#######_##########################################_#########################; HSID=####################;"               
 
+[http-post.agent.parameters]
+pretty-print = [
+    "true",
+    "false"
+]
+
 [http-post.agent.output]
 placement = { type = "body" }
 
@@ -122,4 +128,4 @@ Strict-Transport-Security = "max-age=31536000"
 Alt-Svc = "h3=':443'; ma=2592000,h3-29=':443'; ma=2592000"
 
 [http-post.server.output]
-placement = { type = "body" }
+body = ""

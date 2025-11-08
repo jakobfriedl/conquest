@@ -50,7 +50,7 @@ A huge advantage of Conquest's C2 profile is the customization of where the hear
 
 | Name | Type | Description | 
 | --- | --- | --- | 
-| placement.type | OPTION | Determine where in the request the heartbeat is placed. The following options are available: `header`, `parameter`, `uri`, `body`|
+| placement.type | OPTION | Determine where in the request the heartbeat is placed. The following options are available: `header`, `query`, `uri`, `body`|
 | placement.name | STRING | Name of the header/parameter to place the heartbeat in.| 
 | encoding.type | OPTION | Type of encoding to use. The following options are available: `base64`, `none` (default) | 
 | encoding.url-safe | BOOL | Only required if encoding.type is set to `base64`. Uses `-` and `_` instead of `+`, `=` and `/`. |
@@ -68,7 +68,7 @@ On the other hand, the server processes the requests in the following order:
 3. Decoding
 
 > [!NOTE]
-> Heartbeat placement is currently only implemented for `header` and `parameter`, as those are the most commonly used options.
+> Heartbeat placement is currently only implemented for `header` and `query`, as those are the most commonly used options.
 
 To illustrate how that works, the following TOML configuration transforms a base64-encoded heartbeat packet into a string that looks like a JWT token and places it in the Authorization header. In this case, the `#` in the suffix are randomized, ensuring that the token is different for every request.
 
@@ -128,24 +128,26 @@ placement = { type = "body" }
 
 ## POST settings
 
-HTTP POST requests can be configured in a similar way to GET requests. Here, it is also possible to define alternative request methods, such as PUT. 
+HTTP POST requests can be configured in a similar way to GET requests. Here, it is also possible to define alternative request methods, such as PUT. Under `[http-post.agent.output]`, it is possible to define how the POST requests made to the server by the agents look like. The same data transformation techniques can be applied. For example, it would be possible to hide task output as a base64 string within a JSON object. The `[http-post.server.output]` block can be used to customize the server's response. 
 
 ```toml 
 [http-post]
 user-agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 
 # Defines URI endpoints for HTTP POST requests
+# This has to be an array, even if it only has one member
 endpoints = [
     "/post",
     "/api/v2/get.js"
 ]
 
-# Post request can also be sent with the HTTP verb PUT instead
+# Post request can also be sent with a different HTTP verb (PUT, GET, ...)
 request-methods = [
     "POST",
     "PUT"
 ]
 
+# Defines arbitrary request headers that are added to the POST request
 [http-post.agent.headers]
 Host = [ 
     "wikipedia.org", 
@@ -156,14 +158,28 @@ Content-Type = "application/octet-stream"
 Connection = "Keep-Alive"
 Cache-Control = "no-cache"
 
+# Defines arbitrary query parameters that are added to the URI
+[http-post.agent.parameters]
+lang = [
+    "en-US",
+    "de-AT"
+]
+
+# Defines how the POST requests made by the agents look like
+# Placing this type of data in the body is highly recommended due to the size of certain task results
 [http-post.agent.output]
 placement = { type = "body" }
+encoding = { type = "none" }
+# prefix = ""
+# suffix = ""
 
+# Defines arbitrary response headers added by the server
 [http-post.server.headers]
 Server = "nginx"
 
+# Defines data that is returned in the body of the server's response
 [http-post.server.output]
-placement = { type = "body" }
+body = ""
 ```
 
 ![POST request with task data](../assets/profile-3.png)

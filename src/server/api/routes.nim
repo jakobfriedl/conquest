@@ -46,7 +46,7 @@ proc httpGet*(request: Request) =
                 return
             heartbeatString = request.headers.get(heartbeatHeader)
 
-        of "parameter": 
+        of "query": 
             let param = cq.profile.getString("http-get.agent.heartbeat.placement.name")
             heartbeatString = request.queryParams.get(param)  
             if heartbeatString.len <= 0: 
@@ -121,27 +121,62 @@ proc httpPost*(request: Request) =
     {.cast(gcsafe).}:
 
         try:        
-            # Differentiate between registration and task result packet
-            var unpacker = Unpacker.init(request.body)
-            let header = unpacker.deserializeHeader()
+            # Retrieve data from the request
+            var dataString: string
+            var data: seq[byte]
+            
+            case cq.profile.getString("http-post.agent.output.placement.type"): 
+            of "header": 
+                let dataHeader = cq.profile.getString("http-post.agent.output.placement.name")
+                if not request.headers.hasKey(dataHeader): 
+                    request.respond(400, body = "")
+                    return
+                dataString = request.headers.get(dataHeader)
 
-            # Reverse data transformation to get payload
+            of "query": 
+                let param = cq.profile.getString("http-post.agent.output.placement.name")
+                dataString = request.queryParams.get(param)  
+                if dataString.len <= 0: 
+                    request.respond(400, body = "")
+                    return
 
+            of "uri": 
+                discard 
+
+            of "body": 
+                dataString = request.body
+
+            else: discard 
+
+            # Retrieve and reverse data transformation
+            let 
+                prefix = cq.profile.getString("http-post.agent.output.prefix")
+                suffix = cq.profile.getString("http-post.agent.output.suffix")
+                encData = dataString[len(prefix) ..^ len(suffix) + 1]
+
+            case cq.profile.getString("http-post.agent.output.encoding.type", default = "none"): 
+            of "base64":
+                data = string.toBytes(decode(encData)) 
+            of "none":
+                data = string.toBytes(encData) 
 
             # Add response headers, as defined in team server profile
             var headers: HttpHeaders
             for header, value in cq.profile.getTable("http-post.server.headers"):
                 headers.add((header, value.getStringValue()))
 
+            # Differentiate between registration and task result packet
+            var unpacker = Unpacker.init(Bytes.toString(data))
+            let header = unpacker.deserializeHeader()
             if cast[PacketType](header.packetType) == MSG_REGISTER: 
-                if not register(string.toBytes(request.body), request.remoteAddress):
+                if not register(data, request.remoteAddress):
                     request.respond(400, body = "")
                     return
 
             elif cast[PacketType](header.packetType) == MSG_RESULT: 
-                handleResult(string.toBytes(request.body))
+                handleResult(data)
 
-            request.respond(200, body = "")
+            request.respond(200, body = cq.profile.getString("http-post.server.output.body"))
 
         except CatchableError:
             request.respond(404, body = "")
