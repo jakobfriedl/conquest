@@ -12,7 +12,7 @@
 
 ## General
 
-Conquest supports malleable C2 profiles written using the TOML configuration language. This allows the complete customization of network traffic using data transformation, encoding and randomization. Wildcard characters `#` are replaced by a random alphanumerical character, making it possible to add even more variation to requests via randomized parameters or cookies.  
+Conquest supports malleable C2 profiles written using the TOML configuration language. This allows the complete customization of network traffic using data transformation, encoding and randomization. Wildcard characters `#` are replaced by a random alphanumerical character, making it possible to add even more variation to requests via randomized parameters or cookies. There is also the `$` wildcard, which is replaced by a single digit, for randomizing numeric values.  
 
 General settings that are defined at the beginning of the profile are the profile name and the relative location of important files, such as the team server's private key or the Conquest database.
 

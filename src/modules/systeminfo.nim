@@ -49,7 +49,7 @@ when defined(agent):
         try: 
             var processes: seq[DWORD] = @[]
             var output: string = ""
-            
+
             var procMap = processList() 
 
             # Create child-parent process relationships
