@@ -24,6 +24,10 @@ proc randomChar(): char =
     let alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     return alphabet[rand(alphabet.len - 1)]
 
+proc randomNumber(): char = 
+    let numbers = "0123456789"
+    return numbers[rand(numbers.len - 1)]
+
 proc getRandom*(values: seq[TomlValueRef]): TomlValueRef = 
     if values.len == 0: 
         return nil
@@ -39,7 +43,7 @@ proc getStringValue*(key: TomlValueRef, default: string = ""): string =
         value = key.getElems().getRandom().getStr(default)
     
     # Replace '#' with a random alphanumerical character and return the resulting string
-    return value.mapIt(if it == '#': randomChar() else: it).join("")
+    return value.mapIt(if it == '#': randomChar() elif it == '$': randomNumber() else: it).join("")
 
 proc getString*(profile: Profile, path: string, default: string = ""): string =  
     let key = profile.findKey(path)

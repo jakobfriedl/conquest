@@ -113,6 +113,7 @@ lang = [
     "en-US",
     "de-AT"
 ]
+page = "1$"
 
 # Defines how the POST requests made by the agents look like
 # For modules that involve large file transfers, it is not recommended to place the task output in a header or query parameter, as this will exceed the header size

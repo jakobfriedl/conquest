@@ -54,7 +54,7 @@ proc processList*(): Table[DWORD, ProcessInfo] =
     # Take a snapshot of running processes
     var sysProcessInfo = processSnapshot() 
     defer: LocalFree(cast[HLOCAL](sysProcessInfo))
-    
+
     let pNtOpenProcess = cast[NtOpenProcess](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtOpenProcess")))
     let pNtOpenProcessToken = cast[NtOpenProcessToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtOpenProcessToken")))
     let pNtClose = cast[NtClose](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtClose")))
@@ -62,8 +62,8 @@ proc processList*(): Table[DWORD, ProcessInfo] =
     while true: 
         var 
             status: NTSTATUS
-            hToken: HANDLE 
-            hProcess: HANDLE
+            hToken: HANDLE = 0
+            hProcess: HANDLE = 0
             oa: OBJECT_ATTRIBUTES
             clientId: CLIENT_ID
         
@@ -90,9 +90,10 @@ proc processList*(): Table[DWORD, ProcessInfo] =
             status = pNtOpenProcessToken(hProcess, TOKEN_QUERY, addr hToken)
             if status == STATUS_SUCCESS and hToken != 0: 
                 result[pid].user = hToken.getTokenUser().username
-        defer:
+                discard pNtClose(hToken)
+            else: 
+                result[pid].user = ""
             discard pNtClose(hProcess)
-            discard pNtClose(hToken)
 
         # Move to next process
         if sysProcessInfo.NextEntryOffset == 0: 
