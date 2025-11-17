@@ -126,7 +126,7 @@ proc handleResult*(resultData: seq[byte]) =
                 # A binary result packet consists of the filename and file contents, both prefixed with their respective lengths as a uint32 value
                 var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
                 let 
-                    fileName = unpacker.getDataWithLengthPrefix().replace("\\", "_").replace(":", "") # Replace path characters for better storage of downloaded files            
+                    fileName = unpacker.getDataWithLengthPrefix().replace("\\", "_").replace("/", "_").replace(":", "") # Replace path characters for better storage of downloaded files            
                     fileData = unpacker.getDataWithLengthPrefix()
 
                 # Create loot directory for the agent

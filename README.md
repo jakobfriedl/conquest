@@ -53,7 +53,7 @@ The following projects and people have significantly inspired and/or helped with
   - [Creds](https://github.com/S3cur3Th1sSh1t/Creds) by [S3cur3Th1sSh1t](https://github.com/S3cur3Th1sSh1t/)
   - [malware](https://github.com/m4ul3r/malware/) by [m4ul3r](https://github.com/m4ul3r/)
   - [winim](https://github.com/khchen/winim) 
-  - [OffensinveNim](https://github.com/byt3bl33d3r/OffensiveNim)
+  - [OffensiveNim](https://github.com/byt3bl33d3r/OffensiveNim)
 - Existing C2's written (partially) in Nim
   - [NimPlant](https://github.com/chvancooten/NimPlant)
   - [Nimhawk](https://github.com/hdbreaker/Nimhawk)
