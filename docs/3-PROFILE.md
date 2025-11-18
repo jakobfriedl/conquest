@@ -50,7 +50,7 @@ A huge advantage of Conquest's C2 profile is the customization of where the hear
 
 | Name | Type | Description | 
 | --- | --- | --- | 
-| placement.type | OPTION | Determine where in the request the heartbeat is placed. The following options are available: `header`, `query`, `uri`, `body`|
+| placement.type | OPTION | Determine where in the request the heartbeat is placed. The following options are available: `header`, `query` and `body`|
 | placement.name | STRING | Name of the header/parameter to place the heartbeat in.| 
 | encoding.type | OPTION | Type of encoding to use. The following options are available: `base64`, `hex` and `none` (default) | 
 | encoding.url-safe | BOOL | Only used if encoding.type is set to `base64`. Uses `-` and `_` instead of `+`, `=` and `/`. Default: `false` |
@@ -66,9 +66,6 @@ On the other hand, the server processes the requests in the following order:
 1. Retrieval from the request
 2. Removal of prefix & suffix
 3. Decoding
-
-> [!NOTE]
-> Heartbeat placement is currently only implemented for `header` and `query`, as those are the most commonly used options.
 
 To illustrate how that works, the following TOML configuration transforms a base64-encoded heartbeat packet into a string that looks like a JWT token and places it in the Authorization header. In this case, the `#` in the suffix are randomized, ensuring that the token is different for every request.
 

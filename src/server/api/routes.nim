@@ -53,10 +53,9 @@ proc httpGet*(request: Request) =
                 request.respond(404, body = "")
                 return
 
-        of "uri": 
-            discard 
         of "body": 
-            discard
+            heartbeatString = request.body 
+
         else: discard 
 
         # Retrieve and apply data transformation to get raw heartbeat packet
@@ -141,9 +140,6 @@ proc httpPost*(request: Request) =
                 if dataString.len <= 0: 
                     request.respond(400, body = "")
                     return
-
-            of "uri": 
-                discard 
 
             of "body": 
                 dataString = request.body
