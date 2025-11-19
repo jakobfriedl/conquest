@@ -76,14 +76,17 @@ proc getArray*(profile: Profile, path: string): seq[TomlValueRef] =
     return key.getElems() 
 
 proc applyDataTransformation*(profile: Profile, path: string, data: seq[byte]): string = 
-    var dataString: string
-
     # 1. Encoding 
+    var dataString: string
     case profile.getString(path & protect(".encoding.type"), default = protect("none"))
     of protect("base64"):
         dataString = encode(data, safe = profile.getBool(path & protect(".encoding.url-safe"))).replace("=", "")
     of protect("hex"):
         dataString = Bytes.toString(data).toHex().toLowerAscii() 
+    of protect("rot"):
+        dataString = Bytes.toString(encodeRot(data, profile.getInt(path & ".encoding.key", default = 13)))
+    of protect("xor"):
+        dataString = Bytes.toString(xorBytes(data, profile.getInt(path & ".encoding.key", default = 1)))
     of protect("none"): 
         dataString = Bytes.toString(data)
 
@@ -106,5 +109,9 @@ proc reverseDataTransformation*(profile: Profile, path: string, data: string): s
             result = string.toBytes(decode(dataString)) 
         of protect("hex"):
             result = string.toBytes(parseHexStr(dataString))
+        of protect("rot"): 
+            result = decodeRot(string.toBytes(dataString), profile.getInt(path & ".encoding.key", default = 13))
+        of protect("xor"):
+            result = xorBytes(string.toBytes(dataString), profile.getInt(path & ".encoding.key", default = 1))
         of protect("none"):
             result = string.toBytes(dataString) 

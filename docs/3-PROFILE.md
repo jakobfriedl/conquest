@@ -50,10 +50,11 @@ A huge advantage of Conquest's C2 profile is the customization of where the hear
 
 | Name | Type | Description | 
 | --- | --- | --- | 
-| placement.type | OPTION | Determine where in the request the heartbeat is placed. The following options are available: `header`, `query` and `body`|
+| placement.type | OPTION | Determine where in the request the heartbeat is placed. The following options are available: `header`, `query` and `body`.|
 | placement.name | STRING | Name of the header/parameter to place the heartbeat in.| 
-| encoding.type | OPTION | Type of encoding to use. The following options are available: `base64`, `hex` and `none` (default) | 
+| encoding.type | OPTION | Type of encoding to use. The following options are available: `base64`, `hex`, `rot`, `xor` and `none` (default) | 
 | encoding.url-safe | BOOL | Only used if encoding.type is set to `base64`. Uses `-` and `_` instead of `+`, `=` and `/`. Default: `false` |
+| encoding.key | INTEGER | Only used if encoding.type is set to `xor` or `rot`. The `rot` setting applies a Caesar cipher, while `xor` simply XOR-encodes the data. |
 | prefix | STRING | String to prepend before the heartbeat payload. |
 | suffix | STRING | String to append after the heartbeat payload. |
 

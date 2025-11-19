@@ -39,6 +39,24 @@ macro protect*(str: untyped): untyped =
     key = (key *% 1677619) and 0x7FFFFFFF
 
 #[
+    Data encoding
+]#
+proc encodeRot*(data: seq[byte], key: int): seq[byte] = 
+    result = newSeq[byte](data.len())
+    for i, b in data: 
+        result[i] = byte((int(b) + key) mod 256)
+
+proc decodeRot*(data: seq[byte], key: int): seq[byte] = 
+    result = newSeq[byte](data.len())
+    for i, b in data: 
+        result[i] = byte((int(b) - key + 256) mod 256)
+
+proc xorBytes*(data: seq[byte], key: int): seq[byte] = 
+    result = newSeq[byte](data.len())
+    for i, b in data: 
+        result[i] = b xor byte(key)
+
+#[
     Utility functions
 ]#
 proc toUuid*(T: type string, uuid: string): Uuid = 
