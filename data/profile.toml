@@ -29,10 +29,10 @@ endpoints = [
 # Metadata can be stored in a Header (e.g. JWT Token, Session Cookie), URI parameter or request body 
 # Encoding is only applied to the payload and not the prepended or appended strings
 [http-get.agent.heartbeat]
-# placement = { type = "header", name = "Authorization" }
-# encoding = { type = "base64", url-safe = true }
-# prefix = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-# suffix = ".######################################-####"
+placement = { type = "header", name = "Authorization" }
+encoding = { type = "base64", url-safe = true }
+prefix = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+suffix = ".######################################-####"
 
 # Example: PHP session cookie 
 # placement = { type = "header", name = "Cookie" }
@@ -45,8 +45,8 @@ endpoints = [
 # encoding = { type = "hex" }
 
 # Example: Raw data in GET request body
-placement = { type = "body" }
-encoding = { type = "rot", key = 2 }
+# placement = { type = "body" }
+# encoding = { "none" }
 
 # Defines arbitrary URI parameters that are added to the request
 [http-get.agent.parameters]

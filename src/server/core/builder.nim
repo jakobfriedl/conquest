@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, sequtils, tables, system, osproc, streams, parsetoml
+import terminal, strformat, strutils, sequtils, tables, system, osproc, streams
 
 import ../globals
 import ../core/[logger, websocket]
@@ -38,7 +38,7 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: Sle
     packer.addData(cq.keyPair.publicKey)
 
     # C2 profile
-    packer.addDataWithLengthPrefix(string.toBytes(cq.profile.toTomlString()))
+    packer.addDataWithLengthPrefix(string.toBytes(cq.profileString))
 
     let data = packer.pack() 
     packer.reset() 

@@ -1,6 +1,5 @@
-import parsetoml
 import ../utils/io
-import ../../common/[types, utils, crypto, serialize]
+import ../../common/[types, utils, crypto, profile, serialize]
 
 const CONFIGURATION {.strdefine.}: string = ""
 

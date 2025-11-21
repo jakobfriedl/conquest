@@ -36,14 +36,14 @@ v = "###########"
 # Defines arbitrary headers that are added by the agent when performing a HTTP GET request 
 [http-get.agent.headers]
 Host = "www.youtube.com"
-Sec-Ch-Ua = "'Not.A/Brand';v='99', 'Chromium';v='136'"
+Sec-Ch-Ua = "\"Not.A/Brand\";v=\"99\", \"Chromium\";v=\"136\""
 Sec-Ch-Ua-Mobile = "?0"
-Sec-Ch-Ua-Full-Version = "''"
-Sec-Ch-Ua-Arch = "''"
-Sec-Ch-Ua-Platform = "'Windows'"
-Sec-Ch-Ua-Platform-Version = "''"
-Sec-Ch-Ua-Model = "''"
-Sec-Ch-Ua-Bitness = "''"
+Sec-Ch-Ua-Full-Version = "\"\""
+Sec-Ch-Ua-Arch = "\"\""
+Sec-Ch-Ua-Platform = "\"Windows\""
+Sec-Ch-Ua-Platform-Version = "\"\""
+Sec-Ch-Ua-Model = "\"\""
+Sec-Ch-Ua-Bitness = "\"\""
 Sec-Ch-Ua-Wow64 = "?0"
 Accept-Language = [
     "en-US,en;q=0.9",
@@ -58,7 +58,7 @@ Sec-Fetch-User = "?1"
 Sec-Fetch-Dest = "document"
 Priority = "u=0, i"
 
-# Defines arbitrary headers that are added to the server's response
+# Defines arbitrary headers that are added to the server\"s response
 [http-get.server.headers]
 Content-Type = "text/html; charset=utf-8"
 X-Content-Type-Options = "nosniff"
@@ -67,19 +67,19 @@ Pragma = "no-cache"
 Expires = "Mon, 01 Jan 1990 00:00:00 GMT"
 Strict-Transport-Security = "max-age=31536000"
 X-Frame-Options = "SAMEORIGIN"
-Content-Security-Policy = "require-trusted-types-for 'script'"
+Content-Security-Policy = "require-trusted-types-for \"script\""
 Server = "ESF"
 X-Xss-Protection = "0"
-P3p = "CP='This is not a P3P policy! See http://support.google.com/accounts/answer/151657?hl=de for more info.'"
-Alt-Svc = "h3=':443'; ma=2592000,h3-29=':443'; ma=2592000"
+P3p = "CP=\"This is not a P3P policy! See http://support.google.com/accounts/answer/151657?hl=de for more info.\""
+Alt-Svc = "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
 Set-Cookie = "__Secure-YEC=##############################################################################; Domain=.youtube.com; Expires=Mon, 07-Dec-2026 11:39:54 GMT; Path=/; Secure; HttpOnly; SameSite=lax"
 
-# Defines how the server's response to the task retrieval request is rendered
+# Defines how the server"s response to the task retrieval request is rendered
 [http-get.server.output]
 placement = { type = "body" }
 encoding = { type = "base64" }
-prefix = "<!DOCTYPE html><html style='font-size: 10px;font-family: Roboto, Arial, sans-serif;' lang='de-DE'><head><script data-id='_gd' nonce='iqZzTrtVB86B0KRGblxg9Q'>window.WIZ_global_data = {'HiPsbb':0,'MUE6Ne':'youtube_web','MuJWjd':false};</script><meta http-equiv='origin-trial' content='"
-suffix = "'/><script nonce='iqZzTrtVB86B0KRGblxg9Q'>var ytcfg={d:function(){return window.yt&&yt.config_||ytcfg.data_||(ytcfg.data_={})},get:function(k,o){return k in ytcfg.d()?ytcfg.d()[k]:o},set:function(){var a=arguments;if(a.length>1)ytcfg.d()[a[0]]=a[1];else{var k;for(k in a[0])ytcfg.d()[k]=a[0][k]}}};window.ytcfg.set('EMERGENCY_BASE_URL', '/error_204?"
+prefix = "<!DOCTYPE html><html style=\"font-size: 10px;font-family: Roboto, Arial, sans-serif;\" lang=\"de-DE\"><head><script data-id=\"_gd\" nonce=\"iqZzTrtVB86B0KRGblxg9Q\">window.WIZ_global_data = {\"HiPsbb\":0,\"MUE6Ne\":\"youtube_web\",\"MuJWjd\":false};</script><meta http-equiv=\"origin-trial\" content=\""
+suffix = "\"/><script nonce=\"iqZzTrtVB86B0KRGblxg9Q\">var ytcfg={d:function(){return window.yt&&yt.config_||ytcfg.data_||(ytcfg.data_={})},get:function(k,o){return k in ytcfg.d()?ytcfg.d()[k]:o},set:function(){var a=arguments;if(a.length>1)ytcfg.d()[a[0]]=a[1];else{var k;for(k in a[0])ytcfg.d()[k]=a[0][k]}}};window.ytcfg.set(\"EMERGENCY_BASE_URL\", \"/error_204?"
 
 # ----------------------------------------------------------
 # HTTP POST 
@@ -103,14 +103,14 @@ Referer = "https://www.youtube.com/watch?v=###########"
 Content-Type = "application/json" 
 Connection = "Keep-Alive"
 Cache-Control = "no-cache"
-Sec-Ch-Ua = "'Not.A/Brand';v='99', 'Chromium';v='136'"
+Sec-Ch-Ua = "\"Not.A/Brand\";v=\"99\", \"Chromium\";v=\"136\""
 Sec-Ch-Ua-Mobile = "?0"
-Sec-Ch-Ua-Full-Version = "''"
-Sec-Ch-Ua-Arch = "''"
-Sec-Ch-Ua-Platform = "'Windows'"
-Sec-Ch-Ua-Platform-Version = "''"
-Sec-Ch-Ua-Model = "''"
-Sec-Ch-Ua-Bitness = "''"
+Sec-Ch-Ua-Full-Version = "\"\""
+Sec-Ch-Ua-Arch = "\"\""
+Sec-Ch-Ua-Platform = "\"Windows\""
+Sec-Ch-Ua-Platform-Version = "\"\""
+Sec-Ch-Ua-Model = "\"\""
+Sec-Ch-Ua-Bitness = "\"\""
 Sec-Ch-Ua-Wow64 = "?0"
 Cookie = "YSC=###########; SOCS=##############################################; VISITOR_PRIVACY_METADATA=##################################################################; __Secure-1PSIDTS=sidts-#######_##########################################_#########################; __Secure-3PSIDTS=sidts-#######_##########################################_#########################; HSID=####################;"               
 
@@ -123,8 +123,8 @@ pretty-print = [
 [http-post.agent.output]
 placement = { type = "body" }
 encoding = { type = "base64", url-safe = true }
-prefix = "{'context':{'client':{'hl':'de','gl':'AT','remoteHost':'$$.1$$.$$.1$$','deviceMake':'','deviceModel':'','visitorData':'Cgt1M016MzRrZmhTUSj12MbIBjInCgJBVBIhEh0SGwsMDg8QERITFBUWFxgZGhscHR4fICEiIyQlJiBe','userAgent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36,gzip(gfe)','clientName':'WEB','clientVersion':'2.20251107.01.00','osName':'Windows','osVersion':'10.0','originalUrl':'https://www.youtube.com/','screenPixelDensity':2,'platform':'DESKTOP','clientFormFactor':'UNKNOWN_FORM_FACTOR','configInfo':{'appInstallData':'"
-suffix = "'},'screenDensityFloat':1.5,'userInterfaceTheme':'USER_INTERFACE_THEME_DARK','timeZone':'Europe/Vienna','browserName':'Chrome','browserVersion':'142.0.0.0','acceptHeader':'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7','deviceExperimentId':'ChxOelUzTVRBeU1qQTJPVEV4TkRFNU5qUXhOQT09EPXYxsgGGPXYxsgG','rolloutToken':'CJu4u9qz64jjcxCr8dad-t-QAxjzyIbunueQAw%3D%3D','screenWidthPoints':1920,'screenHeightPoints':1065,'utcOffsetMinutes':60,'connectionType':'CONN_CELLULAR_3G','memoryTotalKbytes':'8000000','mainAppWebInfo':{'graftUrl':'https://www.youtube.com/watch?v=###########&list=RD4WIMyqBG9gs&start_radio=1','pwaInstallabilityStatus':'PWA_INSTALLABILITY_STATUS_UNKNOWN','webDisplayMode':'WEB_DISPLAY_MODE_BROWSER','isWebNativeShareAvailable':true}},'user':{'lockedSafetyMode':false},'request':{'useSsl':true,'internalExperimentFlags':[],'consistencyTokenJars':[]},'clickTracking':{'clickTrackingParams':'CJgFEKVBIhMIucGi957nkAMVneRJBx3cFhscygEErMFOaw=='},'adSignalsInfo':{'params':[{'key':'dt','value':'1762765953510'},{'key':'flash','value':'0'},{'key':'frm','value':'0'},{'key':'u_tz','value':'60'},{'key':'u_his','value':'4'},{'key':'u_h','value':'1200'},{'key':'u_w','value':'1920'},{'key':'u_ah','value':'1152'},{'key':'u_aw','value':'1920'},{'key':'u_cd','value':'24'},{'key':'bc','value':'31'},{'key':'bih','value':'1065'},{'key':'biw','value':'1905'},{'key':'brdim','value':'0,0,0,0,1920,0,1920,1152,1920,1065'},{'key':'vis','value':'1'},{'key':'wgl','value':'true'},{'key':'ca_type','value':'image'}],'bid':'ANyPxKqp2RGW0TLEXMjNbBRm6ZPDYteE8iHnYK0DaJMOiTEHrbqefZtn6qfK_MhA2-ZgnoosEwKaN8pi77jJRptRzz5Rsm-P_w'}},'target':{'videoId':'###########'},'params':'Cg0KCzRXSU15cUJHOWdzIAAyDAiJ2cbIBhCm6ueLAQ%3D%3D'}"
+prefix = "{\"context\":{\"client\":{\"hl\":\"de\",\"gl\":\"AT\",\"remoteHost\":\"$$.1$$.$$.1$$\",\"deviceMake\":\"\",\"deviceModel\":\"\",\"visitorData\":\"Cgt1M016MzRrZmhTUSj12MbIBjInCgJBVBIhEh0SGwsMDg8QERITFBUWFxgZGhscHR4fICEiIyQlJiBe\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36,gzip(gfe)\",\"clientName\":\"WEB\",\"clientVersion\":\"2.20251107.01.00\",\"osName\":\"Windows\",\"osVersion\":\"10.0\",\"originalUrl\":\"https://www.youtube.com/\",\"screenPixelDensity\":2,\"platform\":\"DESKTOP\",\"clientFormFactor\":\"UNKNOWN_FORM_FACTOR\",\"configInfo\":{\"appInstallData\":\""
+suffix = "\"},\"screenDensityFloat\":1.5,\"userInterfaceTheme\":\"USER_INTERFACE_THEME_DARK\",\"timeZone\":\"Europe/Vienna\",\"browserName\":\"Chrome\",\"browserVersion\":\"142.0.0.0\",\"acceptHeader\":\"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7\",\"deviceExperimentId\":\"ChxOelUzTVRBeU1qQTJPVEV4TkRFNU5qUXhOQT09EPXYxsgGGPXYxsgG\",\"rolloutToken\":\"CJu4u9qz64jjcxCr8dad-t-QAxjzyIbunueQAw%3D%3D\",\"screenWidthPoints\":1920,\"screenHeightPoints\":1065,\"utcOffsetMinutes\":60,\"connectionType\":\"CONN_CELLULAR_3G\",\"memoryTotalKbytes\":\"8000000\",\"mainAppWebInfo\":{\"graftUrl\":\"https://www.youtube.com/watch?v=###########&list=RD4WIMyqBG9gs&start_radio=1\",\"pwaInstallabilityStatus\":\"PWA_INSTALLABILITY_STATUS_UNKNOWN\",\"webDisplayMode\":\"WEB_DISPLAY_MODE_BROWSER\",\"isWebNativeShareAvailable\":true}},\"user\":{\"lockedSafetyMode\":false},\"request\":{\"useSsl\":true,\"internalExperimentFlags\":[],\"consistencyTokenJars\":[]},\"clickTracking\":{\"clickTrackingParams\":\"CJgFEKVBIhMIucGi957nkAMVneRJBx3cFhscygEErMFOaw==\"},\"adSignalsInfo\":{\"params\":[{\"key\":\"dt\",\"value\":\"1762765953510\"},{\"key\":\"flash\",\"value\":\"0\"},{\"key\":\"frm\",\"value\":\"0\"},{\"key\":\"u_tz\",\"value\":\"60\"},{\"key\":\"u_his\",\"value\":\"4\"},{\"key\":\"u_h\",\"value\":\"1200\"},{\"key\":\"u_w\",\"value\":\"1920\"},{\"key\":\"u_ah\",\"value\":\"1152\"},{\"key\":\"u_aw\",\"value\":\"1920\"},{\"key\":\"u_cd\",\"value\":\"24\"},{\"key\":\"bc\",\"value\":\"31\"},{\"key\":\"bih\",\"value\":\"1065\"},{\"key\":\"biw\",\"value\":\"1905\"},{\"key\":\"brdim\",\"value\":\"0,0,0,0,1920,0,1920,1152,1920,1065\"},{\"key\":\"vis\",\"value\":\"1\"},{\"key\":\"wgl\",\"value\":\"true\"},{\"key\":\"ca_type\",\"value\":\"image\"}],\"bid\":\"ANyPxKqp2RGW0TLEXMjNbBRm6ZPDYteE8iHnYK0DaJMOiTEHrbqefZtn6qfK_MhA2-ZgnoosEwKaN8pi77jJRptRzz5Rsm-P_w\"}},\"target\":{\"videoId\":\"###########\"},\"params\":\"Cg0KCzRXSU15cUJHOWdzIAAyDAiJ2cbIBhCm6ueLAQ%3D%3D\"}"
 
 [http-post.server.headers]
 Content-Type = "application/json; charset=utf-8"
@@ -135,7 +135,7 @@ Expires = "Mon, 01 Jan 1990 00:00:00 GMT"
 Server = "ESF"
 X-Xss-Protection = "0"
 Strict-Transport-Security = "max-age=31536000"
-Alt-Svc = "h3=':443'; ma=2592000,h3-29=':443'; ma=2592000"
+Alt-Svc = "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
 
 [http-post.server.output]
-body = "{'responseContext': {}}"
+body = "{\"responseContext\": {}}"

@@ -1,5 +1,5 @@
 import mummy, mummy/routers
-import terminal, parsetoml, json, math, base64, times
+import terminal, json, math, base64, times
 import strutils, strformat, system, tables
 
 import ./globals
@@ -15,14 +15,15 @@ proc header() =
     echo "─".repeat(21) 
     echo ""
 
-proc init*(T: type Conquest, profile: Profile): Conquest = 
+proc init*(T: type Conquest, profileString: string): Conquest = 
     var cq = new Conquest
     cq.listeners = initTable[string, Listener]()
     cq.threads = initTable[string, Thread[Listener]]()
     cq.agents = initTable[string, Agent]() 
-    cq.profile = profile
-    cq.keyPair = loadKeyPair(CONQUEST_ROOT & "/" & profile.getString("private-key-file"))
-    cq.dbPath = CONQUEST_ROOT & "/" & profile.getString("database-file")
+    cq.profileString = profileString
+    cq.profile = parseString(profileString)
+    cq.keyPair = loadKeyPair(CONQUEST_ROOT & "/" & cq.profile.getString("private-key-file"))
+    cq.dbPath = CONQUEST_ROOT & "/" & cq.profile.getString("database-file")
     cq.client = nil 
     return cq
 
@@ -54,7 +55,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
             
                 # Send relevant information to the client
                 # C2 profile 
-                cq.client.sendProfile(cq.profile)
+                cq.client.sendProfile(cq.profileString)
                 
                 # Listeners
                 for id, listener in cq.listeners: 
@@ -140,11 +141,10 @@ proc startServer*(profilePath: string) =
     
     try:
         # Initialize framework context
-        # Load and parse profile 
-        let profile = parsetoml.parseFile(profilePath)
-        cq = Conquest.init(profile)
+        let profileString = readFile(profilePath)
+        cq = Conquest.init(profileString)
 
-        cq.info("Using profile \"", profile.getString("name"), "\" (", profilePath ,").")
+        cq.info("Using profile \"", cq.profile.getString("name"), "\" (", profilePath ,").")
         
         # Initialize database
         cq.dbInit()

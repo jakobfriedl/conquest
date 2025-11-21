@@ -20,7 +20,6 @@ task client, "Build conquest client binary":
 
 requires "nim >= 2.2.4"
 
-requires "parsetoml >= 0.7.2"
 requires "nimcrypto >= 0.6.4"
 requires "tiny_sqlite >= 0.2.0"
 requires "winim >= 3.9.4"

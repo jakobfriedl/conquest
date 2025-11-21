@@ -1,25 +1,17 @@
-import parsetoml, strutils, sequtils, random, base64
-
+import strutils, sequtils, random, base64
 import ./[types, utils]
-
-proc findKey(profile: Profile, path: string): TomlValueRef =
-  let keys = path.split(".")
-  let target = keys[keys.high]
-  
-  var current = profile
-  for i in 0 ..< keys.high:
-    let temp = current.getOrDefault(keys[i])
-    if temp == nil:
-      return nil
-    current = temp
-  
-  return current.getOrDefault(target)
+import ./toml/toml
+export parseFile, parseString, free, getTableKeys, getRandom
 
 # Takes a specific "."-separated path as input and returns a default value if the key does not exits 
 # Example: cq.profile.getString("http-get.agent.heartbeat.prefix", "not found") returns the string value of the 
 #          prefix key, or "not found" if the target key or any sub-tables don't exist 
-# '#' characters represent wildcard characters and are replaced with a random alphanumerical character
+# '#' characters represent wildcard characters and are replaced with a random alphanumerical character (a-zA-Z0-9)
+# '$' characters are replaced with a random number (0-9)
 
+#[
+    Helper functions
+]#
 proc randomChar(): char = 
     let alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     return alphabet[rand(alphabet.len - 1)]
@@ -33,48 +25,53 @@ proc getRandom*(values: seq[TomlValueRef]): TomlValueRef =
         return nil
     return values[rand(values.len - 1)]
 
+#[
+    Wrapper functions
+]# 
 proc getStringValue*(key: TomlValueRef, default: string = ""): string = 
-    # In some cases, the profile can define multiple values for a key, e.g. for HTTP headers
-    # A random entry is selected from these specifications
-    var value: string = ""
-    if key.kind == TomlValueKind.String: 
-        value = key.getStr(default)
-    elif key.kind == TomlValueKind.Array:
-        value = key.getElems().getRandom().getStr(default)
+    if key.isNil or key.kind == None:
+        return default
     
-    # Replace '#' with a random alphanumerical character and return the resulting string
+    var value: string = ""
+    if key.kind == String: 
+        value = key.strVal
+    elif key.kind == Array:
+        let randomElem = getRandom(key.arrayVal)
+        if randomElem != nil and randomElem.kind == String:
+            value = randomElem.strVal
+    
+    # Replace '#' with random alphanumerical character
     return value.mapIt(if it == '#': randomChar() elif it == '$': randomNumber() else: it).join("")
 
-proc getString*(profile: Profile, path: string, default: string = ""): string =  
+proc getString*(profile: Profile, path: string, default: string = ""): string =
     let key = profile.findKey(path)
-    if key == nil:
-        return default 
     return key.getStringValue(default)
 
-proc getBool*(profile: Profile, path: string, default: bool = false): bool = 
+proc getInt*(profile: Profile, path: string, default: int = 0): int =
     let key = profile.findKey(path)
-    if key == nil: 
-        return default 
-    return key.getBool(default)
-
-proc getInt*(profile: Profile, path: string, default = 0): int =  
-    let key = profile.findKey(path)
-    if key == nil: 
-        return default 
     return key.getInt(default)
 
-proc getTable*(profile: Profile, path: string): TomlTableRef = 
+proc getBool*(profile: Profile, path: string, default: bool = false): bool =
     let key = profile.findKey(path)
-    if key == nil: 
-        return new TomlTableRef
+    return key.getBool(default)
+
+proc getTable*(profile: Profile, path: string): TomlTableRef =
+    let key = profile.findKey(path)
     return key.getTable()
 
 proc getArray*(profile: Profile, path: string): seq[TomlValueRef] = 
     let key = profile.findKey(path)
-    if key == nil: 
+    if key.kind != Array: 
         return @[]
-    return key.getElems() 
+    return key.getElems()
 
+proc isArray*(profile: Profile, path: string): bool = 
+    let key = profile.findKey(path)
+    return key.kind == Array
+
+#[
+    Data transformation
+]#
 proc applyDataTransformation*(profile: Profile, path: string, data: seq[byte]): string = 
     # 1. Encoding 
     var dataString: string

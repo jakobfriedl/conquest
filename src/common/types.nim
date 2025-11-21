@@ -1,9 +1,11 @@
 import tables
-import parsetoml, json
+import json
 import system
 import mummy
 when defined(client): 
     import whisky
+
+import ./toml/toml
 
 # Custom Binary Task structure
 const   
@@ -285,7 +287,7 @@ type
         privateKey*: Key 
         publicKey*: Key
 
-    Profile* = TomlValueRef
+    Profile* = TomlTableRef
 
     WsConnection* = ref object
         when defined(server):
@@ -300,6 +302,7 @@ type
         threads*: Table[string, Thread[Listener]]
         agents*: Table[string, Agent]
         keyPair*: KeyPair
+        profileString*: string
         profile*: Profile
         client*: WsConnection
 

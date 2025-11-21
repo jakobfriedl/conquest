@@ -1,4 +1,4 @@
-import times, json, base64, parsetoml, strformat
+import times, json, base64, strformat
 import stb_image/write as stbiw
 import ./logger
 import ../../common/[types, utils, event]
@@ -46,12 +46,12 @@ proc sendPublicKey*(client: WsConnection, publicKey: Key) =
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
-proc sendProfile*(client: WsConnection, profile: Profile) = 
+proc sendProfile*(client: WsConnection, profileString: string) = 
     let event = Event(
         eventType: CLIENT_PROFILE,
         timestamp: now().toTime().toUnix(),
         data: %*{
-            "profile": profile.toTomlString()
+            "profile": profileString
         }
     )
     if client != nil: 

@@ -57,7 +57,7 @@ proc validateDecryption*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: u
     Elliptic curve cryptography ensures that the actual session key is never sent over the network
     Private keys and shared secrets are wiped from agent memory as soon as possible 
 ]#
-{.compile: "monocypher/monocypher.c".}
+{.compile: protect("monocypher/monocypher.c").}
 
 # C function imports from (monocypher/monocypher.c)
 proc crypto_x25519*(shared_secret: ptr byte, your_secret_key: ptr byte, their_public_key: ptr byte) {.importc, cdecl.}

@@ -1,10 +1,10 @@
 import whisky
-import tables, times, strutils, strformat, json, parsetoml, base64, native_dialogs
+import tables, times, strutils, strformat, json, base64, native_dialogs
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console]
 import ./views/loot/[screenshots, downloads]
 import ./views/modals/generatePayload
-import ../common/[types, utils, crypto]
+import ../common/[types, utils, profile, crypto]
 import ./core/websocket
 
 proc main(ip: string = "localhost", port: int = 37573) = 
@@ -85,7 +85,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     wipeKey(clientKeyPair.privateKey)
 
                 of CLIENT_PROFILE:
-                    profile = parsetoml.parseString(event.data["profile"].getStr())
+                    profile = parseString(event.data["profile"].getStr())
                 
                 of CLIENT_LISTENER_ADD: 
                     let listener = event.data.to(UIListener)

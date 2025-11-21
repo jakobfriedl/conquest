@@ -1,5 +1,5 @@
-import mummy, terminal, parsetoml, tables
-import strutils, strformat, base64
+import mummy, terminal
+import strutils, strformat
 
 import ./handlers
 import ../globals
@@ -81,8 +81,8 @@ proc httpGet*(request: Request) =
 
             # Add headers, as defined in the team server profile 
             var headers: HttpHeaders
-            for header, value in cq.profile.getTable("http-get.server.headers"):
-                headers.add((header, value.getStringValue()))
+            for header in cq.profile.getTableKeys("http-get.server.headers"):
+                headers.add((header.key, header.value.getStringValue()))
 
             request.respond(200, headers = headers, body = payload)
 
@@ -129,8 +129,8 @@ proc httpPost*(request: Request) =
 
             # Add response headers, as defined in team server profile
             var headers: HttpHeaders
-            for header, value in cq.profile.getTable("http-post.server.headers"):
-                headers.add((header, value.getStringValue()))
+            for header in cq.profile.getTableKeys("http-post.server.headers"):
+                headers.add((header.key, header.value.getStringValue()))
 
             # Differentiate between registration and task result packet
             var unpacker = Unpacker.init(Bytes.toString(data))
