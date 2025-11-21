@@ -80,7 +80,22 @@ suffix = ".######################################-####"
 
 ![Heartbeat in Authorization Header](../assets/profile-1.png)
 
+Multiple encodings can be applied to a packet by defining them in an array of inline-tables, as seen in the example below. The encodings are applied in the order they are defined in the profile. During the decoding of the data transformation, this order is reversed. Hence, the example below first applies the ROT encoding with the key 5 on the data and later base64-encodes it. The reversal starts with the base64-decoding and a rotation in the opposite direction.
+
+```toml
+placement = { type = "body" }
+encoding = [
+    { type = "rot", key = 5 },
+    { type = "base64" }
+]
+```
+
+
+
 Check the [default profile](../data/profile.toml) for more examples.
+
+Other example profiles: 
+- [youtube.profile](../data/youtube.toml): Traffic that resembles watching and interacting with Youtube videos.
 
 ### Request options
 

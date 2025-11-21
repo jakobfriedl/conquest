@@ -1,4 +1,4 @@
-import strutils, sequtils, random, base64
+import strutils, sequtils, random, base64, algorithm
 import ./[types, utils]
 import ./toml/toml
 export parseFile, parseString, free, getTableKeys, getRandom
@@ -74,18 +74,28 @@ proc isArray*(profile: Profile, path: string): bool =
 ]#
 proc applyDataTransformation*(profile: Profile, path: string, data: seq[byte]): string = 
     # 1. Encoding 
-    var dataString: string
-    case profile.getString(path & protect(".encoding.type"), default = protect("none"))
-    of protect("base64"):
-        dataString = encode(data, safe = profile.getBool(path & protect(".encoding.url-safe"))).replace("=", "")
-    of protect("hex"):
-        dataString = Bytes.toString(data).toHex().toLowerAscii() 
-    of protect("rot"):
-        dataString = Bytes.toString(encodeRot(data, profile.getInt(path & ".encoding.key", default = 13)))
-    of protect("xor"):
-        dataString = Bytes.toString(xorBytes(data, profile.getInt(path & ".encoding.key", default = 1)))
-    of protect("none"): 
-        dataString = Bytes.toString(data)
+    var steps: seq[TomlTableRef] = @[]
+
+    # Apply all encoding techniques in the order specified in the profile    
+    if profile.isArray(path & protect(".encoding")):
+        for encoding in profile.getArray(path & protect(".encoding")): 
+            steps.add(encoding.getTable())
+    else: 
+        steps = @[profile.getTable(path & protect(".encoding"))]
+
+    var dataString: string = Bytes.toString(data) 
+    for step in steps: 
+        case step.getTableValue(protect("type")).getStr(default = "none")
+        of protect("base64"):
+            dataString = encode(dataString, safe = step.getTableValue(protect("url-safe")).getBool()).replace("=", "")
+        of protect("hex"):
+            dataString = dataString.toHex().toLowerAscii() 
+        of protect("rot"):
+            dataString = Bytes.toString(encodeRot(string.toBytes(dataString), step.getTableValue(protect("key")).getInt(default = 13)))
+        of protect("xor"):
+            dataString = Bytes.toString(xorBytes(string.toBytes(dataString), step.getTableValue(protect("key")).getInt(default = 1)))
+        of protect("none"): 
+            discard
 
     # 2. Add prefix & suffix
     let prefix = profile.getString(path & protect(".prefix"))
@@ -98,17 +108,29 @@ proc reverseDataTransformation*(profile: Profile, path: string, data: string): s
     let 
         prefix = profile.getString(path & protect(".prefix"))
         suffix = profile.getString(path & protect(".suffix"))
-        dataString = data[len(prefix) ..^ len(suffix) + 1]
+    var dataString = data[len(prefix) ..^ len(suffix) + 1]
 
     # 2. Decoding
-    case profile.getString(path & protect(".encoding.type"), default = protect("none")): 
+    var steps: seq[TomlTableRef] = @[]
+
+    # Apply all encoding techniques in reverse order    
+    if profile.isArray(path & protect(".encoding")):
+        for encoding in profile.getArray(path & protect(".encoding")): 
+            steps.add(encoding.getTable())
+    else: 
+        steps = @[profile.getTable(path & protect(".encoding"))]
+
+    for step in steps.reversed():
+        case step.getTableValue(protect("type")).getStr(default = "none")
         of protect("base64"):
-            result = string.toBytes(decode(dataString)) 
+            dataString = decode(dataString)
         of protect("hex"):
-            result = string.toBytes(parseHexStr(dataString))
-        of protect("rot"): 
-            result = decodeRot(string.toBytes(dataString), profile.getInt(path & ".encoding.key", default = 13))
+            dataString = parseHexStr(dataString)
+        of protect("rot"):
+            dataString = Bytes.toString(decodeRot(string.toBytes(dataString), step.getTableValue(protect("key")).getInt(default = 13)))
         of protect("xor"):
-            result = xorBytes(string.toBytes(dataString), profile.getInt(path & ".encoding.key", default = 1))
-        of protect("none"):
-            result = string.toBytes(dataString) 
+            dataString = Bytes.toString(xorBytes(string.toBytes(dataString), step.getTableValue(protect("key")).getInt(default = 1)))
+        of protect("none"): 
+            discard
+
+    return string.toBytes(dataString)

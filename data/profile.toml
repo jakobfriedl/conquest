@@ -44,9 +44,12 @@ suffix = ".######################################-####"
 # placement = { type = "query", name = "id" }
 # encoding = { type = "hex" }
 
-# Example: Raw data in GET request body
+# Example: Data encoded with multiple techniques in GET request body
 # placement = { type = "body" }
-# encoding = { "none" }
+# encoding = [
+#     { type = "rot", key = 5 },
+#     { type = "base64" }
+# ]
 
 # Defines arbitrary URI parameters that are added to the request
 [http-get.agent.parameters]
