@@ -6,13 +6,16 @@
 - [Team server settings](#team-server-settings)
 - [GET settings](#get-settings)
   - [Data transformation](#data-transformation)
+    - [Chaining Encodings](#chaining-encodings)
+    - [Binary Prefix/Suffix](#binary-prefixsuffix)
+    - [More Examples](#more-examples)
   - [Request options](#request-options)
   - [Response options](#response-options)
 - [POST settings](#post-settings)
 
 ## General
 
-Conquest supports malleable C2 profiles written using the TOML configuration language. This allows the complete customization of network traffic using data transformation, encoding and randomization. Wildcard characters `#` are replaced by a random alphanumerical character, making it possible to add even more variation to requests via randomized parameters or cookies. There is also the `$` wildcard, which is replaced by a single digit, for randomizing numeric values.  
+Conquest supports malleable C2 profiles written using the TOML configuration language and fully support the TOML v1.0.0 spec. This allows the complete customization of network traffic using data transformation, encoding and randomization. Wildcard characters `#` are replaced by a random alphanumerical character, making it possible to add even more variation to requests via randomized parameters or cookies. There is also the `$` wildcard, which is replaced by a single digit, for randomizing numeric values.  
 
 General settings that are defined at the beginning of the profile are the profile name and the relative location of important files, such as the team server's private key or the Conquest database.
 
@@ -55,8 +58,8 @@ A huge advantage of Conquest's C2 profile is the customization of where the hear
 | encoding.type | OPTION | Type of encoding to use. The following options are available: `base64`, `hex`, `rot`, `xor` and `none` (default) | 
 | encoding.url-safe | BOOL | Only used if encoding.type is set to `base64`. Uses `-` and `_` instead of `+`, `=` and `/`. Default: `false` |
 | encoding.key | INTEGER | Only used if encoding.type is set to `xor` or `rot`. The `rot` setting applies a Caesar cipher, while `xor` simply XOR-encodes the data. |
-| prefix | STRING | String to prepend before the heartbeat payload. |
-| suffix | STRING | String to append after the heartbeat payload. |
+| prefix | STRING/ARRAY | String to prepend before the heartbeat payload. |
+| suffix | STRING/ARRAY | String to append after the heartbeat payload. |
 
 The order of operations is: 
 1. Encoding
@@ -80,6 +83,8 @@ suffix = ".######################################-####"
 
 ![Heartbeat in Authorization Header](../assets/profile-1.png)
 
+#### Chaining Encodings
+
 Multiple encodings can be applied to a packet by defining them in an array of inline-tables, as seen in the example below. The encodings are applied in the order they are defined in the profile. During the decoding of the data transformation, this order is reversed. Hence, the example below first applies the ROT encoding with the key 5 on the data and later base64-encodes it. The reversal starts with the base64-decoding and a rotation in the opposite direction.
 
 ```toml
@@ -90,7 +95,18 @@ encoding = [
 ]
 ```
 
+#### Binary Prefix/Suffix
 
+Instead of using strings for the prefix and suffix, it is also possible to use an array of integers to define the bytes that will be prepended/appended. Hex-formatting is supported, so something like the following can be used. This is useful to create requests that resemble binary data, such as PNGs and PDFs. 
+
+```toml
+placement = { type = "body" }
+encoding = { type = "xor", key = 100 }
+prefix = [0x25, 0x50, 0x44, 0x46]           # %PDF
+suffix = [0x25, 0x25, 0x45, 0x4F, 0x46]     # %%EOF
+```
+
+#### More Examples
 
 Check the [default profile](../data/profile.toml) for more examples.
 

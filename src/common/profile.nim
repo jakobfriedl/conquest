@@ -41,6 +41,7 @@ proc getStringValue*(key: TomlValueRef, default: string = ""): string =
             value = randomElem.strVal
     
     # Replace '#' with random alphanumerical character
+    # Replace '$' with a random digit
     return value.mapIt(if it == '#': randomChar() elif it == '$': randomNumber() else: it).join("")
 
 proc getString*(profile: Profile, path: string, default: string = ""): string =
@@ -68,6 +69,15 @@ proc getArray*(profile: Profile, path: string): seq[TomlValueRef] =
 proc isArray*(profile: Profile, path: string): bool = 
     let key = profile.findKey(path)
     return key.kind == Array
+
+# Retrieve string or binary prefix
+proc getStringOrByteArray*(profile: Profile, path: string): string = 
+    result = ""
+    if profile.isArray(path): 
+        for element in profile.getArray(path): 
+            result &= char(element.getInt())
+    else: 
+        result = profile.getString(path)    
 
 #[
     Data transformation
@@ -98,16 +108,16 @@ proc applyDataTransformation*(profile: Profile, path: string, data: seq[byte]): 
             discard
 
     # 2. Add prefix & suffix
-    let prefix = profile.getString(path & protect(".prefix"))
-    let suffix = profile.getString(path & protect(".suffix"))
-    
+    let 
+        prefix = profile.getStringOrByteArray(path & protect(".prefix"))
+        suffix = profile.getStringOrByteArray(path & protect(".suffix"))
     return prefix & dataString & suffix
 
 proc reverseDataTransformation*(profile: Profile, path: string, data: string): seq[byte] = 
     # 1. Remove prefix & suffix
     let 
-        prefix = profile.getString(path & protect(".prefix"))
-        suffix = profile.getString(path & protect(".suffix"))
+        prefix = profile.getStringOrByteArray(path & protect(".prefix"))
+        suffix = profile.getStringOrByteArray(path & protect(".suffix"))
     var dataString = data[len(prefix) ..^ len(suffix) + 1]
 
     # 2. Decoding

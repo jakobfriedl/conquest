@@ -241,17 +241,17 @@ proc getElems*(value: TomlValueRef): seq[TomlValueRef] =
             continue
         
         # Try string
-        let strVal = toml_array_string(arr, i.cint)
+        let strVal {.volatile.} = toml_array_string(arr, i.cint)
         if strVal.ok:
-            let strPtr {.volatile.} = cast[ptr cstring](cast[int](addr strVal) + 8)[]
+            let strPtr = cast[ptr cstring](cast[int](addr strVal) + 8)[]
             if not strPtr.isNil:
                 result.add(TomlValueRef(kind: String, strVal: $strPtr))
                 continue
         
         # Try int
-        let intVal = toml_array_int(arr, i.cint)
+        let intVal {.volatile.} = toml_array_int(arr, i.cint)
         if intVal.ok:
-            let intPtr {.volatile.} = cast[ptr int64](cast[int](addr intVal) + 8)[]
+            let intPtr = cast[ptr int64](cast[int](addr intVal) + 8)[]
             result.add(TomlValueRef(kind: Int, intVal: intPtr))
     
 proc getTableKeys*(profile: TomlTableRef, path: string): seq[tuple[key: string, value: TomlValueRef]] =
