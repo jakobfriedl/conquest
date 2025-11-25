@@ -14,9 +14,10 @@ let module* = Module(
             name: protect("sleep"),
             commandType: CMD_SLEEP,
             description: protect("Update sleep delay settings."),
-            example: protect("sleep 5"),
+            example: protect("sleep 5 15"),
             arguments: @[
-                Argument(name: protect("delay"), description: protect("Delay in seconds."), argumentType: INT, isRequired: true)
+                Argument(name: protect("delay"), description: protect("Delay in seconds."), argumentType: INT, isRequired: true),
+                Argument(name: protect("jitter"), description: protect("Jitter in percent (0-100)."), argumentType: INT, isRequired: false)
             ],
             execute: executeSleep
         ),
@@ -48,12 +49,21 @@ when defined(agent):
     proc executeSleep(ctx: AgentCtx, task: Task): TaskResult = 
 
         try: 
-            # Parse task parameter
-            let delay = Bytes.toUint32(task.args[0].data)
+            var
+                delay = Bytes.toUint32(task.args[0].data) 
+                jitter = ctx.sleepSettings.jitter
+
+            # Optional jitter was passed
+            if int(task.argCount) > 1: 
+                jitter = Bytes.toUint32(task.args[1].data)
+                if jitter < 0 or jitter > 100: 
+                    raise newException(CatchableError, protect("Invalid jitter value."))                    
 
             # Updating sleep in agent context
-            print fmt"   [>] Setting sleep delay to {delay} seconds."
             ctx.sleepSettings.sleepDelay = delay
+            ctx.sleepSettings.jitter = jitter 
+
+            print fmt"   [>] Setting sleep delay to {delay} seconds with {jitter}% jitter."
                     
             return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
