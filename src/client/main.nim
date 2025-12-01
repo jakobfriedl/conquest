@@ -86,7 +86,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
                 of CLIENT_PROFILE:
                     profile = parseString(event.data["profile"].getStr())
-                
+
                 of CLIENT_LISTENER_ADD: 
                     let listener = event.data.to(UIListener)
                     listenersTable.listeners.add(listener)
