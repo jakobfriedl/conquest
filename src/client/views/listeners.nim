@@ -68,10 +68,10 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
     if igBeginTable("Listeners", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
         igTableSetupColumn("ListenerID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
-        igTableSetupColumn("Address", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-        igTableSetupColumn("Port", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-        igTableSetupColumn("Callback Hosts", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-        igTableSetupColumn("Protocol", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Listener Type", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Bind Address", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Bind Port", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Callback", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
 
         igTableSetupScrollFreeze(0, 1)
         igTableHeadersRow()
@@ -90,14 +90,23 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
                 discard igSelectable_Bool(listener.listenerId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
                 
             if igTableSetColumnIndex(1): 
-                igText(listener.address.cstring)
+                igText(($listener.listenerType).cstring)
             if igTableSetColumnIndex(2): 
-                igText(($listener.port).cstring)
+                if listener.listenerType == LISTENER_HTTP: 
+                    igText(listener.address.cstring)
+                else: 
+                    igText("-")
             if igTableSetColumnIndex(3): 
-                for host in listener.hosts.split(";"):
-                    igText(host.cstring)
+                if listener.listenerType == LISTENER_HTTP: 
+                    igText(($listener.port).cstring)
+                else: 
+                    igText("-")
             if igTableSetColumnIndex(4): 
-                igText(($listener.protocol).cstring)
+                if listener.listenerType == LISTENER_HTTP: 
+                    for host in listener.hosts.split(";"):
+                        igText(host.cstring)
+                elif listener.listenerType == LISTENER_SMB:
+                    igText(("\\\\.\\pipe\\" & listener.pipe).cstring)
 
         # Handle right-click context menu
         # Right-clicking the table header to hide/show columns or reset the layout is only possible when no sessions are selected

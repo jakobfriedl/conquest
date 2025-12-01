@@ -12,58 +12,70 @@ proc serve(listener: Listener) {.thread.} =
     except Exception:
         discard 
 
-proc listenerStart*(cq: Conquest, listenerId: string, hosts: string, address: string, port: int, protocol: Protocol) = 
+proc listenerStart*(cq: Conquest, listener: UIListener) = 
     try:
-        # Create new listener
-        var router: Router
-        router.notFoundHandler = routes.error404
-        router.methodNotAllowedHandler = routes.error405
-        
-        # Define API endpoints based on C2 profile
-        # GET requests
-        for endpoint in cq.profile.getArray("http-get.endpoints"): 
-            router.addRoute("GET", endpoint.getStringValue(), routes.httpGet)
+        var l: Listener
+        case listener.listenerType 
+        of LISTENER_HTTP:
+            # Create new listener
+            var router: Router
+            router.notFoundHandler = routes.error404
+            router.methodNotAllowedHandler = routes.error405
+            
+            # Define API endpoints based on C2 profile
+            # GET requests
+            for endpoint in cq.profile.getArray("http-get.endpoints"): 
+                router.addRoute("GET", endpoint.getStringValue(), routes.httpGet)
 
-        # POST requests
-        var postMethods: seq[string]
-        for reqMethod in cq.profile.getArray("http-post.request-methods"): 
-            postMethods.add(reqMethod.getStringValue())
+            # POST requests
+            var postMethods: seq[string]
+            for reqMethod in cq.profile.getArray("http-post.request-methods"): 
+                postMethods.add(reqMethod.getStringValue())
 
-        # Default method is POST
-        if postMethods.len == 0: 
-            postMethods = @["POST"]
+            # Default method is POST
+            if postMethods.len == 0: 
+                postMethods = @["POST"]
 
-        for endpoint in cq.profile.getArray("http-post.endpoints"): 
-            for httpMethod in postMethods:
-                router.addRoute(httpMethod, endpoint.getStringValue(), routes.httpPost)
-        
-        let server = newServer(router.toHandler(), maxBodyLen = 1024 * 1024 * 1024) 
+            for endpoint in cq.profile.getArray("http-post.endpoints"): 
+                for httpMethod in postMethods:
+                    router.addRoute(httpMethod, endpoint.getStringValue(), routes.httpPost)
+            
+            let server = newServer(router.toHandler(), maxBodyLen = 1024 * 1024 * 1024) 
+
+            # Store listener in database
+            l = Listener(
+                server: server,
+                listenerId: listener.listenerId,
+                listenerType: LISTENER_HTTP,
+                hosts: listener.hosts,
+                address: listener.address,
+                port: listener.port
+            )
+
+            # Start serving
+            var thread: Thread[Listener]
+            createThread(thread, serve, l)
+            server.waitUntilReady()
+
+            cq.threads[listener.listenerId] = thread
+
+        of LISTENER_SMB: 
+            l = Listener(
+                listenerId: listener.listenerId, 
+                listenerType: LISTENER_SMB,
+                pipe: listener.pipe
+            )
+
+        cq.listeners[listener.listenerId] = l
 
         # Store listener in database
-        var listener = Listener(
-            server: server,
-            listenerId: listenerId,
-            hosts: hosts,
-            address: address,
-            port: port,
-            protocol: protocol
-        )
-
-        # Start serving
-        var thread: Thread[Listener]
-        createThread(thread, serve, listener)
-        server.waitUntilReady()
-
-        cq.listeners[listenerId] = listener
-        cq.threads[listenerId] = thread
-
-        if not cq.dbListenerExists(listenerId.toUpperAscii): 
-            if not cq.dbStoreListener(listener):
+        if not cq.dbListenerExists(listener.listenerId.toUpperAscii): 
+            if not cq.dbStoreListener(l):
                 raise newException(CatchableError, "Failed to store listener in database.")
 
-        cq.success("Started listener", fgGreen, fmt" {listenerId} ", resetStyle, fmt"on {address}:{$port}.")
-        cq.client.sendListener(listener)
-        cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {listenerId} on {address}:{$port}.")
+        cq.success("Started listener", fgGreen, fmt" {l.listenerId}.")
+        cq.client.sendListener(l)
+        cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {l.listenerId}.")
 
     except CatchableError as err: 
         cq.error("Failed to start listener: ", err.msg)

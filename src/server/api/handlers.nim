@@ -72,6 +72,11 @@ proc getTasks*(heartbeat: seq[byte]): tuple[agentId: string, tasks: seq[seq[byte
         for task in cq.agents[agentId].tasks.mitems: # Iterate over agents as mutable items in order to modify GMAC tag
             let taskData = cq.serializeTask(task)
             tasks.add(taskData)
+
+        # Collect tasks for linked agents
+        
+        # Clear task queue of parent agent & linked agents
+        # cq.agents[agentId].tasks = @[]
         
         return (agentId, tasks)
 

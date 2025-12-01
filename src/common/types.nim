@@ -66,7 +66,7 @@ type
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
         STATUS_FAILED = 1'u8
-        STATUS_IN_PROGRESS = 2'u8
+        STATUS_IN_PROGRESS = 2'u8 
 
     ResultType* = enum 
         RESULT_STRING = 0'u8 
@@ -227,23 +227,30 @@ type
 
 # Listener structure
 type 
-    Protocol* {.size: sizeof(uint8).} = enum
-        HTTP = "http"
+    ListenerType* {.size: sizeof(uint8).} = enum
+        LISTENER_HTTP = "HTTP"
+        LISTENER_SMB = "SMB"
 
     Listener* = ref object
         server*: Server
         listenerId*: string
-        hosts*: string
-        address*: string
-        port*: int
-        protocol*: Protocol
+        case listenerType*: ListenerType
+        of LISTENER_HTTP: 
+            hosts*: string
+            address*: string
+            port*: int
+        of LISTENER_SMB: 
+            pipe*: string
 
     UIListener* = ref object
         listenerId*: string
-        hosts*: string
-        address*: string
-        port*: int
-        protocol*: Protocol
+        case listenerType*: ListenerType
+        of LISTENER_HTTP: 
+            hosts*: string
+            address*: string
+            port*: int
+        of LISTENER_SMB: 
+            pipe*: string
 
 #[
     Client <-> Server WebSocket communication
@@ -313,6 +320,14 @@ type
         endHour*: int32
         endMinute*: int32
 
+    TransportSettings* = ref object 
+        listenerId*: string
+        when defined(TRANSPORT_HTTP): 
+            hosts*: string
+        when defined(TRANSPORT_SMB): 
+            pipe*: string 
+            hPipe*: uint32
+
     SleepSettings* = ref object 
         sleepDelay*: uint32
         jitter*: uint32
@@ -322,14 +337,14 @@ type
 
     AgentCtx* = ref object
         agentId*: string
-        listenerId*: string
-        hosts*: string
+        transport*: TransportSettings
         sleepSettings*: SleepSettings
         killDate*: int64
         sessionKey*: Key
         agentPublicKey*: Key
         profile*: Profile
         registered*: bool
+        links*: Table[string, uint32]
         
 # Structure for command module definitions 
 type

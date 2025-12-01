@@ -14,7 +14,7 @@ proc createHeartbeat*(ctx: AgentCtx): Heartbeat =
             iv: generateBytes(Iv),
             gmac: default(AuthenticationTag)
         ), 
-        listenerId: string.toUuid(ctx.listenerId),
+        listenerId: string.toUuid(ctx.transport.listenerId),
         timestamp: uint32(now().toTime().toUnix())
     )
 

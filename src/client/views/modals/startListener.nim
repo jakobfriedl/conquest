@@ -10,6 +10,7 @@ type
         callbackHosts: array[256 * 32, char]
         bindAddress: array[256, char]
         bindPort: uint16 
+        pipe: array[256, char]
         protocol: int32
         protocols: seq[string]
 
@@ -19,7 +20,7 @@ proc ListenerModal*(): ListenerModalComponent =
     zeroMem(addr result.bindAddress[0], 256)
     result.bindPort = DEFAULT_PORT
     result.protocol = 0
-    for p in Protocol.low .. Protocol.high:
+    for p in ListenerType.low .. ListenerType.high:
         result.protocols.add($p)
 
 proc resetModalValues(component: ListenerModalComponent) = 
@@ -48,7 +49,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
         var availableSize: ImVec2
 
         # Listener protocol/type dropdown selection
-        igText("Protocol:         ")
+        igText("Listener Type:    ")
         igSameLine(0.0f, textSpacing)
         igGetContentRegionAvail(addr availableSize)
         igSetNextItemWidth(availableSize.x)
@@ -59,7 +60,8 @@ proc draw*(component: ListenerModalComponent): UIListener =
         igDummy(vec2(0.0f, 10.0f))
 
         # HTTP Listener settings
-        if component.protocols[component.protocol] == $HTTP:
+        case cast[ListenerType](component.protocol):
+        of LISTENER_HTTP:
             # Listener bindAddress 
             igText("Host (Bind):      ")
             igSameLine(0.0f, textSpacing)
@@ -81,52 +83,76 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igSetNextItemWidth(availableSize.x)
             igInputTextMultiline("##InputCallbackHosts", cast[cstring](addr component.callbackHosts[0]), 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
       
+            # Only enabled the start button when valid values have been entered
+            igBeginDisabled(($cast[cstring]((addr component.bindAddress[0])) == "") or (component.bindPort <= 0))
+
+        of LISTENER_SMB:
+            # SMB Pipe name 
+            igText("Pipe name:        ")
+            igSameLine(0.0f, textSpacing)
+            igGetContentRegionAvail(addr availableSize)
+            igSetNextItemWidth(availableSize.x)
+            igInputText("##InputPipe", cast[cstring](addr component.pipe[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
+
+            # Only enabled the start button when valid values have been entered
+            igBeginDisabled($cast[cstring]((addr component.pipe[0])) == "")
+
         igGetContentRegionAvail(addr availableSize)
 
         igDummy(vec2(0.0f, 10.0f))
         igSeparator()
         igDummy(vec2(0.0f, 10.0f))
 
-        # Only enabled the start button when valid values have been entered
-        igBeginDisabled(($cast[cstring]((addr component.bindAddress[0])) == "") or (component.bindPort <= 0))
-
         if igButton("Start", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)): 
 
+            let uuid = generateUUID() 
             # Process input values
-            var hosts: string = ""
-            let 
-                callbackHosts = $cast[cstring]((addr component.callbackHosts[0]))
-                bindAddress = $cast[cstring]((addr component.bindAddress[0]))
-                bindPort =  int(component.bindPort)
 
-            if callbackHosts.isEmptyOrWhitespace(): 
-                hosts &= bindAddress & ":"  & $bindPort
+            case cast[ListenerType](component.protocol):
+            of LISTENER_HTTP: 
+                var hosts: string = ""
+                let 
+                    callbackHosts = $cast[cstring]((addr component.callbackHosts[0]))
+                    bindAddress = $cast[cstring]((addr component.bindAddress[0]))
+                    bindPort =  int(component.bindPort)
 
-            else: 
-                for host in callbackHosts.splitLines():
-                    if host.isEmptyOrWhitespace(): 
-                        continue
+                if callbackHosts.isEmptyOrWhitespace(): 
+                    hosts &= bindAddress & ":"  & $bindPort
 
-                    hosts &= ";"
-                    let hostParts = host.split(":")
-                    if hostParts.len() == 2:
-                        if not hostParts[1].isEmptyOrWhitespace():  
-                            hosts &= hostParts[0] & ":" & hostParts[1]
-                        else: 
+                else: 
+                    for host in callbackHosts.splitLines():
+                        if host.isEmptyOrWhitespace(): 
+                            continue
+
+                        hosts &= ";"
+                        let hostParts = host.split(":")
+                        if hostParts.len() == 2:
+                            if not hostParts[1].isEmptyOrWhitespace():  
+                                hosts &= hostParts[0] & ":" & hostParts[1]
+                            else: 
+                                hosts &= hostParts[0] & ":" & $bindPort
+                        elif hostParts.len() == 1 and not hostParts[0].isEmptyOrWhitespace(): 
                             hosts &= hostParts[0] & ":" & $bindPort
-                    elif hostParts.len() == 1 and not hostParts[0].isEmptyOrWhitespace(): 
-                        hosts &= hostParts[0] & ":" & $bindPort
-            
-                hosts.removePrefix(";")
+                
+                    hosts.removePrefix(";")
 
-            # Return new listener object
-            result = UIListener(
-                listenerId: generateUUID(),
-                hosts: hosts,
-                address: bindAddress,
-                port: bindPort,
-                protocol: cast[Protocol](component.protocol)
-            )
+                # Return new listener object
+                result = UIListener(
+                    listenerId: uuid,
+                    listenerType: LISTENER_HTTP,
+                    hosts: hosts,
+                    address: bindAddress,
+                    port: bindPort
+                )
+            
+            of LISTENER_SMB: 
+                let pipe = $cast[cstring]((addr component.pipe[0]))
+                result = UIListener(
+                    listenerId: uuid,
+                    listenerType: LISTENER_SMB,
+                    pipe: pipe
+                )
+
             component.resetModalValues()
             igCloseCurrentPopup() 
         

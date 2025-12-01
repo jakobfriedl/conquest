@@ -214,7 +214,7 @@ proc collectAgentMetadata*(ctx: AgentCtx): Registration =
         ), 
         agentPublicKey: ctx.agentPublicKey,
         metadata: AgentMetadata(
-            listenerId: string.toUuid(ctx.listenerId),
+            listenerId: string.toUuid(ctx.transport.listenerId),
             username: string.toBytes(getUsername()),
             hostname: string.toBytes(getHostname()),
             domain: string.toBytes(getDomain()),

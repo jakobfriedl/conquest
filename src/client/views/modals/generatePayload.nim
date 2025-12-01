@@ -113,7 +113,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igSameLine(0.0f, textSpacing)
         igGetContentRegionAvail(addr availableSize)
         igSetNextItemWidth(availableSize.x)
-        igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.listenerId).join("\0") & "\0").cstring , listeners.len().int32)
+        igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.listenerId & " (" & $it.listenerType & ")").join("\0") & "\0").cstring , listeners.len().int32)
 
         # Sleep delay
         let step: uint32 = 1

