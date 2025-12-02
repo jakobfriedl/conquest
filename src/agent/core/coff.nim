@@ -380,7 +380,7 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
         sections = cast[ptr UncheckedArray[IMAGE_SECTION_HEADER]](objCtx.sections)
         secMap = cast[ptr UncheckedArray[SECTION_MAP]](objCtx.secMap)
 
-    print "[*] Copying over sections."
+    print protect("[*] Copying over sections.")
     for i in 0 ..< int(objCtx.union.header.NumberOfSections): 
         secSize = sections[i].SizeOfRawData
         secMap[i].size = secSize
@@ -396,17 +396,17 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     # The last page of the memory is the symbol/function map
     objCtx.symMap = cast[ptr PVOID](secBase)
 
-    print "[*] Processing sections and performing relocations."
+    print protect("[*] Processing sections and performing relocations.")
     if not objectProcessSection(addr objCtx): 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
         raise newException(CatchableError, protect("Failed to process sections."))
 
     # Executing the object file 
-    print "[*] Executing."
+    print protect("[*] Executing.")
     if not objectExecute(addr objCtx, entryFunction, args): 
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
         raise newException(CatchableError, fmt"Failed to execute function {$entryFunction}.")
-    print "[+] Object file executed successfully."
+    print protect("[+] Object file executed successfully.") 
     
     RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
 

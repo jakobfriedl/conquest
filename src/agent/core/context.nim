@@ -84,7 +84,7 @@ proc deserializeConfiguration(config: string): AgentCtx =
         ) 
 
     wipeKey(agentKeyPair.privateKey)
-    print "[+] Profile configuration deserialized."
+    print protect("[+] Profile configuration deserialized.")
 
 proc init*(T: type AgentCtx): AgentCtx = 
 
@@ -95,7 +95,7 @@ proc init*(T: type AgentCtx): AgentCtx =
         return deserializeConfiguration(CONFIGURATION)
 
     except CatchableError as err:
-        print "[-] " & err.msg
+        print protect("[-] "), err.msg
         return nil
 
 

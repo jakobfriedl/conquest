@@ -58,7 +58,7 @@ when defined(TRANSPORT_HTTP):
 
         except CatchableError as err:
             # When the listener is not reachable, don't kill the application, but check in at the next time
-            print "[-] ", err.msg 
+            print protect("[-] "), err.msg
         
         finally:
             client.close()
@@ -108,7 +108,7 @@ when defined(TRANSPORT_HTTP):
             discard waitFor client.request(fmt"http://{host}/{endpoint[0..^2]}", requestMethod, body)
         
         except CatchableError as err:
-            print "[-] ", err.msg 
+            print protect("[-] "), err.msg 
             return false
         
         finally:

