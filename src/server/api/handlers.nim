@@ -158,6 +158,10 @@ proc handleResult*(resultData: seq[byte]) =
 
                 cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
                 cq.client.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).")
+            
+            of RESULT_PROCESSES: 
+                cq.client.sendProcessList(agentId, Bytes.toString(taskResult.data))
+            
             else: discard 
 
             # Send newline to separate commands

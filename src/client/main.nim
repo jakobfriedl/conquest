@@ -1,10 +1,10 @@
 import whisky
-import tables, times, strutils, strformat, json, base64, native_dialogs
+import tables, times, strutils, strformat, algorithm, json, base64, native_dialogs
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console]
 import ./views/loot/[screenshots, downloads]
 import ./views/modals/generatePayload
-import ../common/[types, utils, profile, crypto]
+import ../common/[types, utils, profile, crypto, serialize]
 import ./core/websocket
 
 proc main(ip: string = "localhost", port: int = 37573) = 
@@ -183,6 +183,57 @@ proc main(ip: string = "localhost", port: int = 37573) =
                 of CLIENT_REVERT_TOKEN: 
                     sessionsTable.agentImpersonation.del(event.data["agentId"].getStr())
             
+                of CLIENT_PROCESSES: 
+                    let
+                        agentId = event.data["agentId"].getStr()
+                        procData = event.data["processes"].getStr()
+
+                    # Display processes in agent console    
+                    var unpacker = Unpacker.init(procData)
+                    let numProcesses = unpacker.getUint32() 
+
+                    var processes = initOrderedTable[uint32, ProcessInfo]()
+                    for i in 0 ..< numProcesses: 
+                        let procInfo = ProcessInfo(
+                            pid: unpacker.getUint32(),
+                            ppid: unpacker.getUint32(),
+                            name: unpacker.getDataWithLengthPrefix(),
+                            user: unpacker.getDataWithLengthPrefix(),
+                            session: unpacker.getUint32(),
+                            children: @[]
+                        )
+                        processes[procInfo.pid] = procInfo
+
+                    var rootProcesses: seq[uint32]
+                    for pid, procInfo in processes.mpairs(): 
+                        let ppid = procInfo.ppid 
+                        if processes.hasKey(ppid) and ppid != 0: 
+                            processes[ppid].children.add(pid)
+                        else: 
+                            rootProcesses.add(pid)
+
+                    # Header row
+                    let headers = @["PID", "PPID", "Process", "Session", "User context"]
+                    consoles[agentId].console.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(60) & headers[3].alignLeft(10) & headers[4])
+                    consoles[agentId].console.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(60) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4])))
+        
+                    # Format and print process
+                    proc printProcess(pid: uint32, indentSpaces: int = 0) =
+                        if not processes.contains(pid): 
+                            return
+                        
+                        var process = processes[pid]
+                        let processName = " ".repeat(indentSpaces) & process.name
+                        let line = ($process.pid).alignLeft(10) & ($process.ppid).alignLeft(10) & processName.alignLeft(60) & ($process.session).alignLeft(10) & process.user                        
+                        consoles[agentId].console.addItem(LOG_OUTPUT, line, "", int(pid) == consoles[agentId].agent.pid)
+
+                        # Recursively print child processes with indentation
+                        for childPid in process.children.sorted():
+                            printProcess(childPid, indentSpaces + 2)
+
+                    for pid in rootProcesses: 
+                        printProcess(pid)
+
                 else: discard 
         
             # Draw/update UI components/views

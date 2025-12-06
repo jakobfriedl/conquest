@@ -44,12 +44,13 @@ proc Textarea*(showTimestamps: bool = true, autoScroll: bool = true): TextareaWi
     result.autoScroll = autoScroll
 
 # API to add new content entry
-proc addItem*(component: TextareaWidget, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss")) = 
+proc addItem*(component: TextareaWidget, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss"), highlight: bool = false) = 
     for line in data.split("\n"): 
         component.content.items.add(ConsoleItem(
             timestamp: timestamp,
             itemType: itemType,
-            text: line
+            text: line,
+            highlight: highlight
         ))
 
 proc clear*(component: TextareaWidget) = 
@@ -81,7 +82,11 @@ proc print(component: TextareaWidget, item: ConsoleItem) =
         igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), ($item.itemType).cstring)
 
     igSameLine(0.0f, 0.0f)
-    igTextUnformatted(item.text.cstring, nil)
+
+    if not item.highlight:
+        igTextUnformatted(item.text.cstring, nil)
+    else: 
+        igTextColored(CONSOLE_HIGHLIGHT, item.text.cstring)
 
 proc draw*(component: TextareaWidget, size: ImVec2, filter: ptr ImGuiTextFilter = nil) = 
     try: 

@@ -1,18 +1,10 @@
 import winim/lean 
 import tables
 import ../utils/io
-import ../../common/utils
+import ../../common/[types, utils]
 import token
 
 type 
-    ProcessInfo* = object 
-        pid*: DWORD
-        ppid*: DWORD 
-        name*: string 
-        user*: string
-        session*: ULONG
-        children*: seq[DWORD]
-
     NtQuerySystemInformation = proc(systemInformationClass: SYSTEM_INFORMATION_CLASS, systemInformation: PVOID, systemInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}
     NtOpenProcess = proc(hProcess: PHANDLE, desiredAccess: ACCESS_MASK, oa: PCOBJECT_ATTRIBUTES, clientId: PCLIENT_ID): NTSTATUS {.stdcall.}    
     NtOpenProcessToken = proc(processHandle: HANDLE, desiredAccess: ACCESS_MASK, tokenHandle: PHANDLE): NTSTATUS {.stdcall.}
@@ -36,25 +28,28 @@ proc processSnapshot*(): PSYSTEM_PROCESS_INFORMATION =
     discard pNtQuerySystemInformation(systemProcessInformation, NULL, 0, addr returnLength)
     pSystemProcInfo = cast[PSYSTEM_PROCESS_INFORMATION](LocalAlloc(LMEM_FIXED, returnLength))
     if pSystemProcInfo == NULL:
-        raise newException(CatchableError, "1.2" & GetLastError().getError())
+        raise newException(CatchableError, GetLastError().getError())
     
     # Retrieve system process information
     status = pNtQuerySystemInformation(systemProcessInformation, cast[PVOID](pSystemProcInfo), returnLength, addr returnLength)
     if status != STATUS_SUCCESS:
-        raise newException(CatchableError, "b" & status.getNtError())
+        raise newException(CatchableError, status.getNtError())
     
     return pSystemProcInfo
 
 #[
     Retrieve information about running processes
 ]#
-proc processList*(): Table[DWORD, ProcessInfo] = 
-    result = initTable[DWORD, ProcessInfo]() 
+proc processList*(): seq[ProcessInfo] = 
+    result = @[]
 
-    # Take a snapshot of running processes
+    # Take a snapshot of running processes 
     var sysProcessInfo = processSnapshot() 
-    defer: LocalFree(cast[HLOCAL](sysProcessInfo))
-
+    # Note: This causes the program to crash unexpectedly for some reason, so its uncommented until I find the actual fix 
+    # defer: 
+        # if sysProcessInfo != nil:
+            # LocalFree(cast[HLOCAL](sysProcessInfo))
+    
     let pNtOpenProcess = cast[NtOpenProcess](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtOpenProcess")))
     let pNtOpenProcessToken = cast[NtOpenProcessToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtOpenProcessToken")))
     let pNtClose = cast[NtClose](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtClose")))
@@ -68,17 +63,10 @@ proc processList*(): Table[DWORD, ProcessInfo] =
             clientId: CLIENT_ID
         
         var 
-            pid = cast[DWORD](sysProcessInfo.UniqueProcessId)
-            ppid = cast[DWORD](sysProcessInfo.InheritedFromUniqueProcessId)
-
-        # Retrieve process information
-        result[pid] = ProcessInfo(
-            pid: pid,
-            ppid: ppid,
-            name: $sysProcessInfo.ImageName.Buffer,
-            session: sysProcessInfo.SessionId,
-            children: @[]
-        )
+            pid = cast[uint32](sysProcessInfo.UniqueProcessId)
+            ppid = cast[uint32](sysProcessInfo.InheritedFromUniqueProcessId)
+            session = cast[uint32](sysProcessInfo.SessionId)
+            user: string = ""
 
         # Retrieve user context    
         InitializeObjectAttributes(addr oa, NULL, 0, 0, NULL)
@@ -89,14 +77,19 @@ proc processList*(): Table[DWORD, ProcessInfo] =
         if status == STATUS_SUCCESS and hProcess != 0: 
             status = pNtOpenProcessToken(hProcess, TOKEN_QUERY, addr hToken)
             if status == STATUS_SUCCESS and hToken != 0: 
-                result[pid].user = hToken.getTokenUser().username
+                user = hToken.getTokenUser().username
                 discard pNtClose(hToken)
-            else: 
-                result[pid].user = ""
             discard pNtClose(hProcess)
+                
+        result.add(ProcessInfo(
+            pid: pid,
+            ppid: ppid,
+            name: (if sysProcessInfo.ImageName.Buffer != nil: $sysProcessInfo.ImageName.Buffer else: ""),
+            user: user,
+            session: session
+        ))
 
         # Move to next process
         if sysProcessInfo.NextEntryOffset == 0: 
             break
-            
         sysProcessInfo = cast[PSYSTEM_PROCESS_INFORMATION](cast[ULONG_PTR](sysProcessInfo) + sysProcessInfo.NextEntryOffset)

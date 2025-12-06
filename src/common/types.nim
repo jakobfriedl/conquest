@@ -4,6 +4,8 @@ import system
 import mummy
 when defined(client): 
     import whisky
+when defined(agent):
+    import winim/lean
 
 import ./toml/toml
 
@@ -72,6 +74,7 @@ type
         RESULT_STRING = 0'u8 
         RESULT_BINARY = 1'u8
         RESULT_NO_OUTPUT = 2'u8
+        RESULT_PROCESSES = 3'u8
 
     LogType* {.size: sizeof(uint8).} = enum 
         LOG_INFO = "[INFO] "
@@ -282,6 +285,7 @@ type
         CLIENT_LOOT_DATA = 109'u8           # Send file/screenshot bytes to the client to display as preview or to download to the client desktop
         CLIENT_IMPERSONATE_TOKEN = 110'u8   # Access token impersonated
         CLIENT_REVERT_TOKEN = 111'u8        # Revert to original logon session 
+        CLIENT_PROCESSES = 112'u8           # Send processes
 
     Event* = object 
         eventType*: EventType               
@@ -326,7 +330,7 @@ type
             hosts*: string
         when defined(TRANSPORT_SMB): 
             pipe*: string 
-            hPipe*: uint32
+            hPipe*: HANDLE
 
     SleepSettings* = ref object 
         sleepDelay*: uint32
@@ -345,6 +349,16 @@ type
         profile*: Profile
         registered*: bool
         links*: Table[string, uint32]
+
+type 
+    ProcessInfo* = object 
+        pid*: uint32
+        ppid*: uint32 
+        name*: string 
+        user*: string
+        session*: uint32
+        when defined(client):
+            children*: seq[uint32]
         
 # Structure for command module definitions 
 type
@@ -375,6 +389,7 @@ type
         itemType*: LogType
         timestamp*: string
         text*: string
+        highlight*: bool
 
     ConsoleItems* = ref object
         items*: seq[ConsoleItem]

@@ -196,3 +196,15 @@ proc sendRevertToken*(client: WsConnection, agentId: string) =
     )
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
+
+proc sendProcessList*(client: WsConnection, agentId: string, procData: string) = 
+    let event = Event(
+        eventType: CLIENT_PROCESSES, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "processes": procData
+        }
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)
