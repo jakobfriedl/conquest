@@ -10,7 +10,7 @@ import ../../common/[types, utils, serialize]
   Agent API
   Functions relevant for dealing with the agent API, such as registering new agents, querying tasks and posting results
 ]#
-proc register*(registrationData: seq[byte], remoteAddress: string): bool = 
+proc register*(registrationData: seq[byte], remoteAddress: string): bool {.discardable.} = 
 
     # The following line is required to be able to use the `cq` global variable for console output
     {.cast(gcsafe).}:
@@ -161,6 +161,11 @@ proc handleResult*(resultData: seq[byte]) =
             
             of RESULT_PROCESSES: 
                 cq.client.sendProcessList(agentId, Bytes.toString(taskResult.data))
+
+            of RESULT_LINK: 
+                # When an SMB agent is linked, the registration data is sent as the task result of the 'link' command
+                # We register the newly linked agent
+                discard register(taskResult.data, cq.agents[agentId].ipExternal)
             
             else: discard 
 

@@ -90,6 +90,8 @@ proc draw*(component: ListenerModalComponent): UIListener =
             # SMB Pipe name 
             igText("Pipe name:        ")
             igSameLine(0.0f, textSpacing)
+            igText("\\\\.\\pipe\\")
+            igSameLine(0.0f, textSpacing)
             igGetContentRegionAvail(addr availableSize)
             igSetNextItemWidth(availableSize.x)
             igInputText("##InputPipe", cast[cstring](addr component.pipe[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
@@ -150,7 +152,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
                 result = UIListener(
                     listenerId: uuid,
                     listenerType: LISTENER_SMB,
-                    pipe: pipe
+                    pipe: "\\\\.\\pipe\\" & pipe
                 )
 
             component.resetModalValues()

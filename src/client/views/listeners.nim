@@ -106,7 +106,7 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
                     for host in listener.hosts.split(";"):
                         igText(host.cstring)
                 elif listener.listenerType == LISTENER_SMB:
-                    igText(("\\\\.\\pipe\\" & listener.pipe).cstring)
+                    igText(listener.pipe.cstring)
 
         # Handle right-click context menu
         # Right-clicking the table header to hide/show columns or reset the layout is only possible when no sessions are selected

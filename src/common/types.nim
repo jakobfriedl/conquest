@@ -64,6 +64,7 @@ type
         CMD_DISABLE_PRIV = 23'u16
         CMD_EXIT = 24'u16
         CMD_SELF_DESTRUCT = 25'u16
+        CMD_LINK = 26'u16
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
@@ -75,6 +76,7 @@ type
         RESULT_BINARY = 1'u8
         RESULT_NO_OUTPUT = 2'u8
         RESULT_PROCESSES = 3'u8
+        RESULT_LINK = 4'u8
 
     LogType* {.size: sizeof(uint8).} = enum 
         LOG_INFO = "[INFO] "
@@ -348,7 +350,7 @@ type
         agentPublicKey*: Key
         profile*: Profile
         registered*: bool
-        links*: Table[string, uint32]
+        links*: Table[uint32, uint32]
 
 type 
     ProcessInfo* = object 

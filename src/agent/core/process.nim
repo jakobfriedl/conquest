@@ -45,7 +45,7 @@ proc processList*(): seq[ProcessInfo] =
 
     # Take a snapshot of running processes 
     var sysProcessInfo = processSnapshot() 
-    # Note: This causes the program to crash unexpectedly for some reason, so its uncommented until I find the actual fix 
+    # Note: The following causes the program to crash unexpectedly for some reason, so its commented out until I find the actual fix 
     # defer: 
         # if sysProcessInfo != nil:
             # LocalFree(cast[HLOCAL](sysProcessInfo))

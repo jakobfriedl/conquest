@@ -27,7 +27,9 @@ proc registerCommands(commands: seq[Command]) {.discardable.} =
 ]# 
 
 import exit
+import link
 registerCommands(exit.commands)
+registerCommands(link.commands)
 
 # Import all modules
 when (MODULES == cast[uint32](MODULE_ALL)):
@@ -104,6 +106,7 @@ proc getCommands*(modules: uint32 = 0): seq[Command] =
     # House-keeping 
     result.add(manager.commandsByType[CMD_EXIT])
     result.add(manager.commandsByType[CMD_SELF_DESTRUCT])
+    result.add(manager.commandsByType[CMD_LINK])
 
     # Modules
     if modules == 0:
