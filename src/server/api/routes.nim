@@ -134,15 +134,21 @@ proc httpPost*(request: Request) =
 
             # Differentiate between registration and task result packet
             var unpacker = Unpacker.init(Bytes.toString(data))
-            let header = unpacker.deserializeHeader()
-            if cast[PacketType](header.packetType) == MSG_REGISTER: 
-                if not register(data, request.remoteAddress):
-                    request.respond(400, body = "")
-                    return
+            let packetCount = unpacker.getUint8()
+            
+            for i in 0 ..< int(packetCount): 
+                let data = unpacker.getDataWithLengthPrefix()
+                let dataUnpacker = Unpacker.init(data)
+                let header = dataUnpacker.deserializeHeader()
 
-            elif cast[PacketType](header.packetType) == MSG_RESULT: 
-                handleResult(data)
+                if cast[PacketType](header.packetType) == MSG_REGISTER: 
+                    if not register(string.toBytes(data), request.remoteAddress):
+                        request.respond(400, body = "")
+                        return
 
+                elif cast[PacketType](header.packetType) == MSG_RESULT: 
+                    handleResult(string.toBytes(data))
+                
             request.respond(200, body = cq.profile.getString("http-post.server.output.body"))
 
         except CatchableError:

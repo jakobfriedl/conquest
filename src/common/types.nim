@@ -209,6 +209,7 @@ type
         firstCheckin*: int64
         latestCheckin*: int64
         sessionKey*: Key
+        links*: seq[string]
 
     # Session entry for client UI
     UIAgent* = ref object 

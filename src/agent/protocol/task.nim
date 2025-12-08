@@ -11,7 +11,6 @@ proc handleTask*(ctx: AgentCtx, task: Task): TaskResult =
         return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 proc deserializeTask*(ctx: AgentCtx, bytes: seq[byte]): Task = 
-
     var unpacker = Unpacker.init(Bytes.toString(bytes))
 
     let header = unpacker.deserializeHeader()
@@ -54,9 +53,8 @@ proc deserializeTask*(ctx: AgentCtx, bytes: seq[byte]): Task =
         args: args
     )
 
-proc deserializePacket*(ctx: AgentCtx, packet: string): seq[Task] = 
-
-    result = newSeq[Task]()
+proc deserializePacket*(ctx: AgentCtx, packet: string): seq[seq[byte]] = 
+    result = newSeq[seq[byte]]()
 
     var unpacker = Unpacker.init(packet) 
 
@@ -66,12 +64,10 @@ proc deserializePacket*(ctx: AgentCtx, packet: string): seq[Task] =
         return @[]
 
     while taskCount > 0: 
-
         # Read length of each task and store the task object in a seq[byte]
         let 
             taskLength = unpacker.getUint32() 
             taskBytes = unpacker.getBytes(int(taskLength))
 
-        result.add(ctx.deserializeTask(taskBytes))
-        
+        result.add(taskBytes)
         dec taskCount
