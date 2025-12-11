@@ -13,7 +13,7 @@ proc pipeWrite*(hPipe: HANDLE, data: seq[byte]): bool {.discardable.} =
     
     while dwTotal < cast[DWORD](data.len()):             
         if WriteFile(hPipe, cast[LPCVOID](addr data[dwTotal]), min(cast[DWORD](data.len()) - dwTotal, PIPE_BUFFER_MAX), addr dwBytesWritten, NULL) == FALSE: 
-            raise newException(CatchableError, GetLastError().getError())
+            return false
         dwTotal += dwBytesWritten
     
     FlushFileBuffers(hPipe)
@@ -28,7 +28,7 @@ proc pipeRead*(hPipe: HANDLE, size: DWORD): seq[byte] =
     while dwTotal < size:            
         if ReadFile(hPipe, cast[LPVOID](addr result[dwTotal]), min(size - dwTotal, PIPE_BUFFER_MAX), addr dwBytesRead, NULL) == FALSE:
             if GetLastError() != ERROR_MORE_DATA:
-                raise newException(CatchableError, GetLastError().getError())
+                return @[]
         dwTotal += dwBytesRead
     
 proc pipeRead*(hPipe: HANDLE): seq[byte] = 
@@ -38,14 +38,14 @@ proc pipeRead*(hPipe: HANDLE): seq[byte] =
         dwTotal: DWORD = 0
     
     if PeekNamedPipe(hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
-        raise newException(CatchableError, GetLastError().getError())
+        return @[]
 
     if dwSize > 0: 
         result = newSeq[byte](dwSize)
         while dwTotal < dwSize:            
             if ReadFile(hPipe, cast[LPVOID](addr result[dwTotal]), min(dwSize - dwTotal, PIPE_BUFFER_MAX), addr dwBytesRead, NULL) == FALSE:
                 if GetLastError() != ERROR_MORE_DATA:
-                    raise newException(CatchableError, GetLastError().getError())
+                    return @[]
             dwTotal += dwBytesRead
 
 proc link*(ctx: AgentCtx, pipeName: string): seq[byte] =   
@@ -160,7 +160,7 @@ when defined(TRANSPORT_SMB):
 
         if PeekNamedPipe(ctx.transport.hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
             ctx.registered = false
-            raise newException(CatchableError, GetLastError().getError())
+            return ""
 
         if dwSize > 0: 
             data = ctx.transport.hPipe.pipeRead(dwSize)

@@ -141,6 +141,9 @@ proc getDataWithLengthPrefix*(unpacker: Unpacker): string =
     # Read content
     return Bytes.toString(unpacker.getBytes(int(length)))
 
+proc canRead*(unpacker: Unpacker): bool = 
+    return not unpacker.stream.atEnd()
+
 # Serialization & Deserialization functions
 proc serializeHeader*(packer: Packer, header: Header, bodySize: uint32): seq[byte] = 
     packer

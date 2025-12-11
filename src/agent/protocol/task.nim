@@ -1,4 +1,4 @@
-import zippy, strformat
+import zippy, strformat, tables
 import ./result
 import ../utils/io
 import ../../modules/manager
@@ -53,21 +53,24 @@ proc deserializeTask*(ctx: AgentCtx, bytes: seq[byte]): Task =
         args: args
     )
 
-proc deserializePacket*(ctx: AgentCtx, packet: string): seq[seq[byte]] = 
-    result = newSeq[seq[byte]]()
-
+proc deserializePacket*(ctx: AgentCtx, packet: string): Table[string, seq[seq[byte]]] = 
+    result = initTable[string, seq[seq[byte]]]()
     var unpacker = Unpacker.init(packet) 
 
-    var taskCount = unpacker.getUint8()
-    print fmt"[*] Response contained {taskCount} tasks."
-    if taskCount <= 0: 
-        return @[]
+    while unpacker.canRead(): 
+        let agentId = Uuid.toString(unpacker.getUint32())
+        if agentId notin result:
+            result[agentId] = newSeq[seq[byte]]()
+    
+        let taskCount = unpacker.getUint8()
 
-    while taskCount > 0: 
-        # Read length of each task and store the task object in a seq[byte]
-        let 
-            taskLength = unpacker.getUint32() 
-            taskBytes = unpacker.getBytes(int(taskLength))
+        print fmt"[*] Response contained {taskCount} tasks for agent {agentId}."
+        if taskCount <= 0: 
+            continue
 
-        result.add(taskBytes)
-        dec taskCount
+        for i in 0 ..< int(taskCount): 
+            # Read length of each task and store the task object in a seq[byte]
+            let taskLength = unpacker.getUint32() 
+            let taskBytes = unpacker.getBytes(int(taskLength))
+
+            result[agentId].add(taskBytes)

