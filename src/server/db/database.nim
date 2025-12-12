@@ -54,6 +54,12 @@ proc dbInit*(cq: Conquest) =
             size INTEGER NOT NULL 
         );
 
+        CREATE TABLE links (
+            linkId TEXT PRIMARY KEY,
+            parent TEXT NOT NULL,
+            child TEXT NOT NULL
+        ); 
+
         """)
         
         cq.info("Using new database: \"", cq.dbPath, "\".\n")

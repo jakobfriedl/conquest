@@ -107,6 +107,7 @@ proc getCommands*(modules: uint32 = 0): seq[Command] =
     result.add(manager.commandsByType[CMD_EXIT])
     result.add(manager.commandsByType[CMD_SELF_DESTRUCT])
     result.add(manager.commandsByType[CMD_LINK])
+    result.add(manager.commandsByType[CMD_UNLINK])
 
     # Modules
     if modules == 0:

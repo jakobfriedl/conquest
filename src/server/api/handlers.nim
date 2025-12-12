@@ -184,6 +184,10 @@ proc handleResult*(resultData: seq[byte]) =
                 if register(registrationBytes, cq.agents[agentId].ipExternal):
                     discard
 
+            of RESULT_UNLINK: 
+                let linkedAgentId = Bytes.toString(taskResult.data)
+                cq.agents[agentId].links.keepItIf(it != linkedAgentId.toUpperAscii())
+
             else: discard 
 
             # Send newline to separate commands

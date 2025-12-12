@@ -88,8 +88,15 @@ proc link*(ctx: AgentCtx, pipeName: string): seq[byte] =
 
     return data
     
-proc unlink*() = 
-    discard 
+proc unlink*(ctx: AgentCtx, agentId: string) = 
+    if not ctx.links.hasKey(string.toUuid(agentId)): 
+        raise newException(CatchableError, protect("Linked agent not found."))
+    
+    let hPipe = cast[HANDLE](ctx.links[string.toUuid(agentId)])
+    if CloseHandle(hPipe) == FALSE:
+        raise newException(CatchableError, GetLastError().getError())
+          
+    ctx.links.del(string.toUuid(agentId))
 
 when defined(TRANSPORT_SMB):
     type 
