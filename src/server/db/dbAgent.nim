@@ -1,7 +1,7 @@
 import system, terminal, tiny_sqlite, sequtils
-
 import ../core/logger
 import ../../common/types
+import ./dbLink
 
 #[
     Agent database functions - Updated with session key support (no jitter)
@@ -62,7 +62,8 @@ proc dbGetAllAgents*(cq: Conquest): seq[Agent] =
                 process: process,
                 modules: cast[uint32](modules),
                 sessionKey: sessionKey,
-                tasks: @[]  # Initialize empty tasks
+                tasks: @[],  # Initialize empty tasks
+                links: cq.dbGetLinkedAgents(agentId)
             )
 
             agents.add(a)

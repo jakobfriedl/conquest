@@ -178,15 +178,20 @@ proc handleResult*(resultData: seq[byte]) =
                 discard unpacker.getUint8()
                 let registrationBytes = string.toBytes(unpacker.getDataWithLengthPrefix())
                 
+                # Store the link between the agents
                 let agent = cq.deserializeNewAgent(registrationBytes, "")
                 cq.agents[agentId].links.add(agent.agentId)
+                if not cq.dbStoreLink(agentId, agent.agentId):
+                    raise newException(CatchableError, "Failed to store link in database.")
 
-                if register(registrationBytes, cq.agents[agentId].ipExternal):
-                    discard
+                discard register(registrationBytes, cq.agents[agentId].ipExternal)
 
             of RESULT_UNLINK: 
-                let linkedAgentId = Bytes.toString(taskResult.data)
-                cq.agents[agentId].links.keepItIf(it != linkedAgentId.toUpperAscii())
+                # Remove the link between the agents
+                let linkedAgentId = Bytes.toString(taskResult.data).toUpperAscii()
+                cq.agents[agentId].links.keepItIf(it != linkedAgentId)
+                if not cq.dbDeleteLink(agentId, linkedAgentId):
+                    raise newException(CatchableError, "Failed to delete link from database.")
 
             else: discard 
 

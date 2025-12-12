@@ -164,8 +164,6 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                 component.interact()
                 igCloseCurrentPopup()
         
-            igSeparator()
-
             if igBeginMenu("Exit", true):
                 if igMenuItem("Process", nil, false, true): 
                     for i, agent in component.agents:
@@ -191,18 +189,18 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                     ImGuiSelectionBasicStorage_Clear(component.selection)
                     igCloseCurrentPopup()
 
+                if igMenuItem("Self-Destruct", nil, false, true):
+                    for i, agent in component.agents:
+                        if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                            if component.consoles[].hasKey(agent.agentId):
+                                component.consoles[][agent.agentId].handleAgentCommand(connection, "self-destruct")
+                            else: 
+                                let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_SELF_DESTRUCT), @[])
+                                connection.sendAgentTask(agent.agentId, "self-destruct", task)
+
+                    ImGuiSelectionBasicStorage_Clear(component.selection)
+                
                 igEndMenu()
-
-            if igMenuItem("Self-Destruct", nil, false, true):
-                for i, agent in component.agents:
-                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        if component.consoles[].hasKey(agent.agentId):
-                            component.consoles[][agent.agentId].handleAgentCommand(connection, "self-destruct")
-                        else: 
-                            let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_SELF_DESTRUCT), @[])
-                            connection.sendAgentTask(agent.agentId, "self-destruct", task)
-
-                ImGuiSelectionBasicStorage_Clear(component.selection)
 
             igSeparator()
 

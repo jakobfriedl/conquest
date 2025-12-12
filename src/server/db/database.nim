@@ -1,11 +1,11 @@
 import system, terminal, tiny_sqlite
 
-import ./[dbAgent, dbListener, dbLoot]
+import ./[dbAgent, dbListener, dbLoot, dbLink]
 import ../core/logger
 import ../../common/types
 
 # Export functions so that only ./db/database is required to be imported
-export dbAgent, dbListener, dbLoot
+export dbAgent, dbListener, dbLoot, dbLink
 
 proc dbInit*(cq: Conquest) =
 
@@ -56,8 +56,8 @@ proc dbInit*(cq: Conquest) =
 
         CREATE TABLE links (
             linkId TEXT PRIMARY KEY,
-            parent TEXT NOT NULL,
-            child TEXT NOT NULL
+            parentId TEXT NOT NULL,
+            childId TEXT NOT NULL
         ); 
 
         """)
