@@ -167,6 +167,12 @@ when defined(TRANSPORT_SMB):
 
         if PeekNamedPipe(ctx.transport.hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
             ctx.registered = false
+
+            # Disconnect
+            DisconnectNamedPipe(ctx.transport.hPipe)
+            CloseHandle(ctx.transport.hPipe)
+            ctx.transport.hPipe = 0
+            
             return ""
 
         if dwSize > 0: 
