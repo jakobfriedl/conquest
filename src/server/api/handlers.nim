@@ -68,33 +68,25 @@ proc getTasks*(heartbeat: seq[byte]): Table[string, seq[seq[byte]]] =
 
         # Return tasks
         var tasks = initTable[string, seq[seq[byte]]]()
-        var temp = newSeq[seq[byte]]()
-    
-        # Collect tasks for requesting (parent) agent
-        for task in cq.agents[agentId].tasks.mitems: # Iterate over agents as mutable items in order to modify GMAC tag
-            let taskData = cq.serializeTask(task)
-            temp.add(taskData)
-        if temp.len > 0:
-            tasks[agentId] = temp
-
-        # Collect tasks for linked agent
-        for agentId in cq.agents[agentId].links: 
-
-            # Send checkin for linked agent
-            cq.client.sendAgentCheckin(agentId)
-
-            temp.setLen(0)
+        
+        proc collectTasks(agentId: string)=
+            var temp = newSeq[seq[byte]]()
             for task in cq.agents[agentId].tasks.mitems:
                 let taskData = cq.serializeTask(task)
                 temp.add(taskData)
-            if temp.len > 0:
+
+            if temp.len() > 0:
                 tasks[agentId] = temp
 
-            # Clear task queue of parent agent & linked agents
+            # Recursively collect tasks for linked agents
+            for linkedAgentId in cq.agents[agentId].links:
+                cq.client.sendAgentCheckin(linkedAgentId)
+                collectTasks(linkedAgentId) 
+
+            # Clear task queue
             cq.agents[agentId].tasks = @[]
 
-        cq.agents[agentId].tasks = @[]
-        
+        collectTasks(agentId)        
         return tasks
 
 proc handleResult*(resultData: seq[byte]) = 

