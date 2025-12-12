@@ -142,6 +142,7 @@ when defined(TRANSPORT_SMB):
         # Create pipe and wait for SMB agent to get linked
         if ctx.transport.hPipe == 0:
             ctx.createPipe()
+            print protect("Waiting for connection.")
             if ConnectNamedPipe(ctx.transport.hPipe, NULL) == FALSE:
                 if GetLastError() != ERROR_PIPE_CONNECTED:
                     CloseHandle(ctx.transport.hPipe)
