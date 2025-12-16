@@ -72,7 +72,7 @@ proc main() =
             # Handle task execution
             var packer = Packer.init()
             var numResults: int = 0
-            var directLinkedTasks = initTable[string, seq[seq[byte]]]() 
+            var directTasks = initTable[string, seq[seq[byte]]]() 
             var indirectPacker = Packer.init()    
 
             for agentId, agentTasks in tasks:
@@ -87,7 +87,7 @@ proc main() =
 
                 # If the task is for a direct child it is not forwarded to all linked agents, only to the one it is for
                 elif ctx.links.hasKey(string.toUuid(agentId)): 
-                    directLinkedTasks[agentId] = agentTasks
+                    directTasks[agentId] = agentTasks
 
                 # Pack tasks that need to be forwarded to linked agents
                 else: 
@@ -98,7 +98,7 @@ proc main() =
     
             let indirectTasks = indirectPacker.pack()
             for linkedAgentId in ctx.links.keys:
-                let directTasks = directLinkedTasks.getOrDefault(Uuid.toString(linkedAgentId), @[])
+                let directTasks = directTasks.getOrDefault(Uuid.toString(linkedAgentId), @[])
 
                 # Forward direct and indirect tasks to the directly linked children
                 if directTasks.len() > 0 or indirectTasks.len() > 0:

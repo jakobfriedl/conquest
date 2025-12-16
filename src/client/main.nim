@@ -1,7 +1,7 @@
 import whisky
-import tables, times, strutils, strformat, algorithm, json, base64, native_dialogs
+import tables, times, strutils, strformat, json, base64, native_dialogs
 import ./utils/[appImGui, globals]
-import ./views/[dockspace, sessions, listeners, eventlog, console]
+import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser]
 import ./views/loot/[screenshots, downloads]
 import ./views/modals/generatePayload
 import ../common/[types, utils, profile, crypto, serialize]
@@ -23,6 +23,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         showEventlog = true
         showDownloads = false
         showScreenshots = false
+        showProcesses = false
         consoles: Table[string, ConsoleComponent]
 
     var 
@@ -36,6 +37,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
     views["Eventlog"] = addr showEventlog
     views["Loot:Downloads"] = addr showDownloads
     views["Loot:Screenshots"] = addr showScreenshots
+    views["Process Browser"] = addr showProcesses
 
     # Create components
     var 
@@ -45,6 +47,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         eventlog = Eventlog(WIDGET_EVENTLOG)
         lootDownloads = LootDownloads(WIDGET_DOWNLOADS)
         lootScreenshots = LootScreenshots(WIDGET_SCREENSHOTS)
+        processBrowser = ProcessBrowser(WIDGET_PROCESS_BROWSER, )
 
     let io = igGetIO()
 
@@ -133,11 +136,12 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
                 of CLIENT_CONSOLE_ITEM: 
                     let agentId = event.data["agentId"].getStr() 
-                    consoles[agentId].console.addItem(
-                        cast[LogType](event.data["logType"].getInt()), 
-                        event.data["message"].getStr(), 
-                        event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
-                    )
+                    if consoles.hasKey(agentId):
+                        consoles[agentId].console.addItem(
+                            cast[LogType](event.data["logType"].getInt()), 
+                            event.data["message"].getStr(), 
+                            event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+                        )
                 
                 of CLIENT_EVENTLOG_ITEM: 
                     eventlog.textarea.addItem(
@@ -192,7 +196,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     var unpacker = Unpacker.init(procData)
                     let numProcesses = unpacker.getUint32() 
 
-                    var processes = initOrderedTable[uint32, ProcessInfo]()
+                    var processTable = initOrderedTable[uint32, ProcessInfo]()
                     for i in 0 ..< numProcesses: 
                         let procInfo = ProcessInfo(
                             pid: unpacker.getUint32(),
@@ -202,37 +206,26 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             session: unpacker.getUint32(),
                             children: @[]
                         )
-                        processes[procInfo.pid] = procInfo
+                        processTable[procInfo.pid] = procInfo
 
                     var rootProcesses: seq[uint32]
-                    for pid, procInfo in processes.mpairs(): 
+                    for pid, procInfo in processTable.mpairs(): 
                         let ppid = procInfo.ppid 
-                        if processes.hasKey(ppid) and ppid != 0: 
-                            processes[ppid].children.add(pid)
+                        if processTable.hasKey(ppid) and ppid != 0: 
+                            processTable[ppid].children.add(pid)
                         else: 
                             rootProcesses.add(pid)
 
-                    # Header row
-                    let headers = @["PID", "PPID", "Process", "Session", "User context"]
-                    consoles[agentId].console.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(60) & headers[3].alignLeft(10) & headers[4])
-                    consoles[agentId].console.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(60) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4])))
-        
-                    # Format and print process
-                    proc printProcess(pid: uint32, indentSpaces: int = 0) =
-                        if not processes.contains(pid): 
-                            return
-                        
-                        var process = processes[pid]
-                        let processName = " ".repeat(indentSpaces) & process.name
-                        let line = ($process.pid).alignLeft(10) & ($process.ppid).alignLeft(10) & processName.alignLeft(60) & ($process.session).alignLeft(10) & process.user                        
-                        consoles[agentId].console.addItem(LOG_OUTPUT, line, "", int(pid) == consoles[agentId].agent.pid)
+                    # Display processes in agent console ('ps' command)
+                    if consoles.hasKey(agentId):
+                        consoles[agentId].listProcesses(rootProcesses, processTable) 
 
-                        # Recursively print child processes with indentation
-                        for childPid in process.children.sorted():
-                            printProcess(childPid, indentSpaces + 2)
-
-                    for pid in rootProcesses: 
-                        printProcess(pid)
+                    # Add process information to the process browser
+                    processBrowser.processes[agentId] = Processes(
+                        rootProcesses: rootProcesses, 
+                        processTable: processTable,
+                        timestamp: event.timestamp
+                    )
 
                 else: discard 
         
@@ -242,6 +235,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
             if showEventlog: eventlog.draw(addr showEventlog)
             if showDownloads: lootDownloads.draw(addr showDownloads, connection)
             if showScreenshots: lootScreenshots.draw(addr showScreenshots, connection)
+            if showProcesses: processBrowser.draw(addr showProcesses, connection, sessionsTable.agents)
 
             # Show console windows
             var newConsoleTable: Table[string, ConsoleComponent]
@@ -260,12 +254,15 @@ proc main(ip: string = "localhost", port: int = 37573) =
             # This is done to ensure that closed console windows can be opened again
             consoles = newConsoleTable
 
+            # igShowDemoWindow(addr showConquest)
+
         except CatchableError as err:
-            # echo "[-] ", err.msg
+            echo "[-] ", err.msg
             discard
 
         # render
         app.render()
+
 
         if not showConquest: 
             app.handle.setWindowShouldClose(true)

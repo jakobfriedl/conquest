@@ -1,4 +1,4 @@
-import strformat, strutils, sequtils
+import strformat, strutils, sequtils, tables, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, colors]
 import ../../common/[types, utils]
@@ -204,6 +204,29 @@ proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, 
 
     except CatchableError:
         component.console.addItem(LOG_ERROR, getCurrentExceptionMsg())
+
+proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], processTable: OrderedTable[uint32, ProcessInfo]) = 
+    # Header row
+    let headers = @["PID", "PPID", "Process name", "Session", "User context"]
+    component.console.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(60) & headers[3].alignLeft(10) & headers[4])
+    component.console.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(60) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4])))
+
+    # Format and print process
+    proc printProcess(pid: uint32, indentSpaces: int = 0) =
+        if not processTable.contains(pid) or pid == 0: 
+            return
+        
+        var process = processTable[pid]
+        let processName = " ".repeat(indentSpaces) & process.name
+        let line = ($process.pid).alignLeft(10) & ($process.ppid).alignLeft(10) & processName.alignLeft(60) & ($process.session).alignLeft(10) & process.user                        
+        component.console.addItem(LOG_OUTPUT, line, "", int(pid) == component.agent.pid)
+
+        # Recursively print child processes with indentation
+        for childPid in process.children.sorted():
+            printProcess(childPid, indentSpaces + 2)
+
+    for pid in rootProcesses: 
+        printProcess(pid)
 
 proc draw*(component: ConsoleComponent, connection: WsConnection) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}".cstring, addr component.showConsole, 0)
