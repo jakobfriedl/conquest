@@ -164,6 +164,24 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                 component.interact()
                 igCloseCurrentPopup()
         
+            # Menu to copy fields of the agent object to clipboard
+            if igBeginMenu("Copy", true): 
+                let temp = UIAgent() 
+                for key, val in temp[].fieldPairs():
+                    if igMenuItem(key.capitalizeAscii().replace("Id", "ID").replace("Os", "OS").replace("Ip", "IP ").replace("Pid", "PID"), nil, false, true):
+                        var toCopy: string = ""
+                        for i, agent in component.agents:
+                            if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                                # Find the selected value in the agent 
+                                # When multiple agents are selected, the value is taken from each agent and separated by a newline
+                                for k, v in agent[].fieldPairs():
+                                    if key == k:
+                                        toCopy &= $v & "\n"
+
+                        igSetClipboardText(toCopy.strip())
+                        igCloseCurrentPopup()
+                igEndMenu()
+
             if igBeginMenu("Exit", true):
                 if igMenuItem("Process", nil, false, true): 
                     for i, agent in component.agents:
