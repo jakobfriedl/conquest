@@ -3,7 +3,7 @@ import imguin/[cimgui, glfw_opengl, simple]
 
 import ./console
 import ../core/[task, websocket]
-import ../utils/[appImGui, colors]
+import ../utils/[appImGui, globals]
 import ../../modules/manager
 import ../../common/types
 
@@ -168,7 +168,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
             if igBeginMenu("Copy", true): 
                 let temp = UIAgent() 
                 for key, val in temp[].fieldPairs():
-                    if igMenuItem(key.capitalizeAscii().replace("Id", "ID").replace("Os", "OS").replace("Ip", "IP ").replace("Pid", "PID"), nil, false, true):
+                    if igMenuItem(key.capitalizeAscii().replace("Id", "ID").replace("Os", "OS").replace("Ip", "IP ").replace("Pid", "PID").cstring, nil, false, true):
                         var toCopy: string = ""
                         for i, agent in component.agents:
                             if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
@@ -178,7 +178,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                                     if key == k:
                                         toCopy &= $v & "\n"
 
-                        igSetClipboardText(toCopy.strip())
+                        igSetClipboardText(toCopy.strip().cstring)
                         igCloseCurrentPopup()
                 igEndMenu()
 

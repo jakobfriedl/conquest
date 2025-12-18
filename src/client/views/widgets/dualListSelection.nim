@@ -1,6 +1,6 @@
 import sequtils, algorithm
 import imguin/[cimgui, glfw_opengl]
-import ../../utils/[appImGui, colors]
+import ../../utils/[appImGui, globals]
 
 type 
     DualListSelectionWidget*[T] = ref object of RootObj

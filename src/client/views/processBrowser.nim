@@ -1,7 +1,6 @@
 import imguin/[cimgui, glfw_opengl]
 import sequtils, strutils, strformat, tables, times, algorithm
-import ../utils/[appImGui, colors]
-import ../utils/fonticon/IconsFontAwesome6
+import ../utils/[appImGui, globals]
 import ../core/[task, websocket]
 import ../../common/types
 import ../../modules/manager
@@ -17,6 +16,7 @@ type
         agent: int32
         processes*: Table[string, Processes]
         selection*: uint32
+        autoUpdate*: bool 
 
 proc ProcessBrowser*(title: string): ProcessBrowserComponent = 
     result = new ProcessBrowserComponent

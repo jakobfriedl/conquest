@@ -1,6 +1,6 @@
 import strutils, times
 import imguin/[cimgui, glfw_opengl]
-import ../../utils/[appImGui, colors]
+import ../../utils/[appImGui, globals]
 import ../../../common/types
 
 type 

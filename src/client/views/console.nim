@@ -1,6 +1,6 @@
 import strformat, strutils, sequtils, tables, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
-import ../utils/[appImGui, colors]
+import ../utils/[appImGui, globals]
 import ../../common/[types, utils]
 import ../../modules/manager
 import ../core/[task, websocket]

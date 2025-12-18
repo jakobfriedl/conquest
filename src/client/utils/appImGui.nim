@@ -4,12 +4,8 @@ export opengl, glfw
 
 import imguin/[cimgui, glfw_opengl, simple]
 export cimgui, glfw_opengl, simple
-
-import ./globals
-import ./opengl/loadImage
-export loadImage
-import ./[saveImage, setupFonts, utils, vecs]
-export saveImage, setupFonts, utils, vecs
+import ./[globals, setupFonts, utils, loadImage]
+export globals, setupFonts, utils, loadImage
 
 proc glfwGetPlatform*(): int32 {.importc: "glfwGetPlatform".} # GLFW 3.4 >=
 
