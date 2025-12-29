@@ -20,6 +20,7 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
     igBegin(component.title.cstring, showComponent, 0)
     defer: igEnd() 
 
+    let textSpacing = igGetStyle().ItemSpacing.x    
     if igButton("Load Module", vec2(0.0f, 0.0f)):          
         let path = callDialogFileSave("Load Module") 
         loadScript(path)
@@ -69,6 +70,19 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
 
             if igTableSetColumnIndex(3): 
                 igText(module.path.cstring)
+
+        # Handle right-click context menu
+        if component.selection[].Size > 0 and igBeginPopupContextWindow("TableContextMenu", ImGui_PopupFlags_MouseButtonRight.int32): 
+            
+            if igMenuItem("Reload", nil, false, true): 
+                # Reload the selected scripts
+                igCloseCurrentPopup()
+
+            if igMenuItem("Remove", nil, false, true): 
+                # Remove module 
+                igCloseCurrentPopup()
+
+            igEndPopup()
 
         multiSelectIO = igEndMultiSelect()
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
