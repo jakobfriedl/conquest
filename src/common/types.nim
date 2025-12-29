@@ -25,10 +25,8 @@ type
     ArgType* = enum 
         STRING = 0'u8
         INT = 1'u8
-        SHORT = 2'u8
-        LONG = 3'u8
-        BOOL = 4'u8 
-        BINARY = 5'u8 
+        BOOL = 2'u8 
+        BINARY = 3'u8 
 
     HeaderFlags* = enum 
         # Flags should be powers of 2 so they can be connected with or operators
@@ -355,6 +353,7 @@ type
         registered*: bool
         links*: Table[uint32, uint32]
 
+# Modules 
 type 
     ProcessInfo* = object 
         pid*: uint32
@@ -365,6 +364,13 @@ type
         when defined(client):
             children*: seq[uint32]
         
+    # FileInfo* = object 
+    #     path*: string 
+    #     isDir*: bool
+    #     lastWriteTime*: int64
+    #     mode*: string
+    #     size*: uint32
+
 # Structure for command module definitions 
 type
     Argument* = object 
@@ -372,6 +378,8 @@ type
         description*: string 
         argumentType*: ArgType
         isRequired*: bool
+        isFlag*: bool 
+
 
     Command* = object 
         name*: string

@@ -3,19 +3,21 @@ import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/appImGui
 import ../../../common/[types, utils]
 import ../../core/websocket
+import ../../context
 
-type
-    ScreenshotTexture* = ref object 
-        textureId*: GLuint
-        data*: string
-        width: int 
-        height: int 
 
-    ScreenshotsComponent* = ref object of RootObj
-        title: string
-        items*: seq[LootItem]
-        selectedIndex: int
-        textures: Table[string, ScreenshotTexture]
+# type
+#     ScreenshotTexture* = ref object 
+#         textureId*: GLuint
+#         data*: string
+#         width: int 
+#         height: int 
+
+#     ScreenshotsComponent* = ref object of RootObj
+#         title: string
+#         items*: seq[LootItem]
+#         selectedIndex: int
+#         textures: Table[string, ScreenshotTexture]
 
 proc LootScreenshots*(title: string): ScreenshotsComponent =
     result = new ScreenshotsComponent

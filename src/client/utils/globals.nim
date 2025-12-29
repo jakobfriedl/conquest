@@ -3,12 +3,13 @@ import ./utils
 
 const CONQUEST_ROOT* {.strdefine.} = ""
 
-const WIDGET_SESSIONS* =  " " & ICON_FA_LIST & " " & "Sessions [Table View]"
+const WIDGET_SESSIONS* =  " " & ICON_FA_LIST & " " & "Sessions"
 const WIDGET_LISTENERS* = " " & ICON_FA_SATELLITE_DISH & " " & "Listeners"
 const WIDGET_EVENTLOG* = " " & ICON_FA_CLIPBOARD_LIST & " " & "Eventlog"
 const WIDGET_DOWNLOADS* = " " & ICON_FA_DOWNLOAD & " " & "Downloads"
 const WIDGET_SCREENSHOTS* = " " & ICON_FA_IMAGE & " " & "Screenshots"
 const WIDGET_PROCESS_BROWSER* = " " & ICON_FA_MICROCHIP & " " & "Process Browser"
+const WIDGET_MODULE_MANAGER* = " " & ICON_FA_TOOLBOX & " " & "Module Manager"
 
 const GRAY* = vec4(0.369f, 0.369f, 0.369f, 1.0f)
 const CONSOLE_ERROR* = vec4(0.878f, 0.188f, 0.149f, 1.0f)

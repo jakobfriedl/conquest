@@ -4,14 +4,15 @@ import ../../utils/appImGui
 import ../../../common/types
 import ../../core/websocket
 import ../widgets/textarea
+import ../../context
 
-type
-    DownloadsComponent* = ref object of RootObj
-        title: string
-        items*: seq[LootItem]
-        contents*: Table[string, string]
-        textarea: TextareaWidget
-        selectedIndex: int
+# type
+#     DownloadsComponent* = ref object of RootObj
+#         title: string
+#         items*: seq[LootItem]
+#         contents*: Table[string, string]
+#         textarea: TextareaWidget
+#         selectedIndex: int
         
 
 proc LootDownloads*(title: string): DownloadsComponent =

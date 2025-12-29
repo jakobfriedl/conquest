@@ -4,20 +4,21 @@ import ../utils/[appImGui, globals]
 import ../../common/[types, utils]
 import ../../modules/manager
 import ../core/[task, websocket]
+import ../context
 import ./widgets/textarea
 export addItem
 
-const MAX_INPUT_LENGTH = 4096 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets)
-type 
-    ConsoleComponent* = ref object of RootObj
-        agent*: UIAgent
-        showConsole*: bool
-        inputBuffer: array[MAX_INPUT_LENGTH, char]
-        console*: TextareaWidget
-        history: seq[string]
-        historyPosition: int 
-        currentInput: string
-        filter: ptr ImGuiTextFilter
+# const MAX_INPUT_LENGTH = 4096 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets)
+# type 
+#     ConsoleComponent* = ref object of RootObj
+#         agent*: UIAgent
+#         showConsole*: bool
+#         inputBuffer: array[MAX_INPUT_LENGTH, char]
+#         console*: TextareaWidget
+#         history: seq[string]
+#         historyPosition: int 
+#         currentInput: string
+#         filter: ptr ImGuiTextFilter
 
 proc Console*(agent: UIAgent): ConsoleComponent =
     result = new ConsoleComponent

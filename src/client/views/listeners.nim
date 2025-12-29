@@ -3,15 +3,16 @@ import imguin/[cimgui, glfw_opengl, simple]
 import ./modals/[startListener, generatePayload]
 import ../utils/appImGui
 import ../core/websocket
+import ../context
 import ../../common/types
 
-type 
-    ListenersTableComponent* = ref object of RootObj
-        title: string 
-        listeners*: seq[UIListener]
-        selection: ptr ImGuiSelectionBasicStorage
-        startListenerModal: ListenerModalComponent
-        generatePayloadModal*: AgentModalComponent
+# type 
+#     ListenersTableComponent* = ref object of RootObj
+#         title: string 
+#         listeners*: seq[UIListener]
+#         selection: ptr ImGuiSelectionBasicStorage
+#         startListenerModal: ListenerModalComponent
+#         generatePayloadModal*: AgentModalComponent
 
 proc ListenersTable*(title: string): ListenersTableComponent = 
     result = new ListenersTableComponent

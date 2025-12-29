@@ -4,18 +4,19 @@ import imguin/[cimgui, glfw_opengl, simple]
 import ./console
 import ../core/[task, websocket]
 import ../utils/[appImGui, globals]
+import ../context
 import ../../modules/manager
 import ../../common/types
 
-type 
-    SessionsTableComponent* = ref object of RootObj
-        title: string 
-        agents*: seq[UIAgent]
-        agentActivity*: Table[string, int64]                # Direct O(1) access to latest checkin
-        agentImpersonation*: Table[string, string]
-        selection: ptr ImGuiSelectionBasicStorage
-        consoles: ptr Table[string, ConsoleComponent]
-        focusedConsole*: string
+# type 
+#     SessionsTableComponent* = ref object of RootObj
+#         title: string 
+#         agents*: seq[UIAgent]
+#         agentActivity*: Table[string, int64]                # Direct O(1) access to latest checkin
+#         agentImpersonation*: Table[string, string]
+#         selection: ptr ImGuiSelectionBasicStorage
+#         consoles: ptr Table[string, ConsoleComponent]
+#         focusedConsole*: string
 
 proc SessionsTable*(title: string, consoles: ptr Table[string, ConsoleComponent]): SessionsTableComponent = 
     result = new SessionsTableComponent

@@ -2,21 +2,22 @@ import imguin/[cimgui, glfw_opengl]
 import sequtils, strutils, strformat, tables, times, algorithm
 import ../utils/[appImGui, globals]
 import ../core/[task, websocket]
+import ../context
 import ../../common/types
 import ../../modules/manager
 
-type 
-    Processes* = object
-        rootProcesses*: seq[uint32] 
-        processTable*: OrderedTable[uint32, ProcessInfo]
-        timestamp*: int64
+# type 
+#     Processes* = object
+#         rootProcesses*: seq[uint32] 
+#         processTable*: OrderedTable[uint32, ProcessInfo]
+#         timestamp*: int64
 
-    ProcessBrowserComponent* = ref object of RootObj
-        title: string 
-        agent: int32
-        processes*: Table[string, Processes]
-        selection*: uint32
-        autoUpdate*: bool 
+#     ProcessBrowserComponent* = ref object of RootObj
+#         title: string 
+#         agent: int32
+#         processes*: Table[string, Processes]
+#         selection*: uint32
+#         autoUpdate*: bool 
 
 proc ProcessBrowser*(title: string): ProcessBrowserComponent = 
     result = new ProcessBrowserComponent
