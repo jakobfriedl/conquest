@@ -23,7 +23,7 @@ type
     ModuleManagerComponent* = ref object of RootObj
         title*: string 
         tempModule*: tuple[name, description, path: string, commandCount: int]
-        modules*: seq[tuple[name, description, path: string, commandCount: int]]
+        modules*: Table[string, tuple[name, description, path: string, commandCount: int]]
         selection*: ptr ImGuiSelectionBasicStorage
 
     Processes* = object

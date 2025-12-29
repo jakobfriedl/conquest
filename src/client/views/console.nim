@@ -142,6 +142,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 
 #[
     Handling console commands
+    TODO: Modify to fit updated module system
 ]#
 proc displayHelp(component: ConsoleComponent) =
     for cmd in getCommands(component.agent.modules):

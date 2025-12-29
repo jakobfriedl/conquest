@@ -5,7 +5,8 @@ import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowse
 import ./views/loot/[screenshots, downloads]
 import ./views/modals/generatePayload
 import ../common/[types, utils, profile, crypto, serialize]
-import ./core/websocket
+import ./core/[websocket, database]
+import ./core/scripting/engine
 import ./context
 
 proc main(ip: string = "localhost", port: int = 37573) = 
@@ -63,6 +64,13 @@ proc main(ip: string = "localhost", port: int = 37573) =
         sessionKey: default(Key)
     )
     defer: connection.ws.close() 
+
+    # Initialize database 
+    dbInit() 
+
+    # Load built-in modules and those stored in the database
+    for path in dbGetScriptPaths(): 
+        loadScript(path)
 
     # main loop
     while not app.handle.windowShouldClose:

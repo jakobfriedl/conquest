@@ -7,7 +7,7 @@ include ./pythonApi
 #[
     Scripting Engine
     - export Python API function
-    - execute scripts to register commands 
+    - execute scripts to register commands & modules
 ]#
 
 proc loadScript*(file: string) = 

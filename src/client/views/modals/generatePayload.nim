@@ -50,6 +50,7 @@ proc AgentModal*(): AgentModalComponent =
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
 
+    # TODO: Modules should be taken from the module manager
     let modules = getModules()
     proc moduleName(module: Module): string = 
         return module.name

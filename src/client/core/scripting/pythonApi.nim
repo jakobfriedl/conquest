@@ -1,4 +1,6 @@
+import tables
 import ./command
+import ../database
 
 #[
     Python API
@@ -20,8 +22,10 @@ proc registerModule*(name, description: string, commands: seq[Command]) {.export
     cq.moduleManager.tempModule.commandCount = commands.len() 
 
     # Store module in database 
+    if not dbModuleExists(name):
+        discard dbStoreModule(cq.moduleManager.tempModule.name, cq.moduleManager.tempModule.path)
 
-    cq.moduleManager.modules.add(cq.moduleManager.tempModule)
+    cq.moduleManager.modules[name] = cq.moduleManager.tempModule
     
 proc bofPack() = 
 

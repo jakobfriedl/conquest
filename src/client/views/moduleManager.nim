@@ -1,5 +1,5 @@
 import imguin/[cimgui, glfw_opengl]
-import native_dialogs
+import tables, native_dialogs
 import ../utils/appImGui
 import ../core/scripting/engine
 import ../context
@@ -13,7 +13,7 @@ import ../../common/types
 proc ModuleManager*(title: string): ModuleManagerComponent = 
     result = new ModuleManagerComponent
     result.title = title
-    result.modules = newSeq[tuple[name, description, path: string, commandCount: int]]()
+    result.modules = initTable[string, tuple[name, description, path: string, commandCount: int]]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
 
 proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) = 
@@ -53,7 +53,8 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.modules.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        for i, module in component.modules: 
+        var i = 0
+        for module in component.modules.values(): 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
@@ -70,16 +71,18 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
 
             if igTableSetColumnIndex(3): 
                 igText(module.path.cstring)
+            
+            inc i
 
         # Handle right-click context menu
         if component.selection[].Size > 0 and igBeginPopupContextWindow("TableContextMenu", ImGui_PopupFlags_MouseButtonRight.int32): 
             
             if igMenuItem("Reload", nil, false, true): 
-                # Reload the selected scripts
+                # TODO: Reload the selected scripts
                 igCloseCurrentPopup()
 
             if igMenuItem("Remove", nil, false, true): 
-                # Remove module 
+                # TODO: Delete module  
                 igCloseCurrentPopup()
 
             igEndPopup()
