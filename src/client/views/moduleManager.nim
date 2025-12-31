@@ -54,8 +54,8 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.modules.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        let modules = component.modules.pairs().toSeq()
-        for i, (moduleName, module) in modules: 
+        let modules = component.modules.values().toSeq()
+        for i, module in modules: 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
@@ -77,7 +77,7 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
         if component.selection[].Size > 0 and igBeginPopupContextWindow("TableContextMenu", ImGui_PopupFlags_MouseButtonRight.int32): 
 
             if igMenuItem("Reload", nil, false, true): 
-                for i, (name, module) in modules:
+                for i, module in modules:
                     if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                         # Reload python script
                         loadScript(module.path)
@@ -85,10 +85,10 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
                 igCloseCurrentPopup()
 
             if igMenuItem("Remove", nil, false, true): 
-                for i, (name, module) in modules:
+                for i, module in modules:
                     if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        if dbRemoveModule(name):
-                            component.modules.del(name)
+                        if dbRemoveModule(module.name):
+                            component.modules.del(module.name)
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
 

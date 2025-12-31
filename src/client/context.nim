@@ -15,7 +15,7 @@ type
 
     ListenersTableComponent* = ref object of RootObj
         title*: string 
-        listeners*: seq[UIListener]
+        listeners*: Table[string, UIListener]
         selection*: ptr ImGuiSelectionBasicStorage
         startListenerModal*: ListenerModalComponent
         generatePayloadModal*: AgentModalComponent
@@ -40,9 +40,7 @@ type
 
     SessionsTableComponent* = ref object of RootObj
         title*: string 
-        agents*: seq[UIAgent]
-        agentActivity*: Table[string, int64]                # Direct O(1) access to latest checkin
-        agentImpersonation*: Table[string, string]
+        agents*: Table[string, UIAgent]
         selection*: ptr ImGuiSelectionBasicStorage
         consoles*: ptr Table[string, ConsoleComponent]
         focusedConsole*: string 

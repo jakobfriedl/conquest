@@ -1,4 +1,4 @@
-import strutils
+import strutils, sequtils, tables
 import imguin/[cimgui, glfw_opengl, simple]
 import ./modals/[startListener, generatePayload]
 import ../utils/appImGui
@@ -17,7 +17,7 @@ import ../../common/types
 proc ListenersTable*(title: string): ListenersTableComponent = 
     result = new ListenersTableComponent
     result.title = title
-    result.listeners = @[]
+    result.listeners = initTable[string, UIListener]() 
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.startListenerModal = ListenerModal()
     result.generatePayloadModal = AgentModal()
@@ -40,11 +40,13 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
         igOpenPopup_str("Generate Payload", ImGui_PopupFlags_None.int32) 
     igEndDisabled()
 
+    let listeners = component.listeners.values().toSeq()
+
     let listener = component.startListenerModal.draw()
     if listener != nil: 
         connection.sendStartListener(listener)
 
-    let buildInformation = component.generatePayloadModal.draw(component.listeners)
+    let buildInformation = component.generatePayloadModal.draw(listeners)
     if buildInformation != nil:
         connection.sendAgentBuild(buildInformation)
 
@@ -80,7 +82,7 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.listeners.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        for i, listener in component.listeners: 
+        for i, listener in listeners: 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
@@ -116,13 +118,11 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
             if igMenuItem("Stop", nil, false, true): 
                 # Update agents table with only non-selected ones
                 var newListeners: seq[UIListener] = @[]
-                for i, listener in component.listeners:
-                    if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        newListeners.add(listener)
-                    else: 
+                for i, listener in listeners:
+                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        component.listeners.del(listener.listenerId)
                         connection.sendStopListener(listener.listenerId)
 
-                component.listeners = newListeners
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
 

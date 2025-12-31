@@ -1,5 +1,5 @@
 import whisky
-import tables, times, strutils, strformat, json, base64, native_dialogs
+import tables, times, strutils, sequtils, strformat, json, base64, native_dialogs
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, moduleManager]
 import ./views/loot/[screenshots, downloads]
@@ -103,18 +103,17 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
                 of CLIENT_LISTENER_ADD: 
                     let listener = event.data.to(UIListener)
-                    cq.listeners.listeners.add(listener)
+                    cq.listeners.listeners[listener.listenerId] = listener
 
                 of CLIENT_AGENT_ADD: 
                     let agent = event.data.to(UIAgent)
 
                     # The ImGui Multi Select only works well with seq's, so we maintain a
                     # separate table of the latest agent heartbeats to have the benefit of quick and direct O(1) access
-                    cq.sessions.agents.add(agent)
-                    cq.sessions.agentActivity[agent.agentId] = agent.latestCheckin
+                    cq.sessions.agents[agent.agentId] = agent
 
                     if not agent.impersonationToken.isEmptyOrWhitespace():
-                        cq.sessions.agentImpersonation[agent.agentId] = agent.impersonationToken
+                        cq.sessions.agents[agent.agentId].impersonationToken = agent.impersonationToken
 
                     # Initialize position of console windows to bottom by drawing them once when they are added
                     # By default, the consoles are attached to the same DockNode as the Listeners table (Default: bottom), 
@@ -131,7 +130,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     cq.consoles[agent.agentId].showConsole = false
 
                 of CLIENT_AGENT_CHECKIN: 
-                    cq.sessions.agentActivity[event.data["agentId"].getStr()] = event.timestamp
+                    cq.sessions.agents[event.data["agentId"].getStr()].latestCheckin = event.timestamp
 
                 of CLIENT_AGENT_PAYLOAD: 
                     let payload = decode(event.data["payload"].getStr())
@@ -193,10 +192,10 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     let 
                         agentId = event.data["agentId"].getStr()
                         impersonationToken = event.data["username"].getStr()
-                    cq.sessions.agentImpersonation[agentId] = impersonationToken
+                    cq.sessions.agents[agentId].impersonationToken = impersonationToken
 
                 of CLIENT_REVERT_TOKEN: 
-                    cq.sessions.agentImpersonation.del(event.data["agentId"].getStr())
+                    cq.sessions.agents[event.data["agentId"].getStr()].impersonationToken = ""
             
                 of CLIENT_PROCESSES: 
                     let
@@ -246,7 +245,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
             if showEventlog: cq.eventlog.draw(addr showEventlog)
             if showDownloads: cq.downloads.draw(addr showDownloads, connection)
             if showScreenshots: cq.screenshots.draw(addr showScreenshots, connection)
-            if showProcesses: cq.processBrowser.draw(addr showProcesses, connection, cq.sessions.agents)
+            if showProcesses: cq.processBrowser.draw(addr showProcesses, connection, cq.sessions.agents.values().toSeq())
             if showModules: cq.moduleManager.draw(addr showModules)
 
             # Show console windows

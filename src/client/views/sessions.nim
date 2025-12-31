@@ -1,4 +1,4 @@
-import times, tables, strformat, strutils, algorithm
+import times, tables, strformat, strutils, sequtils, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 
 import ./console
@@ -12,8 +12,6 @@ import ../../common/types
 #     SessionsTableComponent* = ref object of RootObj
 #         title: string 
 #         agents*: seq[UIAgent]
-#         agentActivity*: Table[string, int64]                # Direct O(1) access to latest checkin
-#         agentImpersonation*: Table[string, string]
 #         selection: ptr ImGuiSelectionBasicStorage
 #         consoles: ptr Table[string, ConsoleComponent]
 #         focusedConsole*: string
@@ -21,8 +19,7 @@ import ../../common/types
 proc SessionsTable*(title: string, consoles: ptr Table[string, ConsoleComponent]): SessionsTableComponent = 
     result = new SessionsTableComponent
     result.title = title
-    result.agents = @[]
-    result.agentActivity = initTable[string, int64]()
+    result.agents = initTable[string, UIAgent]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.consoles = consoles
     result.focusedConsole = ""
@@ -36,7 +33,7 @@ proc interact(component: SessionsTableComponent) =
     var row: ImGuiID
 
     while ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
-        let agent = component.agents[cast[int](row)]
+        let agent = component.agents.values().toSeq().sorted(cmp)[row]
 
         # Create a new console window
         if not component.consoles[].hasKey(agent.agentId):
@@ -88,14 +85,14 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
         # Sort sessions table based on first checkin
-        component.agents.sort(cmp)
-        for row, agent in component.agents: 
+        let agents = component.agents.values().toSeq().sorted(cmp)
+        for i, agent in agents: 
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
             if igTableSetColumnIndex(0):          
                 # Enable multi-select functionality       
-                igSetNextItemSelectionUserData(row)
-                var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](row))
+                igSetNextItemSelectionUserData(i)
+                var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i))
                 
                 # Highlight high integrity sessions in red
                 if agent.elevated: 
@@ -119,9 +116,9 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
             if igTableSetColumnIndex(4): 
 
                 igText(agent.username.cstring)
-                if component.agentImpersonation.hasKey(agent.agentId):
+                if agent.impersonationToken != "":
                     igSameLine(0.0f, textSpacing)
-                    igText(fmt"[{component.agentImpersonation[agent.agentId]}]".cstring)
+                    igText(fmt"[{component.agents[agent.agentId].impersonationToken}]".cstring)
 
             if igTableSetColumnIndex(5): 
                 igText(agent.hostname.cstring)
@@ -144,7 +141,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                 igText(fmt"{hours:02d}:{minutes:02d}:{seconds:02d} ago".cstring)
 
             if igTableSetColumnIndex(11): 
-                let duration = now() - component.agentActivity[agent.agentId].fromUnix().local()
+                let duration = now() - component.agents[agent.agentId].latestCheckin.fromUnix().local()
                 let totalSeconds = duration.inSeconds
                 
                 let hours = totalSeconds div 3600
@@ -171,7 +168,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                 for key, val in temp[].fieldPairs():
                     if igMenuItem(key.capitalizeAscii().replace("Id", "ID").replace("Os", "OS").replace("Ip", "IP ").replace("Pid", "PID").cstring, nil, false, true):
                         var toCopy: string = ""
-                        for i, agent in component.agents:
+                        for i, agent in agents:
                             if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                                 # Find the selected value in the agent 
                                 # When multiple agents are selected, the value is taken from each agent and separated by a newline
@@ -180,12 +177,12 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                                         toCopy &= $v & "\n"
 
                         igSetClipboardText(toCopy.strip().cstring)
+                        igCloseCurrentPopup()
                 igEndMenu()
-                igCloseCurrentPopup()
 
             if igBeginMenu("Exit", true):
                 if igMenuItem("Process", nil, false, true): 
-                    for i, agent in component.agents:
+                    for i, agent in agents:
                         if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                             if component.consoles[].hasKey(agent.agentId):
                                 component.consoles[][agent.agentId].handleAgentCommand(connection, "exit process")
@@ -197,7 +194,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                     igCloseCurrentPopup()
 
                 if igMenuItem("Thread", nil, false, true):
-                    for i, agent in component.agents:
+                    for i, agent in agents:
                         if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                             if component.consoles[].hasKey(agent.agentId):
                                 component.consoles[][agent.agentId].handleAgentCommand(connection, "exit thread") 
@@ -209,7 +206,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                     igCloseCurrentPopup()
 
                 if igMenuItem("Self-Destruct", nil, false, true):
-                    for i, agent in component.agents:
+                    for i, agent in agents:
                         if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                             if component.consoles[].hasKey(agent.agentId):
                                 component.consoles[][agent.agentId].handleAgentCommand(connection, "self-destruct")
@@ -226,15 +223,11 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
 
             if igMenuItem("Remove", nil, false, true): 
                 # Update agents table with only non-selected ones
-                var newAgents: seq[UIAgent] = @[]
-                for i, agent in component.agents:
-                    if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        newAgents.add(agent)
-                    else: 
-                        # Send message to team server to remove delete the agent from the database and stop it from re-appearing when the client is restarted
+                for i, agent in agents:
+                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        component.agents.del(agent.agentId)
                         connection.sendAgentRemove(agent.agentId)
 
-                component.agents = newAgents
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
 
