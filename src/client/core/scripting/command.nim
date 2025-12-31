@@ -32,6 +32,12 @@ type
         hasHandler*: bool
         handler*: PyObject 
 
+    Module* = ref object of RootObj
+        name*: string 
+        description*: string
+        path*: string 
+        commands*: seq[Command]
+
 proc newCommand*(name, description, example: string): Command = 
     return Command(
         name: name, 
@@ -98,6 +104,30 @@ proc addFlagBool*(self: Command, flag, name, description: string, default: bool 
         flag: flag, 
         argType: BOOL,
         boolDefault: default
+    ))
+    return self
+
+proc addArgFile*(self: Command, name, description: string, required: bool = true): Command {.exportpy.} = 
+    self.args.add(Argument(
+        name: name,
+        description: description,
+        isRequired: required, 
+        isFlag: false,
+        flag: "",
+        argType: BINARY,
+        binDefault: @[]
+    ))
+    return self
+
+proc addFlagFile*(self: Command, flag, name, description: string, required: bool = true): Command {.exportpy.} = 
+    self.args.add(Argument(
+        name: name,
+        description: description,
+        isRequired: required, 
+        isFlag: true,
+        flag: flag,
+        argType: BINARY,
+        binDefault: @[]
     ))
     return self
 

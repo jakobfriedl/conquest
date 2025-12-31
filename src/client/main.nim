@@ -18,7 +18,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
  
     var 
         profile: Profile
-        views: Table[string, ptr bool]
+        views: OrderedTable[string, ptr bool]
         showConquest = true
         showSessionsTable = true
         showListeners = true

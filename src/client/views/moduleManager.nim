@@ -1,7 +1,8 @@
 import imguin/[cimgui, glfw_opengl]
-import tables, native_dialogs
+import tables, native_dialogs, sequtils
 import ../utils/appImGui
 import ../core/scripting/engine
+import ../core/database
 import ../context
 import ../../common/types
 
@@ -53,8 +54,8 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.modules.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        var i = 0
-        for module in component.modules.values(): 
+        let modules = component.modules.pairs().toSeq()
+        for i, (moduleName, module) in modules: 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
@@ -72,17 +73,23 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
             if igTableSetColumnIndex(3): 
                 igText(module.path.cstring)
             
-            inc i
-
         # Handle right-click context menu
         if component.selection[].Size > 0 and igBeginPopupContextWindow("TableContextMenu", ImGui_PopupFlags_MouseButtonRight.int32): 
-            
+
             if igMenuItem("Reload", nil, false, true): 
-                # TODO: Reload the selected scripts
+                for i, (name, module) in modules:
+                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        # Reload python script
+                        loadScript(module.path)
+                ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
 
             if igMenuItem("Remove", nil, false, true): 
-                # TODO: Delete module  
+                for i, (name, module) in modules:
+                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        if dbRemoveModule(name):
+                            component.modules.del(name)
+                ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
 
             igEndPopup()

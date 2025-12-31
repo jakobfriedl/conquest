@@ -180,8 +180,8 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                                         toCopy &= $v & "\n"
 
                         igSetClipboardText(toCopy.strip().cstring)
-                        igCloseCurrentPopup()
                 igEndMenu()
+                igCloseCurrentPopup()
 
             if igBeginMenu("Exit", true):
                 if igMenuItem("Process", nil, false, true): 
@@ -218,6 +218,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                                 connection.sendAgentTask(agent.agentId, "self-destruct", task)
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)
+                    igCloseCurrentPopup()
                 
                 igEndMenu()
 

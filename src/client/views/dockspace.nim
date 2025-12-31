@@ -16,7 +16,7 @@ proc Dockspace*(): DockspaceComponent =
     result.windowFlags =  ImGuiWindowFlags_MenuBar.int32 or ImGuiWindowFlags_NoDocking.int32
     result.initialized = false
 
-proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[string, ptr bool], dockTop, dockBottom, dockTopLeft, dockTopRight: ptr ImGuiID) = 
+proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: OrderedTable[string, ptr bool], dockTop, dockBottom, dockTopLeft, dockTopRight: ptr ImGuiID) = 
 
     var vp = igGetMainViewport()
     igSetNextWindowPos(vp.WorkPos, ImGui_Cond_None.int32, vec2(0.0f, 0.0f))

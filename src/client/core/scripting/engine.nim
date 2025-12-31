@@ -17,13 +17,9 @@ proc loadScript*(file: string) =
         let globals = pyDict()
         globals["__builtins__"] = builtins  
 
-        cq.moduleManager.tempModule.path = file
-        
         # Parse and execute the loaded script 
+        cq.moduleManager.tempModule.path = file
         discard builtins.exec(script, globals)
-
-        # Reset placeholder
-        cq.moduleManager.tempModule = (name: "", description: "", path: "", commandCount: 0)
 
     except: 
         echo "Failed to load ", file ,": " , getCurrentExceptionMsg()
