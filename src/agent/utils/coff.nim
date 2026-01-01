@@ -1,6 +1,6 @@
 import winim/lean
 import os, strformat, strutils, ptr_math
-import ../utils/[beacon, io]
+import ./[beacon, io]
 import ../../common/[types, utils, serialize]
 
 #[

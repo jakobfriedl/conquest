@@ -28,13 +28,14 @@ proc registerCommands(commands: seq[Command]) {.discardable.} =
 
 import exit
 import link
+import sleep
 registerCommands(exit.commands)
+registerCommands(sleep.commands)
 registerCommands(link.commands)
 
 # Import all modules
 when (MODULES == cast[uint32](MODULE_ALL)):
     import 
-        sleep,
         shell,
         filesystem,
         filetransfer,
@@ -43,7 +44,6 @@ when (MODULES == cast[uint32](MODULE_ALL)):
         screenshot,
         systeminfo,
         token
-    registerModule(sleep.module)
     registerModule(shell.module)
     registerModule(bof.module)
     registerModule(dotnet.module)
@@ -54,9 +54,6 @@ when (MODULES == cast[uint32](MODULE_ALL)):
     registerModule(token.module)
 
 # Import modules individually 
-when ((MODULES and cast[uint32](MODULE_SLEEP)) == cast[uint32](MODULE_SLEEP)):
-    import sleep
-    registerModule(sleep.module)
 when ((MODULES and cast[uint32](MODULE_SHELL)) == cast[uint32](MODULE_SHELL)):
     import shell
     registerModule(shell.module)
@@ -75,7 +72,7 @@ when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FIL
 when ((MODULES and cast[uint32](MODULE_SCREENSHOT)) == cast[uint32](MODULE_SCREENSHOT)):
     import screenshot
     registerModule(screenshot.module)
-when ((MODULES and cast[uint32](MODULE_SITUATIONAL_AWARENESS)) == cast[uint32](MODULE_SITUATIONAL_AWARENESS)):
+when ((MODULES and cast[uint32](MODULE_SYSTEMINFO)) == cast[uint32](MODULE_SYSTEMINFO)):
     import systeminfo
     registerModule(systeminfo.module)
 when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
@@ -106,6 +103,8 @@ proc getCommands*(modules: uint32 = 0): seq[Command] =
     # House-keeping 
     result.add(manager.commandsByType[CMD_EXIT])
     result.add(manager.commandsByType[CMD_SELF_DESTRUCT])
+    result.add(manager.commandsByType[CMD_SLEEP])
+    result.add(manager.commandsByType[CMD_SLEEPMASK])
     result.add(manager.commandsByType[CMD_LINK])
     result.add(manager.commandsByType[CMD_UNLINK])
 

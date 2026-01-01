@@ -1,6 +1,6 @@
 import winim/lean 
 import tables
-import ../utils/io
+import ./io
 import ../../common/[types, utils]
 import token
 

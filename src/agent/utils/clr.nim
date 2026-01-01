@@ -1,5 +1,5 @@
 import winim/[lean, clr]
-import ../utils/[hwbp, io]
+import ./[hwbp, io]
 import ../../common/utils
 
 #[ 

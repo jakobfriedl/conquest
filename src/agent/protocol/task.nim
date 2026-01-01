@@ -1,12 +1,12 @@
 import zippy, strformat, tables
 import ./result
 import ../utils/io
-import ../../modules/manager
+import ../core/command
 import ../../common/[types, serialize, sequence, crypto, utils]
 
 proc handleTask*(ctx: AgentCtx, task: Task): TaskResult = 
     try: 
-        return getCommandByType(cast[CommandType](task.command)).execute(ctx, task)
+        return commands[cast[CommandType](task.command)](ctx, task)
     except CatchableError as err: 
         return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 

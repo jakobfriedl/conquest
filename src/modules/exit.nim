@@ -32,31 +32,3 @@ when not defined(agent):
     proc executeExit(ctx: AgentCtx, task: Task): TaskResult = nil
     proc executeSelfDestroy(ctx: AgentCtx, task: Task): TaskResult = nil 
 
-when defined(agent):
-
-    import strutils
-    import ../agent/utils/io
-    import ../agent/core/exit
-    import ../agent/protocol/result
-
-    proc executeExit(ctx: AgentCtx, task: Task): TaskResult = 
-        try: 
-            print "   [>] Exiting."
-
-            if task.argCount == 0: 
-                exit()
-            else: 
-                let exitType = parseEnum[ExitType](Bytes.toString(task.args[0].data))
-                exit(exitType)
-
-        except CatchableError as err:
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
-        
-    proc executeSelfDestroy(ctx: AgentCtx, task: Task): TaskResult =
-        try: 
-            print "   [>] Self-destructing."
-            exit(EXIT_PROCESS, true)
-
-        except CatchableError as err:
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
-        

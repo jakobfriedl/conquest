@@ -1,7 +1,7 @@
 import winim, os, net, strutils, registry, zippy, strformat
 
+import ../core/command
 import ../../common/[types, serialize, sequence, crypto, utils]
-import ../../modules/manager
 
 # Hostname/Computername
 proc getHostname(): string = 
