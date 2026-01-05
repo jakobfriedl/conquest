@@ -2,9 +2,8 @@ import strformat, strutils, times, os, tables, native_dialogs
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/appImGui
 import ../../../common/types
-import ../../core/websocket
+import ../../core/[websocket, context]
 import ../widgets/textarea
-import ../../context
 
 # type
 #     DownloadsComponent* = ref object of RootObj

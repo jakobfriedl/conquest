@@ -112,3 +112,4 @@ proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[s
 
     # Return the task object for serialization
     return task
+ 

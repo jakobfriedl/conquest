@@ -2,8 +2,7 @@ import times, tables, native_dialogs
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/appImGui
 import ../../../common/[types, utils]
-import ../../core/websocket
-import ../../context
+import ../../core/[websocket, context]
 
 
 # type

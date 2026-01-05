@@ -1,7 +1,7 @@
 import imguin/[cimgui, glfw_opengl]
 import ./widgets/textarea
 import ../utils/appImGui
-import ../context
+import ../core/context
 export addItem
 
 # type 

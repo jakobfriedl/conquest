@@ -5,9 +5,8 @@ import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowse
 import ./views/loot/[screenshots, downloads]
 import ./views/modals/generatePayload
 import ../common/[types, utils, profile, crypto, serialize]
-import ./core/[websocket, database]
+import ./core/[websocket, database, context]
 import ./core/scripting/engine
-import ./context
 
 proc main(ip: string = "localhost", port: int = 37573) = 
     var app = createApp(1024, 800, imnodes = true, title = "Conquest", docking = true)

@@ -2,8 +2,7 @@ import strutils, sequtils, tables
 import imguin/[cimgui, glfw_opengl, simple]
 import ./modals/[startListener, generatePayload]
 import ../utils/appImGui
-import ../core/websocket
-import ../context
+import ../core/[context, websocket]
 import ../../common/types
 
 # type 

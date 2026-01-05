@@ -2,8 +2,7 @@ import imguin/[cimgui, glfw_opengl]
 import tables, native_dialogs, sequtils, strformat
 import ../utils/appImGui
 import ../core/scripting/engine
-import ../core/database
-import ../context
+import ../core/[database, context]
 import ../../common/types
 
 # type 
@@ -17,7 +16,7 @@ proc ModuleManager*(title: string): ModuleManagerComponent =
     result.tempPath = ""
     result.modules = initTable[string, Module]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
-    
+
 proc getModules*(component: ModuleManagerComponent, modules: uint32 = 0): seq[Module] = 
     for _, module in component.modules: 
         if not module.builtin: 

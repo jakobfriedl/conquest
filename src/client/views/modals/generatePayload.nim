@@ -3,7 +3,7 @@ import imguin/[cimgui, glfw_opengl]
 import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
 import ../../utils/appImGui
-import ../../context
+import ../../core/context
 import ../../../common/types
 import ../moduleManager
 export addItem

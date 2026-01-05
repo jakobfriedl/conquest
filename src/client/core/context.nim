@@ -1,9 +1,9 @@
 import tables
 import imguin/[cimgui, glfw_opengl]
-import ./utils/appImGui
-import ./views/widgets/[dualListSelection, textarea]
-import ./views/modals/[startListener, configureKillDate, configureWorkingHours]
-import ../common/types
+import ../utils/appImGui
+import ../views/widgets/[dualListSelection, textarea]
+import ../views/modals/[startListener, configureKillDate, configureWorkingHours]
+import ../../common/types
 
 # Component type definitions
 const MAX_INPUT_LENGTH* = 4096 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets)

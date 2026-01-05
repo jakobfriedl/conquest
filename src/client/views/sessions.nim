@@ -2,9 +2,8 @@ import times, tables, strformat, strutils, sequtils, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 
 import ./console
-import ../core/[task, websocket]
+import ../core/[task, websocket, context]
 import ../utils/[appImGui, globals]
-import ../context
 import ./moduleManager
 import ../../common/types
 

@@ -1,8 +1,7 @@
 import imguin/[cimgui, glfw_opengl]
 import sequtils, strutils, strformat, tables, times, algorithm
 import ../utils/[appImGui, globals]
-import ../core/[task, websocket]
-import ../context
+import ../core/[task, websocket, context]
 import ./moduleManager
 import ../../common/types
 

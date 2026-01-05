@@ -2,8 +2,7 @@ import strformat, strutils, sequtils, tables, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, globals]
 import ../../common/[types, utils]
-import ../core/[task, websocket]
-import ../context
+import ../core/[task, websocket, context]
 import ./widgets/textarea
 import ./moduleManager
 export addItem
@@ -142,7 +141,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 
 #[
     Handling console commands
-    TODO: Modify to fit updated module system
+    TODO: Modify to fit updated module system 
 ]#
 proc displayHelp(component: ConsoleComponent) =
     for cmd in cq.moduleManager.getCommands(component.agent.modules):
