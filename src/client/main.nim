@@ -44,13 +44,19 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
     # Create components
     var dockspace = Dockspace()
+    cq.moduleManager = ModuleManager(WIDGET_MODULE_MANAGER)
+
+    # Load built-in modules and those stored in the database
+    # Modules need to be loaded before other components are created
+    for path in dbGetScriptPaths(): 
+        loadScript(path)
+
     cq.sessions = SessionsTable(WIDGET_SESSIONS, addr cq.consoles) 
     cq.listeners = ListenersTable(WIDGET_LISTENERS)
     cq.eventlog = Eventlog(WIDGET_EVENTLOG)
     cq.downloads = LootDownloads(WIDGET_DOWNLOADS)
     cq.screenshots = LootScreenshots(WIDGET_SCREENSHOTS)
     cq.processBrowser = ProcessBrowser(WIDGET_PROCESS_BROWSER)
-    cq.moduleManager = ModuleManager(WIDGET_MODULE_MANAGER)
     cq.consoles = initTable[string, ConsoleComponent]()
 
     let io = igGetIO()
@@ -67,10 +73,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
     # Initialize database 
     dbInit() 
-
-    # Load built-in modules and those stored in the database
-    for path in dbGetScriptPaths(): 
-        loadScript(path)
 
     # main loop
     while not app.handle.windowShouldClose:

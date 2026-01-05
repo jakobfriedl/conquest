@@ -15,7 +15,7 @@ var commands* = newTable[CommandType, proc(ctx: AgentCtx, task: Task): TaskResul
 for cmd in low(CommandType) .. high(CommandType): 
     commands[cmd] = proc (ctx: AgentCtx, task: Task): TaskResult =
         let command = cast[CommandType](task.command)
-        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(protect("Command \"") & $command & protect("\" not implemented.")))
+        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(protect("Command \"") & $command & protect("\" not enabled.")))
 
 #[
     Built-in modules (always enabled)

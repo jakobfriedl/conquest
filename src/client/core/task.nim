@@ -36,9 +36,9 @@ proc parseInput*(input: string): seq[string] =
 proc parseArgument*(argument: Argument, value: string): TaskArg = 
     
     var arg: TaskArg
-    arg.argType = cast[uint8](argument.argumentType)  
+    arg.argType = cast[uint8](argument.argType)  
 
-    case argument.argumentType:
+    case argument.argType:
 
     of INT: 
         # Length: 4 bytes        
@@ -78,7 +78,7 @@ proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[s
     task.taskId = string.toUuid(generateUUID()) 
     task.listenerId = string.toUuid(listenerId)
     task.timestamp = uint32(now().toTime().toUnix())
-    task.command = cast[uint16](command.commandType) 
+    task.command = cast[uint16](parseEnum[CommandType](command.name)) 
     task.argCount = uint8(arguments.len)
 
     var taskArgs: seq[TaskArg]

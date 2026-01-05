@@ -1,6 +1,7 @@
 import tables
 import ./command
 import ../database
+import ../../../common/types
 
 #[
     Python API
@@ -16,16 +17,17 @@ import ../database
 proc createCommand*(name, description, example: string): Command {.exportpy.} = 
     return newCommand(name, description, example)
 
-proc registerModule*(name, description: string, commands: seq[Command]) {.exportpy.} = 
-    cq.moduleManager.tempModule.name = name 
-    cq.moduleManager.tempModule.description = description
-    cq.moduleManager.tempModule.commandCount = commands.len() 
-
+proc registerModule*(name, description: string, commands: seq[Command], builtin: bool = false) {.exportpy.} = 
     # Store module in database 
     if not dbModuleExists(name):
-        discard dbStoreModule(cq.moduleManager.tempModule.name, cq.moduleManager.tempModule.path)
+        discard dbStoreModule(name, cq.moduleManager.tempPath)
 
-    cq.moduleManager.modules[name] = cq.moduleManager.tempModule
+    cq.moduleManager.modules[name] = Module(
+        name: name, 
+        description: description, 
+        path: cq.moduleManager.tempPath,
+        commands: commands
+    )
     
 proc bofPack() = 
 

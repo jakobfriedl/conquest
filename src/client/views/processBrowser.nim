@@ -3,8 +3,8 @@ import sequtils, strutils, strformat, tables, times, algorithm
 import ../utils/[appImGui, globals]
 import ../core/[task, websocket]
 import ../context
+import ./moduleManager
 import ../../common/types
-import ../../modules/manager
 
 # type 
 #     Processes* = object
@@ -43,7 +43,7 @@ proc draw*(component: ProcessBrowserComponent, showComponent: ptr bool, connecti
 
     let agent = agents[component.agent - 1]
     if igButton(ICON_FA_ROTATE_RIGHT, vec2(0.0f, 0.0f)):
-        let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_PS), @[])
+        let task = createTask(agent.agentId, agent.listenerId, cq.moduleManager.getCommand($CMD_PS), @[])
         connection.sendAgentTask(agent.agentId, "ps", task)
 
     var latestUpdate: string = "Never"

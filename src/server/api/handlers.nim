@@ -153,7 +153,7 @@ proc handleResult*(resultData: seq[byte]) =
                 let fileInfo = getFileInfo(downloadPath)
                 var lootItem = LootItem(
                     lootId: generateUuid(),
-                    itemType: parseEnum[LootItemType](($cast[CommandType](taskResult.command)).split("_")[1]), # CMD_DOWNLOAD -> DOWNLOAD, CMD_SCREENSHOT -> SCREENSHOT
+                    itemType: parseEnum[LootItemType](($cast[CommandType](taskResult.command)).toUpperAscii()), # CMD_DOWNLOAD -> DOWNLOAD, CMD_SCREENSHOT -> SCREENSHOT
                     agentId: agentId, 
                     path: downloadPath, 
                     timestamp: fileInfo.creationTime.toUnix(),

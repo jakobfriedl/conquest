@@ -1,31 +1,30 @@
-import strutils, strformat, sequtils, times
+import strutils, strformat, sequtils, tables, times
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
 import ../../utils/appImGui
+import ../../context
 import ../../../common/types
-import ../../../modules/manager
 export addItem
 
-type 
-    AgentModalComponent* = ref object of RootObj
-        show*: bool
-        listener: int32 
-        sleepDelay: uint32
-        jitter: int32 
-        sleepMask: int32 
-        spoofStack: bool 
-        killDateEnabled: bool 
-        killDate: int64
-        workingHoursEnabled: bool
-        workingHours: WorkingHours
-        verbose: bool
-        sleepMaskTechniques: seq[string]
-        moduleSelection: DualListSelectionWidget[Module]
-        buildLog*: TextareaWidget
-        killDateModal*: KillDateModalComponent
-        workingHoursModal*: WorkingHoursModalComponent
-
+# type 
+#     AgentModalComponent* = ref object of RootObj
+#         show*: bool
+#         listener: int32 
+#         sleepDelay: uint32
+#         jitter: int32 
+#         sleepMask: int32 
+#         spoofStack: bool 
+#         killDateEnabled: bool 
+#         killDate: int64
+#         workingHoursEnabled: bool
+#         workingHours: WorkingHours
+#         verbose: bool
+#         sleepMaskTechniques: seq[string]
+#         moduleSelection: DualListSelectionWidget[Module]
+#         buildLog*: TextareaWidget
+#         killDateModal*: KillDateModalComponent
+#         workingHoursModal*: WorkingHoursModalComponent
 
 proc AgentModal*(): AgentModalComponent =
     result = new AgentModalComponent
@@ -51,7 +50,7 @@ proc AgentModal*(): AgentModalComponent =
         result.sleepMaskTechniques.add($technique)
 
     # TODO: Modules should be taken from the module manager
-    let modules = getModules()
+    let modules = cq.moduleManager.modules.values().toSeq()
     proc moduleName(module: Module): string = 
         return module.name
     proc moduleDesc(module: Module): string = 
@@ -59,7 +58,8 @@ proc AgentModal*(): AgentModalComponent =
         for cmd in module.commands: 
             result &= " - " & cmd.name & "\n"
     proc compareModules(x, y: Module): int = 
-        return cmp(x.moduleType, y.moduleType)
+        # return cmp(x.moduleType, y.moduleType)
+        discard
 
     result.moduleSelection = DualListSelection(modules, moduleName, compareModules, moduleDesc)
     result.buildLog = Textarea(showTimestamps = false)
@@ -223,8 +223,21 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
 
             # Iterate over modules
             var modules: uint32 = 0
+
+            proc parseModuleType(moduleName: string): ModuleType =
+                case moduleName.toLower()
+                of "shell": return MODULE_SHELL
+                of "bof": return MODULE_BOF
+                of "dotnet": return MODULE_DOTNET
+                of "filesystem": return MODULE_FILESYSTEM
+                of "filetransfer": return MODULE_FILETRANSFER
+                of "screenshot": return MODULE_SCREENSHOT
+                of "systeminfo": return MODULE_SYSTEMINFO
+                of "token": return MODULE_TOKEN
+                else: discard
+
             for m in component.moduleSelection.items[1]: 
-                modules = modules or uint32(m.moduleType)
+                modules = modules or uint32(parseModuleType(m.name))
 
             result = AgentBuildInformation(
                 listenerId: listeners[component.listener].listenerId,

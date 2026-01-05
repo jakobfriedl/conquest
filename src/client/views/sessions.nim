@@ -5,7 +5,7 @@ import ./console
 import ../core/[task, websocket]
 import ../utils/[appImGui, globals]
 import ../context
-import ../../modules/manager
+import ./moduleManager
 import ../../common/types
 
 # type 
@@ -187,7 +187,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                             if component.consoles[].hasKey(agent.agentId):
                                 component.consoles[][agent.agentId].handleAgentCommand(connection, "exit process")
                             else: 
-                                let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_EXIT), @["process"])
+                                let task = createTask(agent.agentId, agent.listenerId, cq.moduleManager.getCommand($CMD_EXIT), @["process"])
                                 connection.sendAgentTask(agent.agentId, "exit process", task)
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)
@@ -199,7 +199,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                             if component.consoles[].hasKey(agent.agentId):
                                 component.consoles[][agent.agentId].handleAgentCommand(connection, "exit thread") 
                             else: 
-                                let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_EXIT), @["thread"])
+                                let task = createTask(agent.agentId, agent.listenerId, cq.moduleManager.getCommand($CMD_EXIT), @["thread"])
                                 connection.sendAgentTask(agent.agentId, "exit thread", task)
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)
@@ -211,7 +211,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                             if component.consoles[].hasKey(agent.agentId):
                                 component.consoles[][agent.agentId].handleAgentCommand(connection, "self-destruct")
                             else: 
-                                let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_SELF_DESTRUCT), @[])
+                                let task = createTask(agent.agentId, agent.listenerId, cq.moduleManager.getCommand($CMD_SELF_DESTRUCT), @[])
                                 connection.sendAgentTask(agent.agentId, "self-destruct", task)
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)

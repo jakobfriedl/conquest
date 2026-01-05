@@ -1,5 +1,5 @@
 import imguin/[cimgui, glfw_opengl]
-import tables, native_dialogs, sequtils
+import tables, native_dialogs, sequtils, strformat
 import ../utils/appImGui
 import ../core/scripting/engine
 import ../core/database
@@ -14,8 +14,26 @@ import ../../common/types
 proc ModuleManager*(title: string): ModuleManagerComponent = 
     result = new ModuleManagerComponent
     result.title = title
-    result.modules = initTable[string, tuple[name, description, path: string, commandCount: int]]()
+    result.tempPath = ""
+    result.modules = initTable[string, Module]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
+
+proc getCommandsTable*(component: ModuleManagerComponent, modules: uint32 = 0): Table[string, Command] = 
+    result = initTable[string, Command]() 
+    for _, module in component.modules: 
+        for cmd in module.commands: 
+            result[cmd.name] = cmd
+
+proc getCommands*(component: ModuleManagerComponent, modules: uint32 = 0): seq[Command] = 
+    for _, module in component.modules: 
+        result.add(module.commands)
+
+proc getCommand*(component: ModuleManagerComponent, name: string): Command = 
+    try: 
+        let commands = component.getCommandsTable()
+        return commands[name]
+    except ValueError:
+        raise newException(ValueError, fmt"The command '{name}' does not exist.")
 
 proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) = 
     igBegin(component.title.cstring, showComponent, 0)
@@ -68,7 +86,7 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
                 igText(module.description.cstring)
 
             if igTableSetColumnIndex(2): 
-                igText(($module.commandCount).cstring)
+                igText(($module.commands.len()).cstring)
 
             if igTableSetColumnIndex(3): 
                 igText(module.path.cstring)

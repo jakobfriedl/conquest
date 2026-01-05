@@ -10,10 +10,7 @@ type
         compare: proc(x, y: T): int
         tooltip: proc(item: T): string
 
-proc defaultDisplay[T](item: T): string = 
-    return $item
-
-proc DualListSelection*[T](items: seq[T], display: proc(item: T): string = defaultDisplay, compare: proc(x, y: T): int,  tooltip: proc(item: T): string = nil): DualListSelectionWidget[T] = 
+proc DualListSelection*[T](items: seq[T], display: proc(item: T): string, compare: proc(x, y: T): int,  tooltip: proc(item: T): string = nil): DualListSelectionWidget[T] = 
     result = new DualListSelectionWidget[T]
     result.items[0] = items
     result.items[1] = @[]

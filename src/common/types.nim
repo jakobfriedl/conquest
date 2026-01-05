@@ -22,12 +22,6 @@ type
         MSG_REGISTER = 2'u8
         MSG_HEARTBEAT = 100'u8
 
-    ArgType* = enum 
-        STRING = 0'u8
-        INT = 1'u8
-        BOOL = 2'u8 
-        BINARY = 3'u8 
-
     HeaderFlags* = enum 
         # Flags should be powers of 2 so they can be connected with or operators
         FLAG_PLAINTEXT = 0'u16
@@ -35,35 +29,34 @@ type
         FLAG_COMPRESSED = 2'u16
         FLAG_FRAGMENTED = 4'u16 
 
-    CommandType* = enum 
-        CMD_SLEEP = 0'u16
-        CMD_SHELL = 1'u16
-        CMD_PWD = 2'u16
-        CMD_CD = 3'u16
-        CMD_LS = 4'u16
-        CMD_RM = 5'u16
-        CMD_RMDIR = 6'u16
-        CMD_MOVE = 7'u16
-        CMD_COPY = 8'u16
-        CMD_PS = 9'u16
-        CMD_ENV = 10'u16 
-        CMD_WHOAMI = 11'u16
-        CMD_BOF = 12'u16
-        CMD_DOWNLOAD = 13'u16
-        CMD_UPLOAD = 14'u16
-        CMD_SCREENSHOT = 15'u16
-        CMD_DOTNET = 16'u16
-        CMD_SLEEPMASK = 17'u16
-        CMD_MAKE_TOKEN = 18'u16
-        CMD_STEAL_TOKEN = 19'u16 
-        CMD_REV2SELF = 20'u16 
-        CMD_TOKEN_INFO = 21'u16 
-        CMD_ENABLE_PRIV = 22'u16
-        CMD_DISABLE_PRIV = 23'u16
-        CMD_EXIT = 24'u16
-        CMD_SELF_DESTRUCT = 25'u16
-        CMD_LINK = 26'u16
-        CMD_UNLINK = 27'u16
+    CommandType* {.size: sizeof(uint16).} = enum 
+        CMD_SLEEP = "sleep"
+        CMD_SHELL = "shell"
+        CMD_PWD = "pwd"
+        CMD_CD = "cd"
+        CMD_LS = "ls"
+        CMD_RM = "rm"
+        CMD_RMDIR = "rmdir"
+        CMD_MOVE = "move"
+        CMD_COPY = "copy"
+        CMD_PS = "ps"
+        CMD_ENV = "env" 
+        CMD_BOF = "bof"
+        CMD_DOWNLOAD = "download"
+        CMD_UPLOAD = "upload"
+        CMD_SCREENSHOT = "screenshot"
+        CMD_DOTNET = "dotnet"
+        CMD_SLEEPMASK = "sleepmask"
+        CMD_MAKE_TOKEN = "make-token"
+        CMD_STEAL_TOKEN = "steal-token"
+        CMD_REV2SELF = "rev2self"
+        CMD_TOKEN_INFO = "token-info"
+        CMD_ENABLE_PRIV = "enable-privilege"
+        CMD_DISABLE_PRIV = "disable-privilege"
+        CMD_EXIT = "exit"
+        CMD_SELF_DESTRUCT = "self-destruct"
+        CMD_LINK = "link"
+        CMD_UNLINK = "unlink"
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
@@ -100,8 +93,7 @@ type
         EXIT_PROCESS = "process"
         EXIT_THREAD = "thread"
 
-    ModuleType* = enum 
-        MODULE_ALL = 0'u32
+    ModuleType* {.size: sizeof(uint32).} = enum 
         MODULE_SHELL = 1'u32 
         MODULE_BOF = 2'u32
         MODULE_DOTNET = 4'u32
@@ -371,29 +363,46 @@ type
     #     size*: uint32
 
 # Structure for command module definitions 
-type
-    Argument* = object 
-        name*: string 
-        description*: string 
-        argumentType*: ArgType
-        isRequired*: bool
-        isFlag*: bool 
+type 
+    ArgType* = enum 
+        STRING = 0'u8
+        INT = 1'u8
+        BOOL = 2'u8 
+        BINARY = 3'u8 
 
+when defined(client):
+    import nimpy
+    type 
+        Argument* = ref object 
+            name*: string
+            description*: string 
+            isRequired*: bool 
+            isFlag*: bool 
+            flag*: string
+            case argType*: ArgType
+            of STRING:
+                strDefault*: string 
+            of INT: 
+                intDefault*: int 
+            of BOOL:
+                boolDefault*: bool 
+            of BINARY: 
+                binDefault*: seq[byte]
 
-    Command* = object 
-        name*: string
-        commandType*: CommandType
-        description*: string 
-        example*: string 
-        arguments*: seq[Argument]
-        dispatchMessage*: string
-        execute*: proc(config: AgentCtx, task: Task): TaskResult {.nimcall.}
+        Command* = ref object of PyNimObjectExperimental
+            name*: string 
+            description*: string 
+            example*: string
+            message*: string 
+            arguments*: seq[Argument]
+            hasHandler*: bool
+            handler*: PyObject 
 
-    Module* = object
-        name*: string 
-        description*: string
-        moduleType*: ModuleType
-        commands*: seq[Command]
+        Module* = ref object of RootObj
+            name*: string 
+            description*: string
+            path*: string 
+            commands*: seq[Command]
 
 # Definitions for ImGui User interface
 type 

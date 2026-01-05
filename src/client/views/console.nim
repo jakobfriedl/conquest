@@ -2,10 +2,10 @@ import strformat, strutils, sequtils, tables, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, globals]
 import ../../common/[types, utils]
-import ../../modules/manager
 import ../core/[task, websocket]
 import ../context
 import ./widgets/textarea
+import ./moduleManager
 export addItem
 
 # const MAX_INPUT_LENGTH = 4096 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets)
@@ -83,7 +83,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 
     of ImGui_InputTextFlags_CallbackCompletion.int32: 
         # Handle Tab-autocompletion for agent commands
-        let commands = getCommands(component.agent.modules).mapIt(it.name & " ") & @["help "]
+        let commands = cq.moduleManager.getCommands(component.agent.modules).mapIt(it.name & " ") & @["help "]
 
         # Get the word to complete
         let inputEndPos = data.CursorPos
@@ -145,7 +145,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
     TODO: Modify to fit updated module system
 ]#
 proc displayHelp(component: ConsoleComponent) =
-    for cmd in getCommands(component.agent.modules):
+    for cmd in cq.moduleManager.getCommands(component.agent.modules):
         component.console.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
 
 proc displayCommandHelp(component: ConsoleComponent, command: Command) =
@@ -167,12 +167,12 @@ proc displayCommandHelp(component: ConsoleComponent, command: Command) =
         
         for arg in command.arguments:
             let isRequired = if arg.isRequired: "YES" else: "NO"
-            component.console.addItem(LOG_OUTPUT, " * " & arg.name.alignLeft(15) & " " & ($arg.argumentType).toUpperAscii().alignLeft(6) & " " & isRequired.align(8) & " " & arg.description)
+            component.console.addItem(LOG_OUTPUT, " * " & arg.name.alignLeft(15) & " " & ($arg.argType).toUpperAscii().alignLeft(6) & " " & isRequired.align(8) & " " & arg.description)
 
 proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
     try:
         # Try parsing the first argument passed to 'help' as a command
-        component.displayCommandHelp(getCommandByName(parsed[1]))
+        component.displayCommandHelp(cq.moduleManager.getCommand(parsed[1]))
     except IndexDefect:
         # 'help' command is called without additional parameters
         component.displayHelp()
@@ -198,7 +198,7 @@ proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, 
     # Handle commands with actions on the agent
     try:
         let 
-            command = getCommandByName(parsedArgs[0])
+            command = cq.moduleManager.getCommand(parsedArgs[0])
             task = createTask(component.agent.agentId, component.agent.listenerId, command, parsedArgs[1..^1])
 
         connection.sendAgentTask(component.agent.agentId, input, task)

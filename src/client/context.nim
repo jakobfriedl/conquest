@@ -1,8 +1,8 @@
 import tables
 import imguin/[cimgui, glfw_opengl]
 import ./utils/appImGui
-import ./views/widgets/textarea
-import ./views/modals/[startListener, generatePayload]
+import ./views/widgets/[dualListSelection, textarea]
+import ./views/modals/[startListener, configureKillDate, configureWorkingHours]
 import ../common/types
 
 # Component type definitions
@@ -13,6 +13,24 @@ type
         title*: string 
         textarea*: TextareaWidget
 
+    AgentModalComponent* = ref object of RootObj
+            show*: bool
+            listener*: int32 
+            sleepDelay*: uint32
+            jitter*: int32 
+            sleepMask*: int32 
+            spoofStack*: bool 
+            killDateEnabled*: bool 
+            killDate*: int64
+            workingHoursEnabled*: bool
+            workingHours*: WorkingHours
+            verbose*: bool
+            sleepMaskTechniques*: seq[string]
+            moduleSelection*: DualListSelectionWidget[Module]
+            buildLog*: TextareaWidget
+            killDateModal*: KillDateModalComponent
+            workingHoursModal*: WorkingHoursModalComponent
+
     ListenersTableComponent* = ref object of RootObj
         title*: string 
         listeners*: Table[string, UIListener]
@@ -22,8 +40,8 @@ type
 
     ModuleManagerComponent* = ref object of RootObj
         title*: string 
-        tempModule*: tuple[name, description, path: string, commandCount: int]
-        modules*: Table[string, tuple[name, description, path: string, commandCount: int]]
+        tempPath*: string
+        modules*: Table[string, Module]
         selection*: ptr ImGuiSelectionBasicStorage
 
     Processes* = object

@@ -18,8 +18,7 @@ proc loadScript*(file: string) =
         globals["__builtins__"] = builtins  
 
         # Parse and execute the loaded script 
-        cq.moduleManager.tempModule.path = file
+        cq.moduleManager.tempPath = file
         discard builtins.exec(script, globals)
-
     except: 
         echo "Failed to load ", file ,": " , getCurrentExceptionMsg()
