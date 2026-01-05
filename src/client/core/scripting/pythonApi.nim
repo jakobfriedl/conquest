@@ -26,6 +26,7 @@ proc registerModule*(name, description: string, commands: seq[Command], builtin:
         name: name, 
         description: description, 
         path: cq.moduleManager.tempPath,
+        builtin: builtin,
         commands: commands
     )
     

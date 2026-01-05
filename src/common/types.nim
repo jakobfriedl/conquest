@@ -402,6 +402,7 @@ when defined(client):
             name*: string 
             description*: string
             path*: string 
+            builtin*: bool
             commands*: seq[Command]
 
 # Definitions for ImGui User interface

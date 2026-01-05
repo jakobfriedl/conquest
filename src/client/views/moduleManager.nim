@@ -17,6 +17,11 @@ proc ModuleManager*(title: string): ModuleManagerComponent =
     result.tempPath = ""
     result.modules = initTable[string, Module]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
+    
+proc getModules*(component: ModuleManagerComponent, modules: uint32 = 0): seq[Module] = 
+    for _, module in component.modules: 
+        if not module.builtin: 
+            result.add(module)
 
 proc getCommandsTable*(component: ModuleManagerComponent, modules: uint32 = 0): Table[string, Command] = 
     result = initTable[string, Command]() 
@@ -72,7 +77,7 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.modules.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        let modules = component.modules.values().toSeq()
+        let modules = component.getModules()
         for i, module in modules: 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)

@@ -5,6 +5,7 @@ import ./[configureKillDate, configureWorkingHours]
 import ../../utils/appImGui
 import ../../context
 import ../../../common/types
+import ../moduleManager
 export addItem
 
 # type 
@@ -49,8 +50,7 @@ proc AgentModal*(): AgentModalComponent =
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
 
-    # TODO: Modules should be taken from the module manager
-    let modules = cq.moduleManager.modules.values().toSeq()
+    let modules = cq.moduleManager.getModules()
     proc moduleName(module: Module): string = 
         return module.name
     proc moduleDesc(module: Module): string = 
@@ -58,7 +58,7 @@ proc AgentModal*(): AgentModalComponent =
         for cmd in module.commands: 
             result &= " - " & cmd.name & "\n"
     proc compareModules(x, y: Module): int = 
-        # return cmp(x.moduleType, y.moduleType)
+        # return cmp(moduleType, y.moduleType)
         discard
 
     result.moduleSelection = DualListSelection(modules, moduleName, compareModules, moduleDesc)

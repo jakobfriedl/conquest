@@ -42,12 +42,16 @@ proc main(ip: string = "localhost", port: int = 37573) =
     views["Process Browser"] = addr showProcesses
     views["Module Manager"] = addr showModules
 
+    # Initialize database 
+    dbInit() 
+
     # Create components
     var dockspace = Dockspace()
     cq.moduleManager = ModuleManager(WIDGET_MODULE_MANAGER)
 
-    # Load built-in modules and those stored in the database
     # Modules need to be loaded before other components are created
+    # Load built-in modules and those stored in the database
+    loadScript(CONQUEST_ROOT & "/data/monarch.py")
     for path in dbGetScriptPaths(): 
         loadScript(path)
 
@@ -70,9 +74,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
         sessionKey: default(Key)
     )
     defer: connection.ws.close() 
-
-    # Initialize database 
-    dbInit() 
 
     # main loop
     while not app.handle.windowShouldClose:
