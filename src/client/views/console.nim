@@ -141,7 +141,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 
 #[
     Handling console commands
-    TODO: Modify to fit updated module system 
+    TODO: Modify to fit updated module system
 ]#
 proc displayHelp(component: ConsoleComponent) =
     for cmd in cq.moduleManager.getCommands(component.agent.modules):
@@ -188,7 +188,7 @@ proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, 
 
     # Convert user input into sequence of string arguments
     let parsedArgs = parseInput(input)
-    
+
     # Handle 'help' command
     if parsedArgs[0] == "help":
         component.handleHelp(parsedArgs)
@@ -196,9 +196,8 @@ proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, 
         
     # Handle commands with actions on the agent
     try:
-        let 
-            command = cq.moduleManager.getCommand(parsedArgs[0])
-            task = createTask(component.agent.agentId, component.agent.listenerId, command, parsedArgs[1..^1])
+        let command = cq.moduleManager.getCommand(parsedArgs[0])        
+        let task = createTask(component.agent.agentId, component.agent.listenerId, command, parsedArgs[1..^1])
 
         connection.sendAgentTask(component.agent.agentId, input, task)
         component.console.addItem(LOG_INFO, "Tasked agent to " & command.description.toLowerAscii() & " (" & Uuid.toString(task.taskId) & ")")

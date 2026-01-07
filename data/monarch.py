@@ -14,7 +14,7 @@ cmd_sleep = (
 cmd_sleepmask = (
     conquest.createCommand(name="sleepmask", description="Update sleepmask settings.", example="sleepmask ekko --spoof")
             .addArgString("technique", "Sleep obfuscation technique (NONE, EKKO, ZILEAN, FOLIAGE). Executing without arguments retrieves current sleepmask settings.")
-            .addFlagBool("--spoof", "spoof", "Use stack spoofing to obfuscate the call stack"))
+            .addFlagBool("--spoof", "spoof", "Enable stack spoofing to obfuscate the call stack."))
 conquest.registerModule(name="sleep", description="Change sleep configuration", commands=[cmd_sleep, cmd_sleepmask], builtin=True)
 
 cmd_link = (

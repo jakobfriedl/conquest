@@ -78,6 +78,10 @@ commands[CMD_SLEEPMASK] = proc(ctx: AgentCtx, task: Task): TaskResult =
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
 
         of 1: 
+            if task.args[0].argType == cast[uint8](ArgType.BOOL): 
+                let response = fmt"Sleepmask settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
+                return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
+
             # Only set the sleepmask technique
             let technique = parseEnum[SleepObfuscationTechnique](Bytes.toString(task.args[0].data).toUpperAscii())
             ctx.sleepSettings.sleepTechnique = technique
