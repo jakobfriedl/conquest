@@ -1,4 +1,4 @@
-import tables
+import tables, strformat
 import imguin/[cimgui, glfw_opengl]
 import ../utils/appImGui
 import ../views/widgets/[dualListSelection, textarea]
@@ -102,5 +102,28 @@ type Conquest* = ref object
     processBrowser*: ProcessBrowserComponent
     moduleManager*: ModuleManagerComponent
     consoles*: Table[string, ConsoleComponent]
+    connection*: WsConnection
 
 var cq*: Conquest = new Conquest
+
+proc getModules*(component: ModuleManagerComponent, modules: uint32 = 0): seq[Module] = 
+    for _, module in component.modules: 
+        if not module.builtin: 
+            result.add(module)
+
+proc getCommandsTable*(component: ModuleManagerComponent, modules: uint32 = 0): Table[string, Command] = 
+    result = initTable[string, Command]() 
+    for _, module in component.modules: 
+        for cmd in module.commands: 
+            result[cmd.name] = cmd
+
+proc getCommands*(component: ModuleManagerComponent, modules: uint32 = 0): seq[Command] = 
+    for _, module in component.modules: 
+        result.add(module.commands)
+
+proc getCommand*(component: ModuleManagerComponent, name: string): Command = 
+    try: 
+        let commands = component.getCommandsTable()
+        return commands[name]
+    except ValueError:
+        raise newException(ValueError, fmt"The command '{name}' does not exist.")

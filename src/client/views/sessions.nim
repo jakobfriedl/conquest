@@ -42,7 +42,7 @@ proc interact(component: SessionsTableComponent) =
     
     component.selection.ImGuiSelectionBasicStorage_Clear()
 
-proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connection: WsConnection) = 
+proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
     igBegin(component.title.cstring, showComponent, 0)
 
     let textSpacing = igGetStyle().ItemSpacing.x
@@ -184,10 +184,9 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                     for i, agent in agents:
                         if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                             if component.consoles[].hasKey(agent.agentId):
-                                component.consoles[][agent.agentId].handleAgentCommand(connection, "exit process")
+                                component.consoles[][agent.agentId].handleAgentCommand("exit process")
                             else: 
-                                let task = createTask(agent.agentId, agent.listenerId, cq.moduleManager.getCommand($CMD_EXIT), @["process"])
-                                connection.sendAgentTask(agent.agentId, "exit process", task)
+                                sendTask(agent.agentId, "exit process")
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)
                     igCloseCurrentPopup()
@@ -196,10 +195,9 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                     for i, agent in agents:
                         if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                             if component.consoles[].hasKey(agent.agentId):
-                                component.consoles[][agent.agentId].handleAgentCommand(connection, "exit thread") 
+                                component.consoles[][agent.agentId].handleAgentCommand("exit thread") 
                             else: 
-                                let task = createTask(agent.agentId, agent.listenerId, cq.moduleManager.getCommand($CMD_EXIT), @["thread"])
-                                connection.sendAgentTask(agent.agentId, "exit thread", task)
+                                sendTask(agent.agentId, "exit thread")
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)
                     igCloseCurrentPopup()
@@ -208,10 +206,9 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                     for i, agent in agents:
                         if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                             if component.consoles[].hasKey(agent.agentId):
-                                component.consoles[][agent.agentId].handleAgentCommand(connection, "self-destruct")
+                                component.consoles[][agent.agentId].handleAgentCommand("self-destruct")
                             else: 
-                                let task = createTask(agent.agentId, agent.listenerId, cq.moduleManager.getCommand($CMD_SELF_DESTRUCT), @[])
-                                connection.sendAgentTask(agent.agentId, "self-destruct", task)
+                                sendTask(agent.agentId, "self-destruct")
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)
                     igCloseCurrentPopup()
@@ -225,7 +222,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                 for i, agent in agents:
                     if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                         component.agents.del(agent.agentId)
-                        connection.sendAgentRemove(agent.agentId)
+                        cq.connection.sendAgentRemove(agent.agentId)
 
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()

@@ -1,4 +1,4 @@
-import strformat, strutils, sequtils, tables, algorithm
+import strformat, strutils, sequtils, tables, algorithm, nimpy
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, globals]
 import ../../common/[types, utils]
@@ -182,7 +182,7 @@ proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
     # Add newline at the end of help text
     component.console.addItem(LOG_OUTPUT, "")
 
-proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, input: string) =
+proc handleAgentCommand*(component: ConsoleComponent, input: string) =
     # Add command to console
     component.console.addItem(LOG_COMMAND, input)
 
@@ -196,11 +196,14 @@ proc handleAgentCommand*(component: ConsoleComponent, connection: WsConnection, 
         
     # Handle commands with actions on the agent
     try:
-        let command = cq.moduleManager.getCommand(parsedArgs[0])        
-        let task = createTask(component.agent.agentId, component.agent.listenerId, command, parsedArgs[1..^1])
-
-        connection.sendAgentTask(component.agent.agentId, input, task)
-        component.console.addItem(LOG_INFO, "Tasked agent to " & command.description.toLowerAscii() & " (" & Uuid.toString(task.taskId) & ")")
+        let command = cq.moduleManager.getCommand(parsedArgs[0])
+        
+        # If the command has a handler, execute it with the parsed arguments
+        if command.hasHandler:
+            let args = command.parseArguments(parsedArgs[1..^1])        
+            discard command.handler.callObject(component.agent.agentId, input, args)
+        else:
+            sendTask(component.agent.agentId, input)
 
     except CatchableError:
         component.console.addItem(LOG_ERROR, getCurrentExceptionMsg())
@@ -228,7 +231,7 @@ proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], pro
     for pid in rootProcesses: 
         printProcess(pid)
 
-proc draw*(component: ConsoleComponent, connection: WsConnection) =
+proc draw*(component: ConsoleComponent) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}".cstring, addr component.showConsole, 0)
     defer: igEnd()
     
@@ -314,7 +317,7 @@ proc draw*(component: ConsoleComponent, connection: WsConnection) =
         let command = ($cast[cstring]((addr component.inputBuffer[0]))).strip()
         if not command.isEmptyOrWhitespace(): 
             # Send command to team server
-            component.handleAgentCommand(connection, command)
+            component.handleAgentCommand(command)
 
             # Add command to console history
             component.history.add(command)

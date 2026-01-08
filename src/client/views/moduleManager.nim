@@ -17,28 +17,6 @@ proc ModuleManager*(title: string): ModuleManagerComponent =
     result.modules = initTable[string, Module]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
 
-proc getModules*(component: ModuleManagerComponent, modules: uint32 = 0): seq[Module] = 
-    for _, module in component.modules: 
-        if not module.builtin: 
-            result.add(module)
-
-proc getCommandsTable*(component: ModuleManagerComponent, modules: uint32 = 0): Table[string, Command] = 
-    result = initTable[string, Command]() 
-    for _, module in component.modules: 
-        for cmd in module.commands: 
-            result[cmd.name] = cmd
-
-proc getCommands*(component: ModuleManagerComponent, modules: uint32 = 0): seq[Command] = 
-    for _, module in component.modules: 
-        result.add(module.commands)
-
-proc getCommand*(component: ModuleManagerComponent, name: string): Command = 
-    try: 
-        let commands = component.getCommandsTable()
-        return commands[name]
-    except ValueError:
-        raise newException(ValueError, fmt"The command '{name}' does not exist.")
-
 proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) = 
     igBegin(component.title.cstring, showComponent, 0)
     defer: igEnd() 

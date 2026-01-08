@@ -22,7 +22,7 @@ proc LootDownloads*(title: string): DownloadsComponent =
     result.selectedIndex = -1
     result.textarea = Textarea(showTimestamps = false, autoScroll = false)
 
-proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: WsConnection) =
+proc draw*(component: DownloadsComponent, showComponent: ptr bool) =
     igBegin(component.title.cstring, showComponent, 0)
     defer: igEnd()
 
@@ -104,7 +104,7 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: W
 
                 if igMenuItem("Remove", nil, false, true): 
                     # Task team server to remove the loot item 
-                    connection.sendRemoveLoot(item.lootId)
+                    cq.connection.sendRemoveLoot(item.lootId)
                     component.items.delete(component.selectedIndex)
                     igCloseCurrentPopup()
 
@@ -122,7 +122,7 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: W
             let item = component.items[component.selectedIndex]
             
             if not component.contents.hasKey(item.lootId): 
-                connection.sendGetLoot(item.lootId)     
+                cq.connection.sendGetLoot(item.lootId)     
                 component.contents[item.lootId] = ""       # Ensure that the sendGetLoot() function is sent only once by setting a value for the table key
 
             else: 

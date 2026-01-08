@@ -50,7 +50,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
     # Modules need to be loaded before other components are created
     # Load built-in modules and those stored in the database
-    loadScript(CONQUEST_ROOT & "/data/monarch.py")
+    loadScript(CONQUEST_ROOT & "/data/default.py")
     for path in dbGetScriptPaths(): 
         loadScript(path)
 
@@ -68,11 +68,11 @@ proc main(ip: string = "localhost", port: int = 37573) =
     var clientKeyPair = generateKeyPair() 
         
     # Initiate WebSocket connection
-    var connection = WsConnection(
+    cq.connection = WsConnection(
         ws: newWebSocket(fmt"ws://{ip}:{$port}"),
         sessionKey: default(Key)
     )
-    defer: connection.ws.close() 
+    defer: cq.connection.ws.close() 
 
     # main loop
     while not app.handle.windowShouldClose:
@@ -91,13 +91,13 @@ proc main(ip: string = "localhost", port: int = 37573) =
         ]# 
         try: 
             # Receive and parse websocket response message 
-            let message = connection.ws.receiveMessage(timeout = 16)    # Use a 16ms timeout to reduce CPU load = ~60FPS 
+            let message = cq.connection.ws.receiveMessage(timeout = 16)    # Use a 16ms timeout to reduce CPU load = ~60FPS 
             if message.isSome():
-                let event = recvEvent(message.get(), connection.sessionKey)
+                let event = recvEvent(message.get(), cq.connection.sessionKey)
                 case event.eventType:
                 of CLIENT_KEY_EXCHANGE: 
-                    connection.sessionKey = deriveSessionKey(clientKeyPair, decode(event.data["publicKey"].getStr()).toKey())            
-                    connection.sendPublicKey(clientKeyPair.publicKey)
+                    cq.connection.sessionKey = deriveSessionKey(clientKeyPair, decode(event.data["publicKey"].getStr()).toKey())            
+                    cq.connection.sendPublicKey(clientKeyPair.publicKey)
                     wipeKey(clientKeyPair.privateKey)
 
                 of CLIENT_PROFILE:
@@ -128,7 +128,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         igSetNextWindowDockID(listenersWindow.DockNode.ID, ImGuiCond_FirstUseEver.int32)
                     else:
                         igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
-                    cq.consoles[agent.agentId].draw(connection)
+                    cq.consoles[agent.agentId].draw()
                     cq.consoles[agent.agentId].showConsole = false
 
                 of CLIENT_AGENT_CHECKIN: 
@@ -242,12 +242,12 @@ proc main(ip: string = "localhost", port: int = 37573) =
                 else: discard 
         
             # Draw/update UI components/views
-            if showSessionsTable: cq.sessions.draw(addr showSessionsTable, connection)   
-            if showListeners: cq.listeners.draw(addr showListeners, connection)
+            if showSessionsTable: cq.sessions.draw(addr showSessionsTable)   
+            if showListeners: cq.listeners.draw(addr showListeners)
             if showEventlog: cq.eventlog.draw(addr showEventlog)
-            if showDownloads: cq.downloads.draw(addr showDownloads, connection)
-            if showScreenshots: cq.screenshots.draw(addr showScreenshots, connection)
-            if showProcesses: cq.processBrowser.draw(addr showProcesses, connection, cq.sessions.agents.values().toSeq())
+            if showDownloads: cq.downloads.draw(addr showDownloads)
+            if showScreenshots: cq.screenshots.draw(addr showScreenshots)
+            if showProcesses: cq.processBrowser.draw(addr showProcesses, cq.sessions.agents.values().toSeq())
             if showModules: cq.moduleManager.draw(addr showModules)
 
             # Show console windows
@@ -256,7 +256,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                 if console.showConsole:
                     # Ensure that new console windows are docked to the bottom panel by default
                     igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
-                    console.draw(connection)    
+                    console.draw()    
                     newConsoleTable[agentId] = console
                 
             if cq.sessions.focusedConsole.len() > 0: 

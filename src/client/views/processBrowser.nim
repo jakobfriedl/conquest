@@ -25,7 +25,7 @@ proc ProcessBrowser*(title: string): ProcessBrowserComponent =
     result.processes = initTable[string, Processes]() 
     result.selection = 0 
 
-proc draw*(component: ProcessBrowserComponent, showComponent: ptr bool, connection: WsConnection, agents: seq[UIAgent]) = 
+proc draw*(component: ProcessBrowserComponent, showComponent: ptr bool, agents: seq[UIAgent]) = 
     igBegin(component.title.cstring, showComponent, 0)
     defer: igEnd() 
 
@@ -42,8 +42,7 @@ proc draw*(component: ProcessBrowserComponent, showComponent: ptr bool, connecti
 
     let agent = agents[component.agent - 1]
     if igButton(ICON_FA_ROTATE_RIGHT, vec2(0.0f, 0.0f)):
-        let task = createTask(agent.agentId, agent.listenerId, cq.moduleManager.getCommand($CMD_PS), @[])
-        connection.sendAgentTask(agent.agentId, "ps", task)
+        sendTask(agent.agentId, "ps")
 
     var latestUpdate: string = "Never"
     if component.processes.hasKey(agent.agentId):

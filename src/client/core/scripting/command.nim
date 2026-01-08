@@ -1,11 +1,12 @@
 import nimpy 
 import ../../../common/types
 
-proc newCommand*(name, description, example: string): Command = 
+proc newCommand*(name, description, example, message: string): Command = 
     return Command(
         name: name, 
         description: description,
         example: example,
+        message: message,
         arguments: @[],
         hasHandler: false
     )

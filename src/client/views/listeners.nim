@@ -21,7 +21,7 @@ proc ListenersTable*(title: string): ListenersTableComponent =
     result.startListenerModal = ListenerModal()
     result.generatePayloadModal = AgentModal()
 
-proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connection: WsConnection) = 
+proc draw*(component: ListenersTableComponent, showComponent: ptr bool) = 
     igBegin(component.title.cstring, showComponent, 0)
     defer: igEnd() 
 
@@ -43,11 +43,11 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
 
     let listener = component.startListenerModal.draw()
     if listener != nil: 
-        connection.sendStartListener(listener)
+        cq.connection.sendStartListener(listener)
 
     let buildInformation = component.generatePayloadModal.draw(listeners)
     if buildInformation != nil:
-        connection.sendAgentBuild(buildInformation)
+        cq.connection.sendAgentBuild(buildInformation)
 
     #[
         Listener table
@@ -120,7 +120,7 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
                 for i, listener in listeners:
                     if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                         component.listeners.del(listener.listenerId)
-                        connection.sendStopListener(listener.listenerId)
+                        cq.connection.sendStopListener(listener.listenerId)
 
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()

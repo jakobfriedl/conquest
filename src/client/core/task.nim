@@ -1,5 +1,7 @@
 import std/[paths, tables]
 import strutils, strformat, sequtils, times
+import ./[websocket, context]
+import ../views/widgets/textarea
 import ../../common/[types, sequence, crypto, utils, serialize]
 
 proc parseInput*(input: string): seq[string] = 
@@ -52,13 +54,7 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
         arg.data = packer.pack() 
     return arg
 
-proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[string]): Task = 
-    var task: Task
-    task.taskId = string.toUuid(generateUUID()) 
-    task.listenerId = string.toUuid(listenerId)
-    task.timestamp = uint32(now().toTime().toUnix())
-    task.command = cast[uint16](parseEnum[CommandType](command.name)) 
-    
+proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] = 
     # Parse input into flags and positional args
     var flags = initTable[string, string]()
     var positional: seq[string] = @[]
@@ -76,23 +72,21 @@ proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[s
         else:
             positional.add(arguments[i])
             i += 1
-    
-    var taskArgs: seq[TaskArg]
-    
+        
     # Map the cli arguments to the arguments expected by the command 
     i = 0
     for arg in command.arguments:
         if arg.isFlag:
             if arg.flag in flags:
                 let value = if arg.argType == BOOL: "true" elif flags[arg.flag] == "": "true" else: flags[arg.flag]
-                taskArgs.add(parseArgument(arg, value))
+                result.add(parseArgument(arg, value))
             elif arg.isRequired:
                 raise newException(CatchableError, fmt"Missing required flag argument: {arg.name}")
             elif arg.argType == BOOL:
-                taskArgs.add(parseArgument(arg, $arg.boolDefault))
+                result.add(parseArgument(arg, $arg.boolDefault))
         else:
             if i < positional.len():
-                taskArgs.add(parseArgument(arg, positional[i]))
+                result.add(parseArgument(arg, positional[i]))
                 i += 1
             elif arg.isRequired:
                 raise newException(CatchableError, fmt"Missing required positional argument: {arg.name}")
@@ -100,11 +94,18 @@ proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[s
     # Handle extra positional args at the end of the command 
     while i < positional.len() and command.arguments.len() > 0:
         let lastArg = command.arguments.filterIt(not it.isFlag)[^1]
-        taskArgs.add(parseArgument(lastArg, positional[i]))
+        result.add(parseArgument(lastArg, positional[i]))
         i += 1
+
+proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[string]): Task = 
+    result.taskId = string.toUuid(generateUUID()) 
+    result.listenerId = string.toUuid(listenerId)
+    result.timestamp = uint32(now().toTime().toUnix())
+    result.command = cast[uint16](parseEnum[CommandType](command.name)) 
     
-    task.argCount = uint8(taskArgs.len)
-    task.args = taskArgs   
+    let taskArgs = command.parseArguments(arguments)
+    result.argCount = uint8(taskArgs.len)
+    result.args = taskArgs
     
     # Construct the header
     var taskHeader: Header
@@ -117,8 +118,25 @@ proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[s
     taskHeader.seqNr = nextSequence(taskHeader.agentId)
     taskHeader.iv = generateBytes(Iv)
     taskHeader.gmac = default(AuthenticationTag)
-    task.header = taskHeader
+    result.header = taskHeader
 
-    echo task
+# Wrapper functions for dispatching tasks to the agent
+proc sendTask*(agentId, input: string) = 
+    let args = input.parseInput()
+    let command = cq.moduleManager.getCommand(args[0])
+    let agent = cq.sessions.agents[agentId]
+    let task = createTask(agentId, agent.listenerId, command, args[1..^1])
     
-    return task
+    cq.connection.sendAgentTask(agentId, input, task)
+    cq.consoles[agentId].console.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})")
+ 
+proc sendTask*(agentId, input, alias: string) = 
+    let args = input.parseInput()
+    let aliasArgs = alias.parseInput()
+    let command = cq.moduleManager.getCommand(args[0])
+    let aliasCommand = cq.moduleManager.getCommand(aliasArgs[0])
+    let agent = cq.sessions.agents[agentId]
+    let task = createTask(agentId, agent.listenerId, aliasCommand, aliasArgs[1..^1])
+
+    cq.connection.sendAgentTask(agentId, input, task)
+    cq.consoles[agentId].console.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})")
