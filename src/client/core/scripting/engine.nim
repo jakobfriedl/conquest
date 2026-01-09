@@ -9,7 +9,6 @@ include ./pythonApi
     - export Python API function
     - execute scripts to register commands & modules
 ]#
-
 proc loadScript*(file: string) = 
     try: 
         let script = readFile(file)

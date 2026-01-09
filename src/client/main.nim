@@ -50,7 +50,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
     # Modules need to be loaded before other components are created
     # Load built-in modules and those stored in the database
-    loadScript(CONQUEST_ROOT & "/data/default.py")
+    loadScript(CONQUEST_ROOT & "/data/modules/default.py")
     for path in dbGetScriptPaths(): 
         loadScript(path)
 

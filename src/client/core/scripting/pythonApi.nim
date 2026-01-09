@@ -1,7 +1,8 @@
-import tables, base64, strformat, strutils, unicode
+import tables, base64, strformat, strutils, os, unicode
 import ./command
 import ../[database, task]
 import ../../utils/globals
+import ../../views/widgets/textarea
 import ../../../common/[types, utils, serialize]
 
 #[
@@ -39,9 +40,9 @@ proc registerModule*(name, description: string, commands: seq[Command], builtin:
 # - b: Binary data with length-prefix
 # - i: 4-byte integer
 # - s: 2-byte short integer
-# - z: Null-terminated string (UTF-8)
-# - Z: Null-terminated wide-char string (UTF-16LE)
-proc packBofArgs*(types: string, args: seq[string]): string {.exportpy.} = 
+# - z: Null-terminated string with length-prefix (UTF-8)
+# - Z: Null-terminated wide-char string with length-prefix (UTF-16)
+proc bof_pack*(types: string, args: seq[string]): string {.exportpy.} = 
     if types.len() != args.len():
         raise newException(ValueError, "Invalid number of arguments.")
     
@@ -60,7 +61,7 @@ proc packBofArgs*(types: string, args: seq[string]): string {.exportpy.} =
             let data = string.toBytes(value) & @[0'u8]
             packer.addDataWithLengthPrefix(data)
         
-        of 'Z': # Null-terminated UTF-16LE (with 4-byte prefixed length)
+        of 'Z': # Null-terminated UTF-16 (with 4-byte prefixed length)
             var data: seq[byte] = @[]
             for r in value.runes:
                 let c = uint32(r)
@@ -82,27 +83,40 @@ proc packBofArgs*(types: string, args: seq[string]): string {.exportpy.} =
     let data = packer.pack()
     return base64.encode(uint32.toBytes(uint32(data.len())) & data)
 
-proc message(message: string) {.exportpy.} = 
+proc log(message: string) {.exportpy.} = 
     echo ">> ", message
 
-proc conquestRoot(): string {.exportpy.} = 
+proc error(agentId, message: string) {.exportpy.} = 
+    if cq.consoles.hasKey(agentId):
+        cq.consoles[agentId].console.addItem(LOG_ERROR, message)
+
+proc root_dir(): string {.exportpy.} = 
     return CONQUEST_ROOT
 
 # Execute a command 
-proc execCommand(agentId, command: string) {.exportpy.} = 
+proc execute_command(agentId, command: string) {.exportpy.} = 
     sendTask(agentId, command)
 
 # Takes a command string as the argument that is executed instead 
-proc execAlias(agentId, command, alias: string) {.exportpy.} =
-    echo alias
+proc execute_alias(agentId, command, alias: string) {.exportpy.} =
     sendTask(agentId, command, alias)
 
-proc getArgString*(args: seq[TaskArg], i: int = 0): string {.exportpy.} = 
+proc get_string*(args: seq[TaskArg], i: int = 0): string {.exportpy.} = 
     if i >= args.len(): 
         return ""
     return Bytes.toString(args[i].data)
 
-proc getArgInt*(args: seq[TaskArg], i: int = 0): int {.exportpy.} = 
+proc get_int*(args: seq[TaskArg], i: int = 0): int {.exportpy.} = 
     if i >= args.len(): 
         return 0
     return int(Bytes.toUint32(args[i].data))
+
+proc get_bool*(args: seq[TaskArg], i: int = 0): bool {.exportpy.} = 
+    if i >= args.len(): 
+        return false
+    return cast[bool](args[i].data[0])
+
+proc get_binary*(args: seq[TaskArg], i: int = 0): string {.exportpy.} = 
+    if i >= args.len(): 
+        return ""
+    return readFile(Bytes.toString(args[i].data))
