@@ -149,31 +149,75 @@ proc displayHelp(component: ConsoleComponent) =
 
 proc displayCommandHelp(component: ConsoleComponent, command: Command) =
     var usage = command.name & " " & command.arguments.mapIt(
-        if it.isRequired: "<" & it.name & ">" else: "[" & it.name & "]"
+        if it.isFlag and it.argType == BOOL:
+            "[" & it.flag & "]"
+        elif it.isFlag:
+            "[" & it.flag & " " & it.name & "]"
+        elif it.isRequired:
+            "<" & it.name & ">"
+        else:
+            "[" & it.name & "]"
     ).join(" ")
     
     component.console.addItem(LOG_OUTPUT, command.description)
-    component.console.addItem(LOG_OUTPUT, "Usage    : " & usage)    
-    component.console.addItem(LOG_OUTPUT, "Example  : " & command.example)
     component.console.addItem(LOG_OUTPUT, "")
+    component.console.addItem(LOG_OUTPUT, "Usage: " & usage)
+    component.console.addItem(LOG_OUTPUT, "Example: " & command.example)
+    component.console.addItem(LOG_OUTPUT, "")
+    
+    var positionalArgs: seq[Argument] = @[]
+    var optionalArgs: seq[Argument] = @[]
+    
+    for arg in command.arguments:
+        if arg.isRequired and not arg.isFlag:
+            positionalArgs.add(arg)
+        else:
+            optionalArgs.add(arg)
+    
+    # Display positional arguments
+    let widths: seq[int] = @[25, 10] 
 
-    if command.arguments.len > 0:
-        component.console.addItem(LOG_OUTPUT, "Arguments:")
+    if positionalArgs.len > 0:
+        component.console.addItem(LOG_OUTPUT, "Required arguments:")
         
-        let header = @["Name", "Type", "Required", "Description"]
-        component.console.addItem(LOG_OUTPUT, "   " & header[0].alignLeft(15) & " " & header[1].alignLeft(6) & " " & header[2].alignLeft(8) & " " & header[3])
-        component.console.addItem(LOG_OUTPUT, "   " & '-'.repeat(15) & " " & '-'.repeat(6) & " " & '-'.repeat(8) & " " & '-'.repeat(20))
+        for arg in positionalArgs:
+            let argName = arg.name.alignLeft(widths[0])
+            let argType = ($arg.argType).toUpperAscii().alignLeft(widths[1])
+            
+            # Display multi-line argument description with proper alignment
+            let descLines = arg.description.split('\n')
+            component.console.addItem(LOG_OUTPUT, "  " & argName & " " & argType & " " & descLines[0])
+            for i in 1..<descLines.len:
+                component.console.addItem(LOG_OUTPUT, "  " & ' '.repeat(30) & " " & ' '.repeat(10) & " " & descLines[i])
         
-        for arg in command.arguments:
-            let isRequired = if arg.isRequired: "YES" else: "NO"
-            component.console.addItem(LOG_OUTPUT, " * " & arg.name.alignLeft(15) & " " & ($arg.argType).toUpperAscii().alignLeft(6) & " " & isRequired.align(8) & " " & arg.description)
+        component.console.addItem(LOG_OUTPUT, "")
+    
+    # Display optional arguments
+    if optionalArgs.len > 0:
+        component.console.addItem(LOG_OUTPUT, "Optional arguments:")
+        
+        for arg in optionalArgs:
+            let argName = if arg.isFlag and arg.argType == BOOL:
+                arg.flag.alignLeft(widths[0])
+            elif arg.isFlag:
+                (arg.flag & " " & arg.name).alignLeft(widths[0])
+            else:
+                arg.name.alignLeft(widths[0])
+            
+            let argType = ($arg.argType).toUpperAscii().alignLeft(widths[1])
+            
+            # Display multi-line argument description with proper alignment
+            let descLines = arg.description.split('\n')
+            component.console.addItem(LOG_OUTPUT, "  " & argName & " " & argType & " " & descLines[0])
+            for i in 1..<descLines.len:
+                component.console.addItem(LOG_OUTPUT, "  " & ' '.repeat(widths[0]) & " " & ' '.repeat(widths[1]) & " " & descLines[i])
 
 proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
     try:
         # Try parsing the first argument passed to 'help' as a command
         component.displayCommandHelp(cq.moduleManager.getCommand(parsed[1]))
     except IndexDefect:
-        # 'help' command is called without additional parameters
+        # 'help' command is called without additional parameters -> show all available commands
         component.displayHelp()
     except ValueError:
         # Command was not found

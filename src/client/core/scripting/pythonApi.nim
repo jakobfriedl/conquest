@@ -90,8 +90,8 @@ proc error(agentId, message: string) {.exportpy.} =
     if cq.consoles.hasKey(agentId):
         cq.consoles[agentId].console.addItem(LOG_ERROR, message)
 
-proc root_dir(): string {.exportpy.} = 
-    return CONQUEST_ROOT
+proc modules_root(): string {.exportpy.} = 
+    return CONQUEST_ROOT & "/data/modules"
 
 # Execute a command 
 proc execute_command(agentId, command: string) {.exportpy.} = 

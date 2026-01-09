@@ -55,15 +55,14 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
     return arg
 
 proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] = 
-    # Parse input into flags and positional args
+    # Parse arguments into positional and optional (flag) arguments
     var flags = initTable[string, string]()
     var positional: seq[string] = @[]
     
     var i = 0
     while i < arguments.len():
         if arguments[i].startsWith("-"):
-            flags[arguments[i]] = ""  # Mark flag as present
-            # Check if next arg is a value (not another flag)
+            flags[arguments[i]] = ""
             if i + 1 < arguments.len() and not arguments[i + 1].startsWith("-"):
                 flags[arguments[i]] = arguments[i + 1]
                 i += 2
@@ -72,8 +71,16 @@ proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] =
         else:
             positional.add(arguments[i])
             i += 1
-        
-    # Map the cli arguments to the arguments expected by the command 
+    
+    # Validate flags
+    let validFlags = command.arguments.filterIt(it.isFlag).mapIt(it.flag).toSeq()
+    for flag, arg in flags:
+        if flag notin validFlags:
+            raise newException(CatchableError, fmt"Unknown flag: {flag}")
+        if arg == "" and command.arguments.filterIt(it.flag == flag)[0].argType != BOOL: 
+            raise newException(CatchableError, fmt"Value expected for flag: {flag}")
+
+    # Map the command-line arguments to the arguments expected by the command 
     i = 0
     for arg in command.arguments:
         if arg.isFlag:
@@ -92,8 +99,9 @@ proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] =
                 raise newException(CatchableError, fmt"Missing required positional argument: {arg.name}")
     
     # Handle extra positional args at the end of the command 
-    while i < positional.len() and command.arguments.len() > 0:
-        let lastArg = command.arguments.filterIt(not it.isFlag)[^1]
+    let positionalArgs = command.arguments.filterIt(not it.isFlag)
+    while i < positional.len() and positionalArgs.len() > 0:
+        let lastArg = positionalArgs[^1]
         result.add(parseArgument(lastArg, positional[i]))
         i += 1
 
