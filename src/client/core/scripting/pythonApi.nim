@@ -1,14 +1,12 @@
 import tables, base64, strformat, strutils, os, unicode
-import ./command
 import ../[database, task]
 import ../../utils/globals
 import ../../views/widgets/textarea
 import ../../../common/[types, utils, serialize]
 
 #[
-    Python API
-    - export functions that can be used in the scripts
-    - use a global context structure to return agents, listeners, etc. (maybe only for UI)
+    Conquest Python API
+    - exports functions that can be used in the module scripts
     - file operations
     - argument parsing 
     - command execution 
@@ -16,8 +14,105 @@ import ../../../common/[types, utils, serialize]
     References: https://github.com/Adaptix-Framework/AdaptixC2/blob/main/AdaptixClient/Headers/Client/AxScript/BridgeApp.h
 ]#
 
+proc addArgString*(self: Command, name, description: string, required: bool = false, default: string = ""): Command {.exportpy.} = 
+    self.arguments.add(Argument(
+        name: name,
+        description: description,
+        isRequired: required,
+        isFlag: false,
+        flag: "",
+        argType: STRING,
+        strDefault: default
+    ))
+    return self
+
+proc addFlagString*(self: Command, flag, name, description: string, required: bool = false, default: string = ""): Command {.exportpy.} =
+    self.arguments.add(Argument(
+        name: name,
+        description: description,
+        isRequired: required,
+        isFlag: true,
+        flag: flag, 
+        argType: STRING,
+        strDefault: default
+    ))
+    return self
+
+proc addArgInt*(self: Command, name, description: string, required: bool = false, default: int = 0): Command {.exportpy.} = 
+    self.arguments.add(Argument(
+        name: name,
+        description: description,
+        isRequired: required,
+        isFlag: false,
+        flag: "",
+        argType: INT,
+        intDefault: default
+    ))
+    return self
+
+proc addFlagInt*(self: Command, flag, name, description: string, required: bool = false, default: int = 0): Command {.exportpy.} =
+    self.arguments.add(Argument(
+        name: name,
+        description: description,
+        isRequired: required,
+        isFlag: true,
+        flag: flag, 
+        argType: INT,
+        intDefault: default
+    ))
+    return self
+
+proc addFlagBool*(self: Command, flag, name, description: string, default: bool = false): Command {.exportpy.} =
+    self.arguments.add(Argument(
+        name: name,
+        description: description,
+        isRequired: false,
+        isFlag: true,
+        flag: flag, 
+        argType: BOOL,
+        boolDefault: default
+    ))
+    return self
+
+proc addArgFile*(self: Command, name, description: string, required: bool = false): Command {.exportpy.} = 
+    self.arguments.add(Argument(
+        name: name,
+        description: description,
+        isRequired: required, 
+        isFlag: false,
+        flag: "",
+        argType: BINARY,
+        binDefault: @[]
+    ))
+    return self
+
+proc addFlagFile*(self: Command, flag, name, description: string, required: bool = false): Command {.exportpy.} = 
+    self.arguments.add(Argument(
+        name: name,
+        description: description,
+        isRequired: required, 
+        isFlag: true,
+        flag: flag,
+        argType: BINARY,
+        binDefault: @[]
+    ))
+    return self
+
+proc setHandler(self: Command, handler: PyObject): Command {.exportpy.} = 
+    if not handler.isNil and pyBuiltinsModule().callable(handler).to(bool):
+        self.hasHandler = true
+        self.handler = handler
+    return self 
+
 proc createCommand*(name, description, example, message: string): Command {.exportpy.} = 
-    return newCommand(name, description, example, message)
+    return Command(
+        name: name, 
+        description: description,
+        example: example,
+        message: message,
+        arguments: @[],
+        hasHandler: false
+    )
 
 proc registerModule*(name, description: string, commands: seq[Command], builtin: bool = false) {.exportpy.} = 
     # Store module in database 

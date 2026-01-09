@@ -1,5 +1,5 @@
 import imguin/[cimgui, glfw_opengl]
-import tables, native_dialogs, sequtils, strformat
+import tables, native_dialogs, sequtils, strformat, algorithm
 import ../utils/appImGui
 import ../core/scripting/engine
 import ../core/[database, context]
@@ -16,6 +16,11 @@ proc ModuleManager*(title: string): ModuleManagerComponent =
     result.tempPath = ""
     result.modules = initTable[string, Module]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
+
+proc tooltip*(module: Module): string = 
+    result = "Module commands:\n"
+    for cmd in module.commands: 
+        result &= " - " & cmd.name & "\n"
 
 proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) = 
     igBegin(component.title.cstring, showComponent, 0)
@@ -54,7 +59,7 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.modules.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        let modules = component.getModules()
+        let modules = component.getModules().sorted()
         for i, module in modules: 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
@@ -64,11 +69,16 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
                 var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i))
                 discard igSelectable_Bool(module.name.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
 
+
             if igTableSetColumnIndex(1): 
                 igText(module.description.cstring)
 
             if igTableSetColumnIndex(2): 
                 igText(($module.commands.len()).cstring)
+                
+                # Show commands when hovering over the commands column
+                if igIsItemHovered(ImGuiHoveredFlags_None.int32):
+                    igSetTooltip(tooltip(module).cstring)
 
             if igTableSetColumnIndex(3): 
                 igText(module.path.cstring)

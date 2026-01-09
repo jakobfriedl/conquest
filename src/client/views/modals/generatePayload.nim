@@ -224,18 +224,6 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
             # Iterate over modules
             var modules: uint32 = 0
 
-            proc parseModuleType(moduleName: string): ModuleType =
-                case moduleName.toLower()
-                of "shell": return MODULE_SHELL
-                of "bof": return MODULE_BOF
-                of "dotnet": return MODULE_DOTNET
-                of "filesystem": return MODULE_FILESYSTEM
-                of "filetransfer": return MODULE_FILETRANSFER
-                of "screenshot": return MODULE_SCREENSHOT
-                of "systeminfo": return MODULE_SYSTEMINFO
-                of "token": return MODULE_TOKEN
-                else: discard
-
             for m in component.moduleSelection.items[1]: 
                 modules = modules or uint32(parseModuleType(m.name))
 

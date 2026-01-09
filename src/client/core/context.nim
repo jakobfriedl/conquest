@@ -1,4 +1,4 @@
-import tables, strformat
+import tables, strformat, strutils
 import imguin/[cimgui, glfw_opengl]
 import ../utils/appImGui
 import ../views/widgets/[dualListSelection, textarea]
@@ -106,19 +106,38 @@ type Conquest* = ref object
 
 var cq*: Conquest = new Conquest
 
+proc parseModuleType*(moduleName: string): ModuleType =
+    case moduleName.toLower()
+    of "shell": return MODULE_SHELL
+    of "bof": return MODULE_BOF
+    of "dotnet": return MODULE_DOTNET
+    of "filesystem": return MODULE_FILESYSTEM
+    of "filetransfer": return MODULE_FILETRANSFER
+    of "screenshot": return MODULE_SCREENSHOT
+    of "systeminfo": return MODULE_SYSTEMINFO
+    of "token": return MODULE_TOKEN
+    else: discard
+
 proc getModules*(component: ModuleManagerComponent, modules: uint32 = 0): seq[Module] = 
     for _, module in component.modules: 
-        if not module.builtin: 
+        if not module.builtin and (modules == 0 or (modules and cast[uint32](parseModuleType(module.name))) != 0):
+            result.add(module)
+
+proc getModulesBuiltin*(component: ModuleManagerComponent): seq[Module] = 
+    for _, module in component.modules: 
+        if module.builtin:
             result.add(module)
 
 proc getCommandsTable*(component: ModuleManagerComponent, modules: uint32 = 0): Table[string, Command] = 
     result = initTable[string, Command]() 
-    for _, module in component.modules: 
+    let modules = component.getModulesBuiltin() & component.getModules(modules)
+    for _, module in modules: 
         for cmd in module.commands: 
             result[cmd.name] = cmd
 
 proc getCommands*(component: ModuleManagerComponent, modules: uint32 = 0): seq[Command] = 
-    for _, module in component.modules: 
+    let modules = component.getModulesBuiltin() & component.getModules(modules)
+    for _, module in modules: 
         result.add(module.commands)
 
 proc getCommand*(component: ModuleManagerComponent, name: string): Command = 

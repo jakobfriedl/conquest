@@ -30,8 +30,18 @@ type
         FLAG_FRAGMENTED = 4'u16 
 
     CommandType* {.size: sizeof(uint16).} = enum 
+        CMD_EXIT = "exit"
+        CMD_SELF_DESTRUCT = "self-destruct"
         CMD_SLEEP = "sleep"
+        CMD_SLEEPMASK = "sleepmask"
+        CMD_LINK = "link"
+        CMD_UNLINK = "unlink"
         CMD_SHELL = "shell"
+        CMD_BOF = "bof"
+        CMD_DOTNET = "dotnet"
+        CMD_DOWNLOAD = "download"
+        CMD_UPLOAD = "upload"
+        CMD_SCREENSHOT = "screenshot"
         CMD_PWD = "pwd"
         CMD_CD = "cd"
         CMD_LS = "ls"
@@ -41,22 +51,12 @@ type
         CMD_COPY = "copy"
         CMD_PS = "ps"
         CMD_ENV = "env" 
-        CMD_BOF = "bof"
-        CMD_DOWNLOAD = "download"
-        CMD_UPLOAD = "upload"
-        CMD_SCREENSHOT = "screenshot"
-        CMD_DOTNET = "dotnet"
-        CMD_SLEEPMASK = "sleepmask"
         CMD_MAKE_TOKEN = "make-token"
         CMD_STEAL_TOKEN = "steal-token"
         CMD_REV2SELF = "rev2self"
         CMD_TOKEN_INFO = "token-info"
         CMD_ENABLE_PRIV = "enable-privilege"
         CMD_DISABLE_PRIV = "disable-privilege"
-        CMD_EXIT = "exit"
-        CMD_SELF_DESTRUCT = "self-destruct"
-        CMD_LINK = "link"
-        CMD_UNLINK = "unlink"
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8

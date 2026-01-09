@@ -141,11 +141,20 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 
 #[
     Handling console commands
-    TODO: Modify to fit updated module system
 ]#
 proc displayHelp(component: ConsoleComponent) =
-    for cmd in cq.moduleManager.getCommands(component.agent.modules):
-        component.console.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
+    # Display built-in modules
+    component.console.addItem(LOG_OUTPUT, "CORE")
+    for module in cq.moduleManager.getModulesBuiltin().sorted():
+        for cmd in module.commands.sorted(): 
+            component.console.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
+
+    # Display selected modules 
+    for module in cq.moduleManager.getModules(component.agent.modules).sorted(): 
+        component.console.addItem(LOG_OUTPUT, "")
+        component.console.addItem(LOG_OUTPUT, module.name.toUpperAscii())
+        for cmd in module.commands.sorted(): 
+            component.console.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
 
 proc displayCommandHelp(component: ConsoleComponent, command: Command) =
     var usage = command.name & " " & command.arguments.mapIt(
