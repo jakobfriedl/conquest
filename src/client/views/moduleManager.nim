@@ -69,7 +69,6 @@ proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) =
                 var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i))
                 discard igSelectable_Bool(module.name.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
 
-
             if igTableSetColumnIndex(1): 
                 igText(module.description.cstring)
 

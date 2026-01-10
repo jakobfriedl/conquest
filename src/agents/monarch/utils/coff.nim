@@ -1,7 +1,7 @@
 import winim/lean
 import os, strformat, strutils, ptr_math
 import ./[beacon, io]
-import ../../common/[types, utils, serialize]
+import ../../../common/[types, utils, serialize]
 
 #[
     Object file loading involves the following steps

@@ -1,6 +1,6 @@
 import tables
 import ../utils/io
-import ../../common/[types, utils, crypto, profile, serialize]
+import ../../../common/[types, utils, crypto, profile, serialize]
 
 const CONFIGURATION {.strdefine.}: string = ""
 

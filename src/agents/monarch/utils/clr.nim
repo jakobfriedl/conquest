@@ -1,6 +1,6 @@
 import winim/[lean, clr]
 import ./[hwbp, io]
-import ../../common/utils
+import ../../../common/utils
 
 #[ 
     Executing .NET assemblies in memory

@@ -1,11 +1,11 @@
 import winim/lean
 import tables, strformat, strutils, base64
-import ../../common/[types, utils]
+import ../../../common/[types, utils]
 import ../utils/io
 import ../protocol/result
 import ./exit
 import ./transport/smb
-import ../../common/serialize
+import ../../../common/serialize
 
 const MODULES* {.intdefine.} = 0
 var commands* = newTable[CommandType, proc(ctx: AgentCtx, task: Task): TaskResult]()

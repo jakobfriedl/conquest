@@ -126,7 +126,7 @@ proc registerModule*(name, description: string, commands: seq[Command], builtin:
         builtin: builtin,
         commands: commands
     )
-    
+
 # Parse and handle BOF arguments
 # References:
 # - https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics_aggressor-scripts/as-resources_functions.htm#bof_pack

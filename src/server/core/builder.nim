@@ -80,19 +80,15 @@ proc replaceAfterPrefix(content, prefix, value: string, quoted: bool = false): s
 proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: bool, listenerType: ListenerType): string = 
     
     let 
-        configFile = fmt"{CONQUEST_ROOT}/src/agent/nim.cfg"  
+        configFile = fmt"{CONQUEST_ROOT}/src/agents/monarch/nim.cfg"  
         exeFile = fmt"{CONQUEST_ROOT}/bin/monarch.x64.exe" 
-        agentBuildScript = fmt"{CONQUEST_ROOT}/src/agent/build.sh"    
 
-    # Update conquest root directory in agent build script
-    var buildScript = readFile(agentBuildScript).replaceAfterPrefix("CONQUEST_ROOT=", CONQUEST_ROOT)
-    writeFile(agentBuildScript, buildScript)
+    let buildCommand = fmt"nim --os:windows --cpu:amd64 --gcc.exe:x86_64-w64-mingw32-gcc --gcc.linkerexe:x86_64-w64-mingw32-gcc -o:{exeFile} c {CONQUEST_ROOT}/src/agents/monarch/main.nim"
 
     # Update placeholder and configuration values 
-    let placeholder = PLACEHOLDER & "A".repeat(placeholderLength - (2 * len(PLACEHOLDER))) & PLACEHOLDER
+    let placeholder = PLACEHOLDER & "A".repeat(placeholderLength - len(PLACEHOLDER))
     var config = readFile(configFile)
                     .replaceAfterPrefix("-d:CONFIGURATION=", placeholder, quoted = true)    
-                    .replaceAfterPrefix("-o:", exeFile, quoted = true)
                     .replaceAfterPrefix("-d:MODULES=", $modules)
                     .replaceAfterPrefix("-d:VERBOSE=", $verbose)
                     .replaceAfterPrefix("-d:TRANSPORT_", $listenerType)
@@ -107,7 +103,7 @@ proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: boo
     
     try:
         # Using the startProcess function from the 'osproc' module, it is possible to retrieve the output as it is received, line-by-line instead of all at once
-        let process = startProcess(agentBuildScript, options={poUsePath, poStdErrToStdOut})
+        let process = startProcess("/bin/bash", args=["-c", buildCommand], options={poUsePath, poStdErrToStdOut})
         let outputStream = process.outputStream
 
         var line: string
@@ -120,12 +116,10 @@ proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: boo
         if exitCode == 0:
             cq.info("Agent payload generated successfully.")
             cq.client.sendBuildlogItem(LOG_INFO_SHORT, "Agent payload generated successfully.")
-
             return exeFile
         else:
             cq.error("Build script exited with code ", $exitCode)
             cq.client.sendBuildlogItem(LOG_ERROR_SHORT, "Build script exited with code " & $exitCode)
-
             return ""
 
     except CatchableError as err:

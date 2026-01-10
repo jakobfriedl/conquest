@@ -2,7 +2,7 @@ import times, json, base64, strformat
 import stb_image/write as stbiw
 import ./logger
 import ../../common/[types, utils, event]
-export sendHeartbeat, recvEvent
+export recvEvent
 
 proc `%`*(agent: Agent): JsonNode =
     result = newJObject()

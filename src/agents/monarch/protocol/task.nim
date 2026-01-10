@@ -2,7 +2,7 @@ import zippy, strformat, tables
 import ./result
 import ../utils/io
 import ../core/command
-import ../../common/[types, serialize, sequence, crypto, utils]
+import ../../../common/[types, serialize, sequence, crypto, utils]
 
 proc handleTask*(ctx: AgentCtx, task: Task): TaskResult = 
     try: 

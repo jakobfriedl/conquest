@@ -1,7 +1,7 @@
 import winim/lean 
 import tables
 import ./io
-import ../../common/[types, utils]
+import ../../../common/[types, utils]
 import token
 
 type 

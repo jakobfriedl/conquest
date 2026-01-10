@@ -4,8 +4,6 @@ import system
 import mummy
 when defined(client): 
     import whisky
-when defined(agent):
-    import winim/lean
 
 import ./toml/toml
 

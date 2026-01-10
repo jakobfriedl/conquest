@@ -1,7 +1,7 @@
 # This is a Nim-Port of the CFG bypass required for Ekko sleep to work in a CFG enabled process (like rundll32.exe or explorer.exe)
 # Original works : https://github.com/ScriptIdiot/sleepmask_ekko_cfg, https://github.com/Crypt0s/Ekko_CFG_Bypass
 import winim/lean
-import ../../common/utils
+import ../../../common/utils
 
 type
     CFG_CALL_TARGET_INFO {.pure.} = object

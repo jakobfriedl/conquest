@@ -2,7 +2,7 @@ import winim/lean
 import winim/inc/tlhelp32
 import os, system, random, strformat
 import ../utils/[cfg, io] 
-import ../../common/[types, utils, crypto]
+import ../../../common/[types, utils, crypto]
 
 #[
     Different sleep obfuscation techniques, reimplemented in Nim (Ekko, Zilean, Foliage) 

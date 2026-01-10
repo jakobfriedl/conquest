@@ -1,6 +1,6 @@
 import times, json, base64
 import ../../common/[types, utils, event]
-export sendHeartbeat, recvEvent
+export recvEvent
 
 #[
     Client -> Server 

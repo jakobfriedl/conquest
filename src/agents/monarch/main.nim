@@ -4,7 +4,7 @@ import core/[context, sleepmask, exit, transport]
 import utils/io
 import core/transport/smb
 import protocol/[task, result, registration]
-import ../common/[types, utils, crypto, serialize]
+import ../../common/[types, utils, crypto, serialize]
 
 proc main() = 
     randomize()
