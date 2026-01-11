@@ -54,6 +54,17 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
         arg.data = packer.pack() 
     return arg
 
+proc getDefaultValue*(argument: Argument): string =
+    case argument.argType:
+    of STRING:
+        return argument.strDefault
+    of INT:
+        return $argument.intDefault
+    of BOOL:
+        return $argument.boolDefault
+    of BINARY:
+        return argument.binDefault
+
 proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] = 
     # Parse arguments into positional and optional (flag) arguments
     var flags = initTable[string, string]()
@@ -83,20 +94,31 @@ proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] =
     # Map the command-line arguments to the arguments expected by the command 
     i = 0
     for arg in command.arguments:
+        var taskArg: TaskArg
+        taskArg.argType = cast[uint8](arg.argType)
+        
         if arg.isFlag:
             if arg.flag in flags:
                 let value = if arg.argType == BOOL: "true" elif flags[arg.flag] == "": "true" else: flags[arg.flag]
-                result.add(parseArgument(arg, value))
-            elif arg.isRequired:
-                raise newException(CatchableError, fmt"Missing required flag argument: {arg.name}")
-            elif arg.argType == BOOL:
-                result.add(parseArgument(arg, $arg.boolDefault))
+                taskArg = parseArgument(arg, value)
+            else:
+                if arg.isRequired:
+                    raise newException(CatchableError, fmt"Missing required flag argument: {arg.name}")
+                else:
+                    # Use default value
+                    taskArg = parseArgument(arg, getDefaultValue(arg))
         else:
             if i < positional.len():
-                result.add(parseArgument(arg, positional[i]))
+                taskArg = parseArgument(arg, positional[i])
                 i += 1
-            elif arg.isRequired:
-                raise newException(CatchableError, fmt"Missing required positional argument: {arg.name}")
+            else:
+                if arg.isRequired:
+                    raise newException(CatchableError, fmt"Missing required positional argument: {arg.name}")
+                else:
+                    # Use default value
+                    taskArg = parseArgument(arg, getDefaultValue(arg))
+        
+        result.add(taskArg)
     
     # Handle extra positional args at the end of the command 
     let positionalArgs = command.arguments.filterIt(not it.isFlag)

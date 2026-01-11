@@ -21,19 +21,27 @@ proc addData*(packer: Packer, data: openArray[byte]): Packer {.discardable.} =
     return packer
 
 proc addArgument*(packer: Packer, arg: TaskArg): Packer {.discardable.} = 
-    # Optional argument was passed as "", ignore
-    if arg.data.len <= 0: 
-        return
-
+    # Add argument type
     packer.add(arg.argType)
 
+    # Add argument data
     case cast[ArgType](arg.argType): 
     of STRING, BINARY: 
-        # Add length for variable-length data types
-        packer.add(cast[uint32](arg.data.len)) 
-        packer.addData(arg.data)
-    else: 
-        packer.addData(arg.data)
+        # Add length prefix for variable-length data types
+        packer.add(cast[uint32](arg.data.len))
+        if arg.data.len > 0:
+            packer.addData(arg.data)
+    of INT:
+        if arg.data.len > 0:
+            packer.addData(arg.data)
+        else:
+            packer.addData([0'u8, 0'u8, 0'u8, 0'u8])
+    of BOOL:
+        if arg.data.len > 0:
+            packer.addData(arg.data)
+        else:
+            packer.addData([0'u8])
+    
     return packer
 
 proc addDataWithLengthPrefix*(packer: Packer, data: seq[byte]): Packer {.discardable.} = 

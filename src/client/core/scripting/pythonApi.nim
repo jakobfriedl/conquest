@@ -74,7 +74,7 @@ proc addFlagBool*(self: Command, flag, name, description: string, default: bool 
     ))
     return self
 
-proc addArgFile*(self: Command, name, description: string, required: bool = false): Command {.exportpy.} = 
+proc addArgFile*(self: Command, name, description: string, required: bool = false, default: string = ""): Command {.exportpy.} = 
     self.arguments.add(Argument(
         name: name,
         description: description,
@@ -82,11 +82,11 @@ proc addArgFile*(self: Command, name, description: string, required: bool = fals
         isFlag: false,
         flag: "",
         argType: BINARY,
-        binDefault: @[]
+        binDefault: default
     ))
     return self
 
-proc addFlagFile*(self: Command, flag, name, description: string, required: bool = false): Command {.exportpy.} = 
+proc addFlagFile*(self: Command, flag, name, description: string, required: bool = false, default: string = ""): Command {.exportpy.} = 
     self.arguments.add(Argument(
         name: name,
         description: description,
@@ -94,7 +94,7 @@ proc addFlagFile*(self: Command, flag, name, description: string, required: bool
         isFlag: true,
         flag: flag,
         argType: BINARY,
-        binDefault: @[]
+        binDefault: default
     ))
     return self
 
