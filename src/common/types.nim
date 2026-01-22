@@ -401,6 +401,7 @@ when defined(client):
             name*: string 
             description*: string
             path*: string 
+            group*: string
             builtin*: bool
             commands*: seq[Command]
 

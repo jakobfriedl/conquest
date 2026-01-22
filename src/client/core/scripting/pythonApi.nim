@@ -114,7 +114,7 @@ proc createCommand*(name, description, example, message: string): Command {.expo
         hasHandler: false
     )
 
-proc registerModule*(name, description: string, commands: seq[Command], builtin: bool = false) {.exportpy.} = 
+proc registerModule*(name, description, group: string, commands: seq[Command], builtin: bool = false) {.exportpy.} = 
     # Store module in database 
     if not dbModuleExists(name):
         discard dbStoreModule(name, cq.moduleManager.tempPath)
@@ -123,6 +123,7 @@ proc registerModule*(name, description: string, commands: seq[Command], builtin:
         name: name, 
         description: description, 
         path: cq.moduleManager.tempPath,
+        group: group,
         builtin: builtin,
         commands: commands
     )

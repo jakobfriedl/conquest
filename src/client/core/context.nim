@@ -146,3 +146,12 @@ proc getCommand*(component: ModuleManagerComponent, name: string): Command =
         return commands[name]
     except ValueError:
         raise newException(ValueError, fmt"The command '{name}' does not exist.")
+
+proc getCommandGroups*(component: ModuleManagerComponent, modules: uint32 = 0): OrderedTable[string, seq[Command]] = 
+    result = initOrderedTable[string, seq[Command]]() 
+    let modules = component.getModulesBuiltin() & component.getModules(modules)
+
+    for module in modules: 
+        if not result.hasKey(module.group):
+            result[module.group] = @[]
+        result[module.group].add(module.commands)

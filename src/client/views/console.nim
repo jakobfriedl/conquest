@@ -143,18 +143,11 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
     Handling console commands
 ]#
 proc displayHelp(component: ConsoleComponent) =
-    # Display built-in modules
-    component.console.addItem(LOG_OUTPUT, "CORE")
-    for module in cq.moduleManager.getModulesBuiltin().sorted():
-        for cmd in module.commands.sorted(): 
+   for group, commands in cq.moduleManager.getCommandGroups(component.agent.modules):
+        component.console.addItem(LOG_OUTPUT, group.toUpperAscii())
+        for cmd in commands.sorted():
             component.console.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
-
-    # Display selected modules 
-    for module in cq.moduleManager.getModules(component.agent.modules).sorted(): 
         component.console.addItem(LOG_OUTPUT, "")
-        component.console.addItem(LOG_OUTPUT, module.name.toUpperAscii())
-        for cmd in module.commands.sorted(): 
-            component.console.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
 
 proc displayCommandHelp(component: ConsoleComponent, command: Command) =
     var usage = command.name & " " & command.arguments.mapIt(
@@ -264,8 +257,8 @@ proc handleAgentCommand*(component: ConsoleComponent, input: string) =
 proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], processTable: OrderedTable[uint32, ProcessInfo]) = 
     # Header row
     let headers = @["PID", "PPID", "Process name", "Session", "User context"]
-    component.console.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(60) & headers[3].alignLeft(10) & headers[4])
-    component.console.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(60) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4])))
+    component.console.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(80) & headers[3].alignLeft(10) & headers[4])
+    component.console.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(80) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4])))
 
     # Format and print process
     proc printProcess(pid: uint32, indentSpaces: int = 0) =
@@ -274,7 +267,7 @@ proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], pro
         
         var process = processTable[pid]
         let processName = " ".repeat(indentSpaces) & process.name
-        let line = ($process.pid).alignLeft(10) & ($process.ppid).alignLeft(10) & processName.alignLeft(60) & ($process.session).alignLeft(10) & process.user                        
+        let line = ($process.pid).alignLeft(10) & ($process.ppid).alignLeft(10) & processName.alignLeft(80) & ($process.session).alignLeft(10) & process.user                        
         component.console.addItem(LOG_OUTPUT, line, "", int(pid) == component.agent.pid)
 
         # Recursively print child processes with indentation
