@@ -490,7 +490,20 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-    # TODO: Rework this to return unformatted output as a binary stream
+    
+    # FILETIME is 100-nanosecond intervals since January 1, 1601
+    # Unix timestamp is seconds since January 1, 1970 
+    # Conversion is required
+    proc fileTimeToUnixTimestamp(ft: FILETIME): int64 =
+        # Convert FILETIME to 64-bit integer (100-nanosecond intervals)
+        let fileTime64 = (int64(ft.dwHighDateTime) shl 32) or int64(ft.dwLowDateTime)
+        
+        # Number of 100-nanosecond intervals between 1601 and 1970
+        const EPOCH_DIFFERENCE = 116444736000000000'i64
+        
+        # Convert to Unix timestamp (seconds)
+        return (fileTime64 - EPOCH_DIFFERENCE) div 10000000
+
     commands[CMD_LS] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try:
             var targetDirectory: string
@@ -498,8 +511,9 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
             # Check if directory argument was provided
             if task.args[0].data.len > 0: 
                 targetDirectory = Bytes.toString(task.args[0].data)
+            
             else:
-                # Get current working directory using GetCurrentDirectory
+                # Get current working directory
                 let 
                     cwdBuffer = newWString(MAX_PATH + 1)
                     cwdLength = GetCurrentDirectoryW(MAX_PATH, &cwdBuffer)
@@ -509,7 +523,7 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
 
                 targetDirectory = $cwdBuffer[0 ..< (int)cwdLength]
 
-            # Retrieve absolut path 
+            # Retrieve absolute path 
             let pathBuffer = newWString(MAX_PATH + 1)
             let pathLength = GetFullPathNameW(targetDirectory, MAX_PATH, &pathBuffer, nil)
             if pathLength > 0:
@@ -517,125 +531,75 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
 
             print fmt"   [>] Listing files and directories in {targetDirectory}."
                 
-            # Prepare search pattern (target directory + \*)
+            # Prepare search pattern
             let searchPattern = targetDirectory & "\\*"
             let searchPatternW = +$searchPattern
             
             var 
                 findData: WIN32_FIND_DATAW
                 hFind: HANDLE
-                output = ""
-                entries: seq[string] = @[]
-                totalFiles = 0
-                totalDirs = 0
+                entries: seq[DirectoryEntry] = @[]
             
-            # Find files and directories in target directory
-            hFind = FindFirstFileW(searchPatternW, &findData)
-            
+            hFind = FindFirstFileW(searchPatternW, &findData)            
             if hFind == INVALID_HANDLE_VALUE:
                 raise newException(CatchableError, GetLastError().getError())
             
-            # Directory was found and can be listed
-            else:
-                output = fmt"Directory: {targetDirectory}" & "\n\n"
-                output &= "Mode    LastWriteTime            Length Name" & "\n"
-                output &= "----    -------------            ------ ----" & "\n"
+            # Process files and directories
+            while true:
+                let fileName = $cast[WideCString](addr findData.cFileName[0])
                 
-                # Process all files and directories
-                while true:
-                    let fileName = $cast[WideCString](addr findData.cFileName[0])
+                # Skip current and parent directory entries
+                if fileName != "." and fileName != "..":
+                    let attrs = findData.dwFileAttributes
+                    let fileSize = (uint64(findData.nFileSizeHigh) shl 32) or uint64(findData.nFileSizeLow)
                     
-                    # Skip current and parent directory entries
-                    if fileName != "." and fileName != "..":
-                        # Get file attributes and size
-                        let isDir = (findData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0
-                        let isHidden = (findData.dwFileAttributes and FILE_ATTRIBUTE_HIDDEN) != 0
-                        let isReadOnly = (findData.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0
-                        let isArchive = (findData.dwFileAttributes and FILE_ATTRIBUTE_ARCHIVE) != 0
-                        let fileSize = (int64(findData.nFileSizeHigh) shl 32) or int64(findData.nFileSizeLow)
-                        
-                        # Handle flags
-                        var mode = ""
-                        if isDir:
-                            mode = "d"
-                            inc totalDirs
-                        else:
-                            mode = "-"
-                            inc totalFiles
-                        
-                        if isArchive:
-                            mode &= "a"
-                        else:
-                            mode &= "-"
-                        
-                        if isReadOnly:
-                            mode &= "r"
-                        else:
-                            mode &= "-"
-                        
-                        if isHidden:
-                            mode &= "h"
-                        else:
-                            mode &= "-"
-                        
-                        if (findData.dwFileAttributes and FILE_ATTRIBUTE_SYSTEM) != 0:
-                            mode &= "s"
-                        else:
-                            mode &= "-"
-                        
-                        # Convert FILETIME to local time and format
-                        var 
-                            localTime: FILETIME
-                            systemTime: SYSTEMTIME
-                            dateTimeStr = protect("01/01/1970  00:00:00")
-                        
-                        if FileTimeToLocalFileTime(&findData.ftLastWriteTime, &localTime) != 0 and FileTimeToSystemTime(&localTime, &systemTime) != 0:
-                            # Format date and time in PowerShell style
-                            dateTimeStr = fmt"{systemTime.wDay:02d}/{systemTime.wMonth:02d}/{systemTime.wYear}  {systemTime.wHour:02d}:{systemTime.wMinute:02d}:{systemTime.wSecond:02d}"
-                        
-                        # Format file size
-                        var sizeStr = ""
-                        if isDir:
-                            sizeStr = protect("<DIR>")
-                        else:
-                            sizeStr = ($fileSize).replace("-", "")
-                        
-                        # Build the entry line
-                        let entryLine = fmt"{mode:<7} {dateTimeStr:<20} {sizeStr:>10} {fileName}"
-                        entries.add(entryLine)
+                    # Build flags and update counters
+                    var flags: uint8 = 0
+                    if (attrs and FILE_ATTRIBUTE_DIRECTORY) != 0:
+                        flags = flags or cast[uint8](IS_DIR)                    
+                    if (attrs and FILE_ATTRIBUTE_HIDDEN) != 0:
+                        flags = flags or cast[uint8](IS_HIDDEN)
+                    if (attrs and FILE_ATTRIBUTE_READONLY) != 0:
+                        flags = flags or cast[uint8](IS_READONLY)
+                    if (attrs and FILE_ATTRIBUTE_ARCHIVE) != 0:
+                        flags = flags or cast[uint8](IS_ARCHIVE)
+                    if (attrs and FILE_ATTRIBUTE_SYSTEM) != 0:
+                        flags = flags or cast[uint8](IS_SYSTEM)
                     
-                    # Find next file
-                    if FindNextFileW(hFind, &findData) == 0:
-                        break
+                    # Create entry
+                    entries.add(DirectoryEntry(
+                        name: fileName,
+                        flags: flags,
+                        size: fileSize,
+                        lastWriteTime: fileTimeToUnixTimestamp(findData.ftLastWriteTime)
+                    ))
                 
-                # Close find handle
-                discard FindClose(hFind)
+                if FindNextFileW(hFind, &findData) == 0:
+                    break
+            
+            discard FindClose(hFind)
+            
+            # Sort entries using an anonymous procedure (directories first)
+            entries.sort do (a, b: DirectoryEntry) -> int:
+                let aIsDir = (a.flags and cast[uint8](IS_DIR)) != 0
+                let bIsDir = (b.flags and cast[uint8](IS_DIR)) != 0
                 
-                # Add entries to output after sorting them (directories first, files afterwards)
-                entries.sort do (a, b: string) -> int:
-                    let aIsDir = a[0] == 'd'
-                    let bIsDir = b[0] == 'd'
-                    
-                    if aIsDir and not bIsDir:
-                        return -1
-                    elif not aIsDir and bIsDir:
-                        return 1
-                    else:
-                        # Extract filename for comparison (last part after the last space)
-                        let aParts = a.split(" ")
-                        let bParts = b.split(" ")
-                        let aName = aParts[^1]
-                        let bName = bParts[^1]
-                        return cmp(aName.toLowerAscii(), bName.toLowerAscii())
-                
-                for entry in entries:
-                    output &= entry & "\n"
-
-                # Add summary of how many files/directories have been found
-                output &= "\n" & fmt"{totalFiles} file(s)" & "\n"
-                output &= fmt"{totalDirs} dir(s)"
-
-                return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
+                if aIsDir != bIsDir:
+                    if aIsDir: -1 else: 1
+                else:
+                    cmp(a.name.toLowerAscii(), b.name.toLowerAscii())
+            
+            let packer = Packer.init()        
+            packer.addDataWithLengthPrefix(string.toBytes(targetDirectory))
+            packer.add(cast[uint32](entries.len()))
+            for entry in entries:
+                packer
+                    .addDataWithLengthPrefix(string.toBytes(entry.name))
+                    .add(entry.flags)
+                    .add(entry.size)
+                    .add(cast[uint32](entry.lastWriteTime))
+            
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_DIRECTORY_LISTING, packer.pack())
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

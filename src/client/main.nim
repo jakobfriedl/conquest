@@ -239,6 +239,30 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         timestamp: event.timestamp
                     )
 
+                of CLIENT_DIRECTORY_LISTING: 
+                    let
+                        agentId = event.data["agentId"].getStr()
+                        data = event.data["data"].getStr()
+                    
+                    var unpacker = Unpacker.init(data)
+                    var entries: seq[DirectoryEntry] = @[]
+                    
+                    let path = unpacker.getDataWithLengthPrefix() 
+                    let numEntries = unpacker.getUint32() 
+
+                    for i in 0 ..< int(numEntries): 
+                        entries.add(DirectoryEntry(
+                            name: unpacker.getDataWithLengthPrefix(),
+                            flags: unpacker.getUint8(),
+                            size: unpacker.getUint64(),
+                            lastWriteTime: int64(unpacker.getUint32())
+                        ))
+
+                    echo "a"
+                    # Display processes in agent console
+                    if cq.consoles.hasKey(agentId):
+                        cq.consoles[agentId].listDirectoryContents(path, entries) 
+
                 else: discard 
         
             # Draw/update UI components/views

@@ -69,6 +69,7 @@ type
         RESULT_PROCESSES = 3'u8
         RESULT_LINK = 4'u8
         RESULT_UNLINK = 5'u8
+        RESULT_DIRECTORY_LISTING = 6'u8
 
     LogType* {.size: sizeof(uint8).} = enum 
         LOG_INFO = "[INFO] "
@@ -92,7 +93,7 @@ type
         EXIT_PROCESS = "process"
         EXIT_THREAD = "thread"
 
-    ModuleType* {.size: sizeof(uint32).} = enum 
+    ModuleType* = enum 
         MODULE_SHELL = 1'u32 
         MODULE_BOF = 2'u32
         MODULE_DOTNET = 4'u32
@@ -101,6 +102,13 @@ type
         MODULE_SCREENSHOT = 32'u32
         MODULE_SYSTEMINFO = 64'u32 
         MODULE_TOKEN = 128'u32
+
+    DirecotryEntryFlags* = enum
+        IS_DIR = 1'u8
+        IS_HIDDEN = 2'u8
+        IS_READONLY = 4'u8
+        IS_ARCHIVE = 8'u8
+        IS_SYSTEM = 16'u8
 
 # Encryption 
 type    
@@ -279,6 +287,7 @@ type
         CLIENT_IMPERSONATE_TOKEN = 110'u8   # Access token impersonated
         CLIENT_REVERT_TOKEN = 111'u8        # Revert to original logon session 
         CLIENT_PROCESSES = 112'u8           # Send processes
+        CLIENT_DIRECTORY_LISTING = 113'u8   # Send directory listing
 
     Event* = object 
         eventType*: EventType               
@@ -353,13 +362,12 @@ type
         session*: uint32
         when defined(client):
             children*: seq[uint32]
-        
-    # FileInfo* = object 
-    #     path*: string 
-    #     isDir*: bool
-    #     lastWriteTime*: int64
-    #     mode*: string
-    #     size*: uint32
+
+    DirectoryEntry* = object 
+        name*: string 
+        flags*: uint8
+        size*: uint64
+        lastWriteTime*: int64
 
 # Structure for command module definitions 
 type 

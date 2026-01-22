@@ -1,4 +1,4 @@
-import strformat, strutils, sequtils, tables, algorithm, nimpy
+import strformat, strutils, sequtils, tables, times, algorithm, nimpy
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, globals]
 import ../../common/[types, utils]
@@ -276,6 +276,48 @@ proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], pro
 
     for pid in rootProcesses: 
         printProcess(pid)
+
+proc listDirectoryContents*(component: ConsoleComponent, path: string, entries: seq[DirectoryEntry]) = 
+    var 
+        totalFiles = 0
+        totalDirs = 0
+    
+    # Path Header
+    component.console.addItem(LOG_OUTPUT, "Directory: " & path)
+    component.console.addItem(LOG_OUTPUT, "")
+
+    # Table Headers
+    let headers = @["Mode", "LastWriteTime", "Length", "Name"]
+    let headerLine = headers[0].alignLeft(8) & headers[1].alignLeft(25) & headers[2].alignLeft(15) & headers[3]
+    let separator = "-".repeat(headers[0].len).alignLeft(8) & "-".repeat(headers[1].len).alignLeft(25) & "-".repeat(headers[2].len).alignLeft(15) & "-".repeat(headers[3].len)
+    
+    component.console.addItem(LOG_OUTPUT, headerLine)
+    component.console.addItem(LOG_OUTPUT, separator)
+    
+    # Process entries
+    for entry in entries:
+        var mode = ""
+        mode &= (if (entry.flags and cast[uint8](IS_DIR)) != 0: (inc totalDirs; "d") else: (inc totalFiles; "-"))
+        mode &= (if (entry.flags and cast[uint8](IS_ARCHIVE)) != 0: "a" else: "-")
+        mode &= (if (entry.flags and cast[uint8](IS_READONLY)) != 0: "r" else: "-")
+        mode &= (if (entry.flags and cast[uint8](IS_HIDDEN)) != 0: "h" else: "-")
+        mode &= (if (entry.flags and cast[uint8](IS_SYSTEM)) != 0: "s" else: "-")
+        
+        # Date formatting
+        let dt = fromUnix(entry.lastWriteTime)
+        let dateTimeStr = dt.format("dd/MM/yyyy HH:mm:ss")
+        
+        # Size formatting
+        let sizeStr = if (entry.flags and cast[uint8](IS_DIR)) != 0: "<DIR>" else: $entry.size
+        
+        # Build the entry line using consistent alignment
+        component.console.addItem(LOG_OUTPUT, mode.alignLeft(8) & dateTimeStr.alignLeft(25) & sizeStr.alignLeft(15) & entry.name)
+    
+    # Summary footer
+    component.console.addItem(LOG_OUTPUT, "")
+    component.console.addItem(LOG_OUTPUT, $totalFiles & " file(s)")
+    component.console.addItem(LOG_OUTPUT, $totalDirs & " dir(s)")
+
 
 proc draw*(component: ConsoleComponent) =
     igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}".cstring, addr component.showConsole, 0)

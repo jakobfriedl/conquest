@@ -208,3 +208,15 @@ proc sendProcessList*(client: WsConnection, agentId: string, procData: string) =
     )
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
+
+proc sendDirectoryListing*(client: WsConnection, agentId: string, data: string) = 
+    let event = Event(
+        eventType: CLIENT_DIRECTORY_LISTING, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "data": data
+        }
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)
