@@ -15,9 +15,10 @@ import ../../common/types
 #         consoles: ptr Table[string, ConsoleComponent]
 #         focusedConsole*: string
 
-proc SessionsTable*(title: string, consoles: ptr Table[string, ConsoleComponent]): SessionsTableComponent = 
+proc SessionsTable*(title: string, showComponent: ptr bool, consoles: ptr Table[string, ConsoleComponent]): SessionsTableComponent = 
     result = new SessionsTableComponent
     result.title = title
+    result.showComponent = showComponent
     result.agents = initTable[string, UIAgent]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.consoles = consoles
@@ -42,8 +43,8 @@ proc interact(component: SessionsTableComponent) =
     
     component.selection.ImGuiSelectionBasicStorage_Clear()
 
-proc draw*(component: SessionsTableComponent, showComponent: ptr bool) = 
-    igBegin(component.title.cstring, showComponent, 0)
+proc draw*(component: SessionsTableComponent) = 
+    igBegin(component.title.cstring, component.showComponent, 0)
 
     let textSpacing = igGetStyle().ItemSpacing.x
 
@@ -85,6 +86,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
 
         # Sort sessions table based on first checkin
         let agents = component.agents.values().toSeq().sorted(cmp)
+
         for i, agent in agents: 
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
@@ -161,6 +163,24 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
                 component.interact()
                 igCloseCurrentPopup()
         
+            # Menu to open a browser focused on the selected agent
+            if igBeginMenu("Browse", true):
+                if igMenuItem("Processes", nil, false, true):
+                    var it: pointer = nil
+                    var row: ImGuiID
+
+                    if ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
+                        let agent = agents[row]
+                        
+                        cq.processBrowser.showComponent[] = true
+                        let agentIndex = agents.find(agent)
+                        if agentIndex >= 0:
+                            cq.processBrowser.agent = int32(agentIndex + 1)
+
+                    igSetWindowFocus_Str(WIDGET_PROCESS_BROWSER)         
+                    igCloseCurrentPopup()
+                igEndMenu()
+
             # Menu to copy fields of the agent object to clipboard
             if igBeginMenu("Copy", true): 
                 let temp = UIAgent() 
@@ -179,6 +199,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
                         igCloseCurrentPopup()
                 igEndMenu()
 
+            # Menu to exit the agent process in different ways
             if igBeginMenu("Exit", true):
                 if igMenuItem("Process", nil, false, true): 
                     for i, agent in agents:
@@ -217,8 +238,8 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool) =
 
             igSeparator()
 
+            # Menu item to remove an agent from the team server database
             if igMenuItem("Remove", nil, false, true): 
-                # Update agents table with only non-selected ones
                 for i, agent in agents:
                     if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                         component.agents.del(agent.agentId)

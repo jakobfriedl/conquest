@@ -14,16 +14,17 @@ import ../widgets/textarea
 #         selectedIndex: int
         
 
-proc LootDownloads*(title: string): DownloadsComponent =
+proc LootDownloads*(title: string, showComponent: ptr bool): DownloadsComponent =
     result = new DownloadsComponent
     result.title = title
+    result.showComponent = showComponent
     result.items = @[]
     result.contents = initTable[string, string]() 
     result.selectedIndex = -1
     result.textarea = Textarea(showTimestamps = false, autoScroll = false)
 
-proc draw*(component: DownloadsComponent, showComponent: ptr bool) =
-    igBegin(component.title.cstring, showComponent, 0)
+proc draw*(component: DownloadsComponent) =
+    igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd()
 
     var availableSize: ImVec2

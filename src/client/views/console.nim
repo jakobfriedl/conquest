@@ -1,4 +1,4 @@
-import strformat, strutils, sequtils, tables, times, algorithm, nimpy
+import strformat, strutils, sequtils, tables, times, algorithm, nimpy, std/paths
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, globals]
 import ../../common/[types, utils]
@@ -311,7 +311,7 @@ proc listDirectoryContents*(component: ConsoleComponent, path: string, entries: 
         let sizeStr = if (entry.flags and cast[uint8](IS_DIR)) != 0: "<DIR>" else: $entry.size
         
         # Build the entry line using consistent alignment
-        component.console.addItem(LOG_OUTPUT, mode.alignLeft(8) & dateTimeStr.alignLeft(25) & sizeStr.alignLeft(15) & entry.name)
+        component.console.addItem(LOG_OUTPUT, mode.alignLeft(8) & dateTimeStr.alignLeft(25) & sizeStr.alignLeft(15) & $lastPathPart(cast[Path](entry.path))) # Only display the last part of the path
     
     # Summary footer
     component.console.addItem(LOG_OUTPUT, "")

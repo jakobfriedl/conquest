@@ -18,9 +18,10 @@ import ../../core/[websocket, context]
 #         selectedIndex: int
 #         textures: Table[string, ScreenshotTexture]
 
-proc LootScreenshots*(title: string): ScreenshotsComponent =
+proc LootScreenshots*(title: string, showComponent: ptr bool): ScreenshotsComponent =
     result = new ScreenshotsComponent
     result.title = title
+    result.showComponent = showComponent
     result.items = @[]
     result.selectedIndex = -1
     result.textures = initTable[string, ScreenshotTexture]()
@@ -35,8 +36,8 @@ proc addTexture*(component: ScreenshotsComponent, lootId: string, data: string) 
         height: height
     )
 
-proc draw*(component: ScreenshotsComponent, showComponent: ptr bool) =
-    igBegin(component.title.cstring, showComponent, 0)
+proc draw*(component: ScreenshotsComponent) =
+    igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd()
 
     var availableSize: ImVec2

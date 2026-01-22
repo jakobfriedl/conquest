@@ -209,6 +209,28 @@ type
         sessionKey*: Key
         links*: seq[string]
 
+    ProcessInfo* = object 
+        pid*: uint32
+        ppid*: uint32 
+        name*: string 
+        user*: string
+        session*: uint32
+        when defined(client):
+            children*: seq[uint32]
+
+    Processes* = object
+        rootProcesses*: seq[uint32] 
+        processTable*: OrderedTable[uint32, ProcessInfo]
+        timestamp*: int64
+
+    DirectoryEntry* = object 
+        path*: string 
+        flags*: uint8
+        size*: uint64
+        lastWriteTime*: int64
+        children*: Option[OrderedTable[string, DirectoryEntry]]
+        isLoaded*: bool
+
     # Session entry for client UI
     UIAgent* = ref object 
         agentId*: string
@@ -228,6 +250,8 @@ type
         modules*: uint32
         firstCheckin*: int64
         latestCheckin*: int64
+        processes*: Option[Processes]
+        filesystem*: Option[OrderedTable[string, DirectoryEntry]]
 
 # Listener structure
 type 
@@ -351,23 +375,6 @@ type
         profile*: Profile
         registered*: bool
         links*: Table[uint32, uint32]
-
-# Modules 
-type 
-    ProcessInfo* = object 
-        pid*: uint32
-        ppid*: uint32 
-        name*: string 
-        user*: string
-        session*: uint32
-        when defined(client):
-            children*: seq[uint32]
-
-    DirectoryEntry* = object 
-        name*: string 
-        flags*: uint8
-        size*: uint64
-        lastWriteTime*: int64
 
 # Structure for command module definitions 
 type 

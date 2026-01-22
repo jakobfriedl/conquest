@@ -11,28 +11,30 @@ const MAX_INPUT_LENGTH* = 4096 # Input needs to allow enough characters for long
 type 
     EventlogComponent* = ref object of RootObj
         title*: string 
+        showComponent*: ptr bool
         textarea*: TextareaWidget
 
     AgentModalComponent* = ref object of RootObj
-            show*: bool
-            listener*: int32 
-            sleepDelay*: uint32
-            jitter*: int32 
-            sleepMask*: int32 
-            spoofStack*: bool 
-            killDateEnabled*: bool 
-            killDate*: int64
-            workingHoursEnabled*: bool
-            workingHours*: WorkingHours
-            verbose*: bool
-            sleepMaskTechniques*: seq[string]
-            moduleSelection*: DualListSelectionWidget[Module]
-            buildLog*: TextareaWidget
-            killDateModal*: KillDateModalComponent
-            workingHoursModal*: WorkingHoursModalComponent
+        show*: bool
+        listener*: int32 
+        sleepDelay*: uint32
+        jitter*: int32 
+        sleepMask*: int32 
+        spoofStack*: bool 
+        killDateEnabled*: bool 
+        killDate*: int64
+        workingHoursEnabled*: bool
+        workingHours*: WorkingHours
+        verbose*: bool
+        sleepMaskTechniques*: seq[string]
+        moduleSelection*: DualListSelectionWidget[Module]
+        buildLog*: TextareaWidget
+        killDateModal*: KillDateModalComponent
+        workingHoursModal*: WorkingHoursModalComponent
 
     ListenersTableComponent* = ref object of RootObj
         title*: string 
+        showComponent*: ptr bool
         listeners*: Table[string, UIListener]
         selection*: ptr ImGuiSelectionBasicStorage
         startListenerModal*: ListenerModalComponent
@@ -40,24 +42,20 @@ type
 
     ModuleManagerComponent* = ref object of RootObj
         title*: string 
+        showComponent*: ptr bool
         tempPath*: string
         modules*: Table[string, Module]
         selection*: ptr ImGuiSelectionBasicStorage
 
-    Processes* = object
-        rootProcesses*: seq[uint32] 
-        processTable*: OrderedTable[uint32, ProcessInfo]
-        timestamp*: int64
-
     ProcessBrowserComponent* = ref object of RootObj
         title*: string 
+        showComponent*: ptr bool
         agent*: int32
-        processes*: Table[string, Processes]
         selection*: uint32
-        autoUpdate*: bool
 
     SessionsTableComponent* = ref object of RootObj
         title*: string 
+        showComponent*: ptr bool
         agents*: Table[string, UIAgent]
         selection*: ptr ImGuiSelectionBasicStorage
         consoles*: ptr Table[string, ConsoleComponent]
@@ -75,6 +73,7 @@ type
     
     DownloadsComponent* = ref object of RootObj
         title*: string
+        showComponent*: ptr bool
         items*: seq[LootItem]
         contents*: Table[string, string]
         textarea*: TextareaWidget
@@ -88,6 +87,7 @@ type
 
     ScreenshotsComponent* = ref object of RootObj
         title*: string
+        showComponent*: ptr bool
         items*: seq[LootItem]
         selectedIndex*: int
         textures*: Table[string, ScreenshotTexture]

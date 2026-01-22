@@ -1,5 +1,5 @@
 import whisky
-import tables, times, strutils, sequtils, strformat, json, base64, native_dialogs
+import tables, times, strutils, sequtils, strformat, json, base64, native_dialogs, std/paths
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, moduleManager]
 import ./views/loot/[screenshots, downloads]
@@ -46,7 +46,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
     # Create components
     var dockspace = Dockspace()
-    cq.moduleManager = ModuleManager(WIDGET_MODULE_MANAGER)
+    cq.moduleManager = ModuleManager(WIDGET_MODULE_MANAGER, addr showModules)
 
     # Modules need to be loaded before other components are created
     # Load built-in modules and those stored in the database
@@ -54,12 +54,12 @@ proc main(ip: string = "localhost", port: int = 37573) =
     for path in dbGetScriptPaths(): 
         loadScript(path)
 
-    cq.sessions = SessionsTable(WIDGET_SESSIONS, addr cq.consoles) 
-    cq.listeners = ListenersTable(WIDGET_LISTENERS)
-    cq.eventlog = Eventlog(WIDGET_EVENTLOG)
-    cq.downloads = LootDownloads(WIDGET_DOWNLOADS)
-    cq.screenshots = LootScreenshots(WIDGET_SCREENSHOTS)
-    cq.processBrowser = ProcessBrowser(WIDGET_PROCESS_BROWSER)
+    cq.sessions = SessionsTable(WIDGET_SESSIONS, addr showSessionsTable, addr cq.consoles) 
+    cq.listeners = ListenersTable(WIDGET_LISTENERS, addr showListeners)
+    cq.eventlog = Eventlog(WIDGET_EVENTLOG, addr showEventlog)
+    cq.downloads = LootDownloads(WIDGET_DOWNLOADS, addr showDownloads)
+    cq.screenshots = LootScreenshots(WIDGET_SCREENSHOTS, addr showScreenshots)
+    cq.processBrowser = ProcessBrowser(WIDGET_PROCESS_BROWSER, addr showProcesses)
     cq.consoles = initTable[string, ConsoleComponent]()
 
     let io = igGetIO()
@@ -233,11 +233,11 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         cq.consoles[agentId].listProcesses(rootProcesses, processTable) 
 
                     # Add process information to the process browser
-                    cq.processBrowser.processes[agentId] = Processes(
+                    cq.sessions.agents[agentId].processes = some(Processes(
                         rootProcesses: rootProcesses, 
                         processTable: processTable,
                         timestamp: event.timestamp
-                    )
+                    ))
 
                 of CLIENT_DIRECTORY_LISTING: 
                     let
@@ -251,14 +251,22 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     let numEntries = unpacker.getUint32() 
 
                     for i in 0 ..< int(numEntries): 
+                        let 
+                            name = unpacker.getDataWithLengthPrefix()
+                            flags = unpacker.getUint8()
+                            size = unpacker.getUint64()
+                            lastWriteTime = int64(unpacker.getUint32())
+                                                
                         entries.add(DirectoryEntry(
-                            name: unpacker.getDataWithLengthPrefix(),
-                            flags: unpacker.getUint8(),
-                            size: unpacker.getUint64(),
-                            lastWriteTime: int64(unpacker.getUint32())
+                            path: $(cast[Path](path) / cast[Path](name)), # Construct absolute path for storage
+                            flags: flags,
+                            size: size,
+                            lastWriteTime: lastWriteTime,
+                            children: 
+                                if (flags and cast[uint8](IS_DIR)) != 0: some(initOrderedTable[string, DirectoryEntry]()) 
+                                else: none(OrderedTable[string, DirectoryEntry])
                         ))
 
-                    echo "a"
                     # Display processes in agent console
                     if cq.consoles.hasKey(agentId):
                         cq.consoles[agentId].listDirectoryContents(path, entries) 
@@ -266,13 +274,13 @@ proc main(ip: string = "localhost", port: int = 37573) =
                 else: discard 
         
             # Draw/update UI components/views
-            if showSessionsTable: cq.sessions.draw(addr showSessionsTable)   
-            if showListeners: cq.listeners.draw(addr showListeners)
-            if showEventlog: cq.eventlog.draw(addr showEventlog)
-            if showDownloads: cq.downloads.draw(addr showDownloads)
-            if showScreenshots: cq.screenshots.draw(addr showScreenshots)
-            if showProcesses: cq.processBrowser.draw(addr showProcesses, cq.sessions.agents.values().toSeq())
-            if showModules: cq.moduleManager.draw(addr showModules)
+            if showSessionsTable: cq.sessions.draw()   
+            if showListeners: cq.listeners.draw()
+            if showEventlog: cq.eventlog.draw()
+            if showDownloads: cq.downloads.draw()
+            if showScreenshots: cq.screenshots.draw()
+            if showProcesses: cq.processBrowser.draw()
+            if showModules: cq.moduleManager.draw()
 
             # Show console windows
             var newConsoleTable: Table[string, ConsoleComponent]

@@ -9,13 +9,14 @@ export addItem
 #         title: string 
 #         textarea*: TextareaWidget
 
-proc Eventlog*(title: string): EventlogComponent = 
+proc Eventlog*(title: string, showComponent: ptr bool): EventlogComponent = 
     result = new EventlogComponent
     result.title = title
+    result.showComponent = showComponent
     result.textarea = Textarea(showTimestamps = false)
 
-proc draw*(component: EventlogComponent, showComponent: ptr bool) = 
-    igBegin(component.title.cstring, showComponent, 0)
+proc draw*(component: EventlogComponent) = 
+    igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd() 
 
     component.textarea.draw(vec2(-1.0f, -1.0f))

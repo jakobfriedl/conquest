@@ -13,16 +13,17 @@ import ../../common/types
 #         startListenerModal: ListenerModalComponent
 #         generatePayloadModal*: AgentModalComponent
 
-proc ListenersTable*(title: string): ListenersTableComponent = 
+proc ListenersTable*(title: string, showComponent: ptr bool): ListenersTableComponent = 
     result = new ListenersTableComponent
     result.title = title
+    result.showComponent = showComponent
     result.listeners = initTable[string, UIListener]() 
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.startListenerModal = ListenerModal()
     result.generatePayloadModal = AgentModal()
 
-proc draw*(component: ListenersTableComponent, showComponent: ptr bool) = 
-    igBegin(component.title.cstring, showComponent, 0)
+proc draw*(component: ListenersTableComponent) = 
+    igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd() 
 
     let textSpacing = igGetStyle().ItemSpacing.x    

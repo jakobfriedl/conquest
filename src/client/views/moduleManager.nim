@@ -10,9 +10,10 @@ import ../../common/types
 #         title: string 
 #         modules: seq[tuple[name, description, path: string, commandCount: int]]
         
-proc ModuleManager*(title: string): ModuleManagerComponent = 
+proc ModuleManager*(title: string, showComponent: ptr bool): ModuleManagerComponent = 
     result = new ModuleManagerComponent
     result.title = title
+    result.showComponent = showComponent
     result.tempPath = ""
     result.modules = initTable[string, Module]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
@@ -22,8 +23,8 @@ proc tooltip*(module: Module): string =
     for cmd in module.commands: 
         result &= " - " & cmd.name & "\n"
 
-proc draw*(component: ModuleManagerComponent, showComponent: ptr bool) = 
-    igBegin(component.title.cstring, showComponent, 0)
+proc draw*(component: ModuleManagerComponent) = 
+    igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd() 
 
     let textSpacing = igGetStyle().ItemSpacing.x    
