@@ -551,8 +551,10 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
                 # Skip current and parent directory entries
                 if fileName != "." and fileName != "..":
                     let attrs = findData.dwFileAttributes
-                    let fileSize = (uint64(findData.nFileSizeHigh) shl 32) or uint64(findData.nFileSizeLow)
-                    
+                    var fileSize = (uint64(cast[uint32](findData.nFileSizeHigh)) shl 32) or uint64(cast[uint32](findData.nFileSizeLow)) # Cast to uint32 beforehand to avoid sign-extension error
+                    if fileSize >= 0xFFFFFF0000000000'u64:
+                        fileSize = 0
+
                     # Build flags and update counters
                     var flags: uint8 = 0
                     if (attrs and FILE_ATTRIBUTE_DIRECTORY) != 0:
@@ -597,7 +599,7 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
                     .addDataWithLengthPrefix(string.toBytes(entry.name))
                     .add(entry.flags)
                     .add(entry.size)
-                    .add(cast[uint32](entry.lastWriteTime))
+                    .add(entry.lastWriteTime)
             
             return createTaskResult(task, STATUS_COMPLETED, RESULT_DIRECTORY_LISTING, packer.pack())
 

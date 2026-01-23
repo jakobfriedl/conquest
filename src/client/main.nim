@@ -1,7 +1,7 @@
 import whisky
 import tables, times, strutils, sequtils, strformat, json, base64, native_dialogs, std/paths
 import ./utils/[appImGui, globals]
-import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, moduleManager]
+import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, moduleManager]
 import ./views/loot/[screenshots, downloads]
 import ./views/modals/generatePayload
 import ../common/[types, utils, profile, crypto, serialize]
@@ -25,6 +25,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         showDownloads = false
         showScreenshots = false
         showProcesses = false
+        showFiles = false
         showModules = false
 
     var 
@@ -39,6 +40,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
     views["Loot:Downloads"] = addr showDownloads
     views["Loot:Screenshots"] = addr showScreenshots
     views["Process Browser"] = addr showProcesses
+    views["Filesystem Browser"] = addr showFiles
     views["Module Manager"] = addr showModules
 
     # Initialize database 
@@ -60,6 +62,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
     cq.downloads = LootDownloads(WIDGET_DOWNLOADS, addr showDownloads)
     cq.screenshots = LootScreenshots(WIDGET_SCREENSHOTS, addr showScreenshots)
     cq.processBrowser = ProcessBrowser(WIDGET_PROCESS_BROWSER, addr showProcesses)
+    cq.filebrowser = FileBrowser(WIDGET_FILE_BROWSER, addr showFiles)
     cq.consoles = initTable[string, ConsoleComponent]()
 
     let io = igGetIO()
@@ -109,11 +112,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
                 of CLIENT_AGENT_ADD: 
                     let agent = event.data.to(UIAgent)
-
-                    # The ImGui Multi Select only works well with seq's, so we maintain a
-                    # separate table of the latest agent heartbeats to have the benefit of quick and direct O(1) access
+                
                     cq.sessions.agents[agent.agentId] = agent
-
                     if not agent.impersonationToken.isEmptyOrWhitespace():
                         cq.sessions.agents[agent.agentId].impersonationToken = agent.impersonationToken
 
@@ -228,7 +228,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         else: 
                             rootProcesses.add(pid)
 
-                    # Display processes in agent console ('ps' command)
+                    # Display processes in agent console
                     if cq.consoles.hasKey(agentId):
                         cq.consoles[agentId].listProcesses(rootProcesses, processTable) 
 
@@ -255,13 +255,14 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             name = unpacker.getDataWithLengthPrefix()
                             flags = unpacker.getUint8()
                             size = unpacker.getUint64()
-                            lastWriteTime = int64(unpacker.getUint32())
-                                                
+                            lastWriteTime = unpacker.getInt64()
+                                                                
                         entries.add(DirectoryEntry(
-                            path: $(cast[Path](path) / cast[Path](name)), # Construct absolute path for storage
+                            name: name,
                             flags: flags,
                             size: size,
                             lastWriteTime: lastWriteTime,
+                            isLoaded: false, 
                             children: 
                                 if (flags and cast[uint8](IS_DIR)) != 0: some(initOrderedTable[string, DirectoryEntry]()) 
                                 else: none(OrderedTable[string, DirectoryEntry])
@@ -271,6 +272,42 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     if cq.consoles.hasKey(agentId):
                         cq.consoles[agentId].listDirectoryContents(path, entries) 
 
+                    # Add information to the file browser
+                    # Initialize filesystem storage
+                    if not cq.sessions.agents[agentId].filesystem.isSome(): 
+                        cq.sessions.agents[agentId].filesystem = some(initOrderedTable[string, DirectoryEntry]())
+                        
+                    # Split path into components
+                    let cleanPath = path.strip(chars = {'\\', '/'})
+                    var parts = cleanPath.split({'\\', '/'}).filterIt(it.len > 0)
+                    
+                    # Built tree structure
+                    var currentTable = addr cq.sessions.agents[agentId].filesystem.get()
+                    for i, component in parts:
+                        if not currentTable[].hasKey(component):
+                            currentTable[][component] = DirectoryEntry(
+                                name: component,
+                                flags: cast[uint8](IS_DIR),
+                                children: some(initOrderedTable[string, DirectoryEntry]())
+                            )
+                        
+                        # Mark target directory as loaded
+                        if i == parts.len - 1:
+                            currentTable[][component].isLoaded = true
+                            
+                        # Navidate to next child directory
+                        if currentTable[][component].children.isSome():
+                            currentTable = addr currentTable[][component].children.get()
+
+                    # Merge entries into the target table
+                    for entry in entries:
+                        if currentTable[].hasKey(entry.name):
+                            currentTable[][entry.name].flags = entry.flags
+                            currentTable[][entry.name].size = entry.size
+                            currentTable[][entry.name].lastWriteTime = entry.lastWriteTime
+                        else:
+                            currentTable[][entry.name] = entry
+                            
                 else: discard 
         
             # Draw/update UI components/views
@@ -280,6 +317,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
             if showDownloads: cq.downloads.draw()
             if showScreenshots: cq.screenshots.draw()
             if showProcesses: cq.processBrowser.draw()
+            if showFiles: cq.fileBrowser.draw()
             if showModules: cq.moduleManager.draw()
 
             # Show console windows

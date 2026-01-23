@@ -12,7 +12,7 @@ proc init*(T: type Packer): Packer =
     result = new Packer 
     result.stream = newStringStream()
 
-proc add*[T: uint8 | uint16 | uint32 | uint64](packer: Packer, value: T): Packer {.discardable.} =
+proc add*[T: uint8 | uint16 | uint32 | uint64 | int64](packer: Packer, value: T): Packer {.discardable.} =
     packer.stream.write(value)
     return packer 
 
@@ -98,6 +98,10 @@ proc getUint32*(unpacker: Unpacker): uint32 =
 
 proc getUint64*(unpacker: Unpacker): uint64 =
     result = unpacker.stream.readUint64()
+    unpacker.position += 8
+
+proc getInt64*(unpacker: Unpacker): int64 =
+    result = unpacker.stream.readInt64()
     unpacker.position += 8
 
 proc getBytes*(unpacker: Unpacker, length: int): seq[byte] = 

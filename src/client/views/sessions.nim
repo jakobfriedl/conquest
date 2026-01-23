@@ -24,9 +24,6 @@ proc SessionsTable*(title: string, showComponent: ptr bool, consoles: ptr Table[
     result.consoles = consoles
     result.focusedConsole = ""
 
-proc cmp(x, y: UIAgent): int =
-    return cmp(x.firstCheckin, y.firstCheckin)
-
 proc interact(component: SessionsTableComponent) = 
     # Open a new console for each selected agent session
     var it: pointer = nil
@@ -179,6 +176,22 @@ proc draw*(component: SessionsTableComponent) =
 
                     igSetWindowFocus_Str(WIDGET_PROCESS_BROWSER)         
                     igCloseCurrentPopup()
+
+                if igMenuItem("Filesystem", nil, false, true):
+                    var it: pointer = nil
+                    var row: ImGuiID
+
+                    if ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
+                        let agent = agents[row]
+                        
+                        cq.fileBrowser.showComponent[] = true
+                        let agentIndex = agents.find(agent)
+                        if agentIndex >= 0:
+                            cq.fileBrowser.agent = int32(agentIndex + 1)
+
+                    igSetWindowFocus_Str(WIDGET_FILE_BROWSER)         
+                    igCloseCurrentPopup()
+
                 igEndMenu()
 
             # Menu to copy fields of the agent object to clipboard

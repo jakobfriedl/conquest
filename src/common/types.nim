@@ -1,6 +1,4 @@
-import tables
-import json
-import system
+import tables, json, system, std/options
 import mummy
 when defined(client): 
     import whisky
@@ -224,12 +222,12 @@ type
         timestamp*: int64
 
     DirectoryEntry* = object 
-        path*: string 
+        name*: string 
         flags*: uint8
         size*: uint64
         lastWriteTime*: int64
-        children*: Option[OrderedTable[string, DirectoryEntry]]
         isLoaded*: bool
+        children*: Option[OrderedTable[string, DirectoryEntry]]
 
     # Session entry for client UI
     UIAgent* = ref object 

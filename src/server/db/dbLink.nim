@@ -23,7 +23,7 @@ proc dbGetLinkedAgents*(cq: Conquest, agentId: string): seq[string] =
         let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
 
         for row in conquestDb.iterate("SELECT linkId, parentId, childId FROM links WHERE parentId = ?;", agentId):
-            let (linkId, parentId, childId) = row.unpack((string, string, string))
+            let (_, _, childId) = row.unpack((string, string, string))
             result.add(childId)
 
         conquestDb.close()

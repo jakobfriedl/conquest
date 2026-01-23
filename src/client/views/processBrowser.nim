@@ -17,9 +17,6 @@ proc ProcessBrowser*(title: string, showComponent: ptr bool): ProcessBrowserComp
     result.agent = 0
     result.selection = 0 
 
-proc cmp(x, y: UIAgent): int =
-    return cmp(x.firstCheckin, y.firstCheckin)
-
 proc draw*(component: ProcessBrowserComponent) = 
     igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd() 
@@ -92,7 +89,7 @@ proc draw*(component: ProcessBrowserComponent) =
         igTableHeadersRow()
 
         if agent.processes.isSome():
-            let processes = cq.sessions.agents[agent.agentId].processes.get()
+            let processes = agent.processes.get()
 
             proc printProcess(pid: uint32) = 
                 if not processes.processTable.contains(pid) or pid == 0:

@@ -53,6 +53,12 @@ type
         agent*: int32
         selection*: uint32
 
+    FileBrowserComponent* = ref object of RootObj
+        title*: string 
+        showComponent*: ptr bool
+        agent*: int32
+        selection*: string
+
     SessionsTableComponent* = ref object of RootObj
         title*: string 
         showComponent*: ptr bool
@@ -100,6 +106,7 @@ type Conquest* = ref object
     downloads*: DownloadsComponent
     screenshots*: ScreenshotsComponent
     processBrowser*: ProcessBrowserComponent
+    fileBrowser*: FileBrowserComponent
     moduleManager*: ModuleManagerComponent
     consoles*: Table[string, ConsoleComponent]
     connection*: WsConnection
@@ -155,3 +162,6 @@ proc getCommandGroups*(component: ModuleManagerComponent, modules: uint32 = 0): 
         if not result.hasKey(module.group):
             result[module.group] = @[]
         result[module.group].add(module.commands)
+
+proc cmp*(x, y: UIAgent): int =
+    return cmp(x.firstCheckin, y.firstCheckin)

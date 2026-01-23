@@ -282,12 +282,11 @@ proc listDirectoryContents*(component: ConsoleComponent, path: string, entries: 
         totalFiles = 0
         totalDirs = 0
     
-    # Path Header
     component.console.addItem(LOG_OUTPUT, "Directory: " & path)
     component.console.addItem(LOG_OUTPUT, "")
 
     # Table Headers
-    let headers = @["Mode", "LastWriteTime", "Length", "Name"]
+    let headers = @["Flags", "Last modified", "Size", "Name"]
     let headerLine = headers[0].alignLeft(8) & headers[1].alignLeft(25) & headers[2].alignLeft(15) & headers[3]
     let separator = "-".repeat(headers[0].len).alignLeft(8) & "-".repeat(headers[1].len).alignLeft(25) & "-".repeat(headers[2].len).alignLeft(15) & "-".repeat(headers[3].len)
     
@@ -311,16 +310,15 @@ proc listDirectoryContents*(component: ConsoleComponent, path: string, entries: 
         let sizeStr = if (entry.flags and cast[uint8](IS_DIR)) != 0: "<DIR>" else: $entry.size
         
         # Build the entry line using consistent alignment
-        component.console.addItem(LOG_OUTPUT, mode.alignLeft(8) & dateTimeStr.alignLeft(25) & sizeStr.alignLeft(15) & $lastPathPart(cast[Path](entry.path))) # Only display the last part of the path
+        component.console.addItem(LOG_OUTPUT, mode.alignLeft(8) & dateTimeStr.alignLeft(25) & sizeStr.alignLeft(15) & entry.name) # Only display the last part of the path
     
-    # Summary footer
     component.console.addItem(LOG_OUTPUT, "")
     component.console.addItem(LOG_OUTPUT, $totalFiles & " file(s)")
     component.console.addItem(LOG_OUTPUT, $totalDirs & " dir(s)")
 
 
 proc draw*(component: ConsoleComponent) =
-    igBegin(fmt"[{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}".cstring, addr component.showConsole, 0)
+    igBegin(fmt" {ICON_FA_TERMINAL} [{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}".cstring, addr component.showConsole, 0)
     defer: igEnd()
     
     let io = igGetIO()

@@ -59,6 +59,7 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Ordere
             igDockBuilderDockWindow(WIDGET_DOWNLOADS, dockBottom[])
             igDockBuilderDockWindow(WIDGET_SCREENSHOTS, dockBottom[])
             igDockBuilderDockWindow(WIDGET_PROCESS_BROWSER, dockBottom[])
+            igDockBuilderDockWindow(WIDGET_FILE_BROWSER, dockBottom[])
             igDockBuilderDockWindow(WIDGET_MODULE_MANAGER, dockBottom[])
             igDockBuilderDockWindow("Dear ImGui Demo", dockTopRight[])
             
