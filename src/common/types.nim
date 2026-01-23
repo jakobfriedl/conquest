@@ -2,6 +2,8 @@ import tables, json, system, std/options
 import mummy
 when defined(client): 
     import whisky
+when defined(agent): 
+    import winim/lean
 
 import ./toml/toml
 

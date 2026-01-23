@@ -5,7 +5,6 @@ import ../core/[task, websocket, context]
 import ./moduleManager
 import ../../common/types
 
-
 proc FileBrowser*(title: string, showComponent: ptr bool): FileBrowserComponent = 
     result = new FileBrowserComponent
     result.title = title
