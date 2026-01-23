@@ -26,19 +26,20 @@ proc formatFileSize(size: int): string =
         return fmt"{size / (1024 * 1024 * 1024):.2f}GB"
 
 proc formatFlags(flags: uint8): string =
-    var parts: seq[string] = @[]
-    if (flags and 1) != 0: parts.add("DIR")
-    if (flags and 2) != 0: parts.add("HIDDEN")
-    if (flags and 4) != 0: parts.add("READONLY")
-    if (flags and 8) != 0: parts.add("FILE")
-    if (flags and 16) != 0: parts.add("SYSTEM")
-    return if parts.len > 0: parts.join("|") else: "-"
+    # Compact professional format: [d]ir, [a]rchive, [r]eadonly, [h]idden, [s]ystem
+    result = "-----"
+    if (flags and cast[uint8](IS_DIR)) != 0:      result[0] = 'd'
+    if (flags and cast[uint8](IS_ARCHIVE)) != 0:  result[1] = 'a'
+    if (flags and cast[uint8](IS_READONLY)) != 0: result[2] = 'r'
+    if (flags and cast[uint8](IS_HIDDEN)) != 0:   result[3] = 'h'
+    if (flags and cast[uint8](IS_SYSTEM)) != 0:   result[4] = 's'
 
 proc draw*(component: FileBrowserComponent) = 
     igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd() 
 
     let textSpacing = igGetStyle().ItemSpacing.x  
+
     # Retrieve agent list 
     let agents = cq.sessions.agents.values().toSeq().sorted(cmp) 
 
@@ -52,7 +53,17 @@ proc draw*(component: FileBrowserComponent) =
     if component.agent == 0: return
 
     let agent = agents[component.agent - 1]
-    
+
+    # Buttons 
+    igSameLine(0.0f, textSpacing)
+    if igButton("List drives", vec2(0.0f, 0.0f)):
+        # TODO: Implement command to list drives
+        discard 
+
+    igSameLine(0.0f, textSpacing)
+    if igButton("List current working directory", vec2(0.0f, 0.0f)):
+        sendTask(agent.agentId, "ls")
+
     igDummy(vec2(0.0f, 2.5f))
     igSeparator() 
     igDummy(vec2(0.0f, 2.5f))
@@ -126,6 +137,21 @@ proc draw*(component: FileBrowserComponent) =
                    
                     if isDir and not entry.isLoaded: 
                         igPopStyleColor(1)
+                    
+                    # Right-click context menu
+                    if igBeginPopupContextItem(fmt"##ContextMenu".cstring, ImGuiPopupFlags_MouseButtonRight.int32):
+                        # If the selected item is a directory, provide the option to cd to it, 
+                        # If not, make the selected file downloadable
+                        if isDir:
+                            if igMenuItem_Bool(fmt"Change current working directory to {path}".cstring, nil, false, true):
+                                sendTask(agent.agentId, "cd \"" & path & "\"")
+                                igCloseCurrentPopup()
+                        else:
+                            if igMenuItem_Bool(fmt"Download {path}".cstring, nil, false, true):
+                                sendTask(agent.agentId, "download \"" & path & "\"")
+                                igCloseCurrentPopup()
+                        
+                        igEndPopup()
                     
                     # Double-click to load directory contents
                     if igIsItemHovered(0) and igIsMouseDoubleClicked_Nil(ImGuiMouseButton_Left.int32):

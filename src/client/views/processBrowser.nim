@@ -112,6 +112,13 @@ proc draw*(component: ProcessBrowserComponent) =
                 
                     if igSelectable_Bool(process.name.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f)):
                         component.selection = pid
+
+                    # Handle right-click context menu 
+                    if igBeginPopupContextItem(fmt"##ContextMenu".cstring, ImGuiPopupFlags_MouseButtonRight.int32):
+                        if igMenuItem_Bool(fmt"Steal token".cstring, nil, false, true):
+                            sendTask(agent.agentId, fmt"steal-token {pid}")
+                            igCloseCurrentPopup()                        
+                        igEndPopup()
                     
                     if igTableSetColumnIndex(1):
                         igText(($process.pid).cstring) 
