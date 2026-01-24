@@ -98,14 +98,16 @@ proc handleResult*(resultData: seq[byte]) =
                 taskResult = cq.deserializeTaskResult(resultData) 
                 taskId = Uuid.toString(taskResult.taskId)
                 agentId = Uuid.toString(taskResult.header.agentId)
+            
+            let silent = (taskResult.header.flags and cast[uint16](FLAG_SILENT)) != 0
 
-            cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$resultData.len} bytes received.")
+            cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$resultData.len} bytes received.", silent)
             cq.info(fmt"{$resultData.len} bytes received.")
             
             # Update task queue to include all tasks, except the one that was just completed
             case cast[StatusType](taskResult.status):
             of STATUS_COMPLETED:
-                cq.client.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.")
+                cq.client.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.", silent)
                 cq.success(fmt"Task {taskId} completed.")
                 cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
 
@@ -126,7 +128,7 @@ proc handleResult*(resultData: seq[byte]) =
                 else: discard
 
             of STATUS_FAILED: 
-                cq.client.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.")
+                cq.client.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.", silent)
                 cq.error(fmt"Task {taskId} failed.")
                 cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
             of STATUS_IN_PROGRESS: 
@@ -135,8 +137,8 @@ proc handleResult*(resultData: seq[byte]) =
             case cast[ResultType](taskResult.resultType):
             of RESULT_STRING:
                 if int(taskResult.length) > 0:
-                    cq.client.sendConsoleItem(agentId, LOG_INFO, "Output:") 
-                    cq.client.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data))
+                    cq.client.sendConsoleItem(agentId, LOG_INFO, "Output:", silent) 
+                    cq.client.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
 
             of RESULT_BINARY:
                 # Write binary data to a file 
@@ -169,13 +171,13 @@ proc handleResult*(resultData: seq[byte]) =
                 cq.client.sendLoot(lootItem)
 
                 cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
-                cq.client.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).")
+                cq.client.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", silent)
             
             of RESULT_PROCESSES: 
-                cq.client.sendProcessList(agentId, Bytes.toString(taskResult.data))
+                cq.client.sendProcessList(agentId, Bytes.toString(taskResult.data), silent)
 
             of RESULT_DIRECTORY_LISTING: 
-                cq.client.sendDirectoryListing(agentId, Bytes.toString(taskResult.data))
+                cq.client.sendDirectoryListing(agentId, Bytes.toString(taskResult.data), silent)
 
             of RESULT_LINK: 
                 # When an SMB agent is linked, the registration data is sent as the task result of the 'link' command
@@ -202,7 +204,7 @@ proc handleResult*(resultData: seq[byte]) =
             else: discard 
 
             # Send newline to separate commands
-            cq.client.sendConsoleItem(agentId, LOG_OUTPUT, "")
+            cq.client.sendConsoleItem(agentId, LOG_OUTPUT, "", silent)
             
         except CatchableError as err:
             cq.error(err.msg, "\n")  

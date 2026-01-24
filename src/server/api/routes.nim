@@ -78,7 +78,7 @@ proc httpGet*(request: Request) =
                     responseBytes.add(task)                                         # variable length task
                 
                 # Notify operator that agent collected tasks
-                cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$responseBytes.len} bytes sent.")
+                cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$responseBytes.len} bytes sent.") # Always send this message (even when silent/browser tasks are collected)
                 cq.info(fmt"{$responseBytes.len} bytes sent.")
             
             # Apply data transformation to the response

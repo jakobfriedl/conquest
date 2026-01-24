@@ -203,6 +203,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     let
                         agentId = event.data["agentId"].getStr()
                         procData = event.data["processes"].getStr()
+                        silent = event.data["silent"].getBool()
 
                     # Display processes in agent console    
                     var unpacker = Unpacker.init(procData)
@@ -229,8 +230,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             rootProcesses.add(pid)
 
                     # Display processes in agent console
-                    if cq.consoles.hasKey(agentId):
-                        cq.consoles[agentId].listProcesses(rootProcesses, processTable) 
+                    if not silent: 
+                        if cq.consoles.hasKey(agentId):
+                            cq.consoles[agentId].listProcesses(rootProcesses, processTable) 
 
                     # Add process information to the process browser
                     cq.sessions.agents[agentId].processes = some(Processes(
@@ -243,6 +245,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     let
                         agentId = event.data["agentId"].getStr()
                         data = event.data["data"].getStr()
+                        silent = event.data["silent"].getBool()
                     
                     var unpacker = Unpacker.init(data)
                     var entries: seq[DirectoryEntry] = @[]
@@ -269,8 +272,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         ))
 
                     # Display processes in agent console
-                    if cq.consoles.hasKey(agentId):
-                        cq.consoles[agentId].listDirectoryContents(path, entries) 
+                    if not silent:
+                        if cq.consoles.hasKey(agentId):
+                            cq.consoles[agentId].listDirectoryContents(path, entries) 
 
                     # Add information to the file browser
                     # Initialize filesystem storage

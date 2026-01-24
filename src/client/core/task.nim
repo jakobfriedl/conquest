@@ -127,7 +127,7 @@ proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] =
         result.add(parseArgument(lastArg, positional[i]))
         i += 1
 
-proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[string]): Task = 
+proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[string], silent: bool): Task = 
     result.taskId = string.toUuid(generateUUID()) 
     result.listenerId = string.toUuid(listenerId)
     result.timestamp = uint32(now().toTime().toUnix())
@@ -142,7 +142,11 @@ proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[s
     taskHeader.magic = MAGIC
     taskHeader.version = VERSION 
     taskHeader.packetType = cast[uint8](MSG_TASK)
-    taskHeader.flags = cast[uint16](FLAG_ENCRYPTED)
+    
+    taskHeader.flags = cast[uint16](FLAG_ENCRYPTED) or cast[uint16](FLAG_COMPRESSED)
+    if silent: 
+        taskHeader.flags = taskHeader.flags or cast[uint16](FLAG_SILENT)
+
     taskHeader.size = 0'u32
     taskHeader.agentId = string.toUuid(agentId)
     taskHeader.seqNr = nextSequence(taskHeader.agentId)
@@ -151,24 +155,24 @@ proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[s
     result.header = taskHeader
 
 # Wrapper functions for dispatching tasks to the agent
-proc sendTask*(agentId, input: string) = 
+proc sendTask*(agentId, input: string, silent: bool = false) = 
     let args = input.parseInput()
     let command = cq.moduleManager.getCommand(args[0])
     let agent = cq.sessions.agents[agentId]
-    let task = createTask(agentId, agent.listenerId, command, args[1..^1])
+    let task = createTask(agentId, agent.listenerId, command, args[1..^1], silent)
     
     cq.connection.sendAgentTask(agentId, input, task)
-    if cq.consoles.hasKey(agentId):
+    if cq.consoles.hasKey(agentId) and not silent:
         cq.consoles[agentId].console.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})")
  
-proc sendTask*(agentId, input, alias: string) = 
+proc sendTask*(agentId, input, alias: string, silent: bool = false) = 
     let args = input.parseInput()
     let aliasArgs = alias.parseInput()
     let command = cq.moduleManager.getCommand(args[0])
     let aliasCommand = cq.moduleManager.getCommand(aliasArgs[0])
     let agent = cq.sessions.agents[agentId]
-    let task = createTask(agentId, agent.listenerId, aliasCommand, aliasArgs[1..^1])
+    let task = createTask(agentId, agent.listenerId, aliasCommand, aliasArgs[1..^1], silent)
 
     cq.connection.sendAgentTask(agentId, input, task)
-    if cq.consoles.hasKey(agentId):
+    if cq.consoles.hasKey(agentId) and not silent:
         cq.consoles[agentId].console.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})")

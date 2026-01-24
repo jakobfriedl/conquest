@@ -25,7 +25,7 @@ type
         FLAG_PLAINTEXT = 0'u16
         FLAG_ENCRYPTED = 1'u16
         FLAG_COMPRESSED = 2'u16
-        FLAG_FRAGMENTED = 4'u16 
+        FLAG_SILENT = 4'u16
 
     CommandType* {.size: sizeof(uint16).} = enum 
         CMD_EXIT = "exit"

@@ -1,13 +1,13 @@
 import times, zippy
 import ../../../common/[types, serialize, sequence, crypto, utils]
 
-proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, resultData: seq[byte]): TaskResult = 
+proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, resultData: seq[byte]): TaskResult =     
     return TaskResult(
         header: Header(
             magic: MAGIC,
             version: VERSION, 
             packetType: cast[uint8](MSG_RESULT),
-            flags: cast[uint16](FLAG_ENCRYPTED),
+            flags: task.header.flags,
             size: 0'u32,
             agentId: task.header.agentId,
             seqNr: nextSequence(task.header.agentId), 

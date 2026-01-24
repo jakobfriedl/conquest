@@ -120,7 +120,7 @@ proc sendAgentPayload*(client: WsConnection, bytes: seq[byte]) =
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
-proc sendConsoleItem*(client: WsConnection, agentId: string, logType: LogType, message: string) = 
+proc sendConsoleItem*(client: WsConnection, agentId: string, logType: LogType, message: string, silent: bool = false) = 
     let event = Event(
         eventType: CLIENT_CONSOLE_ITEM,
         timestamp: now().toTime().toUnix(),
@@ -138,7 +138,7 @@ proc sendConsoleItem*(client: WsConnection, agentId: string, logType: LogType, m
     else: 
         log(message, agentId)
 
-    if client != nil: 
+    if client != nil and not silent: 
         client.ws.sendEvent(event, client.sessionKey)
 
 proc sendBuildlogItem*(client: WsConnection, logType: LogType, message: string) = 
@@ -197,25 +197,27 @@ proc sendRevertToken*(client: WsConnection, agentId: string) =
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
-proc sendProcessList*(client: WsConnection, agentId, procData: string) = 
+proc sendProcessList*(client: WsConnection, agentId, procData: string, silent: bool) = 
     let event = Event(
         eventType: CLIENT_PROCESSES, 
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
-            "processes": procData
+            "processes": procData,
+            "silent": silent
         }
     )
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
-proc sendDirectoryListing*(client: WsConnection, agentId, data: string) = 
+proc sendDirectoryListing*(client: WsConnection, agentId, data: string, silent: bool) = 
     let event = Event(
         eventType: CLIENT_DIRECTORY_LISTING, 
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
-            "data": data
+            "data": data,
+            "silent": silent
         }
     )
     if client != nil: 

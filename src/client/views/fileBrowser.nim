@@ -61,7 +61,7 @@ proc draw*(component: FileBrowserComponent) =
 
     igSameLine(0.0f, textSpacing)
     if igButton("List working directory", vec2(0.0f, 0.0f)):
-        sendTask(agent.agentId, "ls")
+        sendTask(agent.agentId, "ls", silent = true)
 
     igSameLine(0.0f, textSpacing)
     let workingDirectory = agent.workingDirectory.get("-")
@@ -147,11 +147,11 @@ proc draw*(component: FileBrowserComponent) =
                         # If not, make the selected file downloadable
                         if isDir:
                             if igMenuItem_Bool(fmt"Change current working directory to {path}/".cstring, nil, false, true):
-                                sendTask(agent.agentId, "cd \"" & path & "/\"")
+                                sendTask(agent.agentId, "cd \"" & path & "/\"", silent = true)
                                 igCloseCurrentPopup()
                         else:
                             if igMenuItem_Bool(fmt"Download {path}".cstring, nil, false, true):
-                                sendTask(agent.agentId, "download \"" & path & "\"")
+                                sendTask(agent.agentId, "download \"" & path & "\"", silent = true)
                                 igCloseCurrentPopup()
                         
                         igEndPopup()
@@ -159,7 +159,7 @@ proc draw*(component: FileBrowserComponent) =
                     # Double-click to load directory contents
                     if igIsItemHovered(0) and igIsMouseDoubleClicked_Nil(ImGuiMouseButton_Left.int32):
                         if isDir and not entry.isLoaded:
-                            sendTask(agent.agentId, "ls \"" & path & "/\"")
+                            sendTask(agent.agentId, "ls \"" & path & "/\"", silent = true)
                     
                     # Flags
                     if igTableSetColumnIndex(1):

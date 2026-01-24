@@ -190,12 +190,12 @@ proc modules_root(): string {.exportpy.} =
     return CONQUEST_ROOT & "/data/modules"
 
 # Execute a command 
-proc execute_command(agentId, command: string) {.exportpy.} = 
-    sendTask(agentId, command)
+proc execute_command(agentId, command: string, silent: bool = false) {.exportpy.} = 
+    sendTask(agentId, command, silent)
 
 # Takes a command string as the argument that is executed instead 
-proc execute_alias(agentId, command, alias: string) {.exportpy.} =
-    sendTask(agentId, command, alias)
+proc execute_alias(agentId, command, alias: string, silent: bool = false) {.exportpy.} =
+    sendTask(agentId, command, alias, silent)
 
 proc get_string*(args: seq[TaskArg], i: int = 0): string {.exportpy.} = 
     if i >= args.len(): 
