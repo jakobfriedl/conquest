@@ -120,7 +120,10 @@ proc handleResult*(resultData: seq[byte]) =
                     if cq.dbUpdateTokenImpersonation(agentId, ""):
                         cq.agents[agentId].impersonationToken.setLen(0)
                         cq.client.sendRevertToken(agentId)
-                else: discard 
+                of CMD_CD, CMD_PWD: 
+                    cq.client.sendWorkingDirectory(agentId, Bytes.toString(taskResult.data))
+
+                else: discard
 
             of STATUS_FAILED: 
                 cq.client.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.")

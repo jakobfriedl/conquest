@@ -60,8 +60,12 @@ proc draw*(component: FileBrowserComponent) =
         discard 
 
     igSameLine(0.0f, textSpacing)
-    if igButton("List current working directory", vec2(0.0f, 0.0f)):
+    if igButton("List working directory", vec2(0.0f, 0.0f)):
         sendTask(agent.agentId, "ls")
+
+    igSameLine(0.0f, textSpacing)
+    let workingDirectory = agent.workingDirectory.get("-")
+    igText(fmt"Current: {workingDirectory}".cstring)
 
     igDummy(vec2(0.0f, 2.5f))
     igSeparator() 
@@ -129,7 +133,7 @@ proc draw*(component: FileBrowserComponent) =
 
                     # Check if the directory is a drive
                     if isDir and entry.name.len() == 2 and entry.name.endsWith(":"):
-                        name = ICON_FA_HARD_DRIVE & " " & entry.name
+                        name = ICON_FA_HARD_DRIVE & " " & entry.name & "/"
 
                     if igSelectable_Bool(name.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f)):
                         component.selection = path
@@ -142,8 +146,8 @@ proc draw*(component: FileBrowserComponent) =
                         # If the selected item is a directory, provide the option to cd to it, 
                         # If not, make the selected file downloadable
                         if isDir:
-                            if igMenuItem_Bool(fmt"Change current working directory to {path}".cstring, nil, false, true):
-                                sendTask(agent.agentId, "cd \"" & path & "\"")
+                            if igMenuItem_Bool(fmt"Change current working directory to {path}/".cstring, nil, false, true):
+                                sendTask(agent.agentId, "cd \"" & path & "/\"")
                                 igCloseCurrentPopup()
                         else:
                             if igMenuItem_Bool(fmt"Download {path}".cstring, nil, false, true):

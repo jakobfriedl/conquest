@@ -174,7 +174,7 @@ proc sendLootData*(client: WsConnection, loot: LootItem, data: string) =
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
-proc sendImpersonateToken*(client: WsConnection, agentId: string, username: string) = 
+proc sendImpersonateToken*(client: WsConnection, agentId, username: string) = 
     let event = Event(
         eventType: CLIENT_IMPERSONATE_TOKEN,
         timestamp: now().toTime().toUnix(),
@@ -197,7 +197,7 @@ proc sendRevertToken*(client: WsConnection, agentId: string) =
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
-proc sendProcessList*(client: WsConnection, agentId: string, procData: string) = 
+proc sendProcessList*(client: WsConnection, agentId, procData: string) = 
     let event = Event(
         eventType: CLIENT_PROCESSES, 
         timestamp: now().toTime().toUnix(),
@@ -209,13 +209,25 @@ proc sendProcessList*(client: WsConnection, agentId: string, procData: string) =
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
 
-proc sendDirectoryListing*(client: WsConnection, agentId: string, data: string) = 
+proc sendDirectoryListing*(client: WsConnection, agentId, data: string) = 
     let event = Event(
         eventType: CLIENT_DIRECTORY_LISTING, 
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
             "data": data
+        }
+    )
+    if client != nil: 
+        client.ws.sendEvent(event, client.sessionKey)
+
+proc sendWorkingDirectory*(client: WsConnection, agentId, directory: string) = 
+    let event = Event(
+        eventType: CLIENT_WORKING_DIRECTORY, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "directory": directory
         }
     )
     if client != nil: 

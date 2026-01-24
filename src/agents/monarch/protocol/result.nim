@@ -36,10 +36,7 @@ proc serializeTaskResult*(ctx: AgentCtx, taskResult: var TaskResult): seq[byte] 
         .add(taskResult.command)
         .add(taskResult.status)
         .add(taskResult.resultType)
-        .add(taskResult.length)
-
-    if cast[ResultType](taskResult.resultType) != RESULT_NO_OUTPUT:
-        packer.addData(taskResult.data)
+        .addDataWithLengthPrefix(taskResult.data)
 
     let body = packer.pack()
     packer.reset()

@@ -252,6 +252,7 @@ type
         latestCheckin*: int64
         processes*: Option[Processes]
         filesystem*: Option[OrderedTable[string, DirectoryEntry]]
+        workingDirectory*: Option[string]
 
 # Listener structure
 type 
@@ -312,6 +313,7 @@ type
         CLIENT_REVERT_TOKEN = 111'u8        # Revert to original logon session 
         CLIENT_PROCESSES = 112'u8           # Send processes
         CLIENT_DIRECTORY_LISTING = 113'u8   # Send directory listing
+        CLIENT_WORKING_DIRECTORY = 114'u8   # Send current woring directory
 
     Event* = object 
         eventType*: EventType               

@@ -423,7 +423,7 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
             if SetCurrentDirectoryW(targetDirectory) == FALSE:         
                 raise newException(CatchableError, GetLastError().getError())
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+            return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, string.toBytes(targetDirectory))
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

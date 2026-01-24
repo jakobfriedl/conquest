@@ -307,7 +307,12 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             currentTable[][entry.name].lastWriteTime = entry.lastWriteTime
                         else:
                             currentTable[][entry.name] = entry
-                            
+
+                of CLIENT_WORKING_DIRECTORY: 
+                    let agentId = event.data["agentId"].getStr()
+                    if cq.sessions.agents.hasKey(agentId):
+                        cq.sessions.agents[agentId].workingDirectory = some(event.data["directory"].getStr())
+
                 else: discard 
         
             # Draw/update UI components/views
