@@ -83,3 +83,13 @@ proc sendGetLoot*(connection: WsConnection, lootId: string) =
     )
     connection.ws.sendEvent(event, connection.sessionKey)
 
+proc sendLog*(connection: WsConnection, agentId, message: string) = 
+    let event = Event(
+        eventType: CLIENT_LOG, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "message": message
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)

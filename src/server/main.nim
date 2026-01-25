@@ -77,9 +77,6 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 let task = event.data["task"].to(Task) 
                 cq.agents[agentId].tasks.add(task)
 
-                let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
-                log(fmt"[{timestamp}]{$LOG_COMMAND}{command}", agentId)
-
             of CLIENT_LISTENER_START:
                 let listener = event.data.to(UIListener)
                 cq.listenerStart(listener)
@@ -106,6 +103,9 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
             of CLIENT_LOOT_GET: 
                 let loot = cq.dbGetLootById(event.data["lootId"].getStr())
                 cq.client.sendLootData(loot, readFile(loot.path))
+
+            of CLIENT_LOG: 
+                log(event.data["message"].getStr(), event.data["agentId"].getStr())
 
             else: discard
 

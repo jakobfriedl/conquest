@@ -36,7 +36,7 @@ proc interact(component: SessionsTableComponent) =
         if not component.consoles[].hasKey(agent.agentId):
             component.consoles[][agent.agentId] = Console(agent)
 
-        component.focusedConsole = fmt"[{agent.agentId}] {agent.username}@{agent.hostname}"
+        component.focusedConsole = fmt" {ICON_FA_TERMINAL} [{agent.agentId}] {agent.username}@{agent.hostname}"
     
     component.selection.ImGuiSelectionBasicStorage_Clear()
 

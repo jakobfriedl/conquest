@@ -1,15 +1,16 @@
 import strutils, times
 import imguin/[cimgui, glfw_opengl]
 import ../../utils/[appImGui, globals]
+import ../../core/[context, websocket]
 import ../../../common/types
 
-type 
-    TextareaWidget* = ref object of RootObj
-        content: ConsoleItems
-        contentDisplayed: ConsoleItems
-        textSelect: ptr TextSelect
-        showTimestamps: bool
-        autoScroll: bool
+# type 
+#     TextareaWidget* = ref object of RootObj
+#         content: ConsoleItems
+#         contentDisplayed: ConsoleItems
+#         textSelect: ptr TextSelect
+#         showTimestamps: bool
+#         autoScroll: bool
 
 # Text highlighting
 proc getText(item: ConsoleItem): cstring = 
@@ -44,14 +45,17 @@ proc Textarea*(showTimestamps: bool = true, autoScroll: bool = true): TextareaWi
     result.autoScroll = autoScroll
 
 # API to add new content entry
-proc addItem*(component: TextareaWidget, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss"), highlight: bool = false) = 
+proc addItem*(component: TextareaWidget, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss"), highlight: bool = false, agentId: string = "") = 
     for line in data.split("\n"): 
-        component.content.items.add(ConsoleItem(
+        let item = ConsoleItem(
             timestamp: timestamp,
             itemType: itemType,
             text: line,
             highlight: highlight
-        ))
+        )
+
+        component.content.items.add(item)
+        cq.connection.sendLog(agentId, $(item.getText()))
 
 proc clear*(component: TextareaWidget) = 
     component.content.items.setLen(0)

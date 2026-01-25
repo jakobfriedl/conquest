@@ -297,6 +297,7 @@ type
         CLIENT_LOOT_REMOVE = 5'u8           # Remove loot on the team server
         CLIENT_LOOT_GET = 6'u8              # Request file/screenshot from the team server for preview or download
         CLIENT_AGENT_REMOVE = 7'u8          # Delete agent from the team server database
+        CLIENT_LOG = 8'u8                   # Log an entry on the team server (client sends back formatted message)
 
         # Sent by team server
         CLIENT_PROFILE = 100'u8             # Team server profile and configuration 

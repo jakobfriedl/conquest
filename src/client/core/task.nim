@@ -163,7 +163,7 @@ proc sendTask*(agentId, input: string, silent: bool = false) =
     
     cq.connection.sendAgentTask(agentId, input, task)
     if cq.consoles.hasKey(agentId) and not silent:
-        cq.consoles[agentId].console.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})")
+        cq.consoles[agentId].console.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})", agentId = agentId)
  
 proc sendTask*(agentId, input, alias: string, silent: bool = false) = 
     let args = input.parseInput()
@@ -175,4 +175,4 @@ proc sendTask*(agentId, input, alias: string, silent: bool = false) =
 
     cq.connection.sendAgentTask(agentId, input, task)
     if cq.consoles.hasKey(agentId) and not silent:
-        cq.consoles[agentId].console.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})")
+        cq.consoles[agentId].console.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})", agentId = agentId)

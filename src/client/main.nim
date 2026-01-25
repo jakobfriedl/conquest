@@ -152,7 +152,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         cq.consoles[agentId].console.addItem(
                             cast[LogType](event.data["logType"].getInt()), 
                             event.data["message"].getStr(), 
-                            event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+                            event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"),
+                            agentId = agentId
                         )
                 
                 of CLIENT_EVENTLOG_ITEM: 

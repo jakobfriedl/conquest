@@ -72,12 +72,13 @@ proc sendEventlogItem*(client: WsConnection, logType: LogType, message: string) 
         }
     )
 
-    # Log event
-    let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
-    log(fmt"[{timestamp}]{$logType}{message}")
-
     if client != nil: 
         client.ws.sendEvent(event, client.sessionKey)
+    else: 
+        # Log event
+        # Normally, logs are added after the formatted message is sent back from the client. In the case that no client is connected, log the entry here 
+        let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+        log(fmt"[{timestamp}]{$logType}{message}")
 
 proc sendAgent*(client: WsConnection, agent: Agent) = 
     let event = Event(
@@ -131,15 +132,17 @@ proc sendConsoleItem*(client: WsConnection, agentId: string, logType: LogType, m
         }
     )
 
-    # Log agent console item 
-    let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
-    if logType != LOG_OUTPUT: 
-        log(fmt"[{timestamp}]{$logType}{message}", agentId)
+    if client != nil:
+        if not silent: 
+            client.ws.sendEvent(event, client.sessionKey)
     else: 
-        log(message, agentId)
-
-    if client != nil and not silent: 
-        client.ws.sendEvent(event, client.sessionKey)
+        # Log agent console item
+        # Normally, logs are added after the formatted message is sent back from the client. In the case that no client is connected, log the entry here 
+        let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+        if logType != LOG_OUTPUT: 
+            log(fmt"[{timestamp}]{$logType}{message}", agentId)
+        else: 
+            log(message, agentId)
 
 proc sendBuildlogItem*(client: WsConnection, logType: LogType, message: string) = 
     let event = Event(

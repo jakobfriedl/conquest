@@ -1,7 +1,7 @@
 import tables, strformat, strutils
 import imguin/[cimgui, glfw_opengl]
 import ../utils/appImGui
-import ../views/widgets/[dualListSelection, textarea]
+import ../views/widgets/[dualListSelection]
 import ../views/modals/[startListener, configureKillDate, configureWorkingHours]
 import ../../common/types
 
@@ -9,6 +9,13 @@ import ../../common/types
 const MAX_INPUT_LENGTH* = 4096 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets)
 
 type 
+    TextareaWidget* = ref object of RootObj
+        content*: ConsoleItems
+        contentDisplayed*: ConsoleItems
+        textSelect*: ptr TextSelect
+        showTimestamps*: bool
+        autoScroll*: bool
+
     EventlogComponent* = ref object of RootObj
         title*: string 
         showComponent*: ptr bool
