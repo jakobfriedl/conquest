@@ -161,9 +161,9 @@ proc sendTask*(agentId, input: string, silent: bool = false) =
     let agent = cq.sessions.agents[agentId]
     let task = createTask(agentId, agent.listenerId, command, args[1..^1], silent)
     
-    cq.connection.sendAgentTask(agentId, input, task)
-    if cq.consoles.hasKey(agentId) and not silent:
-        cq.consoles[agentId].console.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})", agentId = agentId)
+    cq.connection.sendAgentTask(agentId, task)
+    if cq.sessions.agents.hasKey(agentId) and not silent:
+        cq.sessions.agents[agentId].console.textarea.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})", agentId = agentId)
  
 proc sendTask*(agentId, input, alias: string, silent: bool = false) = 
     let args = input.parseInput()
@@ -173,6 +173,6 @@ proc sendTask*(agentId, input, alias: string, silent: bool = false) =
     let agent = cq.sessions.agents[agentId]
     let task = createTask(agentId, agent.listenerId, aliasCommand, aliasArgs[1..^1], silent)
 
-    cq.connection.sendAgentTask(agentId, input, task)
-    if cq.consoles.hasKey(agentId) and not silent:
-        cq.consoles[agentId].console.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})", agentId = agentId)
+    cq.connection.sendAgentTask(agentId, task)
+    if cq.sessions.agents.hasKey(agentId) and not silent:
+        cq.sessions.agents[agentId].console.textarea.addItem(LOG_INFO, fmt"{command.message} ({Uuid.toString(task.taskId)})", agentId = agentId)

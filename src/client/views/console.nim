@@ -19,12 +19,12 @@ export addItem
 #         currentInput: string
 #         filter: ptr ImGuiTextFilter
 
-proc Console*(agent: UIAgent): ConsoleComponent =
+proc Console*(agentId: string): ConsoleComponent =
     result = new ConsoleComponent
-    result.agent = agent
-    result.showConsole = true
+    result.agentId = agentId
+    result.showConsole = false
     zeroMem(addr result.inputBuffer[0], MAX_INPUT_LENGTH)
-    result.console = Textarea()
+    result.textarea = Textarea()
     result.history = @[]
     result.historyPosition = -1  
     result.currentInput = ""
@@ -82,7 +82,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 
     of ImGui_InputTextFlags_CallbackCompletion.int32: 
         # Handle Tab-autocompletion for agent commands
-        let commands = cq.moduleManager.getCommands(component.agent.modules).mapIt(it.name & " ") & @["help "]
+        let commands = cq.moduleManager.getCommands(cq.sessions.agents[component.agentId].modules).mapIt(it.name & " ") & @["help "]
 
         # Get the word to complete
         let inputEndPos = data.CursorPos
@@ -143,11 +143,11 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
     Handling console commands
 ]#
 proc displayHelp(component: ConsoleComponent) =
-   for group, commands in cq.moduleManager.getCommandGroups(component.agent.modules):
-        component.console.addItem(LOG_OUTPUT, group.toUpperAscii(), agentId = component.agent.agentId)
+   for group, commands in cq.moduleManager.getCommandGroups(cq.sessions.agents[component.agentId].modules):
+        component.textarea.addItem(LOG_OUTPUT, group.toUpperAscii(), agentId = component.agentId)
         for cmd in commands.sorted():
-            component.console.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description, agentId = component.agent.agentId)
-        component.console.addItem(LOG_OUTPUT, "", agentId = component.agent.agentId)
+            component.textarea.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description, agentId = component.agentId)
+        component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId)
 
 proc displayCommandHelp(component: ConsoleComponent, command: Command) =
     var usage = command.name & " " & command.arguments.mapIt(
@@ -161,11 +161,11 @@ proc displayCommandHelp(component: ConsoleComponent, command: Command) =
             "[" & it.name & "]"
     ).join(" ")
     
-    component.console.addItem(LOG_OUTPUT, command.description, agentId = component.agent.agentId)
-    component.console.addItem(LOG_OUTPUT, "", agentId = component.agent.agentId)
-    component.console.addItem(LOG_OUTPUT, "Usage: " & usage, agentId = component.agent.agentId)
-    component.console.addItem(LOG_OUTPUT, "Example: " & command.example, agentId = component.agent.agentId)
-    component.console.addItem(LOG_OUTPUT, "", agentId = component.agent.agentId)
+    component.textarea.addItem(LOG_OUTPUT, command.description, agentId = component.agentId)
+    component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId)
+    component.textarea.addItem(LOG_OUTPUT, "Usage: " & usage, agentId = component.agentId)
+    component.textarea.addItem(LOG_OUTPUT, "Example: " & command.example, agentId = component.agentId)
+    component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId)
     
     var positionalArgs: seq[Argument] = @[]
     var optionalArgs: seq[Argument] = @[]
@@ -180,7 +180,7 @@ proc displayCommandHelp(component: ConsoleComponent, command: Command) =
     let widths: seq[int] = @[25, 10] 
 
     if positionalArgs.len > 0:
-        component.console.addItem(LOG_OUTPUT, "Required arguments:", agentId = component.agent.agentId)
+        component.textarea.addItem(LOG_OUTPUT, "Required arguments:", agentId = component.agentId)
         
         for arg in positionalArgs:
             let argName = arg.name.alignLeft(widths[0])
@@ -188,15 +188,15 @@ proc displayCommandHelp(component: ConsoleComponent, command: Command) =
             
             # Display multi-line argument description with proper alignment
             let descLines = arg.description.split('\n')
-            component.console.addItem(LOG_OUTPUT, "  " & argName & " " & argType & " " & descLines[0], agentId = component.agent.agentId)
+            component.textarea.addItem(LOG_OUTPUT, "  " & argName & " " & argType & " " & descLines[0], agentId = component.agentId)
             for i in 1..<descLines.len:
-                component.console.addItem(LOG_OUTPUT, "  " & ' '.repeat(30) & " " & ' '.repeat(10) & " " & descLines[i], agentId = component.agent.agentId)
+                component.textarea.addItem(LOG_OUTPUT, "  " & ' '.repeat(30) & " " & ' '.repeat(10) & " " & descLines[i], agentId = component.agentId)
         
-        component.console.addItem(LOG_OUTPUT, "", agentId = component.agent.agentId)
+        component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId)
     
     # Display optional arguments
     if optionalArgs.len > 0:
-        component.console.addItem(LOG_OUTPUT, "Optional arguments:", agentId = component.agent.agentId)
+        component.textarea.addItem(LOG_OUTPUT, "Optional arguments:", agentId = component.agentId)
         
         for arg in optionalArgs:
             let argName = if arg.isFlag and arg.argType == BOOL:
@@ -210,9 +210,9 @@ proc displayCommandHelp(component: ConsoleComponent, command: Command) =
             
             # Display multi-line argument description with proper alignment
             let descLines = arg.description.split('\n')
-            component.console.addItem(LOG_OUTPUT, "  " & argName & " " & argType & " " & descLines[0], agentId = component.agent.agentId)
+            component.textarea.addItem(LOG_OUTPUT, "  " & argName & " " & argType & " " & descLines[0], agentId = component.agentId)
             for i in 1..<descLines.len:
-                component.console.addItem(LOG_OUTPUT, "  " & ' '.repeat(widths[0]) & " " & ' '.repeat(widths[1]) & " " & descLines[i], agentId = component.agent.agentId)
+                component.textarea.addItem(LOG_OUTPUT, "  " & ' '.repeat(widths[0]) & " " & ' '.repeat(widths[1]) & " " & descLines[i], agentId = component.agentId)
 
 proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
     try:
@@ -223,14 +223,14 @@ proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
         component.displayHelp()
     except ValueError:
         # Command was not found
-        component.console.addItem(LOG_ERROR, "The command '" & parsed[1] & "' does not exist.", agentId = component.agent.agentId)
+        component.textarea.addItem(LOG_ERROR, "The command '" & parsed[1] & "' does not exist.", agentId = component.agentId)
 
     # Add newline at the end of help text
-    component.console.addItem(LOG_OUTPUT, "", agentId = component.agent.agentId)
+    component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId)
 
 proc handleAgentCommand*(component: ConsoleComponent, input: string) =
     # Add command to console
-    component.console.addItem(LOG_COMMAND, input, agentId = component.agent.agentId)
+    component.textarea.addItem(LOG_COMMAND, input, agentId = component.agentId)
 
     # Convert user input into sequence of string arguments
     let parsedArgs = parseInput(input)
@@ -247,18 +247,18 @@ proc handleAgentCommand*(component: ConsoleComponent, input: string) =
         # If the command has a handler, execute it with the parsed arguments
         if command.hasHandler:
             let args = command.parseArguments(parsedArgs[1..^1])        
-            discard command.handler.callObject(component.agent.agentId, input, args)
+            discard command.handler.callObject(cq.sessions.agents[component.agentId].agentId, input, args)
         else:
-            sendTask(component.agent.agentId, input)
+            sendTask(cq.sessions.agents[component.agentId].agentId, input)
 
     except CatchableError:
-        component.console.addItem(LOG_ERROR, getCurrentExceptionMsg(), agentId = component.agent.agentId)
+        component.textarea.addItem(LOG_ERROR, getCurrentExceptionMsg(), agentId = component.agentId)
 
 proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], processTable: OrderedTable[uint32, ProcessInfo]) = 
     # Header row
     let headers = @["PID", "PPID", "Process name", "Session", "User context"]
-    component.console.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(80) & headers[3].alignLeft(10) & headers[4], agentId = component.agent.agentId)
-    component.console.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(80) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4])), agentId = component.agent.agentId)
+    component.textarea.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(80) & headers[3].alignLeft(10) & headers[4], agentId = component.agentId)
+    component.textarea.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(80) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4])), agentId = component.agentId)
 
     # Format and print process
     proc printProcess(pid: uint32, indentSpaces: int = 0) =
@@ -268,7 +268,7 @@ proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], pro
         var process = processTable[pid]
         let processName = " ".repeat(indentSpaces) & process.name
         let line = ($process.pid).alignLeft(10) & ($process.ppid).alignLeft(10) & processName.alignLeft(80) & ($process.session).alignLeft(10) & process.user                        
-        component.console.addItem(LOG_OUTPUT, line, "", int(pid) == component.agent.pid, agentId = component.agent.agentId)
+        component.textarea.addItem(LOG_OUTPUT, line, "", int(pid) == cq.sessions.agents[component.agentId].pid, agentId = component.agentId)
 
         # Recursively print child processes with indentation
         for childPid in process.children.sorted():
@@ -282,16 +282,16 @@ proc listDirectoryContents*(component: ConsoleComponent, path: string, entries: 
         totalFiles = 0
         totalDirs = 0
     
-    component.console.addItem(LOG_OUTPUT, "Directory: " & path, agentId = component.agent.agentId)
-    component.console.addItem(LOG_OUTPUT, "", agentId = component.agent.agentId)
+    component.textarea.addItem(LOG_OUTPUT, "Directory: " & path, agentId = component.agentId)
+    component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId)
 
     # Table Headers
     let headers = @["Flags", "Last modified", "Size", "Name"]
     let headerLine = headers[0].alignLeft(8) & headers[1].alignLeft(25) & headers[2].alignLeft(15) & headers[3]
     let separator = "-".repeat(headers[0].len).alignLeft(8) & "-".repeat(headers[1].len).alignLeft(25) & "-".repeat(headers[2].len).alignLeft(15) & "-".repeat(headers[3].len)
     
-    component.console.addItem(LOG_OUTPUT, headerLine, agentId = component.agent.agentId)
-    component.console.addItem(LOG_OUTPUT, separator, agentId = component.agent.agentId)
+    component.textarea.addItem(LOG_OUTPUT, headerLine, agentId = component.agentId)
+    component.textarea.addItem(LOG_OUTPUT, separator, agentId = component.agentId)
     
     # Process entries
     for entry in entries:
@@ -310,15 +310,19 @@ proc listDirectoryContents*(component: ConsoleComponent, path: string, entries: 
         let sizeStr = if (entry.flags and cast[uint8](IS_DIR)) != 0: "<DIR>" else: $entry.size
         
         # Build the entry line using consistent alignment
-        component.console.addItem(LOG_OUTPUT, mode.alignLeft(8) & dateTimeStr.alignLeft(25) & sizeStr.alignLeft(15) & entry.name, agentId = component.agent.agentId) # Only display the last part of the pat, agentId = component.agent.agentIdh
+        component.textarea.addItem(LOG_OUTPUT, mode.alignLeft(8) & dateTimeStr.alignLeft(25) & sizeStr.alignLeft(15) & entry.name, agentId = component.agentId) # Only display the last part of the pat, agentId = component.agentIdh
     
-    component.console.addItem(LOG_OUTPUT, "", agentId = component.agent.agentId)
-    component.console.addItem(LOG_OUTPUT, $totalFiles & " file(s)", agentId = component.agent.agentId)
-    component.console.addItem(LOG_OUTPUT, $totalDirs & " dir(s)", agentId = component.agent.agentId)
+    component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId)
+    component.textarea.addItem(LOG_OUTPUT, $totalFiles & " file(s)", agentId = component.agentId)
+    component.textarea.addItem(LOG_OUTPUT, $totalDirs & " dir(s)", agentId = component.agentId)
 
 
 proc draw*(component: ConsoleComponent) =
-    igBegin(fmt" {ICON_FA_TERMINAL} [{component.agent.agentId}] {component.agent.username}@{component.agent.hostname}".cstring, addr component.showConsole, 0)
+    if not cq.sessions.agents.hasKey(component.agentId): return
+
+    let agent = cq.sessions.agents[component.agentId]
+
+    igBegin(agent.consoleTitle.cstring, addr component.showConsole, 0)
     defer: igEnd()
     
     let io = igGetIO()
@@ -344,11 +348,12 @@ proc draw*(component: ConsoleComponent) =
     # Padding 
     igDummy(vec2(0.0f, consolePadding))
     
+
     #[
         Session information
     ]#
-    let domain = if component.agent.domain.isEmptyOrWhitespace(): "" else: fmt".{component.agent.domain}"
-    let sessionInfo = fmt"{component.agent.username}@{component.agent.hostname}{domain} | {component.agent.ipInternal} | {$component.agent.pid}/{component.agent.process}".cstring
+    let domain = if agent.domain.isEmptyOrWhitespace(): "" else: fmt".{agent.domain}"
+    let sessionInfo = fmt"{agent.username}@{agent.hostname}{domain} | {agent.ipInternal} | {$agent.pid}/{agent.process}".cstring
     igTextColored(GRAY, sessionInfo)
     igSameLine(0.0f, 0.0f)
 
@@ -382,7 +387,7 @@ proc draw*(component: ConsoleComponent) =
     #[
         Console textarea
     ]# 
-    component.console.draw(vec2(-1.0f, -footerHeight), component.filter)
+    component.textarea.draw(vec2(-1.0f, -footerHeight), component.filter)
     
     # Padding 
     igDummy(vec2(0.0f, consolePadding))
@@ -390,7 +395,7 @@ proc draw*(component: ConsoleComponent) =
     #[
         Input field with prompt indicator
     ]#
-    igText(fmt"[{component.agent.agentId}]".cstring) 
+    igText(fmt"[{agent.agentId}]".cstring) 
     igSameLine(0.0f, textSpacing)
     
     # Calculate available width for input

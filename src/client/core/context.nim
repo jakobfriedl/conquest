@@ -1,21 +1,12 @@
 import tables, strformat, strutils
-import imguin/[cimgui, glfw_opengl]
 import ../utils/appImGui
 import ../views/widgets/[dualListSelection]
 import ../views/modals/[startListener, configureKillDate, configureWorkingHours]
 import ../../common/types
 
 # Component type definitions
-const MAX_INPUT_LENGTH* = 4096 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets)
 
 type 
-    TextareaWidget* = ref object of RootObj
-        content*: ConsoleItems
-        contentDisplayed*: ConsoleItems
-        textSelect*: ptr TextSelect
-        showTimestamps*: bool
-        autoScroll*: bool
-
     EventlogComponent* = ref object of RootObj
         title*: string 
         showComponent*: ptr bool
@@ -71,18 +62,7 @@ type
         showComponent*: ptr bool
         agents*: Table[string, UIAgent]
         selection*: ptr ImGuiSelectionBasicStorage
-        consoles*: ptr Table[string, ConsoleComponent]
         focusedConsole*: string 
-
-    ConsoleComponent* = ref object of RootObj
-        agent*: UIAgent
-        showConsole*: bool
-        inputBuffer*: array[MAX_INPUT_LENGTH, char]
-        console*: TextareaWidget
-        history*: seq[string]
-        historyPosition*: int 
-        currentInput*: string
-        filter*: ptr ImGuiTextFilter
     
     DownloadsComponent* = ref object of RootObj
         title*: string
@@ -115,7 +95,6 @@ type Conquest* = ref object
     processBrowser*: ProcessBrowserComponent
     fileBrowser*: FileBrowserComponent
     moduleManager*: ModuleManagerComponent
-    consoles*: Table[string, ConsoleComponent]
     connection*: WsConnection
 
 var cq*: Conquest = new Conquest

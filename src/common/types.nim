@@ -209,50 +209,84 @@ type
         sessionKey*: Key
         links*: seq[string]
 
-    ProcessInfo* = object 
-        pid*: uint32
-        ppid*: uint32 
-        name*: string 
-        user*: string
-        session*: uint32
-        when defined(client):
-            children*: seq[uint32]
+when defined(client): 
 
-    Processes* = object
-        rootProcesses*: seq[uint32] 
-        processTable*: OrderedTable[uint32, ProcessInfo]
-        timestamp*: int64
+    import imguin/[cimgui, glfw_opengl]
+    
+    const MAX_INPUT_LENGTH* = 4096 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets)
 
-    DirectoryEntry* = object 
-        name*: string 
-        flags*: uint8
-        size*: uint64
-        lastWriteTime*: int64
-        isLoaded*: bool
-        children*: Option[OrderedTable[string, DirectoryEntry]]
+    type 
+        ConsoleItem* = ref object 
+            itemType*: LogType
+            timestamp*: string
+            text*: string
+            highlight*: bool
 
-    # Session entry for client UI
-    UIAgent* = ref object 
-        agentId*: string
-        listenerId*: string 
-        username*: string 
-        impersonationToken*: string
-        hostname*: string
-        domain*: string
-        ipInternal*: string
-        ipExternal*: string
-        os*: string
-        process*: string
-        pid*: int
-        elevated*: bool 
-        sleep*: int 
-        jitter*: int
-        modules*: uint32
-        firstCheckin*: int64
-        latestCheckin*: int64
-        processes*: Option[Processes]
-        filesystem*: Option[OrderedTable[string, DirectoryEntry]]
-        workingDirectory*: Option[string]
+        ConsoleItems* = ref object
+            items*: seq[ConsoleItem]
+        
+        TextareaWidget* = ref object of RootObj
+            content*: ConsoleItems
+            contentDisplayed*: ConsoleItems
+            textSelect*: ptr TextSelect
+            showTimestamps*: bool
+            autoScroll*: bool
+
+        ConsoleComponent* = ref object of RootObj
+            agentId*: string
+            showConsole*: bool
+            inputBuffer*: array[MAX_INPUT_LENGTH, char]
+            textarea*: TextareaWidget
+            history*: seq[string]
+            historyPosition*: int 
+            currentInput*: string
+            filter*: ptr ImGuiTextFilter
+        
+        ProcessInfo* = object 
+            pid*: uint32
+            ppid*: uint32 
+            name*: string 
+            user*: string
+            session*: uint32
+            when defined(client):
+                children*: seq[uint32]
+
+        Processes* = object
+            rootProcesses*: seq[uint32] 
+            processTable*: OrderedTable[uint32, ProcessInfo]
+            timestamp*: int64
+
+        DirectoryEntry* = object 
+            name*: string 
+            flags*: uint8
+            size*: uint64
+            lastWriteTime*: int64
+            isLoaded*: bool
+            children*: Option[OrderedTable[string, DirectoryEntry]]
+
+        UIAgent* = ref object 
+            agentId*: string
+            listenerId*: string 
+            username*: string 
+            impersonationToken*: string
+            hostname*: string
+            domain*: string
+            ipInternal*: string
+            ipExternal*: string
+            os*: string
+            process*: string
+            pid*: int
+            elevated*: bool 
+            sleep*: int 
+            jitter*: int
+            modules*: uint32
+            firstCheckin*: int64
+            latestCheckin*: int64
+            processes*: Option[Processes]
+            filesystem*: Option[OrderedTable[string, DirectoryEntry]]
+            workingDirectory*: Option[string]
+            console*: ConsoleComponent 
+            consoleTitle*: string
 
 # Listener structure
 type 
@@ -425,15 +459,6 @@ when defined(client):
 
 # Definitions for ImGui User interface
 type 
-    ConsoleItem* = ref object 
-        itemType*: LogType
-        timestamp*: string
-        text*: string
-        highlight*: bool
-
-    ConsoleItems* = ref object
-        items*: seq[ConsoleItem]
-
     AgentBuildInformation* = ref object 
         listenerId*: string
         sleepSettings*: SleepSettings

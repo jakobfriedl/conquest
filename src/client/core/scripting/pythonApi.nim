@@ -11,7 +11,9 @@ import ../../../common/[types, utils, serialize]
     - argument parsing 
     - command execution 
     
-    References: https://github.com/Adaptix-Framework/AdaptixC2/blob/main/AdaptixClient/Headers/Client/AxScript/BridgeApp.h
+    References: 
+    - https://github.com/Adaptix-Framework/AdaptixC2/blob/main/AdaptixClient/Headers/Client/AxScript/BridgeApp.h
+    - https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics_aggressor-scripts/as-resources_functions.htm 
 ]#
 
 proc addArgString*(self: Command, name, description: string, required: bool = false, default: string = ""): Command {.exportpy.} = 
@@ -183,8 +185,8 @@ proc log(message: string) {.exportpy.} =
     echo ">> ", message
 
 proc error(agentId, message: string) {.exportpy.} = 
-    if cq.consoles.hasKey(agentId):
-        cq.consoles[agentId].console.addItem(LOG_ERROR, message)
+    if cq.sessions.agents.hasKey(agentId):
+        cq.sessions.agents[agentId].console.textarea.addItem(LOG_ERROR, message)
 
 proc modules_root(): string {.exportpy.} = 
     return CONQUEST_ROOT & "/data/modules"

@@ -56,14 +56,13 @@ proc main(ip: string = "localhost", port: int = 37573) =
     for path in dbGetScriptPaths(): 
         loadScript(path)
 
-    cq.sessions = SessionsTable(WIDGET_SESSIONS, addr showSessionsTable, addr cq.consoles) 
+    cq.sessions = SessionsTable(WIDGET_SESSIONS, addr showSessionsTable) 
     cq.listeners = ListenersTable(WIDGET_LISTENERS, addr showListeners)
     cq.eventlog = Eventlog(WIDGET_EVENTLOG, addr showEventlog)
     cq.downloads = LootDownloads(WIDGET_DOWNLOADS, addr showDownloads)
     cq.screenshots = LootScreenshots(WIDGET_SCREENSHOTS, addr showScreenshots)
     cq.processBrowser = ProcessBrowser(WIDGET_PROCESS_BROWSER, addr showProcesses)
     cq.filebrowser = FileBrowser(WIDGET_FILE_BROWSER, addr showFiles)
-    cq.consoles = initTable[string, ConsoleComponent]()
 
     let io = igGetIO()
 
@@ -111,25 +110,44 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     cq.listeners.listeners[listener.listenerId] = listener
 
                 of CLIENT_AGENT_ADD: 
-                    let agent = event.data.to(UIAgent)
+                    let agentId = event.data["agentId"].getStr()
+                    var agent = UIAgent(
+                        agentId: agentId,
+                        listenerId: event.data["listenerId"].getStr(),
+                        username: event.data["username"].getStr(),
+                        impersonationToken: event.data["impersonationToken"].getStr(),
+                        hostname: event.data["hostname"].getStr(),
+                        domain: event.data["domain"].getStr(),
+                        ipInternal: event.data["ipInternal"].getStr(),
+                        ipExternal: event.data["ipExternal"].getStr(),
+                        os: event.data["os"].getStr(),
+                        process: event.data["process"].getStr(),
+                        pid: event.data["pid"].getInt(),
+                        elevated: event.data["elevated"].getBool(),
+                        sleep: event.data["sleep"].getInt(),
+                        jitter: event.data["jitter"].getInt(),
+                        modules: cast[uint32](event.data["modules"].getInt()),
+                        firstCheckin: event.data["firstCheckin"].getInt(),
+                        latestCheckin: event.data["latestCheckin"].getInt(),
+                        processes: none(Processes),
+                        filesystem: none(OrderedTable[string, DirectoryEntry]),
+                        workingDirectory: none(string),
+                        console: Console(agentId)
+                    )
                 
+                    agent.consoleTitle = fmt" {ICON_FA_TERMINAL} [{agent.agentId}] {agent.username}@{agent.hostname}"
                     cq.sessions.agents[agent.agentId] = agent
-                    if not agent.impersonationToken.isEmptyOrWhitespace():
-                        cq.sessions.agents[agent.agentId].impersonationToken = agent.impersonationToken
 
-                    # Initialize position of console windows to bottom by drawing them once when they are added
-                    # By default, the consoles are attached to the same DockNode as the Listeners table (Default: bottom), 
-                    # so if you place your listeners somewhere else, the console windows show up somewhere else too
-                    # The only case that is not covered is when the listeners table is hidden and the bottom panel was split
-                    var agentConsole = Console(agent)
-                    cq.consoles[agent.agentId] = agentConsole
+                    # # Initialize position of console windows to bottom by drawing them once when they are added
+                    # # By default, the consoles are attached to the same DockNode as the Listeners table (Default: bottom), 
+                    # # so if you place your listeners somewhere else, the console windows show up somewhere else too
+                    # # The only case that is not covered is when the listeners table is hidden and the bottom panel was split
                     let listenersWindow = igFindWindowByName(WIDGET_LISTENERS) 
                     if listenersWindow != nil and listenersWindow.DockNode != nil:
                         igSetNextWindowDockID(listenersWindow.DockNode.ID, ImGuiCond_FirstUseEver.int32)
                     else:
                         igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
-                    cq.consoles[agent.agentId].draw()
-                    cq.consoles[agent.agentId].showConsole = false
+                    agent.console.draw()
 
                 of CLIENT_AGENT_CHECKIN: 
                     cq.sessions.agents[event.data["agentId"].getStr()].latestCheckin = event.timestamp
@@ -148,8 +166,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
                 of CLIENT_CONSOLE_ITEM: 
                     let agentId = event.data["agentId"].getStr() 
-                    if cq.consoles.hasKey(agentId):
-                        cq.consoles[agentId].console.addItem(
+                    if cq.sessions.agents.hasKey(agentId):
+                        cq.sessions.agents[agentId].console.textarea.addItem(
                             cast[LogType](event.data["logType"].getInt()), 
                             event.data["message"].getStr(), 
                             event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"),
@@ -232,8 +250,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
                     # Display processes in agent console
                     if not silent: 
-                        if cq.consoles.hasKey(agentId):
-                            cq.consoles[agentId].listProcesses(rootProcesses, processTable) 
+                        if cq.sessions.agents.hasKey(agentId):
+                            cq.sessions.agents[agentId].console.listProcesses(rootProcesses, processTable) 
 
                     # Add process information to the process browser
                     cq.sessions.agents[agentId].processes = some(Processes(
@@ -274,8 +292,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
                     # Display processes in agent console
                     if not silent:
-                        if cq.consoles.hasKey(agentId):
-                            cq.consoles[agentId].listDirectoryContents(path, entries) 
+                        if cq.sessions.agents.hasKey(agentId):
+                            cq.sessions.agents[agentId].console.listDirectoryContents(path, entries) 
 
                     # Add information to the file browser
                     # Initialize filesystem storage
@@ -330,22 +348,14 @@ proc main(ip: string = "localhost", port: int = 37573) =
             if showFiles: cq.fileBrowser.draw()
             if showModules: cq.moduleManager.draw()
 
-            # Show console windows
-            var newConsoleTable: Table[string, ConsoleComponent]
-            for agentId, console in cq.consoles.mpairs():
-                if console.showConsole:
-                    # Ensure that new console windows are docked to the bottom panel by default
-                    igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
-                    console.draw()    
-                    newConsoleTable[agentId] = console
+            # Show console windows for agents where showConsole is true
+            for agentId, agent in cq.sessions.agents.mpairs():
+                if agent.console.showConsole:
+                    agent.console.draw()
                 
             if cq.sessions.focusedConsole.len() > 0: 
                 igSetWindowFocus_Str(cq.sessions.focusedConsole.cstring)
                 cq.sessions.focusedConsole = ""
-
-            # Update the consoles table with only those sessions that have not been closed yet
-            # This is done to ensure that closed console windows can be opened again
-            cq.consoles = newConsoleTable
 
             # igShowDemoWindow(addr showConquest)
 

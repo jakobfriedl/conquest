@@ -15,28 +15,26 @@ import ../../common/types
 #         consoles: ptr Table[string, ConsoleComponent]
 #         focusedConsole*: string
 
-proc SessionsTable*(title: string, showComponent: ptr bool, consoles: ptr Table[string, ConsoleComponent]): SessionsTableComponent = 
+proc SessionsTable*(title: string, showComponent: ptr bool): SessionsTableComponent = 
     result = new SessionsTableComponent
     result.title = title
     result.showComponent = showComponent
     result.agents = initTable[string, UIAgent]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
-    result.consoles = consoles
     result.focusedConsole = ""
 
 proc interact(component: SessionsTableComponent) = 
-    # Open a new console for each selected agent session
     var it: pointer = nil
     var row: ImGuiID
 
     while ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
         let agent = component.agents.values().toSeq().sorted(cmp)[row]
 
-        # Create a new console window
-        if not component.consoles[].hasKey(agent.agentId):
-            component.consoles[][agent.agentId] = Console(agent)
+        # Show console
+        agent.console.showConsole = true
 
-        component.focusedConsole = fmt" {ICON_FA_TERMINAL} [{agent.agentId}] {agent.username}@{agent.hostname}"
+        # Set focus 
+        component.focusedConsole = agent.consoleTitle
     
     component.selection.ImGuiSelectionBasicStorage_Clear()
 
@@ -196,20 +194,50 @@ proc draw*(component: SessionsTableComponent) =
 
             # Menu to copy fields of the agent object to clipboard
             if igBeginMenu("Copy", true): 
-                let temp = UIAgent() 
-                for key, val in temp[].fieldPairs():
-                    if igMenuItem(key.capitalizeAscii().replace("Id", "ID").replace("Os", "OS").replace("Ip", "IP ").replace("Pid", "PID").cstring, nil, false, true):
+                const copyableFields = [
+                    ("agentId", "AgentID"),
+                    ("listenerId", "ListenerID"),
+                    ("username", "Username"),
+                    ("impersonationToken", "Impersonation Token"),
+                    ("hostname", "Hostname"),
+                    ("domain", "Domain"),
+                    ("ipInternal", "IP (Internal)"),
+                    ("ipExternal", "IP (External)"),
+                    ("os", "Operating System"),
+                    ("process", "Process Name"),
+                    ("pid", "ProcessID"),
+                    ("elevated", "IsElevated"),
+                    ("sleep", "Sleep"),
+                    ("jitter", "Jitter")
+                ]
+                
+                for (fieldName, displayName) in copyableFields:
+                    if igMenuItem(displayName.cstring, nil, false, true):
                         var toCopy: string = ""
                         for i, agent in agents:
                             if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                                # Find the selected value in the agent 
-                                # When multiple agents are selected, the value is taken from each agent and separated by a newline
-                                for k, v in agent[].fieldPairs():
-                                    if key == k:
-                                        toCopy &= $v & "\n"
-
+                                let value = case fieldName:
+                                    of "agentId": agent.agentId
+                                    of "listenerId": agent.listenerId
+                                    of "username": agent.username
+                                    of "impersonationToken": agent.impersonationToken
+                                    of "hostname": agent.hostname
+                                    of "domain": agent.domain
+                                    of "ipInternal": agent.ipInternal
+                                    of "ipExternal": agent.ipExternal
+                                    of "os": agent.os
+                                    of "process": agent.process
+                                    of "pid": $agent.pid
+                                    of "elevated": $agent.elevated
+                                    of "sleep": $agent.sleep
+                                    of "jitter": $agent.jitter
+                                    else: ""
+                                
+                                toCopy &= value & "\n"
+                        
                         igSetClipboardText(toCopy.strip().cstring)
                         igCloseCurrentPopup()
+                
                 igEndMenu()
 
             # Menu to exit the agent process in different ways
@@ -217,10 +245,7 @@ proc draw*(component: SessionsTableComponent) =
                 if igMenuItem("Process", nil, false, true): 
                     for i, agent in agents:
                         if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                            if component.consoles[].hasKey(agent.agentId):
-                                component.consoles[][agent.agentId].handleAgentCommand("exit process")
-                            else: 
-                                sendTask(agent.agentId, "exit process")
+                            agent.console.handleAgentCommand("exit process")
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)
                     igCloseCurrentPopup()
@@ -228,10 +253,7 @@ proc draw*(component: SessionsTableComponent) =
                 if igMenuItem("Thread", nil, false, true):
                     for i, agent in agents:
                         if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                            if component.consoles[].hasKey(agent.agentId):
-                                component.consoles[][agent.agentId].handleAgentCommand("exit thread") 
-                            else: 
-                                sendTask(agent.agentId, "exit thread")
+                            agent.console.handleAgentCommand("exit thread") 
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)
                     igCloseCurrentPopup()
@@ -239,10 +261,7 @@ proc draw*(component: SessionsTableComponent) =
                 if igMenuItem("Self-Destruct", nil, false, true):
                     for i, agent in agents:
                         if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                            if component.consoles[].hasKey(agent.agentId):
-                                component.consoles[][agent.agentId].handleAgentCommand("self-destruct")
-                            else: 
-                                sendTask(agent.agentId, "self-destruct")
+                            agent.console.handleAgentCommand("self-destruct")
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)
                     igCloseCurrentPopup()

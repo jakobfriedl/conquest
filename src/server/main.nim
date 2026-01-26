@@ -73,7 +73,6 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
 
             of CLIENT_AGENT_TASK:
                 let agentId = event.data["agentId"].getStr()
-                let command = event.data["command"].getStr()
                 let task = event.data["task"].to(Task) 
                 cq.agents[agentId].tasks.add(task)
 
