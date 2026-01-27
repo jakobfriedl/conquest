@@ -37,6 +37,10 @@ type
         of LISTENER_SMB: 
             pipe*: string
 
+    WsConnection* = ref object
+        ws*: WebSocket
+        sessionKey*: Key
+
 # Team server context
 type 
     Conquest* = ref object

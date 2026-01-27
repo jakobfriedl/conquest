@@ -1,7 +1,7 @@
 import imguin/[cimgui, glfw_opengl]
 import nimgl/[opengl, glfw]
-import nimpy, tables, std/options
-import ./common
+import nimpy, whisky, tables, std/options
+import ./[common, event]
 
 # Modules & commands
 type 
@@ -225,6 +225,10 @@ type
             port*: int
         of LISTENER_SMB: 
             pipe*: string
+
+    WsConnection* = ref object
+        ws*: WebSocket
+        sessionKey*: Key
 
 # Client context
 type 

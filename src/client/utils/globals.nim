@@ -23,4 +23,5 @@ const CONSOLE_WARNING* = vec4(1.0f, 0.5f, 0.0f, 1.0f)
 const CONSOLE_COMMAND* = vec4(0.922f, 0.914f, 0.463f, 1.0f)
 const CONSOLE_HIGHLIGHT* = vec4(0.890f, 0.855f, 0.161f, 1.0f)
 
+# Global client context
 var cq*: Conquest = new Conquest

@@ -3,6 +3,10 @@ import tables
 import ./common 
 
 type 
+    ExitType* {.size: sizeof(uint8).} = enum 
+        EXIT_PROCESS = "process"
+        EXIT_THREAD = "thread"
+
     ProcessInfo* = object 
         pid*: uint32
         ppid*: uint32 

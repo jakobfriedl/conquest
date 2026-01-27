@@ -1,4 +1,5 @@
 import json
+import ./common
 
 type 
     EventType* = enum
@@ -36,3 +37,25 @@ type
         eventType*: EventType               
         timestamp*: int64 
         data*: JsonNode 
+
+# Shared types for client & server
+type 
+    AgentBuildInformation* = ref object 
+        listenerId*: string
+        sleepSettings*: SleepSettings
+        verbose*: bool
+        killDate*: int64
+        modules*: uint32
+
+    LootItemType* = enum 
+        DOWNLOAD = 0'u8 
+        SCREENSHOT = 1'u8
+
+    LootItem* = ref object 
+        itemType*: LootItemType
+        lootId*: string
+        agentId*: string
+        host*: string 
+        path*: string 
+        timestamp*: int64
+        size*: int 

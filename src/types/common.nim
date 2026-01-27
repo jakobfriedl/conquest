@@ -1,8 +1,4 @@
 import ../common/toml/toml 
-when defined(server):
-    import mummy 
-when defined(client): 
-    import whisky
 
 type    
     Uuid* = uint32
@@ -89,10 +85,6 @@ type
         LOG_SUCCESS_SHORT = "[+] "
         LOG_WARNING_SHORT = "[!] "
 
-    ExitType* {.size: sizeof(uint8).} = enum 
-        EXIT_PROCESS = "process"
-        EXIT_THREAD = "thread"
-
     ArgType* = enum 
         STRING = 0'u8
         INT = 1'u8
@@ -119,29 +111,3 @@ type
         sleepTechnique*: SleepObfuscationTechnique
         spoofStack*: bool
         workingHours*: WorkingHours
-
-    AgentBuildInformation* = ref object 
-        listenerId*: string
-        sleepSettings*: SleepSettings
-        verbose*: bool
-        killDate*: int64
-        modules*: uint32
-
-    LootItemType* = enum 
-        DOWNLOAD = 0'u8 
-        SCREENSHOT = 1'u8
-
-    LootItem* = ref object 
-        itemType*: LootItemType
-        lootId*: string
-        agentId*: string
-        host*: string 
-        path*: string 
-        timestamp*: int64
-        size*: int 
-
-when defined(server) or defined(client):
-    type
-        WsConnection* = ref object
-            ws*: WebSocket
-            sessionKey*: Key

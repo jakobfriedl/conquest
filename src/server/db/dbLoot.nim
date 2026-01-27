@@ -1,6 +1,6 @@
 import system, terminal, tiny_sqlite
 import ../core/logger
-import ../../types/[common, server]
+import ../../types/[common, server, event]
 
 proc dbStoreLoot*(cq: Conquest, loot: LootItem): bool = 
     try: 

@@ -4,7 +4,7 @@ import ../globals
 import ../core/[logger, websocket]
 import ../db/database 
 import ../../common/[utils, serialize, crypto]
-import ../../types/[common, server]
+import ../../types/[common, server, event]
 
 const PLACEHOLDER = "PLACEHOLDER"
 
