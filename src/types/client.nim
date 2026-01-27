@@ -26,6 +26,7 @@ type
         description*: string 
         example*: string
         message*: string 
+        mitre*: seq[string]
         arguments*: seq[Argument]
         hasHandler*: bool
         handler*: PyObject 

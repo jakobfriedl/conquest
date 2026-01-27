@@ -107,12 +107,13 @@ proc setHandler(self: Command, handler: PyObject): Command {.exportpy.} =
         self.handler = handler
     return self 
 
-proc createCommand*(name, description, example, message: string): Command {.exportpy.} = 
+proc createCommand*(name, description, example, message: string, mitre: seq[string] = @[]): Command {.exportpy.} = 
     return Command(
         name: name, 
         description: description,
         example: example,
         message: message,
+        mitre: mitre,
         arguments: @[],
         hasHandler: false
     )

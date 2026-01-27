@@ -149,6 +149,8 @@ proc displayCommandHelp(component: ConsoleComponent, command: Command) =
     ).join(" ")
     
     component.textarea.addItem(LOG_OUTPUT, command.description, agentId = component.agentId)
+    if command.mitre.len() > 0: 
+        component.textarea.addItem(LOG_OUTPUT, "MITRE ATT&CK: " & command.mitre.join(", "), agentId = component.agentId)
     component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId)
     component.textarea.addItem(LOG_OUTPUT, "Usage: " & usage, agentId = component.agentId)
     component.textarea.addItem(LOG_OUTPUT, "Example: " & command.example, agentId = component.agentId)
