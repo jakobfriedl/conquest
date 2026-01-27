@@ -1,10 +1,6 @@
 import imguin/[cimgui, glfw_opengl]
 import ../../utils/appImGui
-import ../../../common/types
-
-type 
-    WorkingHoursModalComponent* = ref object of RootObj
-        workingHours: WorkingHours
+import ../../../types/[common, client]
 
 proc WorkingHoursModal*(): WorkingHoursModalComponent =
     result = new WorkingHoursModalComponent

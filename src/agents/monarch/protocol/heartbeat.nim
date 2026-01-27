@@ -1,5 +1,6 @@
 import times, zippy
-import ../../../common/[types, serialize, utils, crypto]
+import ../../../common/[serialize, utils, crypto]
+import ../../../types/[common, agent, protocol]
 
 proc createHeartbeat*(ctx: AgentCtx): Heartbeat = 
     return Heartbeat(

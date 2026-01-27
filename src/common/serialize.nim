@@ -1,5 +1,6 @@
 import streams, tables
-import ./[types, utils]
+import ./utils
+import ../types/[common, protocol]
 
 #[
     Packer

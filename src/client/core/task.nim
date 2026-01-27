@@ -1,8 +1,10 @@
 import std/[paths, tables]
 import strutils, strformat, sequtils, times
-import ./[websocket, context]
+import ./websocket
 import ../views/widgets/textarea
-import ../../common/[types, sequence, crypto, utils, serialize]
+import ../utils/[utils, globals]
+import ../../common/[sequence, crypto, utils, serialize]
+import ../../types/[common, client, protocol]
 
 proc parseInput*(input: string): seq[string] = 
     var i = 0

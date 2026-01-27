@@ -2,30 +2,10 @@ import strutils, strformat, sequtils, tables, times
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
-import ../../utils/appImGui
-import ../../core/context
-import ../../../common/types
+import ../../utils/[appImGui, globals]
+import ../../../types/[common, client]
 import ../moduleManager
 export addItem
-
-# type 
-#     AgentModalComponent* = ref object of RootObj
-#         show*: bool
-#         listener: int32 
-#         sleepDelay: uint32
-#         jitter: int32 
-#         sleepMask: int32 
-#         spoofStack: bool 
-#         killDateEnabled: bool 
-#         killDate: int64
-#         workingHoursEnabled: bool
-#         workingHours: WorkingHours
-#         verbose: bool
-#         sleepMaskTechniques: seq[string]
-#         moduleSelection: DualListSelectionWidget[Module]
-#         buildLog*: TextareaWidget
-#         killDateModal*: KillDateModalComponent
-#         workingHoursModal*: WorkingHoursModalComponent
 
 proc AgentModal*(): AgentModalComponent =
     result = new AgentModalComponent

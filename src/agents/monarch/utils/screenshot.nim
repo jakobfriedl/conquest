@@ -4,7 +4,8 @@ import strformat, times, pixie
 import stb_image/write as stbiw
 import ./io
 import ../protocol/result
-import ../../../common/[types, utils, serialize]
+import ../../../common/[utils, serialize]
+import ../../../types/[common]
 
 proc bmpToJpeg*(data: seq[byte], quality: int = 80): seq[byte] =
     let img: Image = decodeImage(Bytes.toString(data))

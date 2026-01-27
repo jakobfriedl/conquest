@@ -1,7 +1,8 @@
 import times, json, base64, strformat
 import stb_image/write as stbiw
 import ./logger
-import ../../common/[types, utils, event]
+import ../../common/[utils, event]
+import ../../types/[common, server, event]
 export recvEvent
 
 proc `%`*(agent: Agent): JsonNode =

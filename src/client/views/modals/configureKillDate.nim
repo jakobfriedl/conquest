@@ -1,14 +1,7 @@
 import times
 import imguin/[cimgui, glfw_opengl]
 import ../../utils/appImGui
-
-type 
-    KillDateModalComponent* = ref object of RootObj
-        killDateTime: ImPlotTime
-        killDateLevel: int32
-        killDateHour: int32
-        killDateMinute: int32
-        killDateSecond: int32
+import ../../../types/client
 
 proc KillDateModal*(): KillDateModalComponent =
     result = new KillDateModalComponent

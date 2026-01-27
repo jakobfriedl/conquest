@@ -1,5 +1,6 @@
 import ./fonticon/IconsFontAwesome6
 import ./utils
+import ../../types/client
 
 const CONQUEST_ROOT* {.strdefine.} = ""
 
@@ -21,3 +22,5 @@ const CONSOLE_SUCCESS* = vec4(0.176f, 0.569f, 0.075f, 1.0f)
 const CONSOLE_WARNING* = vec4(1.0f, 0.5f, 0.0f, 1.0f)
 const CONSOLE_COMMAND* = vec4(0.922f, 0.914f, 0.463f, 1.0f)
 const CONSOLE_HIGHLIGHT* = vec4(0.890f, 0.855f, 0.161f, 1.0f)
+
+var cq*: Conquest = new Conquest

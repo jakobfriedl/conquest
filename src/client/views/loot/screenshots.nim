@@ -1,22 +1,9 @@
 import times, tables, native_dialogs
 import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/appImGui
-import ../../../common/[types, utils]
-import ../../core/[websocket, context]
-
-
-# type
-#     ScreenshotTexture* = ref object 
-#         textureId*: GLuint
-#         data*: string
-#         width: int 
-#         height: int 
-
-#     ScreenshotsComponent* = ref object of RootObj
-#         title: string
-#         items*: seq[LootItem]
-#         selectedIndex: int
-#         textures: Table[string, ScreenshotTexture]
+import ../../../common/utils
+import ../../../types/[common, client]
+import ../../utils/[appImGui, globals]
+import ../../core/websocket
 
 proc LootScreenshots*(title: string, showComponent: ptr bool): ScreenshotsComponent =
     result = new ScreenshotsComponent

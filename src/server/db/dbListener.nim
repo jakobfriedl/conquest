@@ -1,7 +1,7 @@
 import strformat, strutils, system, terminal, tiny_sqlite
 import std/options
 import ../core/logger
-import ../../common/types
+import ../../types/[common, server]
 
 #[
     Listener database functions

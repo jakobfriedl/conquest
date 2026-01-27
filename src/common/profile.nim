@@ -1,5 +1,6 @@
 import strutils, sequtils, random, base64, algorithm
-import ./[types, utils]
+import ./utils
+import ../types/common
 import ./toml/toml
 export parseFile, parseString, free, getTableKeys, getRandom
 

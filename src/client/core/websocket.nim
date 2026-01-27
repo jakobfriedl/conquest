@@ -1,5 +1,6 @@
 import times, json, base64
-import ../../common/[types, utils, event]
+import ../../common/[utils, event]
+import ../../types/[common, client, event, protocol]
 export recvEvent
 
 #[

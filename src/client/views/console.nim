@@ -1,23 +1,10 @@
-import strformat, strutils, sequtils, tables, times, algorithm, nimpy, std/paths
+import strformat, strutils, sequtils, tables, times, algorithm, nimpy
 import imguin/[cimgui, glfw_opengl, simple]
-import ../utils/[appImGui, globals]
-import ../../common/[types, utils]
-import ../core/[task, websocket, context]
+import ../utils/[appImGui, globals, utils]
+import ../../types/[common, client]
+import ../core/task
 import ./widgets/textarea
-import ./moduleManager
 export addItem
-
-# const MAX_INPUT_LENGTH = 4096 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets)
-# type 
-#     ConsoleComponent* = ref object of RootObj
-#         agent*: UIAgent
-#         showConsole*: bool
-#         inputBuffer: array[MAX_INPUT_LENGTH, char]
-#         console*: TextareaWidget
-#         history: seq[string]
-#         historyPosition: int 
-#         currentInput: string
-#         filter: ptr ImGuiTextFilter
 
 proc Console*(agentId: string): ConsoleComponent =
     result = new ConsoleComponent

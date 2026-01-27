@@ -1,13 +1,8 @@
 import imguin/[cimgui, glfw_opengl]
 import ./widgets/textarea
-import ../utils/appImGui
-import ../core/context
+import ../utils/[appImGui, globals]
+import ../../types/client
 export addItem
-
-# type 
-#     EventlogComponent* = ref object of RootObj
-#         title: string 
-#         textarea*: TextareaWidget
 
 proc Eventlog*(title: string, showComponent: ptr bool): EventlogComponent = 
     result = new EventlogComponent

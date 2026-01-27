@@ -4,7 +4,8 @@ when defined(client):
     import whisky
 
 import json, zippy
-import ./[types, utils, serialize, crypto]
+import ./[utils, serialize, crypto]
+import ../types/[common, event]
 
 proc sendEvent*(ws: WebSocket, event: Event, key: Key = default(Key)) = 
     var packer = Packer.init() 

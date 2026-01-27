@@ -1,15 +1,10 @@
 import imguin/[cimgui, glfw_opengl]
-import tables, native_dialogs, sequtils, strformat, algorithm
+import tables, native_dialogs, algorithm
 import ../utils/appImGui
 import ../core/scripting/engine
-import ../core/[database, context]
-import ../../common/types
-
-# type 
-#     ModuleManagerComponent* = ref object of RootObj
-#         title: string 
-#         modules: seq[tuple[name, description, path: string, commandCount: int]]
-        
+import ../core/database
+import ../../types/client
+ 
 proc ModuleManager*(title: string, showComponent: ptr bool): ModuleManagerComponent = 
     result = new ModuleManagerComponent
     result.title = title

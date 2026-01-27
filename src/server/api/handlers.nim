@@ -4,7 +4,8 @@ import std/[dirs, paths]
 import ../globals
 import ../db/database
 import ../core/[packer, logger, websocket]
-import ../../common/[types, utils, serialize]
+import ../../common/[utils, serialize]
+import ../../types/[common, server, protocol]
 
 #[
   Agent API

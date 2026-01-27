@@ -1,18 +1,9 @@
 import strformat, strutils, times, os, tables, native_dialogs
 import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/appImGui
-import ../../../common/types
-import ../../core/[websocket, context]
+import ../../utils/[appImGui, globals]
+import ../../../types/[common, client]
+import ../../core/websocket
 import ../widgets/textarea
-
-# type
-#     DownloadsComponent* = ref object of RootObj
-#         title: string
-#         items*: seq[LootItem]
-#         contents*: Table[string, string]
-#         textarea: TextareaWidget
-#         selectedIndex: int
-        
 
 proc LootDownloads*(title: string, showComponent: ptr bool): DownloadsComponent =
     result = new DownloadsComponent

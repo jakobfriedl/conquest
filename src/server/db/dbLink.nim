@@ -1,6 +1,7 @@
 import system, terminal, tiny_sqlite
 import ../core/logger
-import ../../common/[types, utils]
+import ../../common/utils
+import ../../types/server
 
 proc dbStoreLink*(cq: Conquest, parent, child: string): bool = 
     try: 

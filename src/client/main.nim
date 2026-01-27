@@ -1,11 +1,12 @@
 import whisky
-import tables, times, strutils, sequtils, strformat, json, base64, native_dialogs, std/paths
+import tables, times, strutils, sequtils, strformat, json, base64, native_dialogs
 import ./utils/[appImGui, globals]
 import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, moduleManager]
 import ./views/loot/[screenshots, downloads]
 import ./views/modals/generatePayload
-import ../common/[types, utils, profile, crypto, serialize]
-import ./core/[websocket, database, context]
+import ../common/[utils, profile, crypto, serialize]
+import ../types/[common, client, event]
+import ./core/[websocket, database]
 import ./core/scripting/engine
 
 proc main(ip: string = "localhost", port: int = 37573) = 

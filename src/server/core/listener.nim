@@ -4,7 +4,8 @@ import mummy, mummy/routers
 import ../api/routes
 import ../db/database
 import ../core/[logger, websocket]
-import ../../common/[types, profile]
+import ../../common/profile
+import ../../types/[common, server]
 
 proc serve(listener: Listener) {.thread.} = 
     try: 

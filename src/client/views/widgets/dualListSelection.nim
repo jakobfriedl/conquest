@@ -1,14 +1,7 @@
 import sequtils, algorithm
 import imguin/[cimgui, glfw_opengl]
 import ../../utils/[appImGui, globals]
-
-type 
-    DualListSelectionWidget*[T] = ref object of RootObj
-        items*: array[2, seq[T]]
-        selection: array[2, ptr ImGuiSelectionBasicStorage]
-        display: proc(item: T): string
-        compare: proc(x, y: T): int
-        tooltip: proc(item: T): string
+import ../../../types/client
 
 proc DualListSelection*[T](items: seq[T], display: proc(item: T): string, compare: proc(x, y: T): int,  tooltip: proc(item: T): string = nil): DualListSelectionWidget[T] = 
     result = new DualListSelectionWidget[T]

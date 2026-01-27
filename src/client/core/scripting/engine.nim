@@ -1,5 +1,5 @@
 import nimpy
-import ../context
+import ../../utils/globals
 
 pyExportModule("conquest")
 include ./pythonApi

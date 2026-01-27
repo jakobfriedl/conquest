@@ -1,11 +1,10 @@
 import times, tables, strformat, strutils, sequtils, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 
-import ./console
-import ../core/[task, websocket, context]
 import ../utils/[appImGui, globals]
-import ./moduleManager
-import ../../common/types
+import ../core/[task, websocket]
+import ./[console, moduleManager]
+import ../../types/[common, client]
 
 # type 
 #     SessionsTableComponent* = ref object of RootObj
@@ -28,7 +27,7 @@ proc interact(component: SessionsTableComponent) =
     var row: ImGuiID
 
     while ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
-        let agent = component.agents.values().toSeq().sorted(cmp)[row]
+        let agent = cq.sessions.agents.values().toSeq().sortedByIt(it.firstCheckin)[row]
 
         # Show console
         agent.console.showConsole = true
@@ -80,7 +79,7 @@ proc draw*(component: SessionsTableComponent) =
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
         # Sort sessions table based on first checkin
-        let agents = component.agents.values().toSeq().sorted(cmp)
+        let agents = cq.sessions.agents.values().toSeq().sortedByIt(it.firstCheckin)
 
         for i, agent in agents: 
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)

@@ -2,7 +2,7 @@ import system, terminal, tiny_sqlite
 
 import ./[dbAgent, dbListener, dbLoot, dbLink]
 import ../core/logger
-import ../../common/types
+import ../../types/server
 
 # Export functions so that only ./db/database is required to be imported
 export dbAgent, dbListener, dbLoot, dbLink

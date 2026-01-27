@@ -5,7 +5,8 @@ import strutils, strformat, system, tables
 import ./globals
 import ./db/database
 import ./core/[listener, logger, builder, websocket]
-import ../common/[types, crypto, utils, profile, event]
+import ../common/[crypto, utils, profile, event]
+import ../types/[common, event, protocol, server]
 
 proc header() = 
     echo ""

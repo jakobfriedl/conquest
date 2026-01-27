@@ -2,7 +2,8 @@ when defined(TRANSPORT_HTTP):
 
     import httpclient, strformat, strutils, asyncdispatch, base64, tables, random
     import ../../utils/io
-    import ../../../../common/[types, utils, profile]
+    import ../../../../common/[utils, profile]
+    import ../../../../types/[common, agent]
 
     proc httpGet*(ctx: AgentCtx, heartbeat: seq[byte]): string = 
 

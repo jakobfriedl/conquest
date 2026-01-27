@@ -1,7 +1,8 @@
 import winim/lean
 import strutils, strformat, random
 import ../utils/io
-import ../../../common/[types, utils]
+import ../../../common/[utils]
+import ../../../types/[common, agent]
 
 type 
     RtlExitUserThread = proc(exitStatus: NTSTATUS): VOID {.stdcall.}

@@ -1,6 +1,6 @@
 import system, terminal, tiny_sqlite, sequtils
 import ../core/logger
-import ../../common/types
+import ../../types/[common, server]
 import ./dbLink
 
 #[

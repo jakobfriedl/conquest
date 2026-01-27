@@ -1,7 +1,7 @@
 import macros, hashes
 import strutils, nimcrypto
 
-import ./types
+import ../types/common
 
 proc toString*(T: type Bytes, data: openArray[byte]): string =
     result = newString(data.len)

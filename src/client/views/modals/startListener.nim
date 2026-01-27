@@ -1,18 +1,10 @@
 import strutils
 import imguin/[cimgui, glfw_opengl]
 import ../../utils/appImGui
-import ../../../common/[types, utils]
+import ../../../common/utils
+import ../../../types/[common, client]
 
 const DEFAULT_PORT = 8080'u16
-
-type 
-    ListenerModalComponent* = ref object of RootObj
-        callbackHosts: array[256 * 32, char]
-        bindAddress: array[256, char]
-        bindPort: uint16 
-        pipe: array[256, char]
-        protocol: int32
-        protocols: seq[string]
 
 proc ListenerModal*(): ListenerModalComponent =
     result = new ListenerModalComponent

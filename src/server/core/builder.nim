@@ -3,7 +3,8 @@ import terminal, strformat, strutils, sequtils, tables, system, osproc, streams
 import ../globals
 import ../core/[logger, websocket]
 import ../db/database 
-import ../../common/[types, utils, serialize, crypto]
+import ../../common/[utils, serialize, crypto]
+import ../../types/[common, server]
 
 const PLACEHOLDER = "PLACEHOLDER"
 

@@ -2,7 +2,8 @@ import tables, base64, strformat, strutils, os, unicode
 import ../[database, task]
 import ../../utils/globals
 import ../../views/widgets/textarea
-import ../../../common/[types, utils, serialize]
+import ../../../common/[utils, serialize]
+import ../../../types/[common, client, protocol]
 
 #[
     Conquest Python API

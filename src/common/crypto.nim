@@ -1,7 +1,8 @@
 import system
 import nimcrypto
 
-import ./[types, utils]
+import ./utils
+import ../types/[common, protocol]
 
 #[
     Symmetric AES256 GCM encryption for secure C2 traffic

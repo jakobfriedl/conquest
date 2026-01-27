@@ -2,7 +2,8 @@ import winim/lean, tables, strformat
 import ./transport/[http, smb]
 import ../protocol/heartbeat
 import ../utils/io
-import ../../../common/[types, serialize, utils]
+import ../../../common/[serialize, utils]
+import ../../../types/[common, agent, protocol]
 
 proc getTasks*(ctx: AgentCtx): string = 
     when defined(TRANSPORT_HTTP):

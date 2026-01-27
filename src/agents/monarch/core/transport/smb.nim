@@ -1,7 +1,8 @@
 import winim/lean
 import system, tables
 import ../../utils/io
-import ../../../../common/[types, utils, serialize]
+import ../../../../common/[utils, serialize]
+import ../../../../types/[common, agent]
 
 const PIPE_BUFFER_MAX = 0x10000 # 65536 
 

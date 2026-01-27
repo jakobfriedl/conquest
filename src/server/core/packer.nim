@@ -1,5 +1,6 @@
 import strutils, streams, times, tables, zippy
-import ../../common/[types, utils, serialize, sequence, crypto]
+import ../../common/[utils, serialize, sequence, crypto]
+import ../../types/[common, server, protocol]
 
 proc serializeTask*(cq: Conquest, task: var Task): seq[byte] = 
 

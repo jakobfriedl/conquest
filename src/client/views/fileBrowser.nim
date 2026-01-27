@@ -1,9 +1,9 @@
 import imguin/[cimgui, glfw_opengl]
 import sequtils, strutils, strformat, tables, times, algorithm, options, std/paths
 import ../utils/[appImGui, globals]
-import ../core/[task, websocket, context]
+import ../core/[task, websocket]
 import ./moduleManager
-import ../../common/types
+import ../../types/[common, client]
 
 proc FileBrowser*(title: string, showComponent: ptr bool): FileBrowserComponent = 
     result = new FileBrowserComponent
@@ -40,7 +40,7 @@ proc draw*(component: FileBrowserComponent) =
     let textSpacing = igGetStyle().ItemSpacing.x  
 
     # Retrieve agent list 
-    let agents = cq.sessions.agents.values().toSeq().sorted(cmp) 
+    let agents = cq.sessions.agents.values().toSeq().sortedByIt(it.firstCheckin)
 
     # Dropdown menu to select the agent
     igSetNextItemWidth(200.0f)  

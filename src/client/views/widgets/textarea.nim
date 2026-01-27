@@ -1,16 +1,8 @@
 import strutils, times
 import imguin/[cimgui, glfw_opengl]
 import ../../utils/[appImGui, globals]
-import ../../core/[context, websocket]
-import ../../../common/types
-
-# type 
-#     TextareaWidget* = ref object of RootObj
-#         content: ConsoleItems
-#         contentDisplayed: ConsoleItems
-#         textSelect: ptr TextSelect
-#         showTimestamps: bool
-#         autoScroll: bool
+import ../../core/websocket
+import ../../../types/[common, client]
 
 # Text highlighting
 proc getText(item: ConsoleItem): cstring = 
