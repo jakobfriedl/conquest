@@ -75,28 +75,30 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
                 raise newException(CatchableError, "Failed to store listener in database.")
 
         cq.success("Started listener", fgGreen, fmt" {l.listenerId}.")
-        cq.client.sendListener(l)
-        cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {l.listenerId}.")
+        cq.sendListener(l)
+        cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {l.listenerId}.")
 
     except CatchableError as err: 
         cq.error("Failed to start listener: ", err.msg)
-        cq.client.sendEventlogItem(LOG_ERROR_SHORT, fmt"Failed to start listener: {err.msg}.")
+        cq.sendEventlogItem(LOG_ERROR_SHORT, fmt"Failed to start listener: {err.msg}.")
 
 # Remove listener from database, preventing automatic startup on server restart
 proc listenerStop*(cq: Conquest, name: string) = 
         
-    # Check if listener supplied via -n parameter exists in database
-    if not cq.dbListenerExists(name.toUpperAscii): 
-        cq.error(fmt"Listener {name.toUpperAscii} does not exist.")
+    # Check if listener exists in database
+    if not cq.dbListenerExists(name): 
+        cq.error(fmt"Listener {name} does not exist.")
         return
 
     # Remove database entry
-    if not cq.dbDeleteListenerByName(name.toUpperAscii): 
+    if not cq.dbDeleteListenerByName(name): 
         cq.error("Failed to stop listener: ", getCurrentExceptionMsg())
         return
 
     cq.listeners.del(name)
-    cq.success("Stopped listener ", fgGreen, name.toUpperAscii, resetStyle, ".")
+    cq.sendListenerRemove(name)
+    cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Stopped listener {name}.")
+    cq.success("Stopped listener ", fgGreen, name, resetStyle, ".")
     
     # TODO: Shutdown listener without server restart. Since the listener is removed from the DB, agents connecting to it after it has been shutdown are not accepted
     # try: 

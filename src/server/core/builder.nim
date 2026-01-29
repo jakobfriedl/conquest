@@ -8,7 +8,7 @@ import ../../types/[common, server, event]
 
 const PLACEHOLDER = "PLACEHOLDER"
 
-proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: SleepSettings, killDate: int64): seq[byte] = 
+proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: SleepSettings, killDate: int64, clientId: string = ""): seq[byte] = 
     
     var packer = Packer.init()
 
@@ -65,7 +65,7 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: Sle
     wipeKey(aesKey)
 
     cq.info("Profile configuration serialized.")
-    cq.client.sendBuildlogItem(LOG_INFO_SHORT, "Profile configuration serialized.")
+    cq.sendBuildlogItem(LOG_INFO_SHORT, "Profile configuration serialized.", clientId = clientId)
 
     return encMaterial & encData 
 
@@ -78,7 +78,7 @@ proc replaceAfterPrefix(content, prefix, value: string, quoted: bool = false): s
             it
     ).join("\n")
     
-proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: bool, listenerType: ListenerType): string = 
+proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: bool, listenerType: ListenerType, clientId: string = ""): string = 
     
     let 
         configFile = fmt"{CONQUEST_ROOT}/src/agents/monarch/nim.cfg"  
@@ -96,11 +96,11 @@ proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: boo
     writeFile(configFile, config)
 
     cq.info(fmt"Placeholder created ({placeholder.len()} bytes).")
-    cq.client.sendBuildlogItem(LOG_INFO_SHORT, fmt"Placeholder created ({placeholder.len()} bytes).")
+    cq.sendBuildlogItem(LOG_INFO_SHORT, fmt"Placeholder created ({placeholder.len()} bytes).", clientId = clientId)
     
     # Build agent by executing the ./build.sh script on the system.
     cq.info("Compiling agent.")
-    cq.client.sendBuildlogItem(LOG_INFO_SHORT, "Compiling agent...")
+    cq.sendBuildlogItem(LOG_INFO_SHORT, "Compiling agent...", clientId = clientId)
     
     try:
         # Using the startProcess function from the 'osproc' module, it is possible to retrieve the output as it is received, line-by-line instead of all at once
@@ -116,21 +116,21 @@ proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: boo
         # Check if the build succeeded or not
         if exitCode == 0:
             cq.info("Agent payload generated successfully.")
-            cq.client.sendBuildlogItem(LOG_INFO_SHORT, "Agent payload generated successfully.")
+            cq.sendBuildlogItem(LOG_INFO_SHORT, "Agent payload generated successfully.", clientId = clientId)
             return exeFile
         else:
             cq.error("Build script exited with code ", $exitCode)
-            cq.client.sendBuildlogItem(LOG_ERROR_SHORT, "Build script exited with code " & $exitCode)
+            cq.sendBuildlogItem(LOG_ERROR_SHORT, "Build script exited with code " & $exitCode, clientId = clientId)
             return ""
 
     except CatchableError as err:
         cq.error("An error occurred: ", err.msg)
         return ""
     
-proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): seq[byte] = 
+proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte], clientId: string = ""): seq[byte] = 
     
     cq.info("Patching profile configuration into agent.")
-    cq.client.sendBuildlogItem(LOG_INFO_SHORT, "Patching profile configuration into agent.")
+    cq.sendBuildlogItem(LOG_INFO_SHORT, "Patching profile configuration into agent.", clientId = clientId)
 
     try: 
         var exeBytes = readFile(unpatchedExePath) 
@@ -141,7 +141,7 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): se
             raise newException(CatchableError, "Placeholder not found.")
         
         cq.info(fmt"Placeholder found at offset 0x{placeholderPos:08X}.")
-        cq.client.sendBuildlogItem(LOG_INFO_SHORT, fmt"Placeholder found at offset 0x{placeholderPos:08X}.")
+        cq.sendBuildlogItem(LOG_INFO_SHORT, fmt"Placeholder found at offset 0x{placeholderPos:08X}.", clientId = clientId)
 
         # Patch placeholder bytes
         for i, c in Bytes.toString(configuration): 
@@ -150,17 +150,17 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte]): se
         writeFile(unpatchedExePath, exeBytes)
 
         cq.success(fmt"Agent payload patched successfully: {unpatchedExePath}.")
-        cq.client.sendBuildlogItem(LOG_SUCCESS_SHORT, fmt"Agent payload patched successfully: {unpatchedExePath}.")
+        cq.sendBuildlogItem(LOG_SUCCESS_SHORT, fmt"Agent payload patched successfully: {unpatchedExePath}.", clientId = clientId)
         return string.toBytes(exeBytes)
     
     except CatchableError as err:
         cq.error("An error occurred: ", err.msg) 
-        cq.client.sendBuildlogItem(LOG_ERROR_SHORT, "An error occurred: " & err.msg)
+        cq.sendBuildlogItem(LOG_ERROR_SHORT, "An error occurred: " & err.msg, clientId = clientId)
         
     return @[]
 
 # Agent generation 
-proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation): seq[byte] =
+proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation, clientId: string = ""): seq[byte] =
 
     # Verify that listener exists
     if not cq.dbListenerExists(agentBuildInformation.listenerId): 
@@ -169,11 +169,11 @@ proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation): se
 
     let listener = cq.listeners[agentBuildInformation.listenerId]
     
-    var config = cq.serializeConfiguration(listener, agentBuildInformation.sleepSettings, agentBuildInformation.killDate)
+    var config = cq.serializeConfiguration(listener, agentBuildInformation.sleepSettings, agentBuildInformation.killDate, clientId)
     
-    let unpatchedExePath = cq.compile(config.len(), agentBuildInformation.modules, agentBuildInformation.verbose, listener.listenerType)
+    let unpatchedExePath = cq.compile(config.len(), agentBuildInformation.modules, agentBuildInformation.verbose, listener.listenerType, clientId)
     if unpatchedExePath.isEmptyOrWhitespace():
         return 
 
     # Return packet to send to client
-    return cq.patch(unpatchedExePath, config)
+    return cq.patch(unpatchedExePath, config, clientId)

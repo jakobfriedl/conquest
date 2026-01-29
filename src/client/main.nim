@@ -110,6 +110,10 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     let listener = event.data.to(UIListener)
                     cq.listeners.listeners[listener.listenerId] = listener
 
+                of CLIENT_LISTENER_REMOVE:
+                    let listenerId = event.data["listenerId"].getStr()
+                    cq.listeners.listeners.del(listenerId)
+
                 of CLIENT_AGENT_ADD: 
                     let agentId = event.data["agentId"].getStr()
                     var agent = UIAgent(

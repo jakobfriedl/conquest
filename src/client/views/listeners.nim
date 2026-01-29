@@ -116,11 +116,8 @@ proc draw*(component: ListenersTableComponent) =
         if component.selection[].Size > 0 and igBeginPopupContextWindow("TableContextMenu", ImGui_PopupFlags_MouseButtonRight.int32): 
             
             if igMenuItem("Stop", nil, false, true): 
-                # Update agents table with only non-selected ones
-                var newListeners: seq[UIListener] = @[]
                 for i, listener in listeners:
                     if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        component.listeners.del(listener.listenerId)
                         cq.connection.sendStopListener(listener.listenerId)
 
                 ImGuiSelectionBasicStorage_Clear(component.selection)

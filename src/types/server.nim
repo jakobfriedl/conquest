@@ -38,6 +38,7 @@ type
             pipe*: string
 
     WsConnection* = ref object
+        clientId*: string 
         ws*: WebSocket
         sessionKey*: Key
 
@@ -51,4 +52,4 @@ type
         keyPair*: KeyPair
         profileString*: string
         profile*: Profile
-        client*: WsConnection
+        clients*: Table[string, WsConnection]

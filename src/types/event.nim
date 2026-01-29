@@ -19,19 +19,20 @@ type
         # Sent by team server
         CLIENT_PROFILE = 100'u8             # Team server profile and configuration 
         CLIENT_LISTENER_ADD = 101'u8        # Add listener to listeners table
-        CLIENT_AGENT_ADD = 102'u8           # Add agent to sessions table
-        CLIENT_AGENT_CHECKIN = 103'u8       # Update agent checkin
-        CLIENT_AGENT_PAYLOAD = 104'u8       # Return agent payload binary 
-        CLIENT_CONSOLE_ITEM = 105'u8        # Add entry to a agent's console 
-        CLIENT_EVENTLOG_ITEM = 106'u8       # Add entry to the eventlog   
-        CLIENT_BUILDLOG_ITEM = 107'u8       # Add entry to the build log
-        CLIENT_LOOT_ADD = 108'u8            # Add file or screenshot stored on the team server to preview on the client, only sends metadata and not the actual file content
-        CLIENT_LOOT_DATA = 109'u8           # Send file/screenshot bytes to the client to display as preview or to download to the client desktop
-        CLIENT_IMPERSONATE_TOKEN = 110'u8   # Access token impersonated
-        CLIENT_REVERT_TOKEN = 111'u8        # Revert to original logon session 
-        CLIENT_PROCESSES = 112'u8           # Send processes
-        CLIENT_DIRECTORY_LISTING = 113'u8   # Send directory listing
-        CLIENT_WORKING_DIRECTORY = 114'u8   # Send current woring directory
+        CLIENT_LISTENER_REMOVE = 102'u8     # Remove listener
+        CLIENT_AGENT_ADD = 103'u8           # Add agent to sessions table
+        CLIENT_AGENT_CHECKIN = 104'u8       # Update agent checkin
+        CLIENT_AGENT_PAYLOAD = 105'u8       # Return agent payload binary 
+        CLIENT_CONSOLE_ITEM = 106'u8        # Add entry to a agent's console 
+        CLIENT_EVENTLOG_ITEM = 107'u8       # Add entry to the eventlog   
+        CLIENT_BUILDLOG_ITEM = 108'u8       # Add entry to the build log
+        CLIENT_LOOT_ADD = 109'u8            # Add file or screenshot stored on the team server to preview on the client, only sends metadata and not the actual file content
+        CLIENT_LOOT_DATA = 110'u8           # Send file/screenshot bytes to the client to display as preview or to download to the client desktop
+        CLIENT_IMPERSONATE_TOKEN = 111'u8   # Access token impersonated
+        CLIENT_REVERT_TOKEN = 112'u8        # Revert to original logon session 
+        CLIENT_PROCESSES = 113'u8           # Send processes
+        CLIENT_DIRECTORY_LISTING = 114'u8   # Send directory listing
+        CLIENT_WORKING_DIRECTORY = 115'u8   # Send current woring directory
 
     Event* = object 
         eventType*: EventType               
