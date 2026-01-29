@@ -38,17 +38,15 @@ proc `%`*(listener: Listener): JsonNode =
     of LISTENER_SMB:
         result["pipe"] = %listener.pipe
 
-
 proc broadcast(cq: Conquest, event: Event, clientId: string) =
     if clientId != "":
-        # Send to specific client
         if cq.clients.hasKey(clientId): 
             let client = cq.clients[clientId]
             client.ws.sendEvent(event, client.sessionKey)
     else:
-        # Broadcast to all clients
-        for clienId, client in cq.clients: 
+        for id, client in cq.clients:
             client.ws.sendEvent(event, client.sessionKey)
+
 #[
     Server -> Client
 ]#
@@ -82,13 +80,34 @@ proc sendEventlogItem*(cq: Conquest, logType: LogType, message: string, clientId
         }
     )
 
+    # Log event 
+    let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+    log(fmt"[{timestamp}]{$logType}{message}")
+
     if cq.clients.len > 0 or clientId != "":
         cq.broadcast(event, clientId)
+
+proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: string, silent: bool = false, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_CONSOLE_ITEM,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "logType": cast[uint8](logType),
+            "message": message
+        }
+    )
+
+    # Log console item
+    let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+    if logType != LOG_OUTPUT: 
+        log(fmt"[{timestamp}]{$logType}{message}", agentId)
     else: 
-        # Log event
-        # Normally, logs are added after the formatted message is sent back from the client. In the case that no client is connected, log the entry here 
-        let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
-        log(fmt"[{timestamp}]{$logType}{message}")
+        log(message, agentId)
+
+    if cq.clients.len > 0 or clientId != "":
+        if not silent: 
+            cq.broadcast(event, clientId)
 
 proc sendAgent*(cq: Conquest, agent: Agent, clientId: string = "") = 
     let event = Event(
@@ -135,29 +154,6 @@ proc sendAgentPayload*(cq: Conquest, bytes: seq[byte], clientId: string = "") =
         }
     )
     cq.broadcast(event, clientId)
-
-proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: string, silent: bool = false, clientId: string = "") = 
-    let event = Event(
-        eventType: CLIENT_CONSOLE_ITEM,
-        timestamp: now().toTime().toUnix(),
-        data: %*{
-            "agentId": agentId,
-            "logType": cast[uint8](logType),
-            "message": message
-        }
-    )
-
-    if cq.clients.len > 0 or clientId != "":
-        if not silent: 
-            cq.broadcast(event, clientId)
-    else: 
-        # Log agent console item
-        # Normally, logs are added after the formatted message is sent back from the client. In the case that no client is connected, log the entry here 
-        let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
-        if logType != LOG_OUTPUT: 
-            log(fmt"[{timestamp}]{$logType}{message}", agentId)
-        else: 
-            log(message, agentId)
 
 proc sendBuildlogItem*(cq: Conquest, logType: LogType, message: string, clientId: string = "") = 
     let event = Event(

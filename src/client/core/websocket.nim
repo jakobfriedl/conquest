@@ -42,13 +42,14 @@ proc sendAgentBuild*(connection: WsConnection, buildInformation: AgentBuildInfor
     )
     connection.ws.sendEvent(event, connection.sessionKey)
 
-proc sendAgentTask*(connection: WsConnection, agentId: string, task: Task) = 
+proc sendAgentTask*(connection: WsConnection, agentId: string, task: Task, message: string) = 
     let event = Event(
         eventType: CLIENT_AGENT_TASK,
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
-            "task": task    
+            "task": task,
+            "message": message
         }
     )
     connection.ws.sendEvent(event, connection.sessionKey)

@@ -2,7 +2,7 @@ import strformat, strutils, sequtils, tables, times, algorithm, nimpy
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, globals, utils]
 import ../../types/[common, client]
-import ../core/task
+import ../core/[task, websocket]
 import ./widgets/textarea
 export addItem
 
@@ -219,7 +219,14 @@ proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
 
 proc handleAgentCommand*(component: ConsoleComponent, input: string) =
     # Add command to console
-    component.textarea.addItem(LOG_COMMAND, input, agentId = component.agentId)
+    let command = ConsoleItem(
+        timestamp: now().format("dd-MM-yyyy HH:mm:ss"),
+        itemType: LOG_COMMAND,
+        text: input,
+        highlight: false
+    )
+    component.textarea.addItem(command, agentId = component.agentId)
+    cq.connection.sendLog(component.agentId, $(command.getText))
 
     # Convert user input into sequence of string arguments
     let parsedArgs = parseInput(input)
@@ -244,11 +251,15 @@ proc handleAgentCommand*(component: ConsoleComponent, input: string) =
         component.textarea.addItem(LOG_ERROR, getCurrentExceptionMsg(), agentId = component.agentId)
 
 proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], processTable: OrderedTable[uint32, ProcessInfo]) = 
+    var output = ""
+    
+    output.add(component.textarea.addItem(LOG_INFO, "Output: ", agentId = component.agentId))
+    
     # Header row
     let headers = @["PID", "PPID", "Process name", "Session", "User context"]
-    component.textarea.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(80) & headers[3].alignLeft(10) & headers[4], agentId = component.agentId)
-    component.textarea.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(80) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4])), agentId = component.agentId)
-
+    output.add(component.textarea.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(80) & headers[3].alignLeft(10) & headers[4], agentId = component.agentId))
+    output.add(component.textarea.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(80) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4])), agentId = component.agentId))
+    
     # Format and print process
     proc printProcess(pid: uint32, indentSpaces: int = 0) =
         if not processTable.contains(pid) or pid == 0: 
@@ -257,30 +268,32 @@ proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], pro
         var process = processTable[pid]
         let processName = " ".repeat(indentSpaces) & process.name
         let line = ($process.pid).alignLeft(10) & ($process.ppid).alignLeft(10) & processName.alignLeft(80) & ($process.session).alignLeft(10) & process.user                        
-        component.textarea.addItem(LOG_OUTPUT, line, "", int(pid) == cq.sessions.agents[component.agentId].pid, agentId = component.agentId)
-
+        output.add(component.textarea.addItem(LOG_OUTPUT, line, highlight = int(pid) == cq.sessions.agents[component.agentId].pid, agentId = component.agentId))
+        
         # Recursively print child processes with indentation
         for childPid in process.children.sorted():
             printProcess(childPid, indentSpaces + 2)
-
+    
     for pid in rootProcesses: 
         printProcess(pid)
+    
+    # Send formatted output to team server for logging
+    cq.connection.sendLog(component.agentId, output)
 
 proc listDirectoryContents*(component: ConsoleComponent, path: string, entries: seq[DirectoryEntry]) = 
     var 
         totalFiles = 0
         totalDirs = 0
+        output = ""
     
-    component.textarea.addItem(LOG_OUTPUT, "Directory: " & path, agentId = component.agentId)
-    component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId)
-
+    output.add(component.textarea.addItem(LOG_INFO, "Output: ", agentId = component.agentId))
+    output.add(component.textarea.addItem(LOG_OUTPUT, "Directory: " & path, agentId = component.agentId))
+    output.add(component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId))
+    
     # Table Headers
-    let headers = @["Flags", "Last modified", "Size", "Name"]
-    let headerLine = headers[0].alignLeft(8) & headers[1].alignLeft(25) & headers[2].alignLeft(15) & headers[3]
-    let separator = "-".repeat(headers[0].len).alignLeft(8) & "-".repeat(headers[1].len).alignLeft(25) & "-".repeat(headers[2].len).alignLeft(15) & "-".repeat(headers[3].len)
-    
-    component.textarea.addItem(LOG_OUTPUT, headerLine, agentId = component.agentId)
-    component.textarea.addItem(LOG_OUTPUT, separator, agentId = component.agentId)
+    let headers = @["Flags", "Last modified", "Size", "Name"]    
+    output.add(component.textarea.addItem(LOG_OUTPUT, headers[0].alignLeft(8) & headers[1].alignLeft(25) & headers[2].alignLeft(15) & headers[3], agentId = component.agentId))
+    output.add(component.textarea.addItem(LOG_OUTPUT,  "-".repeat(headers[0].len).alignLeft(8) & "-".repeat(headers[1].len).alignLeft(25) & "-".repeat(headers[2].len).alignLeft(15) & "-".repeat(headers[3].len), agentId = component.agentId))
     
     # Process entries
     for entry in entries:
@@ -299,12 +312,14 @@ proc listDirectoryContents*(component: ConsoleComponent, path: string, entries: 
         let sizeStr = if (entry.flags and cast[uint8](IS_DIR)) != 0: "<DIR>" else: $entry.size
         
         # Build the entry line using consistent alignment
-        component.textarea.addItem(LOG_OUTPUT, mode.alignLeft(8) & dateTimeStr.alignLeft(25) & sizeStr.alignLeft(15) & entry.name, agentId = component.agentId) # Only display the last part of the pat, agentId = component.agentIdh
+        output.add(component.textarea.addItem(LOG_OUTPUT, mode.alignLeft(8) & dateTimeStr.alignLeft(25) & sizeStr.alignLeft(15) & entry.name, agentId = component.agentId))
     
-    component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId)
-    component.textarea.addItem(LOG_OUTPUT, $totalFiles & " file(s)", agentId = component.agentId)
-    component.textarea.addItem(LOG_OUTPUT, $totalDirs & " dir(s)", agentId = component.agentId)
-
+    output.add(component.textarea.addItem(LOG_OUTPUT, "", agentId = component.agentId))
+    output.add(component.textarea.addItem(LOG_OUTPUT, $totalFiles & " file(s)", agentId = component.agentId))
+    output.add(component.textarea.addItem(LOG_OUTPUT, $totalDirs & " dir(s)", agentId = component.agentId))
+    
+    # Send formatted output to team server for logging
+    cq.connection.sendLog(component.agentId, output)
 
 proc draw*(component: ConsoleComponent) =
     if not cq.sessions.agents.hasKey(component.agentId): return

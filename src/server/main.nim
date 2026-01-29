@@ -82,9 +82,13 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Client {clientId} connected to Conquest team server.")
 
             of CLIENT_AGENT_TASK:
-                let agentId = event.data["agentId"].getStr()
-                let task = event.data["task"].to(Task) 
+                let 
+                    agentId = event.data["agentId"].getStr()
+                    task = event.data["task"].to(Task) 
+                    message = event.data["message"].getStr()
+                
                 cq.agents[agentId].tasks.add(task)
+                log(message, agentId)
 
             of CLIENT_LISTENER_START:
                 let listener = event.data.to(UIListener)
