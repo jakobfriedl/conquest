@@ -1,4 +1,4 @@
-import tables, strutils
+import whisky, tables, strutils
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, globals]
 
@@ -74,6 +74,12 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Ordere
         if igBeginMenu("Options", true):
             if igMenuItem("Exit", nil, false, (addr showComponent) != nil):
                 showComponent[] = false
+            
+            if igMenuItem("Disconnect", nil, false, true):
+                if cq.connection != nil: 
+                    cq.connection.ws.close()
+                    cq.connection = nil 
+
             igEndMenu() 
         
         if igBeginMenu("Views", true): 

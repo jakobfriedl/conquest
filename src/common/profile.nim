@@ -2,7 +2,7 @@ import strutils, sequtils, random, base64, algorithm
 import ./utils
 import ../types/common
 import ./toml/toml
-export parseFile, parseString, free, getTableKeys, getRandom
+export parseFile, parseString, free, getTable, getStr, getTableKeys, getTableValue, getRandom
 
 # Takes a specific "."-separated path as input and returns a default value if the key does not exits 
 # Example: cq.profile.getString("http-get.agent.heartbeat.prefix", "not found") returns the string value of the 

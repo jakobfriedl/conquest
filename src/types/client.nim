@@ -43,6 +43,15 @@ type
 const MAX_INPUT_LENGTH* = 4096 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets)
 
 type 
+    ConnectionModalComponent* = ref object of RootObj
+        host*: array[256, char]
+        defaultHost*: string 
+        port*: uint16
+        defaultPort*: int
+        username*: array[256, char]
+        password*: array[256, char] 
+        errorMessage*: string
+
     WorkingHoursModalComponent* = ref object of RootObj
         workingHours*: WorkingHours
 
@@ -230,6 +239,7 @@ type
     WsConnection* = ref object
         ws*: WebSocket
         sessionKey*: Key
+        user*: string
 
 # Client context
 type 

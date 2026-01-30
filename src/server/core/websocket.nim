@@ -60,6 +60,16 @@ proc sendPublicKey*(cq: Conquest, publicKey: Key, clientId: string = "") =
     )
     cq.broadcast(event, clientId)
 
+proc sendAuthenticationResult*(cq: Conquest, success: bool, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_AUTH_RESULT,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "success": success
+        }
+    )
+    cq.broadcast(event, clientId)
+
 proc sendProfile*(cq: Conquest, profileString: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_PROFILE,

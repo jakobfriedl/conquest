@@ -9,6 +9,10 @@ database-file = "data/conquest.db"
 [team-server]
 host = "0.0.0.0"
 port = 37573
+users = [
+    { username = "jakob", password = "conquest" }, 
+    { username = "operator", password = "conquest" }
+]
 
 # ----------------------------------------------------------
 # HTTP GET 

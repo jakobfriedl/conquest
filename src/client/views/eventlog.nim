@@ -8,7 +8,7 @@ proc Eventlog*(title: string, showComponent: ptr bool): EventlogComponent =
     result = new EventlogComponent
     result.title = title
     result.showComponent = showComponent
-    result.textarea = Textarea(showTimestamps = false)
+    result.textarea = Textarea()
 
 proc draw*(component: EventlogComponent) = 
     igBegin(component.title.cstring, component.showComponent, 0)

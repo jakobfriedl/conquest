@@ -41,6 +41,7 @@ type
         clientId*: string 
         ws*: WebSocket
         sessionKey*: Key
+        user*: string
 
 # Team server context
 type 

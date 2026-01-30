@@ -4,7 +4,7 @@ import strutils, strformat, system, tables
 
 import ./globals
 import ./db/database
-import ./core/[listener, logger, builder, websocket]
+import ./core/[listener, logger, builder, websocket, auth]
 import ../common/[crypto, utils, profile, event]
 import ../types/[common, event, protocol, server]
 
@@ -63,23 +63,33 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 let publicKey = decode(event.data["publicKey"].getStr()).toKey()
                 cq.clients[clientId].sessionKey = deriveSessionKey(cq.keyPair, publicKey)
             
-                # Send relevant information to the client
-                # C2 profile 
-                cq.sendProfile(cq.profileString, clientId = clientId)
-                
-                # Listeners
-                for id, listener in cq.listeners: 
-                    cq.sendListener(listener, clientId = clientId)
-                
-                # Agent sessions
-                for id, agent in cq.agents: 
-                    cq.sendAgent(agent, clientId = clientId)
+            of CLIENT_AUTH:
+                let username = event.data["username"].getStr()
+                let password = event.data["password"].getStr()
 
-                # Downloads & Screenshots metadata
-                for lootItem in cq.dbGetLoot():
-                    cq.sendLoot(lootItem, clientId = clientId)
+                # Authenticate user 
+                let auth = cq.authenticate(username, password)
+                cq.sendAuthenticationResult(auth, clientId = clientId)
 
-                cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Client {clientId} connected to Conquest team server.")
+                # Send relevant information to the client if authentication succeeds
+                if auth: 
+                    # C2 profile 
+                    cq.sendProfile(cq.profileString, clientId = clientId)
+                    
+                    # Listeners
+                    for id, listener in cq.listeners: 
+                        cq.sendListener(listener, clientId = clientId)
+                    
+                    # Agent sessions
+                    for id, agent in cq.agents: 
+                        cq.sendAgent(agent, clientId = clientId)
+
+                    # Downloads & Screenshots metadata
+                    for lootItem in cq.dbGetLoot():
+                        cq.sendLoot(lootItem, clientId = clientId)
+
+                    cq.clients[clientId].user = username
+                    cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"{username} connected.")
 
             of CLIENT_AGENT_TASK:
                 let 
@@ -124,8 +134,11 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
 
         of ErrorEvent:
             discard 
+            
         of CloseEvent:
+            let user = cq.clients[clientId].user
             cq.clients.del(clientId)
+            cq.sendEventlogItem(LOG_ERROR_SHORT, fmt"{user} disconnected.")
 
 var lastCtrlCTime = fromUnix(0)
 var ctrlC = 0
