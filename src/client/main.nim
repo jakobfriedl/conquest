@@ -125,12 +125,12 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
                         # Authentication 
                         cq.connection.sendAuthentication(authInfo.username, authInfo.password) 
+                        cq.connection.user = authInfo.username
 
                     of CLIENT_AUTH_RESULT: 
                         if event.data["success"].getBool(): 
                             connectModal.errorMessage.setLen(0)
-                            cq.connection.user = authInfo.username
-                        
+
                         else: 
                             connectModal.errorMessage = "Incorrect username or password."
                             # Close websocket connection
@@ -210,8 +210,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             cq.sessions.agents[agentId].console.textarea.addItem(
                                 cast[LogType](event.data["logType"].getInt()), 
                                 event.data["message"].getStr(), 
-                                event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"),
-                                agentId = agentId
+                                event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
                             )
                     
                     of CLIENT_EVENTLOG_ITEM: 

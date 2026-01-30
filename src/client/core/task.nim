@@ -158,37 +158,21 @@ proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[s
 
 # Wrapper functions for dispatching tasks to the agent
 proc sendTask*(agentId, input: string, silent: bool = false) = 
-    let args = input.parseInput()
-    let command = cq.moduleManager.getCommand(args[0])
-    let agent = cq.sessions.agents[agentId]
-    let task = createTask(agentId, agent.listenerId, command, args[1..^1], silent)
-    
-    let message = ConsoleItem(
-        timestamp: now().format("dd-MM-yyyy HH:mm:ss"),
-        itemType: LOG_INFO,
-        text: fmt"{command.message} ({Uuid.toString(task.taskId)})",
-        highlight: false
-    )
+    let 
+        args = input.parseInput()
+        command = cq.moduleManager.getCommand(args[0])
+        agent = cq.sessions.agents[agentId]
+        task = createTask(agentId, agent.listenerId, command, args[1..^1], silent)
 
-    cq.connection.sendAgentTask(agentId, task, $(message.getText))
-    if cq.sessions.agents.hasKey(agentId) and not silent:
-        cq.sessions.agents[agentId].console.textarea.addItem(message, agentId = agentId)
+    cq.connection.sendAgentTask(agentId, task, input, fmt"{command.message} ({Uuid.toString(task.taskId)})")
  
 proc sendTask*(agentId, input, alias: string, silent: bool = false) = 
-    let args = input.parseInput()
-    let aliasArgs = alias.parseInput()
-    let command = cq.moduleManager.getCommand(args[0])
-    let aliasCommand = cq.moduleManager.getCommand(aliasArgs[0])
-    let agent = cq.sessions.agents[agentId]
-    let task = createTask(agentId, agent.listenerId, aliasCommand, aliasArgs[1..^1], silent)
-
-    let message = ConsoleItem(
-        timestamp: now().format("dd-MM-yyyy HH:mm:ss"),
-        itemType: LOG_INFO,
-        text: fmt"{command.message} ({Uuid.toString(task.taskId)})",
-        highlight: false
-    )
-
-    cq.connection.sendAgentTask(agentId, task, $(message.getText))
-    if cq.sessions.agents.hasKey(agentId) and not silent:
-        cq.sessions.agents[agentId].console.textarea.addItem(message, agentId = agentId)
+    let 
+        args = input.parseInput()
+        aliasArgs = alias.parseInput()
+        command = cq.moduleManager.getCommand(args[0])
+        aliasCommand = cq.moduleManager.getCommand(aliasArgs[0])
+        agent = cq.sessions.agents[agentId]
+        task = createTask(agentId, agent.listenerId, aliasCommand, aliasArgs[1..^1], silent)
+        
+    cq.connection.sendAgentTask(agentId, task, input, fmt"{command.message} ({Uuid.toString(task.taskId)})")

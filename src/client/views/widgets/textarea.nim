@@ -4,11 +4,12 @@ import ../../utils/[appImGui, globals]
 import ../../../types/[common, client]
 
 # Text highlighting
-proc getText*(item: ConsoleItem): cstring = 
-    if item.itemType != LOG_OUTPUT: 
-        return ("[" & item.timestamp & "]" & $item.itemType & item.text).cstring
-    else: 
+proc getText*(item: ConsoleItem): cstring =
+    case item.itemType
+    of LOG_OUTPUT: 
         return ($item.itemType & item.text).cstring
+    else: 
+        return ("[" & item.timestamp & "]" & $item.itemType & item.text).cstring
 
 proc getNumLines(data: pointer): csize_t {.cdecl.} =
     if data.isNil:
@@ -36,7 +37,7 @@ proc Textarea*(showTimestamps: bool = true, autoScroll: bool = true): TextareaWi
     result.autoScroll = autoScroll
 
 # API to add new content entry
-proc addItem*(component: TextareaWidget, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss"), highlight: bool = false, agentId: string = ""): string {.discardable.} = 
+proc addItem*(component: TextareaWidget, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss"), highlight: bool = false): string {.discardable.} = 
     result = ""
     for line in data.split("\n"): 
         let item = ConsoleItem(
@@ -48,7 +49,7 @@ proc addItem*(component: TextareaWidget, itemType: LogType, data: string, timest
         component.content.items.add(item)
         result &= $(item.getText()) & "\n"
 
-proc addItem*(component: TextareaWidget, item: ConsoleItem, agentId: string = ""): string {.discardable.} = 
+proc addItem*(component: TextareaWidget, item: ConsoleItem): string {.discardable.} = 
     component.content.items.add(item)
     result = $(item.getText())
 

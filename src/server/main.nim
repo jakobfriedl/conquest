@@ -95,10 +95,12 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 let 
                     agentId = event.data["agentId"].getStr()
                     task = event.data["task"].to(Task) 
+                    command = event.data["command"].getStr()
                     message = event.data["message"].getStr()
                 
                 cq.agents[agentId].tasks.add(task)
-                log(message, agentId)
+                cq.sendConsoleItem(agentId, LOG_COMMAND, command)
+                cq.sendConsoleItem(agentId, LOG_INFO, message)
 
             of CLIENT_LISTENER_START:
                 let listener = event.data.to(UIListener)
