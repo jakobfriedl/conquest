@@ -76,7 +76,7 @@ proc print(component: TextareaWidget, item: ConsoleItem) =
         igTextColored(CONSOLE_SUCCESS, ($item.itemType).cstring)
     of LOG_WARNING, LOG_WARNING_SHORT: 
         igTextColored(CONSOLE_WARNING, ($item.itemType).cstring)
-    of LOG_COMMAND: 
+    of LOG_COMMAND, LOG_COMMAND_SHORT: 
         igTextColored(CONSOLE_COMMAND, ($item.itemType).cstring)
     of LOG_OUTPUT: 
         igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), ($item.itemType).cstring)

@@ -107,3 +107,14 @@ proc sendLog*(connection: WsConnection, agentId, message: string) =
         }
     )
     connection.ws.sendEvent(event, connection.sessionKey)
+
+proc sendChatMessage*(connection: WsConnection, message: string) = 
+    let event = Event(
+        eventType: CLIENT_CHAT, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "user": connection.user,
+            "message": message
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)

@@ -84,6 +84,7 @@ type
         LOG_ERROR_SHORT = "[-] "
         LOG_SUCCESS_SHORT = "[+] "
         LOG_WARNING_SHORT = "[!] "
+        LOG_COMMAND_SHORT = "[>] "
 
     ArgType* = enum 
         STRING = 0'u8

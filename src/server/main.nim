@@ -89,7 +89,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                         cq.sendLoot(lootItem, clientId = clientId)
 
                     cq.clients[clientId].user = username
-                    cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"{username} connected.")
+                    cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"User {username} connected.")
 
             of CLIENT_AGENT_TASK:
                 let 
@@ -132,6 +132,9 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
             of CLIENT_LOG: 
                 log(event.data["message"].getStr(), event.data["agentId"].getStr())
 
+            of CLIENT_CHAT: 
+                cq.sendChatMessage(event.data["user"].getStr(), event.data["message"].getStr())
+
             else: discard
 
         of ErrorEvent:
@@ -140,7 +143,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
         of CloseEvent:
             let user = cq.clients[clientId].user
             cq.clients.del(clientId)
-            cq.sendEventlogItem(LOG_ERROR_SHORT, fmt"{user} disconnected.")
+            cq.sendEventlogItem(LOG_ERROR_SHORT, fmt"User {user} disconnected.")
 
 var lastCtrlCTime = fromUnix(0)
 var ctrlC = 0

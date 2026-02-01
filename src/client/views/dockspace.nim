@@ -54,6 +54,7 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Ordere
             discard igDockBuilderSplitNode(dockTop[], ImGuiDir_Right, 0.5f, dockTopRight, dockTopLeft)
 
             igDockBuilderDockWindow(WIDGET_SESSIONS, dockTopLeft[])
+            igDockBuilderDockWindow(WIDGET_CHAT, dockBottom[])
             igDockBuilderDockWindow(WIDGET_LISTENERS, dockBottom[])
             igDockBuilderDockWindow(WIDGET_EVENTLOG, dockTopRight[])
             igDockBuilderDockWindow(WIDGET_DOWNLOADS, dockBottom[])

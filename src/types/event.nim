@@ -36,7 +36,7 @@ type
         CLIENT_PROCESSES = 113'u8           # Send processes
         CLIENT_DIRECTORY_LISTING = 114'u8   # Send directory listing
         CLIENT_WORKING_DIRECTORY = 115'u8   # Send current woring directory
-
+        CLIENT_CHAT = 116'u8                # Send and display chat message
 
     Event* = object 
         eventType*: EventType               

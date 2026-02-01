@@ -250,3 +250,14 @@ proc sendWorkingDirectory*(cq: Conquest, agentId, directory: string, clientId: s
         }
     )
     cq.broadcast(event, clientId)
+
+proc sendChatMessage*(cq: Conquest, user, message: string, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_CHAT, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "user": user,
+            "message": message
+        }
+    )
+    cq.broadcast(event, clientId)

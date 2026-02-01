@@ -1,7 +1,7 @@
 import whisky
 import tables, times, strutils, sequtils, strformat, json, base64, native_dialogs
 import ./utils/[appImGui, globals]
-import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, moduleManager]
+import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, moduleManager, chat]
 import ./views/loot/[screenshots, downloads]
 import ./views/modals/[generatePayload, connect]
 import ../common/[utils, profile, crypto, serialize]
@@ -28,6 +28,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         showProcesses = false
         showFiles = false
         showModules = false
+        showChat = false
 
     var 
         dockTop: ImGuiID = 0
@@ -38,6 +39,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
     views["Sessions"] = addr showSessionsTable 
     views["Listeners"] = addr showListeners
     views["Eventlog"] = addr showEventlog
+    views["Chat"] = addr showChat
     views["Loot:Downloads"] = addr showDownloads
     views["Loot:Screenshots"] = addr showScreenshots
     views["Process Browser"] = addr showProcesses
@@ -57,6 +59,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         loadScript(path)
 
     cq.sessions = SessionsTable(WIDGET_SESSIONS, addr showSessionsTable) 
+    cq.chat = Chat(WIDGET_CHAT, addr showChat)
     cq.listeners = ListenersTable(WIDGET_LISTENERS, addr showListeners)
     cq.eventlog = Eventlog(WIDGET_EVENTLOG, addr showEventlog)
     cq.downloads = LootDownloads(WIDGET_DOWNLOADS, addr showDownloads)
@@ -91,28 +94,29 @@ proc main(ip: string = "localhost", port: int = 37573) =
             igOpenPopup_str("Connect", ImGui_PopupFlags_None.int32)
             authInfo = connectModal.draw()
                     
-        # Draw UI components
-        if showSessionsTable: cq.sessions.draw()   
-        if showListeners: cq.listeners.draw()
-        if showEventlog: cq.eventlog.draw()
-        if showDownloads: cq.downloads.draw()
-        if showScreenshots: cq.screenshots.draw()
-        if showProcesses: cq.processBrowser.draw()
-        if showFiles: cq.filebrowser.draw()
-        if showModules: cq.moduleManager.draw()
-
-        for agentId, agent in cq.sessions.agents.mpairs():
-            if agent.console.showConsole:
-                agent.console.draw()
-            
-        if cq.sessions.focusedConsole.len() > 0: 
-            igSetWindowFocus_Str(cq.sessions.focusedConsole.cstring)
-            cq.sessions.focusedConsole = ""
-        
-        #[
-            WebSocket communication with the team server
-        ]# 
         if cq.connection != nil:
+            # Draw UI components
+            if showSessionsTable: cq.sessions.draw() 
+            if showListeners: cq.listeners.draw()
+            if showEventlog: cq.eventlog.draw()
+            if showDownloads: cq.downloads.draw()
+            if showScreenshots: cq.screenshots.draw()
+            if showProcesses: cq.processBrowser.draw()
+            if showFiles: cq.filebrowser.draw()
+            if showModules: cq.moduleManager.draw()
+            if showChat: cq.chat.draw()   
+
+            for agentId, agent in cq.sessions.agents.mpairs():
+                if agent.console.showConsole:
+                    agent.console.draw()
+                
+            if cq.sessions.focusedConsole.len() > 0: 
+                igSetWindowFocus_Str(cq.sessions.focusedConsole.cstring)
+                cq.sessions.focusedConsole = ""
+            
+            #[
+                WebSocket communication with the team server
+            ]# 
             try: 
                 # Receive and parse websocket response message 
                 let message = cq.connection.ws.receiveMessage(timeout = 16)    # Use a 16ms timeout to reduce CPU load = ~60FPS 
@@ -374,6 +378,16 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         let agentId = event.data["agentId"].getStr()
                         if cq.sessions.agents.hasKey(agentId):
                             cq.sessions.agents[agentId].workingDirectory = some(event.data["directory"].getStr())
+
+                    of CLIENT_CHAT: 
+                        let user = event.data["user"].getStr()
+                        let message = event.data["message"].getStr()
+                        cq.chat.textarea.addItem(
+                            LOG_COMMAND_SHORT, 
+                            fmt"{user}: {message}", 
+                            event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"),
+                            highlight = user == cq.connection.user
+                        )
 
                     else: discard 
             

@@ -100,6 +100,12 @@ type
         killDateModal*: KillDateModalComponent
         workingHoursModal*: WorkingHoursModalComponent
 
+    ChatComponent* = ref object of RootObj 
+        title*: string 
+        showComponent*: ptr bool 
+        textarea*: TextareaWidget
+        inputBuffer*: array[MAX_INPUT_LENGTH, char]
+
     ListenersTableComponent* = ref object of RootObj
         title*: string 
         showComponent*: ptr bool
@@ -246,6 +252,7 @@ type
     Conquest* = ref object 
         sessions*: SessionsTableComponent
         listeners*: ListenersTableComponent
+        chat*: ChatComponent
         eventlog*: EventlogComponent
         downloads*: DownloadsComponent
         screenshots*: ScreenshotsComponent
