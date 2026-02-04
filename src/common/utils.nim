@@ -121,3 +121,25 @@ proc toKey*(value: string): Key =
         raise newException(ValueError, protect("Invalid key length."))
   
     copyMem(addr result[0], addr value[0], 32)
+
+proc toHex*(T: type Bytes, data: seq[byte]): string =
+    result = newStringOfCap(data.len * 2)
+    for b in data:
+        result.add b.toHex(2).toLowerAscii
+
+proc hexDigit(c: char): byte {.inline.} =
+    case c
+    of '0'..'9': byte(ord(c) - ord('0'))
+    of 'a'..'f': byte(ord(c) - ord('a') + 10)
+    of 'A'..'F': byte(ord(c) - ord('A') + 10)
+    else: 0
+
+proc fromHex*(T: type Bytes, hex: string): seq[byte] =
+    result = newSeq[byte](hex.len div 2)
+    for i in 0..<result.len:
+        result[i] = (hex[i*2].hexDigit shl 4) or hex[i*2+1].hexDigit
+
+proc fromHex*(T: type Bytes, hex: seq[byte]): seq[byte] =
+    result = newSeq[byte](hex.len div 2)
+    for i in 0..<result.len:
+        result[i] = (hex[i*2].char.hexDigit shl 4) or hex[i*2+1].char.hexDigit

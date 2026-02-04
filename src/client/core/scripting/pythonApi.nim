@@ -181,7 +181,7 @@ proc bof_pack*(types: string, args: seq[string]): string {.exportpy.} =
             raise newException(ValueError, "Unsupported type: " & argType)
     
     let data = packer.pack()
-    return base64.encode(uint32.toBytes(uint32(data.len())) & data)
+    return Bytes.toHex(uint32.toBytes(uint32(data.len())) & data)
 
 proc log(message: string) {.exportpy.} = 
     echo ">> ", message
