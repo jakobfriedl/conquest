@@ -142,28 +142,40 @@ proc registerModule*(name, description, group: string, commands: seq[Command], b
 # - s: 2-byte short integer
 # - z: Null-terminated string with length-prefix (UTF-8)
 # - Z: Null-terminated wide-char string with length-prefix (UTF-16)
-proc bof_pack*(types: string, args: seq[string]): string {.exportpy.} = 
+# Parse and handle BOF arguments
+# References:
+# - https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics_aggressor-scripts/as-resources_functions.htm#bof_pack
+# - https://github.com/trustedsec/COFFLoader/blob/main/beacon_generate.py  
+# Type format:
+# - b: Binary data with length-prefix
+# - i: 4-byte integer
+# - s: 2-byte short integer
+# - z: Null-terminated string with length-prefix (UTF-8)
+# - Z: Null-terminated wide-char string with length-prefix (UTF-16)
+proc bof_pack*(types: string, args: seq[PyObject]): string {.exportpy.} = 
     if types.len() != args.len():
         raise newException(ValueError, "Invalid number of arguments.")
     
     var packer = Packer.init()
     for i, argType in types:
         let value = args[i]
-
         case argType:
+        of 'b': # Binary data (raw bytes with 4-byte length prefix)
+            packer.addDataWithLengthPrefix(string.toBytes($value))
+        
         of 'i': # Integer (4 bytes)
-            packer.add(uint32(parseInt(value)))
+            packer.add(uint32(try: value.to(int) except: parseInt($value)))
         
         of 's': # Short (2 bytes)
-            packer.add(uint16(parseInt(value)))
+            packer.add(uint16(try: value.to(int) except: parseInt($value)))
         
         of 'z': # Null-terminated UTF-8 (with 4-byte prefixed length)
-            let data = string.toBytes(value) & @[0'u8]
+            let data = string.toBytes($value) & @[0'u8]
             packer.addDataWithLengthPrefix(data)
         
         of 'Z': # Null-terminated UTF-16 (with 4-byte prefixed length)
             var data: seq[byte] = @[]
-            for r in value.runes:
+            for r in ($value).runes:
                 let c = uint32(r)
                 if c <= 0xFFFF:
                     data.add(byte(c and 0xFF))
@@ -215,8 +227,3 @@ proc get_bool*(args: seq[TaskArg], i: int = 0): bool {.exportpy.} =
     if i >= args.len(): 
         return false
     return cast[bool](args[i].data[0])
-
-proc get_binary*(args: seq[TaskArg], i: int = 0): string {.exportpy.} = 
-    if i >= args.len(): 
-        return ""
-    return readFile(Bytes.toString(args[i].data))
