@@ -142,16 +142,6 @@ proc registerModule*(name, description, group: string, commands: seq[Command], b
 # - s: 2-byte short integer
 # - z: Null-terminated string with length-prefix (UTF-8)
 # - Z: Null-terminated wide-char string with length-prefix (UTF-16)
-# Parse and handle BOF arguments
-# References:
-# - https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics_aggressor-scripts/as-resources_functions.htm#bof_pack
-# - https://github.com/trustedsec/COFFLoader/blob/main/beacon_generate.py  
-# Type format:
-# - b: Binary data with length-prefix
-# - i: 4-byte integer
-# - s: 2-byte short integer
-# - z: Null-terminated string with length-prefix (UTF-8)
-# - Z: Null-terminated wide-char string with length-prefix (UTF-16)
 proc bof_pack*(types: string, args: seq[PyObject]): string {.exportpy.} = 
     if types.len() != args.len():
         raise newException(ValueError, "Invalid number of arguments.")
@@ -213,17 +203,17 @@ proc execute_command(agentId, command: string, silent: bool = false) {.exportpy.
 proc execute_alias(agentId, command, alias: string, silent: bool = false) {.exportpy.} =
     sendTask(agentId, command, alias, silent)
 
-proc get_string*(args: seq[TaskArg], i: int = 0): string {.exportpy.} = 
+proc get_string*(args: seq[TaskArg], i: int = 0, default: string = ""): string {.exportpy.} = 
     if i >= args.len(): 
-        return ""
+        return default
     return Bytes.toString(args[i].data)
 
-proc get_int*(args: seq[TaskArg], i: int = 0): int {.exportpy.} = 
+proc get_int*(args: seq[TaskArg], i: int = 0, default: int = 0): int {.exportpy.} = 
     if i >= args.len(): 
-        return 0
+        return default
     return int(Bytes.toUint32(args[i].data))
 
-proc get_bool*(args: seq[TaskArg], i: int = 0): bool {.exportpy.} = 
+proc get_bool*(args: seq[TaskArg], i: int = 0, default: bool = false): bool {.exportpy.} = 
     if i >= args.len(): 
-        return false
+        return default
     return cast[bool](args[i].data[0])

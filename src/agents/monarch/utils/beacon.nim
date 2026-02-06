@@ -384,7 +384,7 @@ proc BeaconGetValue(key: PCHAR): PVOID {.stdcall.} =
 proc BeaconRemoveValue(key: PCHAR): BOOL {.stdcall.} =
     return FALSE
 
-var beaconApiAddresses*: array[30, tuple[name: string, address: PVOID]] = [
+var beaconApiAddresses*: array[32, tuple[name: string, address: PVOID]] = [
     (protect("BeaconDataParse"), BeaconDataParse),
     (protect("BeaconDataPtr"), BeaconDataPtr),
     (protect("BeaconDataInt"), BeaconDataInt),
@@ -414,5 +414,7 @@ var beaconApiAddresses*: array[30, tuple[name: string, address: PVOID]] = [
     (protect("BeaconGetValue"), BeaconGetValue),
     (protect("BeaconRemoveValue"), BeaconRemoveValue),
     (protect("LoadLibraryA"), LoadLibraryA),
-    (protect("GetProcAddress"), GetProcAddress)
+    (protect("GetProcAddress"), GetProcAddress),
+    (protect("GetModuleHandleA"), GetModuleHandleA),
+    (protect("FreeLibrary"), FreeLibrary)
 ]
