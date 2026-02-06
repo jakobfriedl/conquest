@@ -179,7 +179,7 @@ proc displayCommandHelp(component: ConsoleComponent, command: Command) =
             let descLines = arg.description.split('\n')
             component.textarea.addItem(LOG_OUTPUT, "  " & argName & " " & argType & " " & descLines[0])
             for i in 1..<descLines.len:
-                component.textarea.addItem(LOG_OUTPUT, "  " & ' '.repeat(30) & " " & ' '.repeat(10) & " " & descLines[i])
+                component.textarea.addItem(LOG_OUTPUT, "  " & ' '.repeat(widths[0]) & " " & ' '.repeat(widths[1]) & " " & descLines[i])
         
         component.textarea.addItem(LOG_OUTPUT, "")
     

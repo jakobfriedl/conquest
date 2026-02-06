@@ -188,6 +188,10 @@ proc bof_pack*(types: string, args: seq[PyObject]): string {.exportpy.} =
 proc log(message: string) {.exportpy.} = 
     echo ">> ", message
 
+proc log_command(agentId, message: string) {.exportpy.} = 
+    if cq.sessions.agents.hasKey(agentId):
+        cq.sessions.agents[agentId].console.textarea.addItem(LOG_COMMAND, message)
+
 proc error(agentId, message: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_ERROR, message)
