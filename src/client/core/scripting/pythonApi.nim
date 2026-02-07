@@ -151,7 +151,7 @@ proc bof_pack*(types: string, args: seq[PyObject]): string {.exportpy.} =
         let value = args[i]
         case argType:
         of 'b': # Binary data (raw bytes with 4-byte length prefix)
-            packer.addDataWithLengthPrefix(string.toBytes($value))
+            packer.addDataWithLengthPrefix(value.to(seq[byte]))
         
         of 'i': # Integer (4 bytes)
             packer.add(uint32(try: value.to(int) except: parseInt($value)))
@@ -188,16 +188,16 @@ proc bof_pack*(types: string, args: seq[PyObject]): string {.exportpy.} =
 proc log(message: string) {.exportpy.} = 
     echo ">> ", message
 
-proc log_command(agentId, message: string) {.exportpy.} = 
+proc error(agentId, cmdline, message: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
-        cq.sessions.agents[agentId].console.textarea.addItem(LOG_COMMAND, message)
-
-proc error(agentId, message: string) {.exportpy.} = 
-    if cq.sessions.agents.hasKey(agentId):
+        cq.sessions.agents[agentId].console.textarea.addItem(LOG_COMMAND, cmdline)
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_ERROR, message)
 
 proc modules_root(): string {.exportpy.} = 
     return CONQUEST_ROOT & "/data/modules"
+
+proc user(): string {.exportpy.} = 
+    return cq.connection.user
 
 # Execute a command 
 proc execute_command(agentId, command: string, silent: bool = false) {.exportpy.} = 
