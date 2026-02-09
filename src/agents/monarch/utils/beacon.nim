@@ -373,16 +373,39 @@ proc BeaconGetOutputData*(outSize: ptr int): PCHAR {.stdcall.} =
     return outData
 
 #[
-    Additional Functions
+    Data Storage Functions
 ]#
+import tables
+var beaconStorage = initTable[string, pointer]()
+
 proc BeaconAddValue(key: PCHAR, value: PVOID): BOOL {.stdcall.} =
-    return FALSE
+    try:
+        let keyStr = $key
+        beaconStorage[keyStr] = value
+        return TRUE
+    except:
+        return FALSE
 
 proc BeaconGetValue(key: PCHAR): PVOID {.stdcall.} =
-    return NULL
+    try:
+        let keyStr = $key
+        if beaconStorage.hasKey(keyStr):
+            return beaconStorage[keyStr]
+        else:
+            return nil
+    except:
+        return nil
 
 proc BeaconRemoveValue(key: PCHAR): BOOL {.stdcall.} =
-    return FALSE
+    try:
+        let keyStr = $key
+        if beaconStorage.hasKey(keyStr):
+            beaconStorage.del(keyStr)
+            return TRUE
+        else:
+            return FALSE
+    except:
+        return FALSE
 
 var beaconApiAddresses*: array[32, tuple[name: string, address: PVOID]] = [
     (protect("BeaconDataParse"), BeaconDataParse),

@@ -75,44 +75,54 @@ proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] =
     var i = 0
     while i < arguments.len():
         if arguments[i].startsWith("-"):
-            flags[arguments[i]] = ""
-            if i + 1 < arguments.len() and not arguments[i + 1].startsWith("-"):
-                flags[arguments[i]] = arguments[i + 1]
-                i += 2
-            else:
+            let flag = arguments[i]
+            
+            # Find the argument definition for this flag
+            let argDef = command.arguments.filterIt(it.isFlag and it.flag == flag)
+            if argDef.len() == 0:
+                raise newException(CatchableError, fmt"Unknown flag: {flag}")
+            
+            # Check if it's a boolean flag
+            if argDef[0].argType == BOOL:
+                # Boolean flag - no value expected
+                flags[flag] = "true"
                 i += 1
+            else:
+                # Non-boolean flag - value expected
+                if i + 1 < arguments.len() and not arguments[i + 1].startsWith("-"):
+                    flags[flag] = arguments[i + 1]
+                    i += 2
+                else:
+                    raise newException(CatchableError, fmt"Value expected for flag: {flag}")
         else:
             positional.add(arguments[i])
             i += 1
     
-    # Validate flags
-    let validFlags = command.arguments.filterIt(it.isFlag).mapIt(it.flag).toSeq()
-    for flag, arg in flags:
-        if flag notin validFlags:
-            raise newException(CatchableError, fmt"Unknown flag: {flag}")
-        if arg == "" and command.arguments.filterIt(it.flag == flag)[0].argType != BOOL: 
-            raise newException(CatchableError, fmt"Value expected for flag: {flag}")
-
     # Map the command-line arguments to the arguments expected by the command 
-    i = 0
+    var positionalIndex = 0
     for arg in command.arguments:
         var taskArg: TaskArg
         taskArg.argType = cast[uint8](arg.argType)
         
         if arg.isFlag:
             if arg.flag in flags:
-                let value = if arg.argType == BOOL: "true" elif flags[arg.flag] == "": "true" else: flags[arg.flag]
-                taskArg = parseArgument(arg, value)
+                # Flag was provided
+                taskArg = parseArgument(arg, flags[arg.flag])
             else:
+                # Flag was not provided
                 if arg.isRequired:
-                    raise newException(CatchableError, fmt"Missing required flag argument: {arg.name}")
+                    raise newException(CatchableError, fmt"Missing required flag: {arg.flag}")
                 else:
-                    # Use default value
-                    taskArg = parseArgument(arg, getDefaultValue(arg))
+                    # Use default value for non-boolean flags, false for boolean flags
+                    if arg.argType == BOOL:
+                        taskArg = parseArgument(arg, "false")
+                    else:
+                        taskArg = parseArgument(arg, getDefaultValue(arg))
         else:
-            if i < positional.len():
-                taskArg = parseArgument(arg, positional[i])
-                i += 1
+            # Positional argument
+            if positionalIndex < positional.len():
+                taskArg = parseArgument(arg, positional[positionalIndex])
+                positionalIndex += 1
             else:
                 if arg.isRequired:
                     raise newException(CatchableError, fmt"Missing required positional argument: {arg.name}")
@@ -122,12 +132,13 @@ proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] =
         
         result.add(taskArg)
     
-    # Handle extra positional args at the end of the command 
+    # Handle extra positional args at the end of the command (for variadic arguments)
     let positionalArgs = command.arguments.filterIt(not it.isFlag)
-    while i < positional.len() and positionalArgs.len() > 0:
+    if positionalArgs.len() > 0:
         let lastArg = positionalArgs[^1]
-        result.add(parseArgument(lastArg, positional[i]))
-        i += 1
+        while positionalIndex < positional.len():
+            result.add(parseArgument(lastArg, positional[positionalIndex]))
+            positionalIndex += 1
 
 proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[string], silent: bool): Task = 
     result.taskId = string.toUuid(generateUUID()) 

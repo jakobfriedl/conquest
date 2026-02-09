@@ -207,17 +207,17 @@ proc execute_command(agentId, command: string, silent: bool = false) {.exportpy.
 proc execute_alias(agentId, command, alias: string, silent: bool = false) {.exportpy.} =
     sendTask(agentId, command, alias, silent)
 
-proc get_string*(args: seq[TaskArg], i: int = 0, default: string = ""): string {.exportpy.} = 
+proc get_string*(args: seq[TaskArg], i: int = 0): string {.exportpy.} = 
     if i >= args.len(): 
-        return default
+        return ""
     return Bytes.toString(args[i].data)
 
-proc get_int*(args: seq[TaskArg], i: int = 0, default: int = 0): int {.exportpy.} = 
+proc get_int*(args: seq[TaskArg], i: int = 0): int {.exportpy.} = 
     if i >= args.len(): 
-        return default
+        return 0
     return int(Bytes.toUint32(args[i].data))
 
-proc get_bool*(args: seq[TaskArg], i: int = 0, default: bool = false): bool {.exportpy.} = 
+proc get_bool*(args: seq[TaskArg], i: int = 0): bool {.exportpy.} = 
     if i >= args.len(): 
-        return default
+        return false
     return cast[bool](args[i].data[0])
