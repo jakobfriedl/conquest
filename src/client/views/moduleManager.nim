@@ -9,9 +9,9 @@ proc ModuleManager*(title: string, showComponent: ptr bool): ModuleManagerCompon
     result = new ModuleManagerComponent
     result.title = title
     result.showComponent = showComponent
+    result.scripts = initHashSet[string]()
     result.modules = initTable[string, Module]()
     result.groups = initOrderedTable[string, OrderedTable[string, Command]]()
-    result.scripts = initHashSet[string]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
 
 proc draw*(component: ModuleManagerComponent) = 

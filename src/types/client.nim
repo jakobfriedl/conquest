@@ -34,8 +34,6 @@ type
     Module* = ref object of RootObj
         name*: string 
         description*: string
-        group*: string
-        builtin*: bool
         commands*: seq[Command]
 
 # UI Components

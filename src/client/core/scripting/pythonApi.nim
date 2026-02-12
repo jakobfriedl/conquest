@@ -123,21 +123,12 @@ proc registerToGroup*(self: Command, group: string) {.exportpy.} =
         cq.moduleManager.groups[group] = initOrderedTable[string, Command]() 
     cq.moduleManager.groups[group][self.name] = self 
 
-proc registerModule*(name, description, group: string, commands: seq[Command], builtin: bool = false) {.exportpy.} = 
-    # Register module (selectable in payload generation modal)
+proc registerModule*(name, description: string, commands: seq[Command]) {.exportpy.} = 
     cq.moduleManager.modules[name] = Module(
         name: name, 
-        description: description, 
-        group: group,
-        builtin: builtin,
+        description: description,
         commands: commands
     )
-
-    # Register commands to their respective command groups (for help command)
-    for cmd in commands: 
-        if not cq.moduleManager.groups.hasKey(group):
-            cq.moduleManager.groups[group] = initOrderedTable[string, Command]() 
-        cq.moduleManager.groups[group][cmd.name] = cmd
 
 # Parse and handle BOF arguments
 # References:

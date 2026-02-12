@@ -42,15 +42,6 @@ proc IM_COL32*(a,b,c,d:uint32): ImU32    =
     return igGetColorU32_Vec4(vec4(a.cfloat/255, b.cfloat/255, c.cfloat/255, d.cfloat/255))
 
 # Modules
-    # ModuleManagerComponent* = ref object of RootObj
-    #     title*: string 
-    #     showComponent*: ptr bool
-    #     tempPath*: string
-    #     modules*: Table[string, Module]
-    #     groups*: OrderedTable[string, OrderedTable[string, Command]] 
-    #     selection*: ptr ImGuiSelectionBasicStorage
-
-
 proc parseModuleType*(moduleName: string): ModuleType =
     case moduleName.toLower()
     of "shell": return MODULE_SHELL
@@ -62,11 +53,6 @@ proc parseModuleType*(moduleName: string): ModuleType =
     of "systeminfo": return MODULE_SYSTEMINFO
     of "token": return MODULE_TOKEN
     else: discard
-
-proc getModules*(component: ModuleManagerComponent): seq[Module] = 
-    for _, module in component.modules: 
-        if not module.builtin:
-            result.add(module)
 
 proc getCommandGroups*(component: ModuleManagerComponent): OrderedTable[string, OrderedTable[string, Command]] = 
     return component.groups

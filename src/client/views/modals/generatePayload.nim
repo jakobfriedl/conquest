@@ -1,4 +1,4 @@
-import strutils, strformat, sequtils, tables, times
+import strutils, strformat, sequtils, tables, times, algorithm
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
@@ -30,18 +30,16 @@ proc AgentModal*(): AgentModalComponent =
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
 
-    let modules = cq.moduleManager.getModules()
+    proc compareModules(x, y: Module): int = 
+        return cmp(x.name, y.name) 
     proc moduleName(module: Module): string = 
         return module.name
     proc moduleDesc(module: Module): string = 
         result = module.description & "\nModule commands:\n"
         for cmd in module.commands: 
             result &= " - " & cmd.name & "\n"
-    proc compareModules(x, y: Module): int = 
-        # return cmp(moduleType, y.moduleType)
-        discard
 
-    result.moduleSelection = DualListSelection(modules, moduleName, compareModules, moduleDesc)
+    result.moduleSelection = DualListSelection(cq.moduleManager.modules.values.toSeq().sorted(compareModules), moduleName, compareModules, moduleDesc)
     result.buildLog = Textarea(showTimestamps = false)
     result.killDateModal = KillDateModal()
     result.workingHoursModal = WorkingHoursModal()
