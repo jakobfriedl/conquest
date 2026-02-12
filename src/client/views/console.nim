@@ -206,7 +206,7 @@ proc displayCommandHelp(component: ConsoleComponent, command: Command) =
 proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
     try:
         # Try parsing the first argument passed to 'help' as a command
-        component.displayCommandHelp(cq.moduleManager.getCommand(parsed[1]))
+        component.displayCommandHelp(cq.moduleManager.getCommand(parsed[1].toLowerAscii()))
     except IndexDefect:
         # 'help' command is called without additional parameters -> show all available commands
         component.displayHelp()
@@ -219,17 +219,17 @@ proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
 
 proc handleAgentCommand*(component: ConsoleComponent, input: string) =
     # Convert user input into sequence of string arguments
-    let parsedArgs = parseInput(input.toLowerAscii())
+    let parsedArgs = parseInput(input)
 
     # Handle 'help' command
-    if parsedArgs[0] == "help":
+    if parsedArgs[0].toLowerAscii() == "help":
         component.textarea.addItem(LOG_COMMAND, input)
         component.handleHelp(parsedArgs)
         return
         
     # Handle commands with actions on the agent
     try:
-        let command = cq.moduleManager.getCommand(parsedArgs[0])
+        let command = cq.moduleManager.getCommand(parsedArgs[0].toLowerAscii())
         
         # If the command has a handler, execute it with the parsed arguments
         if command.hasHandler:

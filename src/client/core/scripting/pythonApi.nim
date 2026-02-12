@@ -185,6 +185,60 @@ proc bof_pack*(types: string, args: seq[PyObject]): string {.exportpy.} =
     let data = packer.pack()
     return Bytes.toHex(uint32.toBytes(uint32(data.len())) & data)
 
+# Pack arguments into bytes
+# https://sleep.dashnine.org/manual/
+proc pack*(types: string, args: seq[PyObject]): seq[byte] {.exportpy.} = 
+    if types.len() != args.len():
+        raise newException(ValueError, "Invalid number of arguments.")
+    
+    var packer = Packer.init()
+    for i, argType in types:
+        let value = args[i]
+        case argType:
+        of 'b': # Binary data
+            packer.addData(value.to(seq[byte]))
+        
+        of 'i': # Integer (4 bytes)
+            packer.add(uint32(try: value.to(int) except: parseInt($value)))
+        
+        of 'I': # Integer little-endian (4 bytes) (equivalent for pack("I-", value))
+            let intVal = uint32(try: value.to(int) except: parseInt($value))
+            packer.addData(@[
+                byte(intVal and 0xFF),
+                byte((intVal shr 8) and 0xFF),
+                byte((intVal shr 16) and 0xFF),
+                byte((intVal shr 24) and 0xFF)
+            ])
+        
+        of 's': # Short (2 bytes)
+            packer.add(uint16(try: value.to(int) except: parseInt($value)))
+        
+        of 'z': # Null-terminated UTF-8
+            let strData = string.toBytes($value) & @[0'u8]
+            packer.addData(strData)
+        
+        of 'Z': # Null-terminated UTF-16 
+            var data: seq[byte] = @[]
+            for r in ($value).runes:
+                let c = uint32(r)
+                if c <= 0xFFFF:
+                    data.add(byte(c and 0xFF))
+                    data.add(byte(c shr 8))
+                else:
+                    let adj = c - 0x10000
+                    let lead = uint16((adj shr 10) + 0xD800)
+                    let trail = uint16((adj and 0x3FF) + 0xDC00)
+                    data.add(byte(lead and 0xFF)); data.add(byte(lead shr 8))
+                    data.add(byte(trail and 0xFF)); data.add(byte(trail shr 8))
+            
+            packer.addData(data & @[0'u8, 0'u8])
+        
+        else:
+            raise newException(ValueError, "Unsupported type: " & argType)
+    
+    return packer.pack()     
+
+
 proc log(message: string) {.exportpy.} = 
     echo ">> ", message
 
