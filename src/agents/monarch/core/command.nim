@@ -303,19 +303,6 @@ when ((MODULES and cast[uint32](MODULE_SYSTEMINFO)) == cast[uint32](MODULE_SYSTE
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-    commands[CMD_ENV] = proc(ctx: AgentCtx, task: Task): TaskResult = 
-        try: 
-            print "   [>] Displaying environment variables."
-
-            var output: string = ""
-            for key, value in envPairs(): 
-               output &= fmt"{key}: {value}" & '\n'
-               
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
-
-        except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
-
 when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
     import ../utils/token
 

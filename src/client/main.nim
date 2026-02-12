@@ -44,7 +44,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
     views["Loot:Screenshots"] = addr showScreenshots
     views["Process Browser"] = addr showProcesses
     views["Filesystem Browser"] = addr showFiles
-    views["Module Manager"] = addr showModules
+    views["Script Manager"] = addr showModules
 
     # Initialize database 
     dbInit()

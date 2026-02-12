@@ -118,19 +118,26 @@ proc createCommand*(name, description, example, message: string, mitre: seq[stri
         hasHandler: false
     )
 
-proc registerModule*(name, description, group: string, commands: seq[Command], builtin: bool = false) {.exportpy.} = 
-    # Store module in database 
-    if not dbModuleExists(name):
-        discard dbStoreModule(name, cq.moduleManager.tempPath)
+proc registerToGroup*(self: Command, group: string) {.exportpy.} = 
+    if not cq.moduleManager.groups.hasKey(group):
+        cq.moduleManager.groups[group] = initOrderedTable[string, Command]() 
+    cq.moduleManager.groups[group][self.name] = self 
 
+proc registerModule*(name, description, group: string, commands: seq[Command], builtin: bool = false) {.exportpy.} = 
+    # Register module (selectable in payload generation modal)
     cq.moduleManager.modules[name] = Module(
         name: name, 
         description: description, 
-        path: cq.moduleManager.tempPath,
         group: group,
         builtin: builtin,
         commands: commands
     )
+
+    # Register commands to their respective command groups (for help command)
+    for cmd in commands: 
+        if not cq.moduleManager.groups.hasKey(group):
+            cq.moduleManager.groups[group] = initOrderedTable[string, Command]() 
+        cq.moduleManager.groups[group][cmd.name] = cmd
 
 # Parse and handle BOF arguments
 # References:

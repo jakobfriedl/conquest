@@ -69,7 +69,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 
     of ImGui_InputTextFlags_CallbackCompletion.int32: 
         # Handle Tab-autocompletion for agent commands
-        let commands = cq.moduleManager.getCommands().mapIt(it.name & " ") & @["help "]
+        let commands = cq.moduleManager.getCommands().keys().toSeq() & @["help "]
 
         # Get the word to complete
         let inputEndPos = data.CursorPos
@@ -132,7 +132,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 proc displayHelp(component: ConsoleComponent) =
    for group, commands in cq.moduleManager.getCommandGroups():
         component.textarea.addItem(LOG_OUTPUT, group.toUpperAscii())
-        for cmd in commands.sorted():
+        for cmd in commands.values():
             component.textarea.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
         component.textarea.addItem(LOG_OUTPUT, "")
 

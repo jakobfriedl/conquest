@@ -1,4 +1,4 @@
-import nimpy
+import nimpy, sets
 import ../../utils/globals
 
 pyExportModule("conquest")
@@ -16,8 +16,12 @@ proc loadScript*(file: string) =
         let globals = pyDict()
         globals["__builtins__"] = builtins  
 
-        # Parse and execute the loaded script 
-        cq.moduleManager.tempPath = file
         discard builtins.exec(script, globals)
+
+        # Store script in database 
+        if not dbScriptExists(file):
+            discard dbStoreScript(file)
+        cq.moduleManager.scripts.incl(file)
+
     except: 
         echo "Failed to load ", file ,": " , getCurrentExceptionMsg()

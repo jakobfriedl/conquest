@@ -1,6 +1,6 @@
 import imguin/[cimgui, glfw_opengl]
 import nimgl/[opengl, glfw]
-import nimpy, whisky, tables, std/options
+import nimpy, whisky, tables, sets, std/options
 import ./[common, event]
 
 # Modules & commands
@@ -34,7 +34,6 @@ type
     Module* = ref object of RootObj
         name*: string 
         description*: string
-        path*: string 
         group*: string
         builtin*: bool
         commands*: seq[Command]
@@ -117,8 +116,9 @@ type
     ModuleManagerComponent* = ref object of RootObj
         title*: string 
         showComponent*: ptr bool
-        tempPath*: string
+        scripts*: HashSet[string]
         modules*: Table[string, Module]
+        groups*: OrderedTable[string, OrderedTable[string, Command]] 
         selection*: ptr ImGuiSelectionBasicStorage
 
     ProcessBrowserComponent* = ref object of RootObj

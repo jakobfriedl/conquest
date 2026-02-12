@@ -6,8 +6,7 @@ proc dbInit*() =
         let clientDb = openDatabase(CONQUEST_ROOT & "/data/client.db", mode=dbReadWrite)
         clientDb.execScript("""
 
-            CREATE TABLE IF NOT EXISTS modules ( 
-                name TEXT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS scripts ( 
                 path TEXT NOT NULL
             ); 
 
@@ -17,10 +16,10 @@ proc dbInit*() =
     except SqliteError as err: 
         echo "[-] " & err.msg
     
-proc dbStoreModule*(name, path: string): bool = 
+proc dbStoreScript*(path: string): bool = 
     try: 
         let clientDb = openDatabase(CONQUEST_ROOT & "/data/client.db", mode=dbReadWrite)
-        clientDb.exec("INSERT INTO modules (name, path) VALUES (?, ?);", name, path)
+        clientDb.exec("INSERT INTO scripts (path) VALUES (?);", path)
         clientDb.close() 
 
     except: 
@@ -29,10 +28,10 @@ proc dbStoreModule*(name, path: string): bool =
     
     return true
 
-proc dbRemoveModule*(name: string): bool = 
+proc dbRemoveScript*(path: string): bool = 
     try: 
         let clientDb = openDatabase(CONQUEST_ROOT & "/data/client.db", mode=dbReadWrite)
-        clientDb.exec("DELETE FROM modules WHERE name = ?", name)
+        clientDb.exec("DELETE FROM scripts WHERE path = ?", path)
         clientDb.close()
         
     except: 
@@ -41,10 +40,10 @@ proc dbRemoveModule*(name: string): bool =
     
     return true
 
-proc dbModuleExists*(name: string): bool =
+proc dbScriptExists*(path: string): bool =
     try:
         let clientDb = openDatabase(CONQUEST_ROOT & "/data/client.db", mode=dbReadWrite)
-        let res = clientDb.one("SELECT 1 FROM modules WHERE name = ? LIMIT 1", name)
+        let res = clientDb.one("SELECT 1 FROM scripts WHERE path = ? LIMIT 1", path)
         clientDb.close()
         return res.isSome
 
@@ -55,7 +54,7 @@ proc dbModuleExists*(name: string): bool =
 proc dbGetScriptPaths*(): seq[string] = 
     try: 
         let clientDb = openDatabase(CONQUEST_ROOT & "/data/client.db", mode=dbReadWrite)
-        for row in clientDb.iterate("SELECT DISTINCT path FROM modules;"):
+        for row in clientDb.iterate("SELECT DISTINCT path FROM scripts;"):
             let (path,) = row.unpack((string,))
             result.add(path)
         clientDb.close()

@@ -11,7 +11,7 @@ const WIDGET_EVENTLOG* = " " & ICON_FA_CLIPBOARD_LIST & " " & "Eventlog"
 const WIDGET_DOWNLOADS* = " " & ICON_FA_DOWNLOAD & " " & "Downloads"
 const WIDGET_SCREENSHOTS* = " " & ICON_FA_IMAGE & " " & "Screenshots"
 const WIDGET_PROCESS_BROWSER* = " " & ICON_FA_MICROCHIP & " " & "Process Browser"
-const WIDGET_MODULE_MANAGER* = " " & ICON_FA_TOOLBOX & " " & "Module Manager"
+const WIDGET_MODULE_MANAGER* = " " & ICON_FA_TOOLBOX & " " & "Script Manager"
 const WIDGET_FILE_BROWSER* = " " & ICON_FA_FOLDER_TREE & " " & "Filesystem Browser"
 const WIDGET_CHAT* = " " & ICON_FA_COMMENTS & " " & "Chat"
 

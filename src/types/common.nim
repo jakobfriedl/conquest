@@ -38,7 +38,6 @@ type
         CMD_MOVE = "move"
         CMD_COPY = "copy"
         CMD_PS = "ps"
-        CMD_ENV = "env" 
         CMD_MAKE_TOKEN = "make-token"
         CMD_STEAL_TOKEN = "steal-token"
         CMD_REV2SELF = "rev2self"
