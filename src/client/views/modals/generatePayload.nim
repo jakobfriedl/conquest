@@ -7,10 +7,18 @@ import ../../../types/[common, client, event]
 import ../moduleManager
 export addItem
 
+proc `$`(payloadType: PayloadType): string = 
+    case payloadType: 
+    of EXE: "Windows Executable (.exe)"
+    of SVC: "Windows Service Executable (.svc.exe)"
+    of DLL: "Windows DLL (.dll)"
+    of BIN: "Raw Shellcode (.bin)"
+
 proc AgentModal*(): AgentModalComponent =
     result = new AgentModalComponent
     result.show = false
     result.listener = 0
+    result.payloadType = 0 
     result.sleepDelay = 5
     result.jitter = 15
     result.sleepMask = 0
@@ -27,6 +35,11 @@ proc AgentModal*(): AgentModalComponent =
     )
     result.verbose = false
 
+    # Populate payload types
+    for payloadType in PayloadType.low .. PayloadType.high:
+        result.payloadTypes.add($payloadType)
+
+    # Populate sleep techniques
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
 
@@ -46,6 +59,7 @@ proc AgentModal*(): AgentModalComponent =
 
 proc resetModalValues*(component: AgentModalComponent) = 
     component.listener = 0
+    component.payloadType = 0  # Reset to PAYLOAD_EXE
     component.sleepDelay = 5
     component.jitter = 15
     component.sleepMask = 0
@@ -93,6 +107,13 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igGetContentRegionAvail(addr availableSize)
         igSetNextItemWidth(availableSize.x)
         igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.listenerId & " (" & $it.listenerType & ")").join("\0") & "\0").cstring , listeners.len().int32)
+
+        # Payload type selection
+        igText("Payload type:   ")
+        igSameLine(0.0f, textSpacing)
+        igGetContentRegionAvail(addr availableSize)
+        igSetNextItemWidth(availableSize.x)
+        igCombo_Str("##InputPayloadType", addr component.payloadType, (component.payloadTypes.join("\0") & "\0").cstring, component.payloadTypes.len().int32)
 
         # Sleep delay
         let step: uint32 = 1
@@ -207,6 +228,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
 
             result = AgentBuildInformation(
                 listenerId: listeners[component.listener].listenerId,
+                payloadType: cast[PayloadType](component.payloadType),  # Cast int32 to PayloadType
                 sleepSettings: SleepSettings(
                     sleepDelay: component.sleepDelay,
                     jitter: cast[uint32](component.jitter), 

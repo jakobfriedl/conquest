@@ -47,6 +47,7 @@ type
 type 
     AgentBuildInformation* = ref object 
         listenerId*: string
+        payloadType*: PayloadType
         sleepSettings*: SleepSettings
         verbose*: bool
         killDate*: int64

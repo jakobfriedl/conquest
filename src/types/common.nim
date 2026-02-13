@@ -97,6 +97,12 @@ type
         MSG_REGISTER = 2'u8
         MSG_HEARTBEAT = 100'u8
 
+    PayloadType* = enum 
+        EXE = 0'u8
+        SVC = 1'u8 
+        DLL = 2'u8 
+        BIN = 3'u8
+
 type 
     WorkingHours* = ref object 
         enabled*: bool

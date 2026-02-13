@@ -82,6 +82,7 @@ type
     AgentModalComponent* = ref object of RootObj
         show*: bool
         listener*: int32 
+        payloadType*: int32
         sleepDelay*: uint32
         jitter*: int32 
         sleepMask*: int32 
@@ -91,6 +92,7 @@ type
         workingHoursEnabled*: bool
         workingHours*: WorkingHours
         verbose*: bool
+        payloadTypes*: seq[string]  
         sleepMaskTechniques*: seq[string]
         moduleSelection*: DualListSelectionWidget[Module]
         buildLog*: TextareaWidget
