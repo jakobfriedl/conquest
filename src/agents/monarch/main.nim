@@ -113,6 +113,9 @@ proc agentMain() =
 
 #[
     Service functions
+    References: 
+     - https://github.com/HavocFramework/Havoc/blob/main/payloads/Demon/src/main/MainSvc.c
+     - https://github.com/Adaptix-Framework/AdaptixC2/blob/main/AdaptixServer/extenders/beacon_agent/src_beacon/beacon/main.cpp
 ]#
 when defined(PAYLOAD_SVC):
     var
