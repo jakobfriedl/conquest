@@ -171,7 +171,7 @@ when ((MODULES and cast[uint32](MODULE_BOF)) == cast[uint32](MODULE_BOF)):
             if output != "":
                 return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
             else: 
-                return createTaskResult(task, STATUS_FAILED, RESULT_NO_OUTPUT, @[])
+                return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
@@ -200,7 +200,7 @@ when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
             if output != "":
                 return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(assemblyInfo & "\n" & output))
             else: 
-                return createTaskResult(task, STATUS_FAILED, RESULT_NO_OUTPUT, @[])
+                return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

@@ -427,7 +427,7 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
 ]#
 proc inlineExecuteGetOutput*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction: string = "go"): string = 
     if not inlineExecute(objectFile, args, entryFunction): 
-        raise newException(CatchableError, fmt"[-] Failed to execute object file.")
+        raise newException(CatchableError, protect("Failed to execute object file."))
 
     var outSize: int = 0
     var output = BeaconGetOutputData(addr outSize)
@@ -437,4 +437,4 @@ proc inlineExecuteGetOutput*(objectFile: seq[byte], args: seq[byte] = @[], entry
         copyMem(addr result[0], output, outSize)
         discard HeapFree(GetProcessHeap(), 0, output)
     else:
-        result = ""
+        raise newException(CatchableError, protect("Failed to get output."))
