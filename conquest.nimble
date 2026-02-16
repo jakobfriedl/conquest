@@ -18,7 +18,7 @@ task client, "Build conquest client binary":
 
 # Dependencies
 
-requires "nim >= 2.2.4"
+requires "nim >= 2.2.6"
 
 requires "nimcrypto >= 0.6.4"
 requires "tiny_sqlite >= 0.2.0"
