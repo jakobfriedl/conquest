@@ -1,7 +1,5 @@
 import mummy, tables
 import ./[common, protocol] 
-from ./client import UIListener
-export UIListener
 
 type 
     Agent* = ref object 
@@ -28,6 +26,16 @@ type
 
     Listener* = ref object
         server*: Server
+        listenerId*: string
+        case listenerType*: ListenerType
+        of LISTENER_HTTP: 
+            hosts*: string
+            address*: string
+            port*: int
+        of LISTENER_SMB: 
+            pipe*: string
+
+    UIListener* = ref object
         listenerId*: string
         case listenerType*: ListenerType
         of LISTENER_HTTP: 
