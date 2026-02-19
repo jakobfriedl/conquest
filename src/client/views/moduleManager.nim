@@ -1,5 +1,5 @@
 import imguin/[cimgui, glfw_opengl]
-import tables, sets, sequtils, native_dialogs, algorithm
+import tables, sequtils, strformat, native_dialogs, algorithm
 import ../utils/appImGui
 import ../core/scripting/engine
 import ../core/database
@@ -9,7 +9,7 @@ proc ModuleManager*(title: string, showComponent: ptr bool): ModuleManagerCompon
     result = new ModuleManagerComponent
     result.title = title
     result.showComponent = showComponent
-    result.scripts = initHashSet[string]()
+    result.scripts = initOrderedTable[string, tuple[active: bool, error: string]]()
     result.modules = initTable[string, Module]()
     result.groups = initOrderedTable[string, OrderedTable[string, Command]]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
@@ -23,7 +23,6 @@ proc draw*(component: ModuleManagerComponent) =
     if igButton("Load Script", vec2(0.0f, 0.0f)):          
         let path = callDialogFileSave("Load Script") 
         loadScript(path)
-        component.scripts.incl(path)
     
     let tableFlags = (
         ImGuiTableFlags_Resizable.int32 or 
@@ -39,10 +38,11 @@ proc draw*(component: ModuleManagerComponent) =
         ImGui_TableFlags_SizingStretchSame.int32
     )
     
-    let cols: int32 = 1
+    let cols: int32 = 2
     if igBeginTable("Modules", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
         
         igTableSetupColumn("Script Path", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Status", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupScrollFreeze(0, 1)
         igTableHeadersRow()
         
@@ -53,15 +53,25 @@ proc draw*(component: ModuleManagerComponent) =
         )
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
         
-        # Convert set to seq for indexed iteration
-        let scripts = component.scripts.items.toSeq()
-        for i, path in scripts: 
+        let scripts = component.scripts.keys().toSeq()
+        for i, path in scripts:
+            let (active, error) = component.scripts[path]
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
-            if igTableSetColumnIndex(0):          
-                igSetNextItemSelectionUserData(i)
+            if igTableSetColumnIndex(0):
+                igSetNextItemSelectionUserData(i.int32)
                 var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i))
+
+                if not active:
+                    igPushStyleColor_Vec4(ImGui_Col_Text.cint, CONSOLE_ERROR)
+
                 discard igSelectable_Bool(path.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
-            
+
+                if igTableSetColumnIndex(1): 
+                    igText(if active: "Active".cstring else: fmt"Error: {error}".cstring)
+
+                if not active:
+                    igPopStyleColor(1)
+
         # Handle right-click context menu
         if component.selection[].Size > 0 and igBeginPopupContextWindow("TableContextMenu", ImGui_PopupFlags_MouseButtonRight.int32): 
             if igMenuItem("Reload", nil, false, true): 
@@ -69,14 +79,16 @@ proc draw*(component: ModuleManagerComponent) =
                     if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
                         # Reload python script
                         loadScript(path)
+
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
                 
-            if igMenuItem("Remove", nil, false, true): 
+            if igMenuItem("Remove", nil, false, true):
                 for i, path in scripts:
                     if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        # Delete script
                         if dbRemoveScript(path):
-                            component.scripts.excl(path)
+                            component.scripts.del(path)
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
                 

@@ -16,12 +16,15 @@ proc loadScript*(file: string) =
         let globals = pyDict()
         globals["__builtins__"] = builtins  
 
-        discard builtins.exec(script, globals)
-
         # Store script in database 
         if not dbScriptExists(file):
             discard dbStoreScript(file)
-        cq.moduleManager.scripts.incl(file)
+        
+        discard builtins.exec(script, globals)
+
+        # Set 'active' to true if the script was loaded without errors
+        cq.moduleManager.scripts[file] = (true, "")
 
     except: 
-        echo "Failed to load ", file ,": " , getCurrentExceptionMsg()
+        cq.moduleManager.scripts[file] = (false, getCurrentExceptionMsg())        
+        # echo "Failed to load ", file ,": " , getCurrentExceptionMsg()
