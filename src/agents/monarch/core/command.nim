@@ -480,15 +480,9 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
     
     # FILETIME is 100-nanosecond intervals since January 1, 1601
     # Unix timestamp is seconds since January 1, 1970 
-    # Conversion is required
     proc fileTimeToUnixTimestamp(ft: FILETIME): int64 =
-        # Convert FILETIME to 64-bit integer (100-nanosecond intervals)
-        let fileTime64 = (int64(ft.dwHighDateTime) shl 32) or int64(ft.dwLowDateTime)
-        
-        # Number of 100-nanosecond intervals between 1601 and 1970
+        let fileTime64 = (int64(ft.dwHighDateTime) shl 32) or int64(cast[uint32](ft.dwLowDateTime))
         const EPOCH_DIFFERENCE = 116444736000000000'i64
-        
-        # Convert to Unix timestamp (seconds)
         return (fileTime64 - EPOCH_DIFFERENCE) div 10000000
 
     commands[CMD_LS] = proc(ctx: AgentCtx, task: Task): TaskResult = 
