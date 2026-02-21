@@ -68,28 +68,39 @@ proc getDefaultValue*(argument: Argument): string =
         return argument.binDefault
 
 proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] = 
-    # Parse arguments into positional and optional (flag) arguments
+    let flagArgs = command.arguments.filterIt(it.isFlag)
+    let positionalArgDefs = command.arguments.filterIt(not it.isFlag)
+    
+    let hasCatchAll = positionalArgDefs.len() > 0 and positionalArgDefs[^1].nargs == -1
+    
+    # Pre-populate flags table with default values
     var flags = initTable[string, string]()
+    for arg in flagArgs:
+        flags[arg.flag] = if arg.argType == BOOL: "false" else: getDefaultValue(arg)
+    
     var positional: seq[string] = @[]
     
+    # Separate tokens into flags and positional arguments
     var i = 0
     while i < arguments.len():
         if arguments[i].startsWith("-"):
             let flag = arguments[i]
+            let argDef = flagArgs.filterIt(it.flag == flag)
             
-            # Find the argument definition for this flag
-            let argDef = command.arguments.filterIt(it.isFlag and it.flag == flag)
             if argDef.len() == 0:
-                raise newException(CatchableError, fmt"Unknown flag: {flag}")
-            
-            # Check if it's a boolean flag
-            if argDef[0].argType == BOOL:
-                # Boolean flag - no value expected
+                # Unknown flag — only valid if a catch-all arg exists
+                if hasCatchAll:
+                    positional.add(arguments[i])
+                    i += 1
+                else:
+                    raise newException(CatchableError, fmt"Unknown flag: {flag}")
+            elif argDef[0].nargs == 0:
+                # Bool flag — no value
                 flags[flag] = "true"
                 i += 1
             else:
-                # Non-boolean flag - value expected
-                if i + 1 < arguments.len() and not arguments[i + 1].startsWith("-"):
+                # Flag with value
+                if i + 1 < arguments.len():
                     flags[flag] = arguments[i + 1]
                     i += 2
                 else:
@@ -98,47 +109,42 @@ proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] =
             positional.add(arguments[i])
             i += 1
     
-    # Map the command-line arguments to the arguments expected by the command 
+    if not hasCatchAll and positional.len() > positionalArgDefs.len():
+        raise newException(CatchableError, fmt"Too many positional arguments: expected {positionalArgDefs.len()}, got {positional.len()}")
+
+    # Map positional and flag values onto argument definitions
     var positionalIndex = 0
     for arg in command.arguments:
         var taskArg: TaskArg
         taskArg.argType = cast[uint8](arg.argType)
         
         if arg.isFlag:
-            if arg.flag in flags:
-                # Flag was provided
-                taskArg = parseArgument(arg, flags[arg.flag])
-            else:
-                # Flag was not provided
-                if arg.isRequired:
-                    raise newException(CatchableError, fmt"Missing required flag: {arg.flag}")
-                else:
-                    # Use default value for non-boolean flags, false for boolean flags
-                    if arg.argType == BOOL:
-                        taskArg = parseArgument(arg, "false")
-                    else:
-                        taskArg = parseArgument(arg, getDefaultValue(arg))
+            if arg.isRequired and flags[arg.flag] == "":
+                raise newException(CatchableError, fmt"Missing required flag: {arg.flag}")
+            taskArg = parseArgument(arg, flags[arg.flag])
         else:
-            # Positional argument
-            if positionalIndex < positional.len():
-                taskArg = parseArgument(arg, positional[positionalIndex])
-                positionalIndex += 1
-            else:
-                if arg.isRequired:
+            case arg.nargs:
+            of 0:
+                taskArg = parseArgument(arg, "false")
+            of 1:
+                if positionalIndex < positional.len():
+                    taskArg = parseArgument(arg, positional[positionalIndex])
+                    positionalIndex += 1
+                elif arg.isRequired:
                     raise newException(CatchableError, fmt"Missing required positional argument: {arg.name}")
                 else:
-                    # Use default value
+                    taskArg = parseArgument(arg, getDefaultValue(arg))
+            else:
+                # nargs = -1: join all remaining positional tokens into one argument
+                if positionalIndex < positional.len():
+                    taskArg = parseArgument(arg, positional[positionalIndex..^1].join(" "))
+                    positionalIndex = positional.len()
+                elif arg.isRequired:
+                    raise newException(CatchableError, fmt"Missing required positional argument: {arg.name}")
+                else:
                     taskArg = parseArgument(arg, getDefaultValue(arg))
         
         result.add(taskArg)
-    
-    # Handle extra positional args at the end of the command (for variadic arguments)
-    let positionalArgs = command.arguments.filterIt(not it.isFlag)
-    if positionalArgs.len() > 0:
-        let lastArg = positionalArgs[^1]
-        while positionalIndex < positional.len():
-            result.add(parseArgument(lastArg, positional[positionalIndex]))
-            positionalIndex += 1
 
 proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[string], silent: bool): Task = 
     result.taskId = string.toUuid(generateUUID()) 

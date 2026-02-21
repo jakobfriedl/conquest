@@ -5,12 +5,13 @@ import ./[common, event]
 
 # Modules & commands
 type 
-    Argument* = ref object 
+    Argument* = ref object of PyNimObjectExperimental
         name*: string
         description*: string 
         isRequired*: bool 
         isFlag*: bool 
         flag*: string
+        nargs*: int 
         case argType*: ArgType
         of STRING:
             strDefault*: string 

@@ -17,7 +17,7 @@ import ../../../types/[common, client, protocol]
     - https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics_aggressor-scripts/as-resources_functions.htm 
 ]#
 
-proc addArgString*(self: Command, name, description: string, required: bool = false, default: string = ""): Command {.exportpy.} = 
+proc addArgString*(self: Command, name, description: string, required: bool = false, default: string = "", nargs: int = 1): Command {.exportpy.} = 
     self.arguments.add(Argument(
         name: name,
         description: description,
@@ -25,11 +25,12 @@ proc addArgString*(self: Command, name, description: string, required: bool = fa
         isFlag: false,
         flag: "",
         argType: STRING,
-        strDefault: default
+        strDefault: default,
+        nargs: nargs
     ))
     return self
 
-proc addFlagString*(self: Command, flag, name, description: string, required: bool = false, default: string = ""): Command {.exportpy.} =
+proc addFlagString*(self: Command, flag, name, description: string, required: bool = false, default: string = "", nargs: int = 1): Command {.exportpy.} =
     self.arguments.add(Argument(
         name: name,
         description: description,
@@ -37,7 +38,8 @@ proc addFlagString*(self: Command, flag, name, description: string, required: bo
         isFlag: true,
         flag: flag, 
         argType: STRING,
-        strDefault: default
+        strDefault: default,
+        nargs: nargs
     ))
     return self
 
@@ -49,7 +51,8 @@ proc addArgInt*(self: Command, name, description: string, required: bool = false
         isFlag: false,
         flag: "",
         argType: INT,
-        intDefault: default
+        intDefault: default,
+        nargs: 1
     ))
     return self
 
@@ -61,7 +64,8 @@ proc addFlagInt*(self: Command, flag, name, description: string, required: bool 
         isFlag: true,
         flag: flag, 
         argType: INT,
-        intDefault: default
+        intDefault: default,
+        nargs: 1
     ))
     return self
 
@@ -73,7 +77,8 @@ proc addFlagBool*(self: Command, flag, name, description: string, default: bool 
         isFlag: true,
         flag: flag, 
         argType: BOOL,
-        boolDefault: default
+        boolDefault: default,
+        nargs: 0
     ))
     return self
 
@@ -85,7 +90,8 @@ proc addArgFile*(self: Command, name, description: string, required: bool = fals
         isFlag: false,
         flag: "",
         argType: BINARY,
-        binDefault: default
+        binDefault: default,
+        nargs: 1
     ))
     return self
 
@@ -97,11 +103,12 @@ proc addFlagFile*(self: Command, flag, name, description: string, required: bool
         isFlag: true,
         flag: flag,
         argType: BINARY,
-        binDefault: default
+        binDefault: default,
+        nargs: 1
     ))
     return self
 
-proc setHandler(self: Command, handler: PyObject): Command {.exportpy.} = 
+proc setHandler*(self: Command, handler: PyObject): Command {.exportpy.} = 
     if not handler.isNil and pyBuiltinsModule().callable(handler).to(bool):
         self.hasHandler = true
         self.handler = handler
@@ -118,17 +125,24 @@ proc createCommand*(name, description, example, message: string, mitre: seq[stri
         hasHandler: false
     )
 
-proc registerToGroup*(self: Command, group: string) {.exportpy.} = 
+proc createModule*(name, description: string) {.exportpy.} =
+    cq.moduleManager.modules[name] = Module(
+        name: name,
+        description: description,
+        commands: @[]
+    )
+
+proc registerToGroup*(self: Command, group: string): Command {.exportpy.} = 
     if not cq.moduleManager.groups.hasKey(group):
         cq.moduleManager.groups[group] = initOrderedTable[string, Command]() 
     cq.moduleManager.groups[group][self.name] = self 
+    return self
 
-proc registerModule*(name, description: string, commands: seq[Command]) {.exportpy.} = 
-    cq.moduleManager.modules[name] = Module(
-        name: name, 
-        description: description,
-        commands: commands
-    )
+proc registerToModule*(self: Command, module: string): Command {.exportpy.} =
+    if not cq.moduleManager.modules.hasKey(module):
+        raise newException(CatchableError, fmt"Module not found: {module}.")
+    cq.moduleManager.modules[module].commands.add(self)
+    return self
 
 # Parse and handle BOF arguments
 # References:
@@ -237,26 +251,26 @@ proc pack*(types: string, args: seq[PyObject]): seq[byte] {.exportpy.} =
     return packer.pack()     
 
 
-proc log(message: string) {.exportpy.} = 
+proc log*(message: string) {.exportpy.} = 
     echo ">> ", message
 
-proc error(agentId, cmdline, message: string) {.exportpy.} = 
+proc error*(agentId, cmdline, message: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_COMMAND, cmdline)
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_ERROR, message)
 
-proc modules_root(): string {.exportpy.} = 
+proc modules_root*(): string {.exportpy.} = 
     return CONQUEST_ROOT & "/data/modules"
 
-proc user(): string {.exportpy.} = 
+proc user*(): string {.exportpy.} = 
     return cq.connection.user
 
 # Execute a command 
-proc execute_command(agentId, command: string, silent: bool = false) {.exportpy.} = 
+proc execute_command*(agentId, command: string, silent: bool = false) {.exportpy.} = 
     sendTask(agentId, command, silent)
 
 # Takes a command string as the argument that is executed instead 
-proc execute_alias(agentId, command, alias: string, silent: bool = false) {.exportpy.} =
+proc execute_alias*(agentId, command, alias: string, silent: bool = false) {.exportpy.} =
     sendTask(agentId, command, alias, silent)
 
 proc get_string*(args: seq[TaskArg], i: int = 0): string {.exportpy.} = 
