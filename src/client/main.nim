@@ -344,8 +344,12 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             cq.sessions.agents[agentId].filesystem = some(initOrderedTable[string, DirectoryEntry]())
                             
                         # Split path into components
-                        let cleanPath = path.strip(chars = {'\\', '/'})
-                        var parts = cleanPath.split({'\\', '/'}).filterIt(it.len > 0)
+                        var parts = path
+                            .strip(chars = {'/'})           
+                            .replace("\\\\", "§§")              # Replace \\ to keep indicator for remote directory
+                            .split({'\\', '/'})
+                            .filterIt(it.len > 0)
+                            .mapIt(it.replace("§§", "\\\\"))
                         
                         # Built tree structure
                         var currentTable = addr cq.sessions.agents[agentId].filesystem.get()

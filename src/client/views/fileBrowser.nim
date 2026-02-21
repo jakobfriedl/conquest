@@ -135,6 +135,10 @@ proc draw*(component: FileBrowserComponent) =
                     if isDir and entry.name.len() == 2 and entry.name.endsWith(":"):
                         name = ICON_FA_HARD_DRIVE & " " & entry.name & "/"
 
+                    # Check if directory is a remote system
+                    if isDir and entry.name.startsWith("\\\\"):
+                        name = ICON_FA_SERVER & " " & entry.name
+
                     if igSelectable_Bool(name.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f)):
                         component.selection = path
                    
