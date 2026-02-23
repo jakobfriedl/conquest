@@ -134,6 +134,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     of CLIENT_AUTH_RESULT: 
                         if event.data["success"].getBool(): 
                             connectModal.errorMessage.setLen(0)
+                            cq.connection.sendSyncRequest()
 
                         else: 
                             connectModal.errorMessage = "Incorrect username or password."

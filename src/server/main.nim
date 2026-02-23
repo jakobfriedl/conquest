@@ -71,25 +71,26 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 let auth = cq.authenticate(username, password)
                 cq.sendAuthenticationResult(auth, clientId = clientId)
 
-                # Send relevant information to the client if authentication succeeds
                 if auth: 
-                    # C2 profile 
-                    cq.sendProfile(cq.profileString, clientId = clientId)
-                    
-                    # Listeners
-                    for id, listener in cq.listeners: 
-                        cq.sendListener(listener, clientId = clientId)
-                    
-                    # Agent sessions
-                    for id, agent in cq.agents: 
-                        cq.sendAgent(agent, clientId = clientId)
-
-                    # Downloads & Screenshots metadata
-                    for lootItem in cq.dbGetLoot():
-                        cq.sendLoot(lootItem, clientId = clientId)
-
                     cq.clients[clientId].user = username
                     cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"User {username} connected.")
+
+            of CLIENT_SYNC:
+                # Synchronize data between client and server (after client authentication)
+                # C2 profile 
+                cq.sendProfile(cq.profileString, clientId = clientId)
+                
+                # Listeners
+                for id, listener in cq.listeners: 
+                    cq.sendListener(listener, clientId = clientId)
+                
+                # Agent sessions
+                for id, agent in cq.agents: 
+                    cq.sendAgent(agent, clientId = clientId)
+
+                # Downloads & Screenshots metadata
+                for lootItem in cq.dbGetLoot():
+                    cq.sendLoot(lootItem, clientId = clientId)
 
             of CLIENT_AGENT_TASK:
                 let 

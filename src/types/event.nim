@@ -37,6 +37,7 @@ type
         CLIENT_DIRECTORY_LISTING = 114'u8   # Send directory listing
         CLIENT_WORKING_DIRECTORY = 115'u8   # Send current woring directory
         CLIENT_CHAT = 116'u8                # Send and display chat message
+        CLIENT_SYNC = 117'u8                # Instruct team server to sync data after authentication
 
     Event* = object 
         eventType*: EventType               

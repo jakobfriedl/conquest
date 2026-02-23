@@ -27,6 +27,13 @@ proc sendAuthentication*(connection: WsConnection, username, password: string) =
     )
     connection.ws.sendEvent(event, connection.sessionKey)
 
+proc sendSyncRequest*(connection: WsConnection) = 
+    let event = Event(
+        eventType: CLIENT_SYNC,
+        timestamp: now().toTime().toUnix(),
+        data: %*{}
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)
 
 proc sendStartListener*(connection: WsConnection, listener: UIListener) = 
     let event = Event(
