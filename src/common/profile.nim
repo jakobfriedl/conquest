@@ -110,15 +110,15 @@ proc applyDataTransformation*(profile: Profile, path: string, data: seq[byte]): 
 
     # 2. Add prefix & suffix
     let 
-        prefix = profile.getStringOrByteArray(path & protect(".prefix"))
-        suffix = profile.getStringOrByteArray(path & protect(".suffix"))
+        prefix = profile.getStringOrByteArray(path & protect(".prepend"))
+        suffix = profile.getStringOrByteArray(path & protect(".append"))
     return prefix & dataString & suffix
 
 proc reverseDataTransformation*(profile: Profile, path: string, data: string): seq[byte] = 
     # 1. Remove prefix & suffix
     let 
-        prefix = profile.getStringOrByteArray(path & protect(".prefix"))
-        suffix = profile.getStringOrByteArray(path & protect(".suffix"))
+        prefix = profile.getStringOrByteArray(path & protect(".prepend"))
+        suffix = profile.getStringOrByteArray(path & protect(".append"))
     var dataString = data[len(prefix) ..^ len(suffix) + 1]
 
     # 2. Decoding

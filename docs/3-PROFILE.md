@@ -58,8 +58,8 @@ A huge advantage of Conquest's C2 profile is the customization of where the hear
 | encoding.type | OPTION | Type of encoding to use. The following options are available: `base64`, `hex`, `rot`, `xor` and `none` (default) | 
 | encoding.url-safe | BOOL | Only used if encoding.type is set to `base64`. Uses `-` and `_` instead of `+`, `=` and `/`. Default: `false` |
 | encoding.key | INTEGER | Only used if encoding.type is set to `xor` or `rot`. The `rot` setting applies a Caesar cipher, while `xor` simply XOR-encodes the data. |
-| prefix | STRING/ARRAY | String to prepend before the heartbeat payload. |
-| suffix | STRING/ARRAY | String to append after the heartbeat payload. |
+| prepend | STRING/ARRAY | String to prepend before the heartbeat payload (prefix). |
+| append | STRING/ARRAY | String to append after the heartbeat payload (suffix). |
 
 The order of operations is: 
 1. Encoding
@@ -77,8 +77,8 @@ To illustrate how that works, the following TOML configuration transforms a base
 [http-get.agent.heartbeat]
 placement = { type = "header", name = "Authorization" }
 encoding = { type = "base64", url-safe = true }
-prefix = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-suffix = ".######################################-####"
+prepend = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+append = ".######################################-####"
 ```
 
 ![Heartbeat in Authorization Header](../assets/profile-1.png)
@@ -102,8 +102,8 @@ Instead of using strings for the prefix and suffix, it is also possible to use a
 ```toml
 placement = { type = "body" }
 encoding = { type = "xor", key = 100 }
-prefix = [0x25, 0x50, 0x44, 0x46]           # %PDF
-suffix = [0x25, 0x25, 0x45, 0x4F, 0x46]     # %%EOF
+prepend = [0x25, 0x50, 0x44, 0x46]           # %PDF
+append = [0x25, 0x25, 0x45, 0x4F, 0x46]     # %%EOF
 ```
 
 #### More Examples

@@ -132,7 +132,7 @@ proc draw*(component: FileBrowserComponent) =
                         name = ICON_FA_FILE & " " & entry.name
 
                     # Check if the directory is a drive
-                    if isDir and entry.name.len() == 2 and entry.name.endsWith(":"):
+                    if isDir and entry.name.len() == 2 and (entry.name.endsWith(":") or entry.name.endsWith("$")):
                         name = ICON_FA_HARD_DRIVE & " " & entry.name & "/"
 
                     # Check if directory is a remote system
