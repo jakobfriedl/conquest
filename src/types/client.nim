@@ -46,8 +46,10 @@ type
         defaultHost*: string 
         port*: uint16
         defaultPort*: int
-        username*: array[256, char]
-        password*: array[256, char] 
+        usernameInput*: array[256, char]
+        passwordInput*: array[256, char] 
+        username*: string
+        password*: string
         errorMessage*: string
 
     WorkingHoursModalComponent* = ref object of RootObj

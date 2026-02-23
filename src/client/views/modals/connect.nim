@@ -15,8 +15,8 @@ proc ConnectionModal*(host: string, port: int): ConnectionModalComponent =
     result.port = uint16(port)
     result.defaultPort = port
     
-    zeroMem(addr result.username[0], 256)
-    zeroMem(addr result.password[0], 256)
+    zeroMem(addr result.usernameInput[0], 256)
+    zeroMem(addr result.passwordInput[0], 256)
     result.errorMessage = ""
 
 proc resetModalValues(component: ConnectionModalComponent) = 
@@ -24,15 +24,15 @@ proc resetModalValues(component: ConnectionModalComponent) =
     for i, c in component.defaultHost: 
         if i < 255: component.host[i] = c
     component.port = uint16(component.defaultPort)
-    zeroMem(addr component.username[0], 256)
-    zeroMem(addr component.password[0], 256)
+    zeroMem(addr component.usernameInput[0], 256)
+    zeroMem(addr component.passwordInput[0], 256)
 
-proc connect*(component: ConnectionModalComponent): tuple[username, password: string] = 
+proc connect*(component: ConnectionModalComponent) = 
     component.errorMessage = ""
 
     let host = $cast[cstring]((addr component.host[0]))
-    let username = $cast[cstring]((addr component.username[0]))
-    let password = $cast[cstring]((addr component.password[0]))
+    component.username = $cast[cstring]((addr component.usernameInput[0]))
+    component.password = $cast[cstring]((addr component.passwordInput[0]))
 
     try: 
         cq.connection = WsConnection(
@@ -43,9 +43,8 @@ proc connect*(component: ConnectionModalComponent): tuple[username, password: st
         component.errorMessage = "Cannot connect to team server."
 
     component.resetModalValues()
-    return (username, password)
 
-proc draw*(component: ConnectionModalComponent): tuple[username, password: string] =
+proc draw*(component: ConnectionModalComponent) =
     let textSpacing = igGetStyle().ItemSpacing.x    
     
     # Center modal
@@ -83,15 +82,15 @@ proc draw*(component: ConnectionModalComponent): tuple[username, password: strin
         igGetContentRegionAvail(addr availableSize)
         igSetNextItemWidth(availableSize.x)
         if igIsWindowAppearing(): igSetKeyboardFocusHere(0)
-        igInputText("##InputUsername", cast[cstring](addr component.username[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
+        igInputText("##InputUsername", cast[cstring](addr component.usernameInput[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
 
         # Password
         igText("Password: ")
         igSameLine(0.0f, textSpacing)
         igGetContentRegionAvail(addr availableSize)
         igSetNextItemWidth(availableSize.x)
-        if igInputText("##InputPassword", cast[cstring](addr component.password[0]), 256, ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGui_InputTextFlags_Password.int32, nil, nil): 
-            result = component.connect()
+        if igInputText("##InputPassword", cast[cstring](addr component.passwordInput[0]), 256, ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGui_InputTextFlags_Password.int32, nil, nil): 
+            component.connect()
             igCloseCurrentPopup() 
         
         # Display error message
@@ -103,7 +102,7 @@ proc draw*(component: ConnectionModalComponent): tuple[username, password: strin
         igBeginDisabled(
             ($cast[cstring]((addr component.host[0])) == "") or 
             (component.port <= 0) or
-            ($cast[cstring]((addr component.username[0])) == "")
+            ($cast[cstring]((addr component.usernameInput[0])) == "")
         )
 
         igGetContentRegionAvail(addr availableSize)
@@ -113,7 +112,7 @@ proc draw*(component: ConnectionModalComponent): tuple[username, password: strin
         igDummy(vec2(0.0f, 10.0f))
 
         if igButton("Connect", vec2(availableSize.x, 0.0f)): 
-            result = component.connect()
+            component.connect()
             igCloseCurrentPopup() 
         
         igEndDisabled()

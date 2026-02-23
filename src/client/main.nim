@@ -89,10 +89,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
         dockspace.draw(addr showConquest, views, addr dockTop, addr dockBottom, addr dockTopLeft, addr dockTopRight)
 
         # Show connection modal if not connected to a team server
-        var authInfo: tuple[username, password: string]
         if cq.connection == nil:
             igOpenPopup_str("Connect", ImGui_PopupFlags_None.int32)
-            authInfo = connectModal.draw()
+            connectModal.draw()
                     
         if cq.connection != nil:
             # Draw UI components
@@ -128,8 +127,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         cq.connection.sendPublicKey(clientKeyPair.publicKey)
 
                         # Authentication 
-                        cq.connection.sendAuthentication(authInfo.username, authInfo.password) 
-                        cq.connection.user = authInfo.username
+                        cq.connection.sendAuthentication(connectModal.username, connectModal.password) 
+                        cq.connection.user = connectModal.username
 
                     of CLIENT_AUTH_RESULT: 
                         if event.data["success"].getBool(): 
