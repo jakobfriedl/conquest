@@ -52,7 +52,7 @@ type
         MODULE_FILESYSTEM = 8'u32 
         MODULE_FILETRANSFER = 16'u32
         MODULE_SCREENSHOT = 32'u32
-        MODULE_SYSTEMINFO = 64'u32 
+        MODULE_PROCESS = 64'u32 
         MODULE_TOKEN = 128'u32
 
     ListenerType* {.size: sizeof(uint8).} = enum

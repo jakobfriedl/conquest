@@ -50,7 +50,7 @@ proc parseModuleType*(moduleName: string): ModuleType =
     of "filesystem": return MODULE_FILESYSTEM
     of "filetransfer": return MODULE_FILETRANSFER
     of "screenshot": return MODULE_SCREENSHOT
-    of "systeminfo": return MODULE_SYSTEMINFO
+    of "process": return MODULE_PROCESS
     of "token": return MODULE_TOKEN
     else: discard
 

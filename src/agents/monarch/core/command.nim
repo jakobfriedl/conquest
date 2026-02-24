@@ -276,7 +276,7 @@ when ((MODULES and cast[uint32](MODULE_SCREENSHOT)) == cast[uint32](MODULE_SCREE
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-when ((MODULES and cast[uint32](MODULE_SYSTEMINFO)) == cast[uint32](MODULE_SYSTEMINFO)):
+when ((MODULES and cast[uint32](MODULE_PROCESS)) == cast[uint32](MODULE_PROCESS)):
     import ../utils/process
 
     commands[CMD_PS] = proc(ctx: AgentCtx, task: Task): TaskResult = 
