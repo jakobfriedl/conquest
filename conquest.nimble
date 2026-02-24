@@ -9,8 +9,9 @@ srcDir        = "src"
 # Build tasks 
 
 import os, strformat
-let cqRoot = getCurrentDir()
+let cqRoot = getEnv("CONQUEST_ROOT", getCurrentDir())
 task server, "Build conquest server binary": 
+
     exec fmt"nim c -d:release -d:CONQUEST_ROOT={cqRoot} src/server/main.nim"
 
 task server_debug, "Build conquest client binary in debug mode":
