@@ -184,11 +184,24 @@ when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
             let assembly = task.args[0].data
             var arguments: seq[string] = @[]
 
-            for i in 1 ..< task.args.len:
-                if task.args[i].data.len > 0:
-                    arguments.add(Bytes.toString(task.args[i].data))
+            # Parse assembly arguments into a list of strings
+            if task.args.len > 1 and task.args[1].data.len > 0:
+                let input = Bytes.toString(task.args[1].data)
+                var j = 0
+                while j < input.len:
+                    while j < input.len and input[j] in {' ', '\t'}: inc j
+                    if j >= input.len: break
+                    var arg = ""
+                    if input[j] == '"':
+                        inc j
+                        while j < input.len and input[j] != '"':
+                            arg.add(input[j]); inc j
+                        if j < input.len: inc j
+                    else:
+                        while j < input.len and input[j] notin {' ', '\t'}:
+                            arg.add(input[j]); inc j
+                    if arg.len > 0: arguments.add(arg)
             
-            # Unpacking assembly file, since it contains the file name too.
             var unpacker = Unpacker.init(Bytes.toString(assembly))
             let 
                 fileName = unpacker.getDataWithLengthPrefix()
@@ -196,12 +209,12 @@ when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
 
             print fmt"   [>] Executing .NET assembly {fileName}."
             let (assemblyInfo, output) = dotnetInlineExecuteGetOutput(string.toBytes(assemblyBytes), arguments)
-
+            
             if output != "":
                 return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(assemblyInfo & "\n" & output))
             else: 
                 return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
-
+                
         except CatchableError as err: 
             return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
