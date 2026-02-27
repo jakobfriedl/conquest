@@ -85,7 +85,8 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
         ext = "dll"
         additionalFlags = """
 --app:lib
---nomain"""
+--nomain
+--passL:"-static-libgcc -static-libstdc++ -Wl,-Bstatic -lpthread""""
     of BIN: ext = "bin"
 
     let configFile = fmt"{CONQUEST_ROOT}/src/agents/monarch/nim.cfg"  

