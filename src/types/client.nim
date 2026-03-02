@@ -38,7 +38,7 @@ type
         commands*: seq[Command]
 
 # UI Components
-const MAX_INPUT_LENGTH* = 4096 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets)
+const MAX_INPUT_LENGTH* = 16384 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets, certficates, ...)
 
 type 
     ConnectionModalComponent* = ref object of RootObj
