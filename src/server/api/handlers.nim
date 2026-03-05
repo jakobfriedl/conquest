@@ -12,30 +12,25 @@ import ../../types/[common, server, protocol, event]
   Functions relevant for dealing with the agent API, such as registering new agents, querying tasks and posting results
 ]#
 proc register*(registrationData: seq[byte], remoteAddress: string): bool {.discardable.} = 
-
-    # The following line is required to be able to use the `cq` global variable for console output
     {.cast(gcsafe).}:
-
         try:
             let agent: Agent = cq.deserializeNewAgent(registrationData, remoteAddress)
 
-            # Validate that listener exists        
             if not cq.dbListenerExists(agent.listenerId.toUpperAscii): 
-                raise newException(CatchableError, fmt"{agent.ipInternal} attempted to register to non-existent listener: {agent.listenerId}." & "\n")
+                raise newException(CatchableError, fmt"{agent.ipInternal} attempted to register to non-existent listener: {agent.listenerId}.")
 
-            # Store agent in database
-            if not cq.dbStoreAgent(agent): 
-                raise newException(CatchableError, fmt"Failed to insert agent {agent.agentId} into database." & "\n")
+            if cq.dbAgentExists(agent.agentId):
+                raise newException(CatchableError, fmt"Agent {agent.agentId} attempted to register but already exists.")
 
-            # Create log directory
+            if not cq.dbStoreAgent(agent):
+                raise newException(CatchableError, fmt"Failed to insert agent {agent.agentId} into database.")
+
             if not cq.makeAgentLogDirectory(agent.agentId):
-                raise newException(CatchableError, "Failed to create log directory.\n")
+                cq.error("Failed to create log directory.\n")
+                return false
 
             cq.agents[agent.agentId] = agent
-
-            cq.info("Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
-            
-            # Send new agent to client
+            cq.info("Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}")
             cq.sendAgent(agent)
             cq.sendEventlogItem(LOG_INFO_SHORT, fmt"Agent {agent.agentId} connected to listener {agent.listenerId}.")
             return true
@@ -54,21 +49,22 @@ proc getTasks*(heartbeat: seq[byte]): Table[string, seq[seq[byte]]] =
             agentId = Uuid.toString(request.header.agentId)
             listenerId = Uuid.toString(request.listenerId)
             timestamp = request.timestamp
+        var tasks = initTable[string, seq[seq[byte]]]()
 
         # Check if listener exists
         if not cq.dbListenerExists(listenerId): 
-            raise newException(ValueError, fmt"Task-retrieval request made to non-existent listener: {listenerId}." & "\n")
+            raise newException(ValueError, fmt"Task-retrieval request made to non-existent listener: {listenerId}.")
 
         # Check if agent exists
         if not cq.dbAgentExists(agentId): 
-            raise newException(ValueError, fmt"Task-retrieval request made to non-existent agent: {agentId}." & "\n")
+            raise newException(ValueError, fmt"Task-retrieval request made to non-existent agent: {agentId}.")
+
+        if not cq.agents.hasKey(agentId):
+            return tasks
 
         # Update the last check-in date for the accessed agent
         cq.agents[agentId].latestCheckin = cast[int64](timestamp)
         cq.sendAgentCheckin(agentId)
-
-        # Return tasks
-        var tasks = initTable[string, seq[seq[byte]]]()
         
         proc collectTasks(agentId: string)=
             var temp = newSeq[seq[byte]]()

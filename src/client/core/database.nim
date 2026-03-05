@@ -54,10 +54,10 @@ proc dbScriptExists*(path: string): bool =
 proc dbGetScriptPaths*(): seq[string] = 
     try: 
         let clientDb = openDatabase(CONQUEST_ROOT & "/data/client.db", mode=dbReadWrite)
-        for row in clientDb.iterate("SELECT DISTINCT path FROM scripts;"):
+        let rows = clientDb.all("SELECT DISTINCT path FROM scripts;")
+        clientDb.close()
+        for row in rows:
             let (path,) = row.unpack((string,))
             result.add(path)
-        clientDb.close()
-
     except: 
         echo "[-] " & getCurrentExceptionMsg()

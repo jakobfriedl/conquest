@@ -93,7 +93,7 @@ proc httpGet*(request: Request) =
             request.respond(200, headers = headers, body = payload)
 
         except CatchableError as err:
-            echo err.msg
+            cq.error(err.msg)
             request.respond(404, body = "")
 
 #[

@@ -55,11 +55,6 @@ proc draw*(component: FileBrowserComponent) =
 
     # Buttons 
     igSameLine(0.0f, textSpacing)
-    if igButton("List drives", vec2(0.0f, 0.0f)):
-        # TODO: Implement command to list drives
-        discard 
-
-    igSameLine(0.0f, textSpacing)
     if igButton("List working directory", vec2(0.0f, 0.0f)):
         sendTask(agent.agentId, "ls", silent = true)
 

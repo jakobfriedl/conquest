@@ -68,6 +68,7 @@ lang = [
     "en-US",
     "de-AT"
 ]
+page = "1$"
 
 # Defines arbitrary headers that are added by the agent when performing a HTTP GET request 
 [http-get.agent.headers]

@@ -1,4 +1,4 @@
-import mummy, tables
+import mummy, tables, tiny_sqlite
 import ./[common, protocol] 
 
 type 
@@ -54,7 +54,7 @@ type
 # Team server context
 type 
     Conquest* = ref object
-        dbPath*: string
+        db*: DbConn
         listeners*: Table[string, Listener]
         threads*: Table[string, Thread[Listener]]
         agents*: Table[string, Agent]

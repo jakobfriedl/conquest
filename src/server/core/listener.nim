@@ -70,7 +70,7 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
         cq.listeners[listener.listenerId] = l
 
         # Store listener in database
-        if not cq.dbListenerExists(listener.listenerId.toUpperAscii): 
+        if not cq.dbListenerExists(listener.listenerId): 
             if not cq.dbStoreListener(l):
                 raise newException(CatchableError, "Failed to store listener in database.")
 

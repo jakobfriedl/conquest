@@ -24,7 +24,6 @@ proc init*(T: type Conquest, profileString: string): Conquest =
     cq.profileString = profileString
     cq.profile = parseString(profileString)
     cq.keyPair = loadKeyPair(CONQUEST_ROOT & "/" & cq.profile.getString("private-key-file"))
-    cq.dbPath = CONQUEST_ROOT & "/" & cq.profile.getString("database-file")
     cq.clients = initTable[string, WsConnection]() 
     return cq
 
@@ -119,8 +118,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
 
             of CLIENT_AGENT_REMOVE: 
                 let agentId = event.data["agentId"].getStr()
-                discard cq.dbDeleteAgentByName(agentId)
-                cq.agents.del(agentId)
+                cq.dbDeleteAgentById(agentId)
 
             of CLIENT_LOOT_REMOVE: 
                 if not cq.dbDeleteLootById(event.data["lootId"].getStr()): 
@@ -178,12 +176,10 @@ proc startServer*(profilePath: string) =
         cq.info("Using profile \"", cq.profile.getString("name"), "\" (", profilePath ,").")
         
         # Initialize database
-        cq.dbInit()
-        for agent in cq.dbGetAllAgents():
-            cq.agents[agent.agentId] = agent
+        cq.dbInit(cq.profile.getString("database-file"))
+        cq.dbGetAllAgents()
         for listener in cq.dbGetAllListeners():
-            # Restart existing listeners
-            cq.listenerStart(listener)
+            cq.listenerStart(listener)  # Restart existing listener
 
         # Start websocket server
         var router: Router

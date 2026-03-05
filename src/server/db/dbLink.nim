@@ -3,42 +3,34 @@ import ../core/logger
 import ../../common/utils
 import ../../types/server
 
+#[
+    Link database functions
+]#
+
 proc dbStoreLink*(cq: Conquest, parent, child: string): bool = 
     try: 
-        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
-
-        conquestDb.exec("""
+        cq.db.exec("""
         INSERT INTO links (linkId, parentId, childId)
         VALUES (?, ?, ?);
         """, generateUuid(), parent, child)
-
-        conquestDb.close() 
     except: 
         cq.error(getCurrentExceptionMsg())
         return false
-    
     return true
 
 proc dbGetLinkedAgents*(cq: Conquest, agentId: string): seq[string] = 
-    try: 
-        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
-
-        for row in conquestDb.iterate("SELECT linkId, parentId, childId FROM links WHERE parentId = ?;", agentId):
+    try:
+        let rows = cq.db.all("SELECT linkId, parentId, childId FROM links WHERE parentId = ?;", agentId)
+        for row in rows:
             let (_, _, childId) = row.unpack((string, string, string))
             result.add(childId)
-
-        conquestDb.close()
     except: 
         cq.error(getCurrentExceptionMsg())
 
 proc dbDeleteLink*(cq: Conquest, parent, child: string): bool = 
     try: 
-        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
-
-        conquestDb.exec("DELETE FROM links WHERE parentId = ? AND childId = ?", parent, child)
-
-        conquestDb.close()
+        cq.db.exec("DELETE FROM links WHERE parentId = ? AND childId = ?", parent, child)
     except: 
+        cq.error(getCurrentExceptionMsg())
         return false
-    
     return true
