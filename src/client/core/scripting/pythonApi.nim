@@ -89,7 +89,7 @@ proc addArgFile*(self: Command, name, description: string, required: bool = fals
         isRequired: required, 
         isFlag: false,
         flag: "",
-        argType: BINARY,
+        argType: FILE,
         binDefault: default,
         nargs: 1
     ))
@@ -102,7 +102,7 @@ proc addFlagFile*(self: Command, flag, name, description: string, required: bool
         isRequired: required, 
         isFlag: true,
         flag: flag,
-        argType: BINARY,
+        argType: FILE,
         binDefault: default,
         nargs: 1
     ))
@@ -250,7 +250,6 @@ proc pack*(types: string, args: seq[PyObject]): seq[byte] {.exportpy.} =
     
     return packer.pack()     
 
-
 proc log*(message: string) {.exportpy.} = 
     echo ">> ", message
 
@@ -287,3 +286,10 @@ proc get_bool*(args: seq[TaskArg], i: int = 0): bool {.exportpy.} =
     if i >= args.len(): 
         return false
     return cast[bool](args[i].data[0])
+
+proc get_file*(args: seq[TaskArg], i: int = 0): tuple[name: string, data: seq[byte]] {.exportpy.} = 
+    if i >= args.len():
+        return ("", @[])
+    var unpacker = Unpacker.init(Bytes.toString(args[i].data))
+    result.name = unpacker.getDataWithLengthPrefix()                    # File name
+    result.data = string.toBytes(unpacker.getDataWithLengthPrefix())    # File contents

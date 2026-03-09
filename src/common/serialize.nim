@@ -27,7 +27,7 @@ proc addArgument*(packer: Packer, arg: TaskArg): Packer {.discardable.} =
 
     # Add argument data
     case cast[ArgType](arg.argType): 
-    of STRING, BINARY: 
+    of STRING, FILE: 
         # Add length prefix for variable-length data types
         packer.add(cast[uint32](arg.data.len))
         if arg.data.len > 0:
@@ -131,7 +131,7 @@ proc getArgument*(unpacker: Unpacker): TaskArg =
     result.argType = unpacker.getUint8()
     
     case cast[ArgType](result.argType):
-    of STRING, BINARY:
+    of STRING, FILE:
         # Variable-length fields are prefixed with the content-length
         let length = unpacker.getUint32()
         result.data = unpacker.getBytes(int(length))

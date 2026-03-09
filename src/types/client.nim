@@ -19,7 +19,7 @@ type
             intDefault*: int 
         of BOOL:
             boolDefault*: bool 
-        of BINARY: 
+        of FILE: 
             binDefault*: string
 
     Command* = ref object of PyNimObjectExperimental

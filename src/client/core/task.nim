@@ -46,7 +46,7 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
         arg.data = @[if value == "true": 1'u8 else: 0'u8]
     of STRING:
         arg.data = string.toBytes(value)
-    of BINARY: 
+    of FILE: 
         var packer = Packer.init() 
         let 
             fileName = cast[string](extractFilename(cast[Path](value)))
@@ -64,7 +64,7 @@ proc getDefaultValue*(argument: Argument): string =
         return $argument.intDefault
     of BOOL:
         return $argument.boolDefault
-    of BINARY:
+    of FILE:
         return argument.binDefault
 
 proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] = 

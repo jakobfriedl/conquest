@@ -89,7 +89,7 @@ type
         STRING = 0'u8
         INT = 1'u8
         BOOL = 2'u8 
-        BINARY = 3'u8 
+        FILE = 3'u8 
 
     PacketType* = enum 
         MSG_TASK = 0'u8

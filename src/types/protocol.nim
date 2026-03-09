@@ -40,7 +40,7 @@ type
 
     TaskArg* = object 
         argType*: uint8             # [1 byte  ] argument type
-        data*: seq[byte]            # variable length data (for variable data types (STRING, BINARY), the first 4 bytes indicate data length)
+        data*: seq[byte]            # variable length data (for variable data types (STRING, FILE), the first 4 bytes indicate data length)
 
     Task* = object 
         header*: Header
