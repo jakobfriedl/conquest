@@ -37,6 +37,7 @@ proc interact(component: SessionsTableComponent) =
     
     component.selection.ImGuiSelectionBasicStorage_Clear()
 
+
 proc draw*(component: SessionsTableComponent) = 
     igBegin(component.title.cstring, component.showComponent, 0)
 
@@ -79,7 +80,7 @@ proc draw*(component: SessionsTableComponent) =
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
         # Sort sessions table based on first checkin
-        let agents = cq.sessions.agents.values().toSeq().sortedByIt(it.firstCheckin)
+        let agents = cq.sessions.agents.values().toSeq().sortedByIt(it.firstCheckin).filterIt(not it.hidden)
 
         for i, agent in agents: 
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
@@ -101,6 +102,7 @@ proc draw*(component: SessionsTableComponent) =
                 # Interact with session on double-click
                 if igIsMouseDoubleClicked_Nil(ImGui_MouseButton_Left.int32):
                     component.interact()
+                    component.interact = true
 
             if igTableSetColumnIndex(1): 
                 igText(agent.listenerId.cstring)
@@ -269,6 +271,15 @@ proc draw*(component: SessionsTableComponent) =
 
             igSeparator()
 
+            # Hide agent from sessions view without removing it from the database
+            if igMenuItem("Hide", nil, false, true): 
+                for i, agent in agents:
+                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        component.agents[agent.agentId].hidden = true
+
+                ImGuiSelectionBasicStorage_Clear(component.selection)
+                igCloseCurrentPopup()
+
             # Menu item to remove an agent from the team server database
             if igMenuItem("Remove", nil, false, true): 
                 for i, agent in agents:
@@ -284,6 +295,11 @@ proc draw*(component: SessionsTableComponent) =
         multiSelectIO = igEndMultiSelect()
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
         
+        # Clear selection after double-click interaction
+        if component.interact:
+            ImGuiSelectionBasicStorage_Clear(component.selection)
+            component.interact = false
+
         # Auto-scroll to bottom
         if igGetScrollY() >= igGetScrollMaxY():
             igSetScrollHereY(1.0f)

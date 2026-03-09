@@ -142,6 +142,7 @@ type
         agents*: Table[string, UIAgent]
         selection*: ptr ImGuiSelectionBasicStorage
         focusedConsole*: string 
+        interact*: bool
     
     DownloadsComponent* = ref object of RootObj
         title*: string
@@ -234,6 +235,7 @@ type
         workingDirectory*: Option[string]
         console*: ConsoleComponent 
         consoleTitle*: string
+        hidden*: bool
 
     UIListener* = ref object
         listenerId*: string
