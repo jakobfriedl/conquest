@@ -147,10 +147,9 @@ type
     DownloadsComponent* = ref object of RootObj
         title*: string
         showComponent*: ptr bool
-        items*: seq[LootItem]
-        contents*: Table[string, string]
+        items*: Table[string, tuple[item: LootItem, contents: string]]
         textarea*: TextareaWidget
-        selectedIndex*: int
+        selectedLootId*: string
 
     ScreenshotTexture* = ref object 
         textureId*: GLuint
@@ -161,9 +160,8 @@ type
     ScreenshotsComponent* = ref object of RootObj
         title*: string
         showComponent*: ptr bool
-        items*: seq[LootItem]
-        selectedIndex*: int
-        textures*: Table[string, ScreenshotTexture]
+        items*: Table[string, tuple[item: LootItem, texture: ScreenshotTexture]]
+        selectedLootId*: string
 
     ConsoleItem* = ref object 
         itemType*: LogType

@@ -1,7 +1,7 @@
-import times, tables, native_dialogs
+import times, tables, native_dialogs, sequtils, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../../common/utils
-import ../../../types/[common, client]
+import ../../../types/[common, client, event]
 import ../../utils/[appImGui, globals]
 import ../../core/websocket
 
@@ -9,14 +9,12 @@ proc LootScreenshots*(title: string, showComponent: ptr bool): ScreenshotsCompon
     result = new ScreenshotsComponent
     result.title = title
     result.showComponent = showComponent
-    result.items = @[]
-    result.selectedIndex = -1
-    result.textures = initTable[string, ScreenshotTexture]()
+    result.items = initTable[string, tuple[item: LootItem, texture: ScreenshotTexture]]()
 
 proc addTexture*(component: ScreenshotsComponent, lootId: string, data: string) = 
     var textureId: GLuint
     let (width, height) = loadTextureFromBytes(string.toBytes(data), textureId)
-    component.textures[lootId] = ScreenshotTexture(
+    component.items[lootId].texture = ScreenshotTexture(
         textureId: textureId,
         data: data,
         width: width, 
@@ -58,51 +56,47 @@ proc draw*(component: ScreenshotsComponent) =
             igTableSetupScrollFreeze(0, 1)
             igTableHeadersRow()
         
-            for i, item in component.items:
+            for i, entry in component.items.values().toSeq().sortedByIt(it.item.timestamp):
+                let item = entry.item
                 igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
                 
                 if igTableSetColumnIndex(0):
                     igPushID_Int(i.int32)
-                    let isSelected = component.selectedIndex == i
+                    let isSelected = component.selectedLootId == item.lootId
                     if igSelectable_Bool(item.lootId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0)):
-                        component.selectedIndex = i
+                        component.selectedLootId = item.lootId
                 
                     if igIsItemHovered(ImGuiHoveredFlags_None.int32) and igIsMouseClicked_Bool(ImGuiMouseButton_Right.int32, false):
-                        component.selectedIndex = i
+                        component.selectedLootId = item.lootId
                     
                     igPopID()                
 
                 if igTableSetColumnIndex(1):
                     igText(item.agentId.cstring)
-
                 if igTableSetColumnIndex(2):
                     igText(item.host.cstring)
-
                 if igTableSetColumnIndex(3):
                     igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss").cstring)
-
                 if igTableSetColumnIndex(4):
                     igText(($item.size).cstring)
 
             # Handle right-click context menu
-            if component.selectedIndex >= 0 and component.selectedIndex < component.items.len and igBeginPopupContextWindow("Downloads", ImGui_PopupFlags_MouseButtonRight.int32): 
-                
-                let item = component.items[component.selectedIndex]
+            if component.selectedLootId != "" and component.items.hasKey(component.selectedLootId) and igBeginPopupContextWindow("Downloads", ImGui_PopupFlags_MouseButtonRight.int32): 
+                let item = component.items[component.selectedLootId].item
 
                 if igMenuItem("Download", nil, false, true):                     
-                    # Download screenshot 
                     try: 
                         let path = callDialogFileSave("Save File") 
-                        let data = component.textures[item.lootId].data
+                        let data = component.items[component.selectedLootId].texture.data
                         writeFile(path, data)
                     except IOError: 
                         discard 
                     igCloseCurrentPopup()
 
                 if igMenuItem("Remove", nil, false, true): 
-                    # Task team server to remove the loot item 
                     cq.connection.sendRemoveLoot(item.lootId)
-                    component.items.delete(component.selectedIndex)
+                    component.items.del(item.lootId)
+                    component.selectedLootId = ""
                     igCloseCurrentPopup()
 
                 igEndPopup()
@@ -112,25 +106,27 @@ proc draw*(component: ScreenshotsComponent) =
     igEndChild()
     igSameLine(0.0f, 0.0f)
     
-    # Right panel (file content)
+    if igIsKeyPressed_Bool(ImGui_Key_Escape, false):
+        component.selectedLootId = ""
+
+    # Right panel (image preview)
     if igBeginChild_Str("##Preview", vec2(0.0f, 0.0f), ImGui_ChildFlags_Borders.int32, ImGui_WindowFlags_None.int32):
 
-        if component.selectedIndex >= 0 and component.selectedIndex < component.items.len:
+        if component.selectedLootId != "" and component.items.hasKey(component.selectedLootId):
+            let entry = component.items[component.selectedLootId]
 
-            let item = component.items[component.selectedIndex]
-            
-            # Check if the texture for the loot item has already been loaded from the team server
+            # Check if the texture has already been loaded from the team server
             # If the texture doesn't exist yet, send a request to the team server to retrieve and render it
-            if not component.textures.hasKey(item.lootId): 
-                cq.connection.sendGetLoot(item.lootId)     
-                component.textures[item.lootId] = nil       # Ensure that the sendGetLoot() function is sent only once by setting a value for the table key
+            if entry.texture.isNil():
+                cq.connection.sendGetLoot(component.selectedLootId)
+                component.items[component.selectedLootId].texture = ScreenshotTexture() # Ensure that the sendGetLoot() function is sent only once by setting a value for the table key
 
-            # Display the image preview
-            else: 
-                let texture = component.textures[item.lootId]
-                if not texture.isNil(): 
+            else:
+                let texture = entry.texture
+                if texture.textureId != 0:
                     igImage(ImTextureRef(internal_TexData: nil, internal_TexID: texture.textureId), vec2(texture.width, texture.height), vec2(0, 0), vec2(1, 1))
 
         else:
             igText("Select item for preview.")
+
     igEndChild()

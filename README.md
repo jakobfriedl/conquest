@@ -1,6 +1,6 @@
 ![Banner](assets/banner.png) 
 
-**Conquest** is a feature-rich, extensible and malleable command & control/post-exploitation framework developed for penetration testing and adversary simulation. Conquest's team server, operator client and agent have all been developed from scratch using the Nim programming language and are designed with modularity and flexibility in mind. It features custom C2 communication via binary packets over HTTP, a client GUI developed using Dear ImGui and the `Monarch` agent, a modular C2 implant aimed at Windows targets.
+**Conquest** is a feature-rich, extensible and malleable command & control/post-exploitation framework developed for penetration testing and adversary simulation. Conquest's team server, operator client and agent have all been developed using the Nim programming language and are designed with modularity and flexibility in mind. It features an advanced malleable profile system for customizing network traffic, a multi-user client GUI developed using Dear ImGui and the `Monarch` agent, an extensible C2 implant aimed at Windows targets.
 
 ![Conquest Client](assets/readme-1.png)
 
@@ -15,23 +15,35 @@ For more information about architecture, usage and features, check out the [docu
 
 ## Features
 
-- Flexible operator GUI client developed using Dear ImGui
-- HTTP listeners with support for callback hosts (Redirectors)
-- Support for malleable C2 profiles (TOML)
-- Customizable payload generation  
+### Conquest Team Server
+  
+- Different listener types: HTTP, SMB
+- Advanced malleable C2 profile system for configuring network traffic (TOML v1.1)
 - Encrypted C2 communication leveraging AES256-GCM and X25519 key exchange
-- Sleep obfuscation via Ekko, Zilean or Foliage with support for call stack spoofing
-- In-memory execution of COFF/BOF files
-- In-memory execution of .NET assemblies
-- Token impersonation 
-- AMSI/ETW patching using hardware breakpoints
-- Compile-time string obfuscation 
-- Wide selection of built-in post-exploitation modules
-- Looting and loot management (downloads & screenshots)
 - Logging of all operator activity
+- Loot management for downloads and screenshots
+
+### Operator Client
+
+- Websocket-based GUI developed using Dear ImGui
+- Multi-client support and password-based user authentication
+- Flexible payload generation with module selection
+- File and process browser components
+- Console history and auto-complete for agent commands
+- Extensible Python Scripting API for creating commands and modules
+- Battle-tested [module ecosystem](https://github.com/jakobfriedl/conquest-modules) 
+
+### Monarch Agent
+
+- Different payload types: .exe, .dll, .svc.exe
+- Sleep obfuscation via Ekko, Zilean or Foliage with support for call stack spoofing
+- Stable COFF/BOF Loader
+- In-memory execution of .NET assemblies
+- Token manipulation 
+- AMSI/ETW patching via hardware breakpoints
+- Compile-time string obfuscation 
 - Self-destruct functionality
 - Agent kill date & working hours
-- Fully written in Nim
 
 ## Screenshots
 

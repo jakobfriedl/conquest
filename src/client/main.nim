@@ -235,9 +235,11 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         let lootItem = event.data.to(LootItem)
                         case lootItem.itemType:
                         of DOWNLOAD:
-                            cq.downloads.items.add(lootItem)
+                            if not cq.downloads.items.hasKey(lootItem.lootId):
+                                cq.downloads.items[lootItem.lootId] = (item: lootItem, contents: "")
                         of SCREENSHOT:
-                            cq.screenshots.items.add(lootItem)
+                            if not cq.screenshots.items.hasKey(lootItem.lootId):
+                                cq.screenshots.items[lootItem.lootId] = (item: lootItem, texture: nil)
                         else: discard 
 
                     of CLIENT_LOOT_DATA:
@@ -247,10 +249,10 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         
                         case lootItem.itemType: 
                         of DOWNLOAD: 
-                            cq.downloads.contents[lootItem.lootId] = data
+                            cq.downloads.items[lootItem.lootId].contents = data
                         of SCREENSHOT: 
                             cq.screenshots.addTexture(lootItem.lootId, data)
-                        else: discard 
+                        else: discard
 
                     of CLIENT_IMPERSONATE_TOKEN: 
                         let 
