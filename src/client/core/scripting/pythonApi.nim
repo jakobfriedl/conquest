@@ -198,7 +198,7 @@ proc bof_pack*(types: string, args: seq[PyObject]): string {.exportpy.} =
     return Bytes.toHex(uint32.toBytes(uint32(data.len())) & data)
 
 # Pack arguments into bytes
-# https://sleep.dashnine.org/manual/
+# https://sleep.dashnine.org/manual/pack.html
 proc pack*(types: string, args: seq[PyObject]): seq[byte] {.exportpy.} = 
     if types.len() != args.len():
         raise newException(ValueError, "Invalid number of arguments.")

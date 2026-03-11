@@ -54,9 +54,6 @@ proc parseModuleType*(moduleName: string): ModuleType =
     of "token": return MODULE_TOKEN
     else: discard
 
-proc getCommandGroups*(component: ModuleManagerComponent): OrderedTable[string, OrderedTable[string, Command]] = 
-    return component.groups
-
 proc getCommands*(component: ModuleManagerComponent): OrderedTable[string, Command] = 
     for group in component.groups.values(): 
         for name, cmd in group: 

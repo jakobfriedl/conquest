@@ -1,5 +1,4 @@
-import std/[paths, tables]
-import strutils, strformat, sequtils, times
+import tables, strutils, strformat, sequtils, times, os
 import ./websocket
 import ../views/widgets/textarea
 import ../utils/[utils, globals]
@@ -49,7 +48,7 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
     of FILE: 
         var packer = Packer.init() 
         let 
-            fileName = cast[string](extractFilename(cast[Path](value)))
+            fileName = extractFilename(value)
             fileContents = readFile(value)
         packer.addDataWithLengthPrefix(string.toBytes(fileName))
         packer.addDataWithLengthPrefix(string.toBytes(fileContents))

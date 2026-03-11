@@ -1,5 +1,5 @@
 import imguin/[cimgui, glfw_opengl]
-import sequtils, strutils, strformat, tables, times, algorithm, options, std/paths
+import sequtils, strutils, strformat, tables, times, algorithm, options, os
 import ../utils/[appImGui, globals]
 import ../core/[task, websocket]
 import ./moduleManager
@@ -182,7 +182,7 @@ proc draw*(component: FileBrowserComponent) =
                     if open:
                         if hasChildren:
                             for childName, childEntry in entry.children.get().pairs:
-                                printDirectoryEntry(childEntry, $(cast[Path](path) / cast[Path](childName)))
+                                printDirectoryEntry(childEntry, path / childName)
                         igTreePop()
 
             for name, entry in fs.pairs:

@@ -15,6 +15,9 @@
 
 ## General
 
+> [!TIP] 
+>  Conquest's profile system is covered in-depth in this blog post: https://jakobfriedl.github.io/blog/conquest-profiles/. 
+
 Conquest supports malleable C2 profiles written using the TOML configuration language and fully support the TOML v1.0.0 spec. This allows the complete customization of network traffic using data transformation, encoding and randomization. Wildcard characters `#` are replaced by a random alphanumerical character, making it possible to add even more variation to requests via randomized parameters or cookies. There is also the `$` wildcard, which is replaced by a single digit, for randomizing numeric values.  
 
 General settings that are defined at the beginning of the profile are the profile name and the relative location of important files, such as the team server's private key or the Conquest database.
@@ -33,6 +36,15 @@ The team server settings currently only include the host and port that the team 
 host = "0.0.0.0"
 port = 37573
 ``` 
+
+Operator credentials for user authentication are defined in this block as well. Currently, only password-based authentication is supported.
+
+```toml
+users = [
+    { username = "jakob", password = "conquest" }, 
+    { username = "operator", password = "conquest" }
+]
+```
 
 ## GET settings
 

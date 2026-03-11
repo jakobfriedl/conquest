@@ -9,6 +9,7 @@
   - [Registration](#registration)
   - [Heartbeat](#heartbeat)
   - [Task](#task)
+    - [Task forwarding](#task-forwarding)
   - [Result](#result)
 - [Cryptography](#cryptography)
 - [Directory Structure](#directory-structure)
@@ -24,22 +25,27 @@ The Conquest command & control framework consist of three major components that 
 
 ### Team Server
 
-The Conquest team server is the core of the framework, as it's main responsibility is serving the HTTP listeners with which the C2 agents communicate and queuing the tasks that are issued by the operator client. The team server further manages data about agents, listeners and loot in the Conquest database and records all agent and operator activity in log files. The team server exposes a WebSocket interface on port 37573 by default, which is used by the operator client to connect to the team server. This port can be changed in the C2 profile in the `[team-server]` section.
+The Conquest team server is the core of the framework, as it's main responsibility is serving the HTTP listeners with which the C2 agents communicate and queuing the tasks that are issued by the operator client. The team server further manages data about agents, listeners and loot in the Conquest database and records all agent and operator activity in log files. The team server exposes a WebSocket interface on port 37573 by default, which is used by the operator client to connect to the team server. The interface and port the team server listens on for client connections, as well as all operator credentials can be changed in the C2 profile in the `[team-server]` section.
 
 ```toml
 [team-server]
+host = "0.0.0.0"
 port = 37573
+users = [
+    { username = "jakob", password = "conquest" }, 
+    { username = "operator", password = "conquest" }
+]
 ```
 
 Starting the team server with the default profile is done with the following command.
 
 ```
-bin/server -p data/profile.toml
+bin/server -p data/profiles/profile.toml
 ```
 
 ### Operator Client
 
-The Conquest client is used by the operator to conduct the engagement. It is used for starting and stopping listeners, generating `Monarch` payloads and interacting with active agent sessions. The agent console is used to send commands to the agent and display the output. Currently, only one client can connect to the Conquest team server. By default, the client connects to localhost:37573, but the address and port can be specified in the command-line as shown below.
+The Conquest client is used by the operator to conduct the engagement. It is used for starting and stopping listeners, generating `Monarch` payloads and interacting with active agent sessions. The agent console is used to send commands to the agent and display the output. Conquest is a multiplayer framework, meaning that multiple operators can connect their clients to the same team server to interact with the same sessions and resources. By default, the client connects to localhost:37573, but the address and port can be specified in the command-line as shown below.
 
 ```
 bin/client -i <team-server-ip> -p <team-server-port>
@@ -47,11 +53,11 @@ bin/client -i <team-server-ip> -p <team-server-port>
 
 ![Operator Client](../assets/architecture-2.png)
 
-More information about the user interface can be found [here](./4-CLIENT.md)
+More information about the user interface can be found [here](./4-CLIENT.md).
 
 ### Agent (Monarch)
 
-The agent/implant/payload/beacon in Conquest is called `Monarch`. It is exclusively built to target Windows systems and can be equipped with different modules or commands during the generation. An agent is compiled to connect to a specific listener and has it's configuration embedded during the generation process. When it connects back to the team server, it can be tasked to execute the commands that have been built into it. As most other C2 agents, the `Monarch` uses beaconing to check-in with the team server periodically to poll for new tasks or to post the results of completed tasks. This is done over HTTP using a custom binary communication protocol, which is explained in more detail in subsequent sections. 
+The agent/implant/payload/beacon in Conquest is called `Monarch`. It is exclusively built to target Windows systems and can be equipped with different core modules or commands during the generation. An agent is compiled to connect to a specific listener and has it's configuration embedded during the generation process. When it connects back to the team server, it can be tasked to execute the commands that have been built into it. As most other C2 agents, the `Monarch` uses beaconing to check-in with the team server periodically to poll for new tasks or to post the results of completed tasks. This is done using a custom binary communication protocol, which is explained in more detail in subsequent sections. 
 
 ## Communication Protocol
 
@@ -135,10 +141,11 @@ The **Heartbeat** packet is comparable to a simple Check-in request. Between sle
 
 ```nim
 type Heartbeat* = object 
-        header*: Header            # [48 bytes ] fixed header
-        listenerId*: Uuid          # [4 bytes  ] listener id
-        timestamp*: uint32         # [4 bytes  ] unix timestamp
+    header*: Header            # [48 bytes ] fixed header
+    listenerId*: Uuid          # [4 bytes  ] listener id
+    timestamp*: uint32         # [4 bytes  ] unix timestamp
 ```
+   
 
 ### Task
 
@@ -160,7 +167,42 @@ type
         args*: seq[TaskArg]         # variable length arguments
 ```
 
-The number of arguments the agent needs to process is indicated by the argument count (argc) field. The first byte of an argument defines the argument’s type, such as INT, STRING or BINARY. While some argument types have fixed sized (boolean = 1 byte, integers = 4 bytes, …), variable-length arguments, such as strings or binary data are further prefixed with a 4-byte data length field that tells the recipient how many bytes they have to read until the next argument is defined. The currently supported argument types, `STRING`, `INT`, `SHORT`, `LONG`, `BOOL` and `BINARY` determine how an argument is processed. For instance, `BINARY` indicates that file path is passed as an argument, which is then read into memory and sent over the network.
+The number of arguments the agent needs to process is indicated by the argument count (argc) field. The first byte of an argument defines the argument’s type, such as INT, STRING or BINARY. While some argument types have fixed sized (boolean = 1 byte, integers = 4 bytes, …), variable-length arguments, such as strings or binary data are further prefixed with a 4-byte data length field that tells the recipient how many bytes they have to read until the next argument is defined. The currently supported argument types, `STRING`, `INT`, `SHORT`, `LONG`, `BOOL` and `FILE` determine how an argument is processed. For instance, `FILE` indicates that file path is passed as an argument, which is then read into memory and sent over the network.
+
+#### Task forwarding
+
+SMB agents communicate exclusively via named pipes rather than connecting to the team server directly. When an HTTP agent checks in, it retrieves all pending tasks, but also those destined for any linked child agents further down the chain. Each agent then processes the tasks it receives according to the following rules:
+
+1. If the task belongs to the **current agent**: execute it and return the result.
+2. If the task belongs to a **direct child agent**: forward it only to that specific child's named pipe.
+3. If the task belongs to an **indirect child agent**: forward it to all child agents and let them repeat the same process.
+
+The tasks are structured as follows:
+```
+┌───────────────────────────────────────────────────────────────┐
+│ Agent ID 1                                      │ 4 bytes     │
+│ Num Tasks                                       │ 1 byte      │
+│ ┌───────────────────────────────────────────────────────────┐ │
+│ │ Task 1 Length                                 │ 4 bytes   │ │
+│ │ Task 1 Data                                   │ variable  │ │
+│ ├───────────────────────────────────────────────────────────┤ │
+│ │ Task 2 Length                                 │ 4 bytes   │ │
+│ │ Task 2 Data                                   │ variable  │ │
+│ └───────────────────────────────────────────────────────────┘ │
+├───────────────────────────────────────────────────────────────┤
+│ Agent ID 2                                      │ 4 bytes     │
+│ Num Tasks                                       │ 1 byte      │
+│ ┌───────────────────────────────────────────────────────────┐ │
+│ │ Task 1 Length                                 │ 4 bytes   │ │
+│ │ Task 1 Data                                   │ variable  │ │
+│ └───────────────────────────────────────────────────────────┘ │
+├───────────────────────────────────────────────────────────────┤
+│ ...                                                           │
+└───────────────────────────────────────────────────────────────┘
+```
+
+Results follow the same path in reverse. Each agent collects its own results alongside any it reads back from its children's named pipes, combines them into a single response, and passes them up the chain. This keeps the number of network transactions to a minimum.
+
 
 ### Result
 
@@ -188,15 +230,15 @@ For each task that an agent executes, a result packet is sent to the team server
 
 ```nim
 type TaskResult* = object 
-        header*: Header 
-        taskId*: Uuid               # [4 bytes ] task id
-        listenerId*: Uuid           # [4 bytes ] listener id
-        timestamp*: uint32          # [4 bytes ] unix timestamp
-        command*: uint16            # [2 bytes ] command id 
-        status*: uint8              # [1 byte  ] success flag 
-        resultType*: uint8          # [1 byte  ] result data type
-        length*: uint32             # [4 bytes ] result length
-        data*: seq[byte]            # variable length result
+    header*: Header 
+    taskId*: Uuid               # [4 bytes ] task id
+    listenerId*: Uuid           # [4 bytes ] listener id
+    timestamp*: uint32          # [4 bytes ] unix timestamp
+    command*: uint16            # [2 bytes ] command id 
+    status*: uint8              # [1 byte  ] success flag 
+    resultType*: uint8          # [1 byte  ] result data type
+    length*: uint32             # [4 bytes ] result length
+    data*: seq[byte]            # variable length result
 ```
 
 ## Cryptography
@@ -282,22 +324,30 @@ On a high level, the directory structure of the Conquest framework looks as foll
 ```
 CONQUEST
 ├── bin/                        : Compiled binaries
+│
 ├── data/                       
+│   ├── conquest.db             : Team server database
+│   ├── client.db               : Client database
 │   ├── keys/                   : Private key(s)
 │   ├── logs/                   
 │   │   ├── <AGENT-UUID>/       : Agent session logs
 │   │   ├── teamserver.log      : Team server log (connections, events)
-│   └── loot/
-│       ├── <AGENT-UUID>/       : Agent loot (screenshots, downloads)
-│       ├── conquest.db         : Team server database
-│       └── profile.toml        : Default profile
+│   ├── loot/
+│   │   ├── <AGENT-UUID>/       : Agent loot (screenshots, downloads)
+│   ├── modules/                : Python modules for extending aegnt functionality
+│   └── profiles/               
+│       └── profiles.toml       : Default profile
+│
 ├── docs/                       : Documentation
+│
 ├── src/
-│   ├── agent/                  : Agent source code
+│   ├── agents/                  
+│   │   └── monarch/            : Monarch agent source code
 │   ├── client/                 : Operator client source code
 │   ├── common/                 : Cryptography, serialization, etc.
-│   ├── modules/                : Agent modules
-│   └── server/                 : Team server source code
+│   ├── server/                 : Team server source code
+│   └── types/                  : Type defintions
+│
 └── conquest.nimble             : "Makefile"
 ```
 

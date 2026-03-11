@@ -130,7 +130,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
     Handling console commands
 ]#
 proc displayHelp(component: ConsoleComponent) =
-   for group, commands in cq.moduleManager.getCommandGroups():
+   for group, commands in cq.moduleManager.groups:
         component.textarea.addItem(LOG_OUTPUT, group.toUpperAscii())
         for cmd in commands.values():
             component.textarea.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
