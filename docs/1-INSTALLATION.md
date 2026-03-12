@@ -1,8 +1,11 @@
 # Installation
 
 ## 1. Clone the Conquest repository
+
+Use the `--recurse-submodules` flag to clone the conquest-modules repository aswell. 
+
 ```
-git clone https://github.com/jakobfriedl/conquest
+git clone https://github.com/jakobfriedl/conquest --recurse-submodules
 cd conquest
 ```
 
