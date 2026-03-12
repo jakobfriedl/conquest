@@ -8,6 +8,8 @@ cd conquest
 
 ## 2. Install Nim.
 
+Conquest requires Nim version 2.2.6. To install the latest version, use the following command.
+
 ```bash
 curl https://nim-lang.org/choosenim/init.sh -sSf | sh
 ```
@@ -22,16 +24,10 @@ export PATH=/home/<user>/.nimble/bin:$PATH
 
 The Conquest binaries for team server and client are designed to be compiled and run on Ubuntu/Debian-based systems. The operator client requires the subsequent dependencies to be installed. To run the client on a Windows host, install the same dependencies in WSL.
 
-```
+```bash
 sudo apt update
 sudo apt install gcc g++ make git curl xz-utils
-sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgtk2.0-0
-```
-
-In some cases, the agent build process fails due to insufficient permissions. Execute the following command to make the build script executable.
-
-```
-chmod +x src/agent/build.sh
+sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgtk2.0-dev
 ```
 
 ## 4. Compile Conquest binaries 
@@ -41,6 +37,12 @@ The Conquest binaries are compiled using the `nimble` command, which installs an
 ```
 nimble server
 nimble client
+```
+
+When building, the Conquest root is set to the directory where `conquest.nimble` is located. If the framework's files are to be placed in a different location (e.g. `/usr/share`), it is possible to specify the root directory using an environment variable as follows. 
+
+```bash
+CONQUEST_ROOT="/usr/share/conquest" nimble server
 ```
 
 Optionally, the required dependencies can be installed manually using the following command prior to the compilation.
@@ -53,10 +55,10 @@ nimble install -d
 
 The default profile is located in [data/profile.toml](../data/profile.toml) and can be adapted by the operator.
 ```
-bin/server -p data/profile
+bin/server -p data/profiles/profile.toml
 ```
 
-On the first start, the Conquest team server creates the Conquest database in the data directory, as well as the team server's private key in data/keys, which is used for the key exchange between team server, client and agent. 
+On the first start, the Conquest team server creates the Conquest database in the data directory, as well as the team server's private key in data/keys, which is used for the key exchange between team server, client and agent.
 
 ![Team server start](../assets/install.png)
 

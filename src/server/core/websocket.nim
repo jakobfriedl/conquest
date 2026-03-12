@@ -1,8 +1,9 @@
-import times, json, base64, strformat
+import times, json, base64, strformat, tables
 import stb_image/write as stbiw
 import ./logger
-import ../../common/[types, utils, event]
-export sendHeartbeat, recvEvent
+import ../../common/[utils, event]
+import ../../types/[common, server, event]
+export recvEvent
 
 proc `%`*(agent: Agent): JsonNode =
     result = newJObject()
@@ -27,15 +28,29 @@ proc `%`*(agent: Agent): JsonNode =
 proc `%`*(listener: Listener): JsonNode =
     result = newJObject()
     result["listenerId"] = %listener.listenerId
-    result["hosts"] = %listener.hosts
-    result["address"] = %listener.address
-    result["port"] = %listener.port 
-    result["protocol"] = %listener.protocol
+    result["listenerType"] = %listener.listenerType
+    
+    case listener.listenerType:
+    of LISTENER_HTTP:
+        result["hosts"] = %listener.hosts
+        result["address"] = %listener.address
+        result["port"] = %listener.port 
+    of LISTENER_SMB:
+        result["pipe"] = %listener.pipe
+
+proc broadcast(cq: Conquest, event: Event, clientId: string) =
+    if clientId != "":
+        if cq.clients.hasKey(clientId): 
+            let client = cq.clients[clientId]
+            client.ws.sendEvent(event, client.sessionKey)
+    else:
+        for id, client in cq.clients:
+            client.ws.sendEvent(event, client.sessionKey)
 
 #[
     Server -> Client
 ]#
-proc sendPublicKey*(client: WsConnection, publicKey: Key) = 
+proc sendPublicKey*(cq: Conquest, publicKey: Key, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_KEY_EXCHANGE,
         timestamp: now().toTime().toUnix(),
@@ -43,10 +58,19 @@ proc sendPublicKey*(client: WsConnection, publicKey: Key) =
             "publicKey": encode(Bytes.toString(publicKey))
         }
     )
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
+    cq.broadcast(event, clientId)
 
-proc sendProfile*(client: WsConnection, profileString: string) = 
+proc sendAuthenticationResult*(cq: Conquest, success: bool, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_AUTH_RESULT,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "success": success
+        }
+    )
+    cq.broadcast(event, clientId)
+
+proc sendProfile*(cq: Conquest, profileString: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_PROFILE,
         timestamp: now().toTime().toUnix(),
@@ -54,10 +78,9 @@ proc sendProfile*(client: WsConnection, profileString: string) =
             "profile": profileString
         }
     )
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
+    cq.broadcast(event, clientId)
 
-proc sendEventlogItem*(client: WsConnection, logType: LogType, message: string) = 
+proc sendEventlogItem*(cq: Conquest, logType: LogType, message: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_EVENTLOG_ITEM,
         timestamp: now().toTime().toUnix(),
@@ -67,55 +90,14 @@ proc sendEventlogItem*(client: WsConnection, logType: LogType, message: string) 
         }
     )
 
-    # Log event
+    # Log event 
     let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
     log(fmt"[{timestamp}]{$logType}{message}")
 
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
+    if cq.clients.len > 0 or clientId != "":
+        cq.broadcast(event, clientId)
 
-proc sendAgent*(client: WsConnection, agent: Agent) = 
-    let event = Event(
-        eventType: CLIENT_AGENT_ADD, 
-        timestamp: now().toTime().toUnix(),
-        data: %agent
-    )
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
-
-proc sendListener*(client: WsConnection, listener: Listener) =
-    let event = Event(
-        eventType: CLIENT_LISTENER_ADD,
-        timestamp: now().toTime().toUnix(),
-        data: %listener
-    )
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
-
-proc sendAgentCheckin*(client: WsConnection, agentId: string) = 
-    let event = Event(
-        eventType: CLIENT_AGENT_CHECKIN,
-        timestamp: now().toTime().toUnix(),
-        data: %*{
-            "agentId": agentId
-        }
-    )
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
-
-proc sendAgentPayload*(client: WsConnection, bytes: seq[byte]) =
-    let event = Event(
-        eventType: CLIENT_AGENT_PAYLOAD, 
-        timestamp: now().toTime().toUnix(),
-        data: %*{
-            "payload": encode(bytes)
-        }
-    )
-    
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
-
-proc sendConsoleItem*(client: WsConnection, agentId: string, logType: LogType, message: string) = 
+proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: string, silent: bool = false, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_CONSOLE_ITEM,
         timestamp: now().toTime().toUnix(),
@@ -126,17 +108,65 @@ proc sendConsoleItem*(client: WsConnection, agentId: string, logType: LogType, m
         }
     )
 
-    # Log agent console item 
+    # Log console item
     let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
     if logType != LOG_OUTPUT: 
         log(fmt"[{timestamp}]{$logType}{message}", agentId)
     else: 
         log(message, agentId)
 
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
+    if cq.clients.len > 0 or clientId != "":
+        if not silent: 
+            cq.broadcast(event, clientId)
 
-proc sendBuildlogItem*(client: WsConnection, logType: LogType, message: string) = 
+proc sendAgent*(cq: Conquest, agent: Agent, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_AGENT_ADD, 
+        timestamp: now().toTime().toUnix(),
+        data: %agent
+    )
+    cq.broadcast(event, clientId)
+
+proc sendListener*(cq: Conquest, listener: Listener, clientId: string = "") =
+    let event = Event(
+        eventType: CLIENT_LISTENER_ADD,
+        timestamp: now().toTime().toUnix(),
+        data: %listener
+    )
+    cq.broadcast(event, clientId)
+
+proc sendListenerRemove*(cq: Conquest, listenerId: string, clientId: string = "") =
+    let event = Event(
+        eventType: CLIENT_LISTENER_REMOVE,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "listenerId": listenerId
+        }
+    )
+    cq.broadcast(event, clientId)
+
+proc sendAgentCheckin*(cq: Conquest, agentId: string, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_AGENT_CHECKIN,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId
+        }
+    )
+    cq.broadcast(event, clientId)
+
+proc sendAgentPayload*(cq: Conquest, name: string, payload: seq[byte], clientId: string = "") =
+    let event = Event(
+        eventType: CLIENT_AGENT_PAYLOAD, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "name": name,
+            "payload": encode(payload)
+        }
+    )
+    cq.broadcast(event, clientId)
+
+proc sendBuildlogItem*(cq: Conquest, logType: LogType, message: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_BUILDLOG_ITEM,
         timestamp: now().toTime().toUnix(),
@@ -145,19 +175,17 @@ proc sendBuildlogItem*(client: WsConnection, logType: LogType, message: string) 
             "message": message
         }
     )
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
+    cq.broadcast(event, clientId)
 
-proc sendLoot*(client: WsConnection, loot: LootItem) = 
+proc sendLoot*(cq: Conquest, loot: LootItem, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_LOOT_ADD,
         timestamp: now().toTime().toUnix(),
         data: %loot
     )
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
+    cq.broadcast(event, clientId)
 
-proc sendLootData*(client: WsConnection, loot: LootItem, data: string) = 
+proc sendLootData*(cq: Conquest, loot: LootItem, data: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_LOOT_DATA,
         timestamp: now().toTime().toUnix(),
@@ -166,10 +194,9 @@ proc sendLootData*(client: WsConnection, loot: LootItem, data: string) =
             "data": encode(data)
         }
     )
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
+    cq.broadcast(event, clientId)
 
-proc sendImpersonateToken*(client: WsConnection, agentId: string, username: string) = 
+proc sendImpersonateToken*(cq: Conquest, agentId, username: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_IMPERSONATE_TOKEN,
         timestamp: now().toTime().toUnix(),
@@ -178,10 +205,9 @@ proc sendImpersonateToken*(client: WsConnection, agentId: string, username: stri
             "username": username
         }
     )
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
+    cq.broadcast(event, clientId)
 
-proc sendRevertToken*(client: WsConnection, agentId: string) = 
+proc sendRevertToken*(cq: Conquest, agentId: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_REVERT_TOKEN,
         timestamp: now().toTime().toUnix(),
@@ -189,5 +215,50 @@ proc sendRevertToken*(client: WsConnection, agentId: string) =
             "agentId": agentId
         }
     )
-    if client != nil: 
-        client.ws.sendEvent(event, client.sessionKey)
+    cq.broadcast(event, clientId)
+
+proc sendProcessList*(cq: Conquest, agentId, procData: string, silent: bool, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_PROCESSES, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "processes": procData,
+            "silent": silent
+        }
+    )
+    cq.broadcast(event, clientId)
+
+proc sendDirectoryListing*(cq: Conquest, agentId, data: string, silent: bool, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_DIRECTORY_LISTING, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "data": data,
+            "silent": silent
+        }
+    )
+    cq.broadcast(event, clientId)
+
+proc sendWorkingDirectory*(cq: Conquest, agentId, directory: string, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_WORKING_DIRECTORY, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "directory": directory
+        }
+    )
+    cq.broadcast(event, clientId)
+
+proc sendChatMessage*(cq: Conquest, user, message: string, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_CHAT, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "user": user,
+            "message": message
+        }
+    )
+    cq.broadcast(event, clientId)

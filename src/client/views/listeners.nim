@@ -1,28 +1,21 @@
-import strutils
+import strutils, sequtils, tables
 import imguin/[cimgui, glfw_opengl, simple]
 import ./modals/[startListener, generatePayload]
-import ../utils/appImGui
+import ../utils/[appImGui, globals]
 import ../core/websocket
-import ../../common/types
+import ../../types/[common, client]
 
-type 
-    ListenersTableComponent* = ref object of RootObj
-        title: string 
-        listeners*: seq[UIListener]
-        selection: ptr ImGuiSelectionBasicStorage
-        startListenerModal: ListenerModalComponent
-        generatePayloadModal*: AgentModalComponent
-
-proc ListenersTable*(title: string): ListenersTableComponent = 
+proc ListenersTable*(title: string, showComponent: ptr bool): ListenersTableComponent = 
     result = new ListenersTableComponent
     result.title = title
-    result.listeners = @[]
+    result.showComponent = showComponent
+    result.listeners = initTable[string, UIListener]() 
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.startListenerModal = ListenerModal()
     result.generatePayloadModal = AgentModal()
 
-proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connection: WsConnection) = 
-    igBegin(component.title.cstring, showComponent, 0)
+proc draw*(component: ListenersTableComponent) = 
+    igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd() 
 
     let textSpacing = igGetStyle().ItemSpacing.x    
@@ -39,13 +32,15 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
         igOpenPopup_str("Generate Payload", ImGui_PopupFlags_None.int32) 
     igEndDisabled()
 
+    let listeners = component.listeners.values().toSeq()
+
     let listener = component.startListenerModal.draw()
     if listener != nil: 
-        connection.sendStartListener(listener)
+        cq.connection.sendStartListener(listener)
 
-    let buildInformation = component.generatePayloadModal.draw(component.listeners)
+    let buildInformation = component.generatePayloadModal.draw(listeners)
     if buildInformation != nil:
-        connection.sendAgentBuild(buildInformation)
+        cq.connection.sendAgentBuild(buildInformation)
 
     #[
         Listener table
@@ -68,10 +63,10 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
     if igBeginTable("Listeners", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
         igTableSetupColumn("ListenerID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
-        igTableSetupColumn("Address", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-        igTableSetupColumn("Port", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-        igTableSetupColumn("Callback Hosts", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-        igTableSetupColumn("Protocol", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Listener Type", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Bind Address", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Bind Port", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Callback", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
 
         igTableSetupScrollFreeze(0, 1)
         igTableHeadersRow()
@@ -79,7 +74,7 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
         var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.listeners.len())) 
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
-        for i, listener in component.listeners: 
+        for i, listener in listeners: 
             
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
@@ -90,29 +85,33 @@ proc draw*(component: ListenersTableComponent, showComponent: ptr bool, connecti
                 discard igSelectable_Bool(listener.listenerId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
                 
             if igTableSetColumnIndex(1): 
-                igText(listener.address.cstring)
+                igText(($listener.listenerType).cstring)
             if igTableSetColumnIndex(2): 
-                igText(($listener.port).cstring)
+                if listener.listenerType == LISTENER_HTTP: 
+                    igText(listener.address.cstring)
+                else: 
+                    igText("-")
             if igTableSetColumnIndex(3): 
-                for host in listener.hosts.split(";"):
-                    igText(host.cstring)
+                if listener.listenerType == LISTENER_HTTP: 
+                    igText(($listener.port).cstring)
+                else: 
+                    igText("-")
             if igTableSetColumnIndex(4): 
-                igText(($listener.protocol).cstring)
+                if listener.listenerType == LISTENER_HTTP: 
+                    for host in listener.hosts.split(";"):
+                        igText(host.cstring)
+                elif listener.listenerType == LISTENER_SMB:
+                    igText(listener.pipe.cstring)
 
         # Handle right-click context menu
         # Right-clicking the table header to hide/show columns or reset the layout is only possible when no sessions are selected
         if component.selection[].Size > 0 and igBeginPopupContextWindow("TableContextMenu", ImGui_PopupFlags_MouseButtonRight.int32): 
             
             if igMenuItem("Stop", nil, false, true): 
-                # Update agents table with only non-selected ones
-                var newListeners: seq[UIListener] = @[]
-                for i, listener in component.listeners:
-                    if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        newListeners.add(listener)
-                    else: 
-                        connection.sendStopListener(listener.listenerId)
+                for i, listener in listeners:
+                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        cq.connection.sendStopListener(listener.listenerId)
 
-                component.listeners = newListeners
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
 

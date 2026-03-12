@@ -1,11 +1,12 @@
-import std/paths
-import strutils, sequtils, times
-import ../../common/[types, sequence, crypto, utils, serialize]
+import tables, strutils, strformat, sequtils, times, os
+import ./websocket
+import ../utils/[utils, globals]
+import ../../common/[sequence, crypto, utils, serialize]
+import ../../types/[common, client, protocol]
 
 proc parseInput*(input: string): seq[string] = 
     var i = 0
     while i < input.len:
-
         # Skip whitespaces/tabs
         while i < input.len and input[i] in {' ', '\t'}: 
             inc i
@@ -16,7 +17,6 @@ proc parseInput*(input: string): seq[string] =
         if input[i] == '"':
             # Parse quoted argument
             inc i # Skip opening quote
-
             # Add parsed argument when quotation is closed
             while i < input.len and input[i] != '"': 
                 arg.add(input[i]) 
@@ -30,98 +30,164 @@ proc parseInput*(input: string): seq[string] =
                 arg.add(input[i])
                 inc i
         
-        # Add argument to returned result
+        # Add argument to returned result 
         if arg.len > 0: result.add(arg)
 
 proc parseArgument*(argument: Argument, value: string): TaskArg = 
-    
     var arg: TaskArg
-    arg.argType = cast[uint8](argument.argumentType)  
-
-    case argument.argumentType:
-
+    arg.argType = cast[uint8](argument.argType)  
+    case argument.argType:
     of INT: 
-        # Length: 4 bytes        
         let intValue = cast[uint32](parseUInt(value))
         arg.data = @[byte(intValue and 0xFF), byte((intValue shr 8) and 0xFF), byte((intValue shr 16) and 0xFF), byte((intValue shr 24) and 0xFF)]
-
-    of SHORT: 
-        # Length: 2 bytes 
-        let shortValue = cast[uint16](parseUint(value))
-        arg.data = @[byte(shortValue and 0xFF), byte((shortValue shr 8) and 0xFF)]
-
-    of LONG: 
-        # Length: 8 bytes
-        var data = newSeq[byte](8)
-        let longValue = cast[uint64](parseUInt(value))
-        for i in 0..7:
-            data[i] = byte((longValue shr (i * 8)) and 0xFF)
-        arg.data = data
-
     of BOOL: 
-        # Length: 1 byte
-        if value == "true": 
-            arg.data = @[1'u8] 
-        elif value == "false": 
-            arg.data = @[0'u8] 
-        else: 
-            raise newException(ValueError, "Invalid value for boolean argument.")
-
+        arg.data = @[if value == "true": 1'u8 else: 0'u8]
     of STRING:
         arg.data = string.toBytes(value)
-
-    of BINARY: 
-        # A binary data argument consists of the file name (without the path) and the file content in bytes, both prefixed with their length as a uint32
+    of FILE: 
         var packer = Packer.init() 
-
-        let fileName = cast[string](extractFilename(cast[Path](value)))
+        let 
+            fileName = extractFilename(value)
+            fileContents = readFile(value)
         packer.addDataWithLengthPrefix(string.toBytes(fileName))
-        
-        let fileContents = readFile(value)
         packer.addDataWithLengthPrefix(string.toBytes(fileContents))
-
         arg.data = packer.pack() 
-    
     return arg
 
-proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[string]): Task = 
+proc getDefaultValue*(argument: Argument): string =
+    case argument.argType:
+    of STRING:
+        return argument.strDefault
+    of INT:
+        return $argument.intDefault
+    of BOOL:
+        return $argument.boolDefault
+    of FILE:
+        return argument.binDefault
 
-    # Construct the task payload prefix
-    var task: Task
-    task.taskId = string.toUuid(generateUUID()) 
-    task.listenerId = string.toUuid(listenerId)
-    task.timestamp = uint32(now().toTime().toUnix())
-    task.command = cast[uint16](command.commandType) 
-    task.argCount = uint8(arguments.len)
-
-    var taskArgs: seq[TaskArg]
-
-    # Add the task arguments 
-    if arguments.len() < command.arguments.filterIt(it.isRequired).len(): 
-        raise newException(CatchableError, "Missing required argument.")
-
-    for i, arg in arguments: 
-        if i < command.arguments.len():
-            taskArgs.add(parseArgument(command.arguments[i], arg))  
+proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] = 
+    let flagArgs = command.arguments.filterIt(it.isFlag)
+    let positionalArgDefs = command.arguments.filterIt(not it.isFlag)
+    
+    let hasCatchAll = positionalArgDefs.len() > 0 and positionalArgDefs[^1].nargs == -1
+    
+    # Pre-populate flags table with default values
+    var flags = initTable[string, string]()
+    for arg in flagArgs:
+        flags[arg.flag] = if arg.argType == BOOL: "false" else: getDefaultValue(arg)
+    
+    var positional: seq[string] = @[]
+    
+    # Separate tokens into flags and positional arguments
+    var i = 0
+    while i < arguments.len():
+        if arguments[i].startsWith("-"):
+            let flag = arguments[i]
+            let argDef = flagArgs.filterIt(it.flag == flag)
+            
+            if argDef.len() == 0:
+                # Unknown flag — only valid if a catch-all arg exists
+                if hasCatchAll:
+                    positional.add(arguments[i])
+                    i += 1
+                else:
+                    raise newException(CatchableError, fmt"Unknown flag: {flag}")
+            elif argDef[0].nargs == 0:
+                # Bool flag — no value
+                flags[flag] = "true"
+                i += 1
+            else:
+                # Flag with value
+                if i + 1 < arguments.len():
+                    flags[flag] = arguments[i + 1]
+                    i += 2
+                else:
+                    raise newException(CatchableError, fmt"Value expected for flag: {flag}")
         else:
-            # Optional arguments should ALWAYS be placed at the end of the command and take the same definition
-            taskArgs.add(parseArgument(command.arguments[^1], arg))  
+            positional.add(arguments[i])
+            i += 1
+    
+    if not hasCatchAll and positional.len() > positionalArgDefs.len():
+        raise newException(CatchableError, fmt"Too many positional arguments: expected {positionalArgDefs.len()}, got {positional.len()}")
 
-    task.args = taskArgs   
+    # Map positional and flag values onto argument definitions
+    var positionalIndex = 0
+    for arg in command.arguments:
+        var taskArg: TaskArg
+        taskArg.argType = cast[uint8](arg.argType)
+        
+        if arg.isFlag:
+            if arg.isRequired and flags[arg.flag] == "":
+                raise newException(CatchableError, fmt"Missing required flag: {arg.flag}")
+            taskArg = parseArgument(arg, flags[arg.flag])
+        else:
+            case arg.nargs:
+            of 0:
+                taskArg = parseArgument(arg, "false")
+            of 1:
+                if positionalIndex < positional.len():
+                    taskArg = parseArgument(arg, positional[positionalIndex])
+                    positionalIndex += 1
+                elif arg.isRequired:
+                    raise newException(CatchableError, fmt"Missing required positional argument: {arg.name}")
+                else:
+                    taskArg = parseArgument(arg, getDefaultValue(arg))
+            else:
+                # nargs = -1: join all remaining positional tokens into one argument
+                if positionalIndex < positional.len():
+                    taskArg = parseArgument(arg, positional[positionalIndex..^1].join(" "))
+                    positionalIndex = positional.len()
+                elif arg.isRequired:
+                    raise newException(CatchableError, fmt"Missing required positional argument: {arg.name}")
+                else:
+                    taskArg = parseArgument(arg, getDefaultValue(arg))
+        
+        result.add(taskArg)
 
+proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[string], silent: bool): Task = 
+    result.taskId = string.toUuid(generateUUID()) 
+    result.listenerId = string.toUuid(listenerId)
+    result.timestamp = uint32(now().toTime().toUnix())
+    result.command = cast[uint16](parseEnum[CommandType](command.name)) 
+    
+    let taskArgs = command.parseArguments(arguments)
+    result.argCount = uint8(taskArgs.len)
+    result.args = taskArgs
+    
     # Construct the header
     var taskHeader: Header
     taskHeader.magic = MAGIC
     taskHeader.version = VERSION 
     taskHeader.packetType = cast[uint8](MSG_TASK)
-    taskHeader.flags = cast[uint16](FLAG_ENCRYPTED)
+    
+    taskHeader.flags = cast[uint16](FLAG_ENCRYPTED) or cast[uint16](FLAG_COMPRESSED)
+    if silent: 
+        taskHeader.flags = taskHeader.flags or cast[uint16](FLAG_SILENT)
+
     taskHeader.size = 0'u32
     taskHeader.agentId = string.toUuid(agentId)
     taskHeader.seqNr = nextSequence(taskHeader.agentId)
-    taskHeader.iv = generateBytes(Iv) # Generate a random IV for AES-256 GCM
+    taskHeader.iv = generateBytes(Iv)
     taskHeader.gmac = default(AuthenticationTag)
+    result.header = taskHeader
 
-    task.header = taskHeader
+# Wrapper functions for dispatching tasks to the agent
+proc sendTask*(agentId, input: string, silent: bool = false) = 
+    let 
+        args = input.parseInput()
+        command = cq.moduleManager.getCommand(args[0])
+        agent = cq.sessions.agents[agentId]
+        task = createTask(agentId, agent.listenerId, command, args[1..^1], silent)
 
-    # Return the task object for serialization
-    return task
+    cq.connection.sendAgentTask(agentId, task, input, fmt"{command.message} ({Uuid.toString(task.taskId)})")
+ 
+proc sendTask*(agentId, input, alias: string, silent: bool = false) = 
+    let 
+        args = input.parseInput()
+        aliasArgs = alias.parseInput()
+        command = cq.moduleManager.getCommand(args[0])
+        aliasCommand = cq.moduleManager.getCommand(aliasArgs[0])
+        agent = cq.sessions.agents[agentId]
+        task = createTask(agentId, agent.listenerId, aliasCommand, aliasArgs[1..^1], silent)
+        
+    cq.connection.sendAgentTask(agentId, task, input, fmt"{command.message} ({Uuid.toString(task.taskId)})")

@@ -1,4 +1,4 @@
-import tables, strutils
+import whisky, tables, strutils
 import imguin/[cimgui, glfw_opengl, simple]
 import ../utils/[appImGui, globals]
 
@@ -16,7 +16,7 @@ proc Dockspace*(): DockspaceComponent =
     result.windowFlags =  ImGuiWindowFlags_MenuBar.int32 or ImGuiWindowFlags_NoDocking.int32
     result.initialized = false
 
-proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[string, ptr bool], dockTop, dockBottom, dockTopLeft, dockTopRight: ptr ImGuiID) = 
+proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: OrderedTable[string, ptr bool], dockTop, dockBottom, dockTopLeft, dockTopRight: ptr ImGuiID) = 
 
     var vp = igGetMainViewport()
     igSetNextWindowPos(vp.WorkPos, ImGui_Cond_None.int32, vec2(0.0f, 0.0f))
@@ -54,10 +54,14 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[
             discard igDockBuilderSplitNode(dockTop[], ImGuiDir_Right, 0.5f, dockTopRight, dockTopLeft)
 
             igDockBuilderDockWindow(WIDGET_SESSIONS, dockTopLeft[])
+            igDockBuilderDockWindow(WIDGET_CHAT, dockBottom[])
             igDockBuilderDockWindow(WIDGET_LISTENERS, dockBottom[])
             igDockBuilderDockWindow(WIDGET_EVENTLOG, dockTopRight[])
             igDockBuilderDockWindow(WIDGET_DOWNLOADS, dockBottom[])
             igDockBuilderDockWindow(WIDGET_SCREENSHOTS, dockBottom[])
+            igDockBuilderDockWindow(WIDGET_PROCESS_BROWSER, dockBottom[])
+            igDockBuilderDockWindow(WIDGET_FILE_BROWSER, dockBottom[])
+            igDockBuilderDockWindow(WIDGET_MODULE_MANAGER, dockBottom[])
             igDockBuilderDockWindow("Dear ImGui Demo", dockTopRight[])
             
             igDockBuilderFinish(dockspaceId)
@@ -71,6 +75,12 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Table[
         if igBeginMenu("Options", true):
             if igMenuItem("Exit", nil, false, (addr showComponent) != nil):
                 showComponent[] = false
+            
+            if igMenuItem("Disconnect", nil, false, true):
+                if cq.connection != nil: 
+                    cq.connection.ws.close()
+                    cq.connection = nil 
+
             igEndMenu() 
         
         if igBeginMenu("Views", true): 

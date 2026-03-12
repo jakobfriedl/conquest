@@ -4,12 +4,8 @@ export opengl, glfw
 
 import imguin/[cimgui, glfw_opengl, simple]
 export cimgui, glfw_opengl, simple
-
-import ./globals
-import ./opengl/loadImage
-export loadImage
-import ./[saveImage, setupFonts, utils, vecs]
-export saveImage, setupFonts, utils, vecs
+import ./[globals, setupFonts, utils, loadImage]
+export globals, setupFonts, utils, loadImage
 
 proc glfwGetPlatform*(): int32 {.importc: "glfwGetPlatform".} # GLFW 3.4 >=
 
@@ -138,7 +134,7 @@ proc createApp*(w: cint = 1024, h: cint = 900, imnodes: bool = false, implot: bo
     result.handle = glfwWin
     
     var pio = igGetIO()
-    pio.IniFileName = fmt"{CONQUEST_ROOT}/src/client/layout.ini".cstring
+    pio.IniFileName = (CONQUEST_ROOT & "/src/client/layout.ini").cstring
     setTheme(Dark)
     discard setupFonts() 
     result.showWindowDelay = 2

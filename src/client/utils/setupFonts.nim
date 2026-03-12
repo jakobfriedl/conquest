@@ -2,7 +2,7 @@ import os, strformat
 import imguin/[cimgui, simple]
 
 import ./globals
-import ../utils/fonticon/IconsFontAwesome6
+import ./fonticon/IconsFontAwesome6
 export IconsFontAwesome6
 
 let IconfontFullPath = fmt"{CONQUEST_ROOT}/src/client/utils/fonticon/fa6/fa-solid-900.ttf"

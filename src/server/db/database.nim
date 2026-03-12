@@ -1,31 +1,32 @@
 import system, terminal, tiny_sqlite
 
-import ./[dbAgent, dbListener, dbLoot]
+import ./[dbAgent, dbListener, dbLoot, dbLink]
 import ../core/logger
-import ../../common/types
+import ../../types/server
 
 # Export functions so that only ./db/database is required to be imported
-export dbAgent, dbListener, dbLoot
+export dbAgent, dbListener, dbLoot, dbLink
 
-proc dbInit*(cq: Conquest) =
-
-    try: 
-        let conquestDb = openDatabase(cq.dbPath, mode=dbReadWrite)
-
-        # Create tables
-        conquestDb.execScript("""
-        CREATE TABLE listeners (
+proc dbInit*(cq: Conquest, dbPath: string) =
+    
+    cq.db = openDatabase(dbPath, mode=dbReadWrite)
+    
+    cq.db.exec("PRAGMA synchronous=NORMAL")
+    cq.db.exec("PRAGMA foreign_keys=ON")
+    
+    cq.db.execScript("""
+        CREATE TABLE IF NOT EXISTS listeners (
             listenerId TEXT PRIMARY KEY,
-            hosts TEXT NOT NULL,
-            address TEXT NOT NULL,
-            port INTEGER NOT NULL UNIQUE,
-            protocol TEXT NOT NULL CHECK (protocol IN ('http'))
+            listenerType TEXT NOT NULL,
+            hosts TEXT,
+            address TEXT,
+            port INTEGER UNIQUE,
+            pipe TEXT
         );
-
-        CREATE TABLE agents (
-            agentId TEXT PRIMARY KEY,                   
-            listenerId TEXT NOT NULL, 
-            process TEXT NOT NULL,                   
+        CREATE TABLE IF NOT EXISTS agents (
+            agentId TEXT PRIMARY KEY,
+            listenerId TEXT NOT NULL,
+            process TEXT NOT NULL,
             pid INTEGER NOT NULL,
             username TEXT NOT NULL,
             impersonationToken TEXT NOT NULL,
@@ -42,20 +43,19 @@ proc dbInit*(cq: Conquest) =
             latestCheckin INTEGER NOT NULL,
             sessionKey BLOB NOT NULL
         );
-
-        CREATE TABLE loot (
+        CREATE TABLE IF NOT EXISTS loot (
             lootId TEXT PRIMARY KEY,
-            itemType INTEGER NOT NULL, 
+            itemType INTEGER NOT NULL,
             agentId TEXT NOT NULL,
             host TEXT NOT NULL,
             path TEXT NOT NULL,
             timestamp INTEGER NOT NULL,
-            size INTEGER NOT NULL 
+            size INTEGER NOT NULL
         );
-
-        """)
-        
-        cq.info("Using new database: \"", cq.dbPath, "\".\n")
-        conquestDb.close()
-    except SqliteError: 
-        cq.info("Using existing database: \"", cq.dbPath, "\".\n")
+        CREATE TABLE IF NOT EXISTS links (
+            linkId TEXT PRIMARY KEY,
+            parentId TEXT NOT NULL,
+            childId TEXT NOT NULL
+        );
+    """)
+    cq.info("Using database: \"", dbPath, "\".\n")

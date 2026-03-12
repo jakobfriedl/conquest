@@ -3,8 +3,9 @@ when defined(server):
 when defined(client): 
     import whisky
 
-import times, json, zippy
-import ./[types, utils, serialize, crypto]
+import json, zippy
+import ./[utils, serialize, crypto]
+import ../types/[common, event]
 
 proc sendEvent*(ws: WebSocket, event: Event, key: Key = default(Key)) = 
     var packer = Packer.init() 
@@ -62,11 +63,3 @@ proc recvEvent*(message: Message, key: Key = default(Key)): Event =
         timestamp: timestamp,
         data: parseJson(data)
     )
-
-proc sendHeartbeat*(ws: WebSocket) = 
-    let event = Event(
-        eventType: CLIENT_HEARTBEAT,
-        timestamp: now().toTime().toUnix(),
-        data: %*{}
-    )
-    ws.sendEvent(event)

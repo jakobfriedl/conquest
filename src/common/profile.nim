@@ -1,7 +1,8 @@
 import strutils, sequtils, random, base64, algorithm
-import ./[types, utils]
+import ./utils
+import ../types/common
 import ./toml/toml
-export parseFile, parseString, free, getTableKeys, getRandom
+export parseFile, parseString, free, getTable, getStr, getTableKeys, getTableValue, getRandom
 
 # Takes a specific "."-separated path as input and returns a default value if the key does not exits 
 # Example: cq.profile.getString("http-get.agent.heartbeat.prefix", "not found") returns the string value of the 
@@ -109,15 +110,15 @@ proc applyDataTransformation*(profile: Profile, path: string, data: seq[byte]): 
 
     # 2. Add prefix & suffix
     let 
-        prefix = profile.getStringOrByteArray(path & protect(".prefix"))
-        suffix = profile.getStringOrByteArray(path & protect(".suffix"))
+        prefix = profile.getStringOrByteArray(path & protect(".prepend"))
+        suffix = profile.getStringOrByteArray(path & protect(".append"))
     return prefix & dataString & suffix
 
 proc reverseDataTransformation*(profile: Profile, path: string, data: string): seq[byte] = 
     # 1. Remove prefix & suffix
     let 
-        prefix = profile.getStringOrByteArray(path & protect(".prefix"))
-        suffix = profile.getStringOrByteArray(path & protect(".suffix"))
+        prefix = profile.getStringOrByteArray(path & protect(".prepend"))
+        suffix = profile.getStringOrByteArray(path & protect(".append"))
     var dataString = data[len(prefix) ..^ len(suffix) + 1]
 
     # 2. Decoding

@@ -1,0 +1,151 @@
+# Conquest default configuration file 
+name = "cq-default-profile"
+
+# Important file paths and locations
+private-key-file = "data/keys/conquest-server_x25519_private.key"
+database-file = "data/conquest.db"
+
+# Team server settings (WebSocket server port, users, ...)
+[team-server]
+host = "0.0.0.0"
+port = 37573
+users = [
+    { username = "jakob", password = "conquest" }, 
+    { username = "operator", password = "conquest" }
+]
+
+# ----------------------------------------------------------
+# HTTP GET 
+# ----------------------------------------------------------
+# Defines URI endpoints for HTTP GET requests
+[http-get]
+user-agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+
+# Defines URI endpoints for HTTP GET requests
+# This has to be an array, even if it only has one member
+endpoints = [
+    "/get",
+    "/api/v1.2/status.js"
+]
+
+# Defines where the heartbeat is placed within the HTTP GET request
+# Allows for optional data transformation using encoding (base64, hex, ...), appending and prepending of strings
+# Metadata can be stored in a Header (e.g. JWT Token, Session Cookie), URI parameter or request body 
+# Encoding is only applied to the payload and not the prepended or appended strings
+[http-get.agent.heartbeat]
+placement = { type = "header", name = "Authorization" }
+encoding = { type = "base64", url-safe = true }
+prepend = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+append = ".######################################-####"
+
+# Example: PHP session cookie 
+# placement = { type = "header", name = "Cookie" }
+# encoding = { type = "base64", url-safe = true }
+# prepend = "PHPSESSID="
+# append = ", path=/"
+
+# Example: Hex string in GET parameter
+# placement = { type = "query", name = "id" }
+# encoding = { type = "hex" }
+
+# Example: Data encoded with multiple techniques in GET request body
+# placement = { type = "body" }
+# encoding = [
+#     { type = "rot", key = 5 },
+#     { type = "base64" }
+# ] 
+
+# Example: Binary prepend (PDF header)
+# placement = { type = "body" }
+# encoding = { type = "xor", key = 100 }
+# prepend = [0x25, 0x50, 0x44, 0x46]  
+# append = [0x25, 0x25, 0x45, 0x4F, 0x46] 
+
+# Defines arbitrary URI parameters that are added to the request
+[http-get.agent.parameters]
+id = "#####-#####"
+lang = [
+    "en-US",
+    "de-AT"
+]
+page = "1$"
+
+# Defines arbitrary headers that are added by the agent when performing a HTTP GET request 
+[http-get.agent.headers]
+Host = [ 
+    "wikipedia.org", 
+    "google.com",
+    "127.0.0.1"
+]
+Connection = "Keep-Alive"
+Cache-Control = "no-cache"
+
+# Defines arbitrary headers that are added to the server's response
+[http-get.server.headers]
+Server = "nginx"
+Content-Type = "application/octet-stream" 
+Connection = "Keep-Alive"
+
+# Defines how the server's response to the task retrieval request is rendered
+# Allows same data transformation options as the agent metadata, allowing it to be embedded in benign content 
+# e.g base64-encoded in a svg/img
+[http-get.server.output]
+placement = { type = "body" }
+# encoding = { type = "base64" }
+# prepend = "<!DOCTYPE html><html class=client-nojs lang=en dir=ltr><head><meta charset=UTF-8/><title>Wikipedia</title><script>document.documentElement.className = document.documentElement.className.replace( /(^|s)client-nojs(s|$)/, $1client-js$2 );</script><script>(window.RLQ=window.RLQ||[]).push(function(){mw.config.set({wgCanonicalNamespace:,wgCanonicalSpecialPageName:false,wgNamespaceNumber:0,,wgBetaFeaturesFeatures:[],wgMediaViewerOnClick:true,wgMediaViewerEnabledByDefault:true,wgVisualEditor:{pageLanguageCode:en,pageLanguageDir:ltr,usePageImages:true,usePageDescriptions:true},wgPreferredVariant:en,wgMFDisplayWikibaseDescriptions:{search:true,nearby:true,watchlist:true,tagline:false},wgRelatedArticles:null,wgRelatedArticlesUseCirrusSearch:true,wgRelatedArticlesOnlyUseCirrusSearch:false,wgULSCurrentAutonym:English,wgNoticeProject:wikipedia,wgCentralNoticeCookiesToDelete:[],wgCentralNoticeCategoriesUsingLegacy:[Fundraising,fundraising],wgCategoryTreePageCategoryOptions:{mode:0,hideprefix:20,showcount:true,namespaces:false},wgWikibaseItemId:"
+# append = ",wgCentralAuthMobileDomain:false,wgVisualEditorToolbarScrollOffset:0,wgEditSubmitButtonLabelPublish:false});mw.loader.state({ext.globalCssJs.user.styles:ready,ext.globalCssJs.site.styles:ready,site.styles:ready,noscript:ready,user.styles:ready,user:ready,user.options:loading,user.tokens:loading,wikibase.client.init:ready,ext.visualEditor.desktopArticleTarget.noscript:ready,ext.uls.interlanguage:ready,ext.wikimediaBadges:ready,mediawiki.legacy.shared:ready,mediawiki.legacy.commonPrint:ready,mediawiki.sectionAnchor:ready,mediawiki.skinning.interface:ready,skins.vector.styles:ready,ext.globalCssJs.user:ready,ext.globalCssJs.site:ready});mw.loader.implement(user.options@0j3lz3q,function($,jQuery,require,module){mw.user.options.set({variant:en});});mw.loader.implement(user.tokens@1dqfd7l,function ( $, jQuery, require, module )</script><link rel=stylesheet href=/w/load.php?debug=false&amp;lang=en&amp;modules=ext.uls.interlanguage%7Cext.visualEditor.desktopArticleTarget.noscript%7Cext.wikimediaBadges%7Cmediawiki.legacy.commonPrint%2Cshared%7Cmediawiki.sectionAnchor%7Cmediawiki.skinning.interface%7Cskins.vector.styles%7Cwikibase.client.init&amp;only=styles&amp;skin=vector/><script async= src=/w/load.php?debug=false&amp;lang=en&amp;modules=startup&amp;only=scripts&amp;skin=vector></script><meta name=ResourceLoaderDynamicStyles content=/><link rel=stylesheet href=/w/load.php?debug=false&amp;lang=en&amp;modules=site.styles&amp;only=styles&amp;skin=vector/>"
+
+# ----------------------------------------------------------
+# HTTP POST 
+# ----------------------------------------------------------
+[http-post]
+user-agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+
+# Defines URI endpoints for HTTP POST requests
+# This has to be an array, even if it only has one member
+endpoints = [
+    "/post",
+    "/api/v2/get.js"
+]
+
+# Post request can also be sent with a different HTTP verb (PUT, GET, ...)
+request-methods = [
+    "POST",
+    "PUT"
+]
+
+# Defines arbitrary request headers that are added to the POST request
+[http-post.agent.headers]
+Host = [ 
+    "wikipedia.org", 
+    "google.com",
+    "127.0.0.1"
+]
+Content-Type = "text/plain" 
+Connection = "Keep-Alive"
+Cache-Control = "no-cache"
+
+# Defines arbitrary query parameters that are added to the URI
+[http-post.agent.parameters]
+lang = [
+    "en-US",
+    "de-AT"
+]
+page = "1$"     # The $ character is replaced with a random number
+
+# Defines how the POST requests made by the agents look like
+# For modules that involve large file transfers, it is not recommended to place the task output in a header or query parameter, as this will exceed the header size
+# Placing this type of data in the body is highly recommended
+[http-post.agent.output]
+placement = { type = "body" }
+encoding = { type = "hex" }
+# prepend = "<START>"
+# append = "<END>"
+
+# Defines arbitrary response headers added by the server
+[http-post.server.headers]
+Server = "nginx"
+
+# Defines data that is returned in the body of the server's response
+[http-post.server.output]
+body = "Ok"

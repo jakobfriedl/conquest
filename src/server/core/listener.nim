@@ -4,7 +4,8 @@ import mummy, mummy/routers
 import ../api/routes
 import ../db/database
 import ../core/[logger, websocket]
-import ../../common/[types, profile]
+import ../../common/profile
+import ../../types/[common, server]
 
 proc serve(listener: Listener) {.thread.} = 
     try: 
@@ -12,78 +13,92 @@ proc serve(listener: Listener) {.thread.} =
     except Exception:
         discard 
 
-proc listenerStart*(cq: Conquest, listenerId: string, hosts: string, address: string, port: int, protocol: Protocol) = 
+proc listenerStart*(cq: Conquest, listener: UIListener) = 
     try:
-        # Create new listener
-        var router: Router
-        router.notFoundHandler = routes.error404
-        router.methodNotAllowedHandler = routes.error405
-        
-        # Define API endpoints based on C2 profile
-        # GET requests
-        for endpoint in cq.profile.getArray("http-get.endpoints"): 
-            router.addRoute("GET", endpoint.getStringValue(), routes.httpGet)
+        var l: Listener
+        case listener.listenerType 
+        of LISTENER_HTTP:
+            # Create new listener
+            var router: Router
+            router.notFoundHandler = routes.error404
+            router.methodNotAllowedHandler = routes.error405
+            
+            # Define API endpoints based on C2 profile
+            # GET requests
+            for endpoint in cq.profile.getArray("http-get.endpoints"): 
+                router.addRoute("GET", endpoint.getStringValue(), routes.httpGet)
 
-        # POST requests
-        var postMethods: seq[string]
-        for reqMethod in cq.profile.getArray("http-post.request-methods"): 
-            postMethods.add(reqMethod.getStringValue())
+            # POST requests
+            var postMethods: seq[string]
+            for reqMethod in cq.profile.getArray("http-post.request-methods"): 
+                postMethods.add(reqMethod.getStringValue())
 
-        # Default method is POST
-        if postMethods.len == 0: 
-            postMethods = @["POST"]
+            # Default method is POST
+            if postMethods.len == 0: 
+                postMethods = @["POST"]
 
-        for endpoint in cq.profile.getArray("http-post.endpoints"): 
-            for httpMethod in postMethods:
-                router.addRoute(httpMethod, endpoint.getStringValue(), routes.httpPost)
-        
-        let server = newServer(router.toHandler(), maxBodyLen = 1024 * 1024 * 1024) 
+            for endpoint in cq.profile.getArray("http-post.endpoints"): 
+                for httpMethod in postMethods:
+                    router.addRoute(httpMethod, endpoint.getStringValue(), routes.httpPost)
+            
+            let server = newServer(router.toHandler(), maxBodyLen = 1024 * 1024 * 1024) 
+
+            # Store listener in database
+            l = Listener(
+                server: server,
+                listenerId: listener.listenerId,
+                listenerType: LISTENER_HTTP,
+                hosts: listener.hosts,
+                address: listener.address,
+                port: listener.port
+            )
+
+            # Start serving
+            var thread: Thread[Listener]
+            createThread(thread, serve, l)
+            server.waitUntilReady()
+
+            cq.threads[listener.listenerId] = thread
+
+        of LISTENER_SMB: 
+            l = Listener(
+                listenerId: listener.listenerId, 
+                listenerType: LISTENER_SMB,
+                pipe: listener.pipe
+            )
+
+        cq.listeners[listener.listenerId] = l
 
         # Store listener in database
-        var listener = Listener(
-            server: server,
-            listenerId: listenerId,
-            hosts: hosts,
-            address: address,
-            port: port,
-            protocol: protocol
-        )
-
-        # Start serving
-        var thread: Thread[Listener]
-        createThread(thread, serve, listener)
-        server.waitUntilReady()
-
-        cq.listeners[listenerId] = listener
-        cq.threads[listenerId] = thread
-
-        if not cq.dbListenerExists(listenerId.toUpperAscii): 
-            if not cq.dbStoreListener(listener):
+        if not cq.dbListenerExists(listener.listenerId): 
+            if not cq.dbStoreListener(l):
                 raise newException(CatchableError, "Failed to store listener in database.")
 
-        cq.success("Started listener", fgGreen, fmt" {listenerId} ", resetStyle, fmt"on {address}:{$port}.")
-        cq.client.sendListener(listener)
-        cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {listenerId} on {address}:{$port}.")
+        cq.success("Started listener", fgGreen, fmt" {l.listenerId}.")
+        cq.sendListener(l)
+        cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {l.listenerId}.")
 
     except CatchableError as err: 
         cq.error("Failed to start listener: ", err.msg)
-        cq.client.sendEventlogItem(LOG_ERROR_SHORT, fmt"Failed to start listener: {err.msg}.")
+        cq.sendEventlogItem(LOG_ERROR_SHORT, fmt"Failed to start listener: {err.msg}.")
 
 # Remove listener from database, preventing automatic startup on server restart
 proc listenerStop*(cq: Conquest, name: string) = 
         
-    # Check if listener supplied via -n parameter exists in database
-    if not cq.dbListenerExists(name.toUpperAscii): 
-        cq.error(fmt"Listener {name.toUpperAscii} does not exist.")
+    # Check if listener exists in database
+    if not cq.dbListenerExists(name): 
+        cq.error(fmt"Listener {name} does not exist.")
         return
 
     # Remove database entry
-    if not cq.dbDeleteListenerByName(name.toUpperAscii): 
+    if not cq.dbDeleteListenerByName(name): 
         cq.error("Failed to stop listener: ", getCurrentExceptionMsg())
         return
 
     cq.listeners.del(name)
-    cq.success("Stopped listener ", fgGreen, name.toUpperAscii, resetStyle, ".")
+    cq.sendListenerRemove(name)
+    cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Stopped listener {name}.")
+    cq.success("Stopped listener ", fgGreen, name, resetStyle, ".")
     
     # TODO: Shutdown listener without server restart. Since the listener is removed from the DB, agents connecting to it after it has been shutdown are not accepted
     # try: 

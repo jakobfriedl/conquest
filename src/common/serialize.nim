@@ -1,5 +1,6 @@
 import streams, tables
-import ./[types, utils]
+import ./utils
+import ../types/[common, protocol]
 
 #[
     Packer
@@ -12,7 +13,7 @@ proc init*(T: type Packer): Packer =
     result = new Packer 
     result.stream = newStringStream()
 
-proc add*[T: uint8 | uint16 | uint32 | uint64](packer: Packer, value: T): Packer {.discardable.} =
+proc add*[T: uint8 | uint16 | uint32 | uint64 | int64](packer: Packer, value: T): Packer {.discardable.} =
     packer.stream.write(value)
     return packer 
 
@@ -21,19 +22,27 @@ proc addData*(packer: Packer, data: openArray[byte]): Packer {.discardable.} =
     return packer
 
 proc addArgument*(packer: Packer, arg: TaskArg): Packer {.discardable.} = 
-    # Optional argument was passed as "", ignore
-    if arg.data.len <= 0: 
-        return
-
+    # Add argument type
     packer.add(arg.argType)
 
+    # Add argument data
     case cast[ArgType](arg.argType): 
-    of STRING, BINARY: 
-        # Add length for variable-length data types
-        packer.add(cast[uint32](arg.data.len)) 
-        packer.addData(arg.data)
-    else: 
-        packer.addData(arg.data)
+    of STRING, FILE: 
+        # Add length prefix for variable-length data types
+        packer.add(cast[uint32](arg.data.len))
+        if arg.data.len > 0:
+            packer.addData(arg.data)
+    of INT:
+        if arg.data.len > 0:
+            packer.addData(arg.data)
+        else:
+            packer.addData([0'u8, 0'u8, 0'u8, 0'u8])
+    of BOOL:
+        if arg.data.len > 0:
+            packer.addData(arg.data)
+        else:
+            packer.addData([0'u8])
+    
     return packer
 
 proc addDataWithLengthPrefix*(packer: Packer, data: seq[byte]): Packer {.discardable.} = 
@@ -92,6 +101,10 @@ proc getUint64*(unpacker: Unpacker): uint64 =
     result = unpacker.stream.readUint64()
     unpacker.position += 8
 
+proc getInt64*(unpacker: Unpacker): int64 =
+    result = unpacker.stream.readInt64()
+    unpacker.position += 8
+
 proc getBytes*(unpacker: Unpacker, length: int): seq[byte] = 
     if length <= 0:
         return @[]
@@ -118,16 +131,12 @@ proc getArgument*(unpacker: Unpacker): TaskArg =
     result.argType = unpacker.getUint8()
     
     case cast[ArgType](result.argType):
-    of STRING, BINARY:
+    of STRING, FILE:
         # Variable-length fields are prefixed with the content-length
         let length = unpacker.getUint32()
         result.data = unpacker.getBytes(int(length))
     of INT:
         result.data = unpacker.getBytes(4)
-    of SHORT: 
-        result.data = unpacker.getBytes(2)
-    of LONG:
-        result.data = unpacker.getBytes(8)
     of BOOL:
         result.data = unpacker.getBytes(1)
 
@@ -140,6 +149,9 @@ proc getDataWithLengthPrefix*(unpacker: Unpacker): string =
 
     # Read content
     return Bytes.toString(unpacker.getBytes(int(length)))
+
+proc canRead*(unpacker: Unpacker): bool = 
+    return not unpacker.stream.atEnd()
 
 # Serialization & Deserialization functions
 proc serializeHeader*(packer: Packer, header: Header, bodySize: uint32): seq[byte] = 

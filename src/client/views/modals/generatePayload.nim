@@ -1,36 +1,23 @@
-import strutils, strformat, sequtils, times
+import strutils, strformat, sequtils, tables, times, algorithm
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
-import ../../utils/appImGui
-import ../../../common/types
-import ../../../modules/manager
+import ../../utils/[appImGui, globals]
+import ../../../types/[common, client, event]
 export addItem
 
-type 
-    AgentModalComponent* = ref object of RootObj
-        show*: bool
-        listener: int32 
-        sleepDelay: uint32
-        jitter: int32 
-        sleepMask: int32 
-        spoofStack: bool 
-        killDateEnabled: bool 
-        killDate: int64
-        workingHoursEnabled: bool
-        workingHours: WorkingHours
-        verbose: bool
-        sleepMaskTechniques: seq[string]
-        moduleSelection: DualListSelectionWidget[Module]
-        buildLog*: TextareaWidget
-        killDateModal*: KillDateModalComponent
-        workingHoursModal*: WorkingHoursModalComponent
-
+proc `$`(payloadType: PayloadType): string = 
+    case payloadType: 
+    of EXE: "Windows Executable (.exe)"
+    of SVC: "Windows Service Executable (.svc.exe)"
+    of DLL: "Windows DLL (.dll)"
+    # of BIN: "Raw Shellcode (.bin)"
 
 proc AgentModal*(): AgentModalComponent =
     result = new AgentModalComponent
     result.show = false
     result.listener = 0
+    result.payloadType = 0 
     result.sleepDelay = 5
     result.jitter = 15
     result.sleepMask = 0
@@ -47,26 +34,31 @@ proc AgentModal*(): AgentModalComponent =
     )
     result.verbose = false
 
+    # Populate payload types
+    for payloadType in PayloadType.low .. PayloadType.high:
+        result.payloadTypes.add($payloadType)
+
+    # Populate sleep techniques
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
 
-    let modules = getModules()
+    proc compareModules(x, y: Module): int = 
+        return cmp(x.name, y.name) 
     proc moduleName(module: Module): string = 
         return module.name
     proc moduleDesc(module: Module): string = 
         result = module.description & "\nModule commands:\n"
         for cmd in module.commands: 
             result &= " - " & cmd.name & "\n"
-    proc compareModules(x, y: Module): int = 
-        return cmp(x.moduleType, y.moduleType)
 
-    result.moduleSelection = DualListSelection(modules, moduleName, compareModules, moduleDesc)
+    result.moduleSelection = DualListSelection(cq.moduleManager.modules.values.toSeq().sorted(compareModules), moduleName, compareModules, moduleDesc)
     result.buildLog = Textarea(showTimestamps = false)
     result.killDateModal = KillDateModal()
     result.workingHoursModal = WorkingHoursModal()
 
 proc resetModalValues*(component: AgentModalComponent) = 
     component.listener = 0
+    component.payloadType = 0 
     component.sleepDelay = 5
     component.jitter = 15
     component.sleepMask = 0
@@ -113,7 +105,14 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igSameLine(0.0f, textSpacing)
         igGetContentRegionAvail(addr availableSize)
         igSetNextItemWidth(availableSize.x)
-        igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.listenerId).join("\0") & "\0").cstring , listeners.len().int32)
+        igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.listenerId & " (" & $it.listenerType & ")").join("\0") & "\0").cstring , listeners.len().int32)
+
+        # Payload type selection
+        igText("Payload type:   ")
+        igSameLine(0.0f, textSpacing)
+        igGetContentRegionAvail(addr availableSize)
+        igSetNextItemWidth(availableSize.x)
+        igCombo_Str("##InputPayloadType", addr component.payloadType, (component.payloadTypes.join("\0") & "\0").cstring, component.payloadTypes.len().int32)
 
         # Sleep delay
         let step: uint32 = 1
@@ -222,11 +221,13 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
 
             # Iterate over modules
             var modules: uint32 = 0
+
             for m in component.moduleSelection.items[1]: 
-                modules = modules or uint32(m.moduleType)
+                modules = modules or uint32(parseModuleType(m.name))
 
             result = AgentBuildInformation(
                 listenerId: listeners[component.listener].listenerId,
+                payloadType: cast[PayloadType](component.payloadType),  # Cast int32 to PayloadType
                 sleepSettings: SleepSettings(
                     sleepDelay: component.sleepDelay,
                     jitter: cast[uint32](component.jitter), 

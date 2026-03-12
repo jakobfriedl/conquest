@@ -1,52 +1,37 @@
-import times, tables, strformat, strutils, algorithm
+import times, tables, strformat, strutils, sequtils, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 
+import ../../types/client
+import ../utils/[appImGui, globals]
+import ../core/websocket
 import ./console
-import ../core/[task, websocket]
-import ../utils/[appImGui, colors]
-import ../../modules/manager
-import ../../common/types
 
-type 
-    SessionsTableComponent* = ref object of RootObj
-        title: string 
-        agents*: seq[UIAgent]
-        agentActivity*: Table[string, int64]                # Direct O(1) access to latest checkin
-        agentImpersonation*: Table[string, string]
-        selection: ptr ImGuiSelectionBasicStorage
-        consoles: ptr Table[string, ConsoleComponent]
-        focusedConsole*: string
-
-proc SessionsTable*(title: string, consoles: ptr Table[string, ConsoleComponent]): SessionsTableComponent = 
+proc SessionsTable*(title: string, showComponent: ptr bool): SessionsTableComponent = 
     result = new SessionsTableComponent
     result.title = title
-    result.agents = @[]
-    result.agentActivity = initTable[string, int64]()
+    result.showComponent = showComponent
+    result.agents = initTable[string, UIAgent]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
-    result.consoles = consoles
     result.focusedConsole = ""
 
-proc cmp(x, y: UIAgent): int =
-    return cmp(x.firstCheckin, y.firstCheckin)
-
 proc interact(component: SessionsTableComponent) = 
-    # Open a new console for each selected agent session
     var it: pointer = nil
     var row: ImGuiID
 
     while ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
-        let agent = component.agents[cast[int](row)]
+        let agent = cq.sessions.agents.values().toSeq().sortedByIt(it.firstCheckin)[row]
 
-        # Create a new console window
-        if not component.consoles[].hasKey(agent.agentId):
-            component.consoles[][agent.agentId] = Console(agent)
+        # Show console
+        agent.console.showConsole = true
 
-        component.focusedConsole = fmt"[{agent.agentId}] {agent.username}@{agent.hostname}"
+        # Set focus 
+        component.focusedConsole = agent.consoleTitle
     
     component.selection.ImGuiSelectionBasicStorage_Clear()
 
-proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connection: WsConnection) = 
-    igBegin(component.title.cstring, showComponent, 0)
+
+proc draw*(component: SessionsTableComponent) = 
+    igBegin(component.title.cstring, component.showComponent, 0)
 
     let textSpacing = igGetStyle().ItemSpacing.x
 
@@ -87,14 +72,15 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
         # Sort sessions table based on first checkin
-        component.agents.sort(cmp)
-        for row, agent in component.agents: 
+        let agents = cq.sessions.agents.values().toSeq().sortedByIt(it.firstCheckin).filterIt(not it.hidden)
+
+        for i, agent in agents: 
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
             if igTableSetColumnIndex(0):          
                 # Enable multi-select functionality       
-                igSetNextItemSelectionUserData(row)
-                var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](row))
+                igSetNextItemSelectionUserData(i)
+                var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i))
                 
                 # Highlight high integrity sessions in red
                 if agent.elevated: 
@@ -108,6 +94,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                 # Interact with session on double-click
                 if igIsMouseDoubleClicked_Nil(ImGui_MouseButton_Left.int32):
                     component.interact()
+                    component.interact = true
 
             if igTableSetColumnIndex(1): 
                 igText(agent.listenerId.cstring)
@@ -118,9 +105,9 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
             if igTableSetColumnIndex(4): 
 
                 igText(agent.username.cstring)
-                if component.agentImpersonation.hasKey(agent.agentId):
+                if agent.impersonationToken != "":
                     igSameLine(0.0f, textSpacing)
-                    igText(fmt"[{component.agentImpersonation[agent.agentId]}]".cstring)
+                    igText(fmt"[{component.agents[agent.agentId].impersonationToken}]".cstring)
 
             if igTableSetColumnIndex(5): 
                 igText(agent.hostname.cstring)
@@ -143,7 +130,7 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                 igText(fmt"{hours:02d}:{minutes:02d}:{seconds:02d} ago".cstring)
 
             if igTableSetColumnIndex(11): 
-                let duration = now() - component.agentActivity[agent.agentId].fromUnix().local()
+                let duration = now() - component.agents[agent.agentId].latestCheckin.fromUnix().local()
                 let totalSeconds = duration.inSeconds
                 
                 let hours = totalSeconds div 3600
@@ -164,46 +151,134 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
                 component.interact()
                 igCloseCurrentPopup()
         
+            # Menu to open a browser focused on the selected agent
+            if igBeginMenu("Browse", true):
+                if igMenuItem("Processes", nil, false, true):
+                    var it: pointer = nil
+                    var row: ImGuiID
+
+                    if ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
+                        let agent = agents[row]
+                        
+                        cq.processBrowser.showComponent[] = true
+                        let agentIndex = agents.find(agent)
+                        if agentIndex >= 0:
+                            cq.processBrowser.agent = int32(agentIndex + 1)
+
+                    igSetWindowFocus_Str(WIDGET_PROCESS_BROWSER)         
+                    igCloseCurrentPopup()
+
+                if igMenuItem("Filesystem", nil, false, true):
+                    var it: pointer = nil
+                    var row: ImGuiID
+
+                    if ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
+                        let agent = agents[row]
+                        
+                        cq.fileBrowser.showComponent[] = true
+                        let agentIndex = agents.find(agent)
+                        if agentIndex >= 0:
+                            cq.fileBrowser.agent = int32(agentIndex + 1)
+
+                    igSetWindowFocus_Str(WIDGET_FILE_BROWSER)         
+                    igCloseCurrentPopup()
+
+                igEndMenu()
+
+            # Menu to copy fields of the agent object to clipboard
+            if igBeginMenu("Copy", true): 
+                const copyableFields = [
+                    ("agentId", "AgentID"),
+                    ("listenerId", "ListenerID"),
+                    ("username", "Username"),
+                    ("impersonationToken", "Impersonation Token"),
+                    ("hostname", "Hostname"),
+                    ("domain", "Domain"),
+                    ("ipInternal", "IP (Internal)"),
+                    ("ipExternal", "IP (External)"),
+                    ("os", "Operating System"),
+                    ("process", "Process Name"),
+                    ("pid", "ProcessID"),
+                    ("elevated", "IsElevated"),
+                    ("sleep", "Sleep"),
+                    ("jitter", "Jitter")
+                ]
+                
+                for (fieldName, displayName) in copyableFields:
+                    if igMenuItem(displayName.cstring, nil, false, true):
+                        var toCopy: string = ""
+                        for i, agent in agents:
+                            if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                                let value = case fieldName:
+                                    of "agentId": agent.agentId
+                                    of "listenerId": agent.listenerId
+                                    of "username": agent.username
+                                    of "impersonationToken": agent.impersonationToken
+                                    of "hostname": agent.hostname
+                                    of "domain": agent.domain
+                                    of "ipInternal": agent.ipInternal
+                                    of "ipExternal": agent.ipExternal
+                                    of "os": agent.os
+                                    of "process": agent.process
+                                    of "pid": $agent.pid
+                                    of "elevated": $agent.elevated
+                                    of "sleep": $agent.sleep
+                                    of "jitter": $agent.jitter
+                                    else: ""
+                                
+                                toCopy &= value & "\n"
+                        
+                        igSetClipboardText(toCopy.strip().cstring)
+                        igCloseCurrentPopup()
+                
+                igEndMenu()
+
+            # Menu to exit the agent process in different ways
             if igBeginMenu("Exit", true):
                 if igMenuItem("Process", nil, false, true): 
-                    for i, agent in component.agents:
+                    for i, agent in agents:
                         if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                            if component.consoles[].hasKey(agent.agentId):
-                                component.consoles[][agent.agentId].handleAgentCommand(connection, "exit process")
-                            else: 
-                                let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_EXIT), @["process"])
-                                connection.sendAgentTask(agent.agentId, "exit process", task)
+                            agent.console.handleAgentCommand("exit process")
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)
                     igCloseCurrentPopup()
 
                 if igMenuItem("Thread", nil, false, true):
-                    for i, agent in component.agents:
+                    for i, agent in agents:
                         if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                            if component.consoles[].hasKey(agent.agentId):
-                                component.consoles[][agent.agentId].handleAgentCommand(connection, "exit thread") 
-                            else: 
-                                let task = createTask(agent.agentId, agent.listenerId, getCommandByType(CMD_EXIT), @["thread"])
-                                connection.sendAgentTask(agent.agentId, "exit thread", task)
+                            agent.console.handleAgentCommand("exit thread") 
 
                     ImGuiSelectionBasicStorage_Clear(component.selection)
                     igCloseCurrentPopup()
 
+                if igMenuItem("Self-Destruct", nil, false, true):
+                    for i, agent in agents:
+                        if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                            agent.console.handleAgentCommand("self-destruct")
+
+                    ImGuiSelectionBasicStorage_Clear(component.selection)
+                    igCloseCurrentPopup()
+                
                 igEndMenu()
 
             igSeparator()
 
-            if igMenuItem("Remove", nil, false, true): 
-                # Update agents table with only non-selected ones
-                var newAgents: seq[UIAgent] = @[]
-                for i, agent in component.agents:
-                    if not ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        newAgents.add(agent)
-                    else: 
-                        # Send message to team server to remove delete the agent from the database and stop it from re-appearing when the client is restarted
-                        connection.sendAgentRemove(agent.agentId)
+            # Hide agent from sessions view without removing it from the database
+            if igMenuItem("Hide", nil, false, true): 
+                for i, agent in agents:
+                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        component.agents[agent.agentId].hidden = true
 
-                component.agents = newAgents
+                ImGuiSelectionBasicStorage_Clear(component.selection)
+                igCloseCurrentPopup()
+
+            # Menu item to remove an agent from the team server database
+            if igMenuItem("Remove", nil, false, true): 
+                for i, agent in agents:
+                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        component.agents.del(agent.agentId)
+                        cq.connection.sendAgentRemove(agent.agentId)
+
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
 
@@ -212,6 +287,11 @@ proc draw*(component: SessionsTableComponent, showComponent: ptr bool, connectio
         multiSelectIO = igEndMultiSelect()
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
         
+        # Clear selection after double-click interaction
+        if component.interact:
+            ImGuiSelectionBasicStorage_Clear(component.selection)
+            component.interact = false
+
         # Auto-scroll to bottom
         if igGetScrollY() >= igGetScrollMaxY():
             igSetScrollHereY(1.0f)

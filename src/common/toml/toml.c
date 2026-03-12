@@ -327,10 +327,13 @@ static char* norm_basic_str(const char* src, int srclen, int* len, bool multilin
 
 		ch = *sp++; /// get the escaped char
 		switch (ch) {
+		case 'x':
 		case 'u':
 		case 'U': {
 			uint64_t ucs  = 0;
-			int      nhex = (ch == 'u' ? 4 : 8);
+			int      nhex = 2;
+			if (ch == 'u') nhex = 4;
+			if (ch == 'U') nhex = 8;
 			for (int i = 0; i < nhex; i++) {
 				// TODO: unreachable I think, as scan_string() already
 				// guarantees exactly 4 or 8 hex chars.
@@ -369,6 +372,7 @@ static char* norm_basic_str(const char* src, int srclen, int* len, bool multilin
 		case 'n':  ch = '\n'; break;
 		case 'f':  ch = '\f'; break;
 		case 'r':  ch = '\r'; break;
+		case 'e':  ch = 0x1b; break;
 		case '"':  ch = '"'; break;
 		case '\\': ch = '\\'; break;
 		default:
@@ -663,20 +667,22 @@ static int parse_inline_table(context_t* ctx, toml_table_t* tbl) {
 		return -1;
 
 	for (;;) {
-		if (ctx->tok.tok == NEWLINE)
-			return e_syntax(ctx, ctx->tok.pos, "newline not allowed in inline table");
-
 		if (ctx->tok.tok == RBRACE) // until closing brace
 			break;
+		if (ctx->tok.eof)
+			return e_syntax(ctx, ctx->tok.pos, "no closing '}'");
+
+		if (ctx->tok.tok == NEWLINE) {
+			if (eat_token(ctx, NEWLINE, 1, FLINE))
+				return -1;
+			continue;
+		}
 
 		if (ctx->tok.tok != STRING)
 			return e_syntax(ctx, ctx->tok.pos, "expected a string");
 
 		if (parse_keyval(ctx, tbl))
 			return -1;
-
-		if (ctx->tok.tok == NEWLINE)
-			return e_syntax(ctx, ctx->tok.pos, "newline not allowed in inline table");
 
 		// On comma, continue to scan for next keyval.
 		if (ctx->tok.tok == COMMA) {
@@ -687,8 +693,16 @@ static int parse_inline_table(context_t* ctx, toml_table_t* tbl) {
 		break;
 	}
 
+	for (;;) {
+		if (ctx->tok.tok != NEWLINE || ctx->tok.eof)
+			break;
+		if (eat_token(ctx, NEWLINE, 1, FLINE))
+			return -1;
+	}
+
 	if (eat_token(ctx, RBRACE, 1, FLINE))
 		return -1;
+
 	tbl->readonly = 1;
 	return 0;
 }
@@ -697,7 +711,7 @@ static int valtype(const char* val) {
 	toml_timestamp_t ts;
 	if (*val == '\'' || *val == '"')
 		return 's';
-	if (toml_value_bool(val, false) == 0)
+	if (toml_value_bool(val, 0) == 0)
 		return 'b';
 	if (toml_value_int(val, 0) == 0)
 		return 'i';
@@ -1306,7 +1320,7 @@ static bool scan_time(const char* p, int* hh, int* mm, int* ss) {
 		*mm = minute;
 	if (ss)
 		*ss = second;
-	return (hour >= 0 && minute >= 0 && second >= 0);
+	return (hour >= 0 && minute >= 0);
 }
 
 static int parse_millisec(const char* p, const char** endp) {
@@ -1384,8 +1398,12 @@ static int scan_string(context_t* ctx, char* p, toml_pos_t* pos, bool dotisspeci
 		for (p += 3; p < q; p++) {
 			if (escape) {
 				escape = false;
-				if (strchr("btnfr\"\\", *p))
+				if (strchr("btnfre\"\\", *p))
 					continue;
+				if (*p == 'x') {
+					hexreq = 2;
+					continue;
+				}
 				if (*p == 'u') {
 					hexreq = 4;
 					continue;
@@ -1436,8 +1454,12 @@ static int scan_string(context_t* ctx, char* p, toml_pos_t* pos, bool dotisspeci
 			pos->col++;
 			if (escape) {
 				escape = false;
-				if (strchr("btnfr\"\\", *p))
+				if (strchr("btnfre\"\\", *p))
 					continue;
+				if (*p == 'x') {
+					hexreq = 2;
+					continue;
+				}
 				if (*p == 'u') {
 					hexreq = 4;
 					continue;
@@ -1675,11 +1697,13 @@ int toml_value_timestamp(toml_unparsed_t src_, toml_timestamp_t* ret) {
 
 	/// HH:MM:SS
 	if (scan_time(p, &ret->hour, &ret->minute, &ret->second)) {
-		if (ret->second < 0 || ret->minute < 0 || ret->hour < 0 || ret->hour > 23 || ret->minute > 59 || ret->second > 60)
+		if (ret->minute < 0 || ret->hour < 0 || ret->hour > 23 || ret->minute > 59 || ret->second > 60)
 			return -1;
+		p += (ret->second == -1 ? 5 : 8);
 		ret->kind = (ret->kind == 'D' ? 'l' : 't');
+		if (ret->second == -1)
+			ret->second = 0;
 
-		p += 8;
 		if (*p == '.') { /// optionally, parse millisec
 			p++;         /// skip '.'
 			const char* qq;

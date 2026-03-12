@@ -15,6 +15,9 @@
 
 ## General
 
+> [!TIP] 
+>  Conquest's profile system is covered in-depth in this blog post: https://jakobfriedl.github.io/blog/conquest-profiles/. 
+
 Conquest supports malleable C2 profiles written using the TOML configuration language and fully support the TOML v1.0.0 spec. This allows the complete customization of network traffic using data transformation, encoding and randomization. Wildcard characters `#` are replaced by a random alphanumerical character, making it possible to add even more variation to requests via randomized parameters or cookies. There is also the `$` wildcard, which is replaced by a single digit, for randomizing numeric values.  
 
 General settings that are defined at the beginning of the profile are the profile name and the relative location of important files, such as the team server's private key or the Conquest database.
@@ -33,6 +36,15 @@ The team server settings currently only include the host and port that the team 
 host = "0.0.0.0"
 port = 37573
 ``` 
+
+Operator credentials for user authentication are defined in this block as well. Currently, only password-based authentication is supported.
+
+```toml
+users = [
+    { username = "jakob", password = "conquest" }, 
+    { username = "operator", password = "conquest" }
+]
+```
 
 ## GET settings
 
@@ -58,8 +70,8 @@ A huge advantage of Conquest's C2 profile is the customization of where the hear
 | encoding.type | OPTION | Type of encoding to use. The following options are available: `base64`, `hex`, `rot`, `xor` and `none` (default) | 
 | encoding.url-safe | BOOL | Only used if encoding.type is set to `base64`. Uses `-` and `_` instead of `+`, `=` and `/`. Default: `false` |
 | encoding.key | INTEGER | Only used if encoding.type is set to `xor` or `rot`. The `rot` setting applies a Caesar cipher, while `xor` simply XOR-encodes the data. |
-| prefix | STRING/ARRAY | String to prepend before the heartbeat payload. |
-| suffix | STRING/ARRAY | String to append after the heartbeat payload. |
+| prepend | STRING/ARRAY | String to prepend before the heartbeat payload (prefix). |
+| append | STRING/ARRAY | String to append after the heartbeat payload (suffix). |
 
 The order of operations is: 
 1. Encoding
@@ -77,8 +89,8 @@ To illustrate how that works, the following TOML configuration transforms a base
 [http-get.agent.heartbeat]
 placement = { type = "header", name = "Authorization" }
 encoding = { type = "base64", url-safe = true }
-prefix = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-suffix = ".######################################-####"
+prepend = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+append = ".######################################-####"
 ```
 
 ![Heartbeat in Authorization Header](../assets/profile-1.png)
@@ -102,8 +114,8 @@ Instead of using strings for the prefix and suffix, it is also possible to use a
 ```toml
 placement = { type = "body" }
 encoding = { type = "xor", key = 100 }
-prefix = [0x25, 0x50, 0x44, 0x46]           # %PDF
-suffix = [0x25, 0x25, 0x45, 0x4F, 0x46]     # %%EOF
+prepend = [0x25, 0x50, 0x44, 0x46]           # %PDF
+append = [0x25, 0x25, 0x45, 0x4F, 0x46]     # %%EOF
 ```
 
 #### More Examples

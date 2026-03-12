@@ -1,29 +1,19 @@
-import strformat, strutils, times, os, tables, native_dialogs
+import strformat, strutils, sequtils, times, os, tables, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/appImGui
-import ../../../common/types
+import ../../utils/[appImGui, globals, dialogs]
+import ../../../types/[common, client, event]
 import ../../core/websocket
 import ../widgets/textarea
 
-type
-    DownloadsComponent* = ref object of RootObj
-        title: string
-        items*: seq[LootItem]
-        contents*: Table[string, string]
-        textarea: TextareaWidget
-        selectedIndex: int
-        
-
-proc LootDownloads*(title: string): DownloadsComponent =
+proc LootDownloads*(title: string, showComponent: ptr bool): DownloadsComponent =
     result = new DownloadsComponent
     result.title = title
-    result.items = @[]
-    result.contents = initTable[string, string]() 
-    result.selectedIndex = -1
+    result.showComponent = showComponent
+    result.items = initTable[string, tuple[item: LootItem, contents: string]]() 
     result.textarea = Textarea(showTimestamps = false, autoScroll = false)
 
-proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: WsConnection) =
-    igBegin(component.title.cstring, showComponent, 0)
+proc draw*(component: DownloadsComponent) =
+    igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd()
 
     var availableSize: ImVec2
@@ -58,54 +48,50 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: W
             igTableSetupScrollFreeze(0, 1)
             igTableHeadersRow()
         
-            for i, item in component.items:
+            for i, entry in component.items.values().toSeq().sortedByIt(it.item.timestamp):
+                let item = entry.item
                 igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
                 
                 if igTableSetColumnIndex(0):
                     igPushID_Int(i.int32)
-                    let isSelected = component.selectedIndex == i
+                    let isSelected = component.selectedLootId == item.lootId
                     if igSelectable_Bool(item.lootId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0)):
-                        component.selectedIndex = i
+                        component.selectedLootId = item.lootId
                         component.textarea.clear()
                     
                     if igIsItemHovered(ImGuiHoveredFlags_None.int32) and igIsMouseClicked_Bool(ImGuiMouseButton_Right.int32, false):
-                        component.selectedIndex = i
+                        component.selectedLootId = item.lootId
                     
                     igPopID()
 
                 if igTableSetColumnIndex(1):
                     igText(item.agentId.cstring)
-
                 if igTableSetColumnIndex(2):
                     igText(item.host.cstring)
-                
                 if igTableSetColumnIndex(3):
                     igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/").cstring)
-
                 if igTableSetColumnIndex(4):
                     igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss").cstring)
-
                 if igTableSetColumnIndex(5):
                     igText(($item.size).cstring)
                                         
             # Handle right-click context menu
-            if component.selectedIndex >= 0 and component.selectedIndex < component.items.len and igBeginPopupContextWindow("Downloads", ImGui_PopupFlags_MouseButtonRight.int32): 
-                let item = component.items[component.selectedIndex]
+            if component.selectedLootId != "" and component.items.hasKey(component.selectedLootId) and igBeginPopupContextWindow("Downloads", ImGui_PopupFlags_MouseButtonRight.int32): 
+                let item = component.items[component.selectedLootId].item
 
                 if igMenuItem("Download", nil, false, true):                     
-                    # Download file
                     try: 
-                        let path = callDialogFileSave("Save File")                     
-                        let data = component.contents[item.lootId]
+                        let path = callDialogFileSave("Save File", item.path.extractFilename())                     
+                        let data = component.items[component.selectedLootId].contents
                         writeFile(path, data)
                     except IOError: 
                         discard                     
                     igCloseCurrentPopup()
 
                 if igMenuItem("Remove", nil, false, true): 
-                    # Task team server to remove the loot item 
-                    connection.sendRemoveLoot(item.lootId)
-                    component.items.delete(component.selectedIndex)
+                    cq.connection.sendRemoveLoot(item.lootId)
+                    component.items.del(item.lootId)
+                    component.selectedLootId = ""
                     igCloseCurrentPopup()
 
                 igEndPopup()
@@ -115,15 +101,18 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: W
     igEndChild()
     igSameLine(0.0f, 0.0f)
     
+    if igIsKeyPressed_Bool(ImGui_Key_Escape, false):
+        component.selectedLootId = ""
+
     # Right panel (file content)
     if igBeginChild_Str("##Preview", vec2(0.0f, 0.0f), ImGui_ChildFlags_Borders.int32, ImGui_WindowFlags_None.int32):
 
-        if component.selectedIndex >= 0 and component.selectedIndex < component.items.len:
-            let item = component.items[component.selectedIndex]
+        if component.selectedLootId != "" and component.items.hasKey(component.selectedLootId):
+            let item = component.items[component.selectedLootId].item
             
-            if not component.contents.hasKey(item.lootId): 
-                connection.sendGetLoot(item.lootId)     
-                component.contents[item.lootId] = ""       # Ensure that the sendGetLoot() function is sent only once by setting a value for the table key
+            if component.items[component.selectedLootId].contents == "":
+                cq.connection.sendGetLoot(item.lootId)
+                component.items[component.selectedLootId].contents = " " 
 
             else: 
                 igText(fmt"[{item.host}] ".cstring)
@@ -134,8 +123,8 @@ proc draw*(component: DownloadsComponent, showComponent: ptr bool, connection: W
                 igSeparator()
                 igDummy(vec2(0.0f, 5.0f)) 
 
-                if component.textarea.isEmpty() and not component.contents[item.lootId].isEmptyOrWhitespace():
-                    component.textarea.addItem(LOG_OUTPUT, component.contents[item.lootId])
+                if component.textarea.isEmpty() and not component.items[component.selectedLootId].contents.isEmptyOrWhitespace():
+                    component.textarea.addItem(LOG_OUTPUT, component.items[component.selectedLootId].contents)
                 
                 component.textarea.draw(vec2(-1.0f, -1.0f))
             

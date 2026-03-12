@@ -22,10 +22,16 @@ When the `Monarch` is built, it is embedded with a large placeholder field that 
 | Setting | Type | Description |
 | --- | --- | --- | 
 | Listener | Dropdown selection | ID of the listener the agent with be configured to connect to. | 
+| Payload type | Dropdown selection | Type of payload to create. | 
 | Verbose | Boolean | Enable/Disable verbose mode. When this checkbox is checked, the agent prints debug messages in the console. |
-| Modules | Dual list selection | Select the modules that are to be built into the agent. Highlighting a module shows a brief description and the included commands. More on modules can be found [here](./7-MODULES.md). |
+| Modules | Dual list selection | Select the core modules that are to be built into the agent. Highlighting a module shows a brief description and the included commands. More on modules can be found [here](./7-MODULES.md). |
 
-The build log shows the state of the agent build process. When the build is finished, a file dialog is opened on the client that prompts the operator to choose where to save the `Monarch` executable.
+The following payload types are available: 
+- Windows Executable (.exe)
+- Windows DLL (.dll)
+- Windows Service Executable (.svc.exe)
+
+The build log shows the state of the agent build process. When the build is finished, a file dialog is opened on the client that prompts the operator to choose where to save the `Monarch` executable. By default, payload are stored using the following naming scheme: `monarch.<protocol>_<arch>.<extension>`
 
 ## Sleep settings
 

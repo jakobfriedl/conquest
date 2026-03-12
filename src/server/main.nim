@@ -4,13 +4,14 @@ import strutils, strformat, system, tables
 
 import ./globals
 import ./db/database
-import ./core/[listener, logger, builder, websocket]
-import ../common/[types, crypto, utils, profile, event]
+import ./core/[listener, logger, builder, websocket, auth]
+import ../common/[crypto, utils, profile, event]
+import ../types/[common, event, protocol, server]
 
 proc header() = 
     echo ""
     echo "┏┏┓┏┓┏┓┓┏┏┓┏╋"
-    echo "┗┗┛┛┗┗┫┗┻┗ ┛┗ V0.1"
+    echo "┗┗┛┛┗┗┫┗┻┗ ┛┗ V0.2"
     echo "      ┗  @jakobfriedl"  
     echo "─".repeat(21) 
     echo ""
@@ -23,8 +24,7 @@ proc init*(T: type Conquest, profileString: string): Conquest =
     cq.profileString = profileString
     cq.profile = parseString(profileString)
     cq.keyPair = loadKeyPair(CONQUEST_ROOT & "/" & cq.profile.getString("private-key-file"))
-    cq.dbPath = CONQUEST_ROOT & "/" & cq.profile.getString("database-file")
-    cq.client = nil 
+    cq.clients = initTable[string, WsConnection]() 
     return cq
 
 #[
@@ -33,56 +33,78 @@ proc init*(T: type Conquest, profileString: string): Conquest =
 proc upgradeHandler(request: Request) = 
     {.cast(gcsafe).}:
         let ws = request.upgradeToWebSocket()
-        cq.client = WsConnection(
+        let clientId = generateUuid()
+        cq.clients[clientId] = WsConnection(
+            clientId: clientId,
             ws: ws
         )
 
 proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.gcsafe.} = 
     {.cast(gcsafe).}:
+        
+        # Get requesting clientId
+        var clientId: string = ""
+        for id, conn in cq.clients: 
+            if conn.ws == ws: 
+                clientId = conn.clientId
+                break
+
         case event:
         of OpenEvent:
             # New client connected to team server
             # Send the public key for the key exchange, all other information with be transmitted when the key exchange is completed
-            cq.client.sendPublicKey(cq.keyPair.publicKey)
+            cq.sendPublicKey(cq.keyPair.publicKey, clientId = clientId)
     
         of MessageEvent:            
-            let event = message.recvEvent(cq.client.sessionKey)
-
+            let event = message.recvEvent(cq.clients[clientId].sessionKey)
             case event.eventType: 
             of CLIENT_KEY_EXCHANGE: 
                 let publicKey = decode(event.data["publicKey"].getStr()).toKey()
-                cq.client.sessionKey = deriveSessionKey(cq.keyPair, publicKey)
+                cq.clients[clientId].sessionKey = deriveSessionKey(cq.keyPair, publicKey)
             
-                # Send relevant information to the client
+            of CLIENT_AUTH:
+                let username = event.data["username"].getStr()
+                let password = event.data["password"].getStr()
+
+                # Authenticate user 
+                let auth = cq.authenticate(username, password)
+                cq.sendAuthenticationResult(auth, clientId = clientId)
+
+                if auth: 
+                    cq.clients[clientId].user = username
+                    cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"User {username} connected.")
+
+            of CLIENT_SYNC:
+                # Synchronize data between client and server (after client authentication)
                 # C2 profile 
-                cq.client.sendProfile(cq.profileString)
+                cq.sendProfile(cq.profileString, clientId = clientId)
                 
                 # Listeners
                 for id, listener in cq.listeners: 
-                    cq.client.sendListener(listener)
+                    cq.sendListener(listener, clientId = clientId)
                 
                 # Agent sessions
                 for id, agent in cq.agents: 
-                    cq.client.sendAgent(agent)
+                    cq.sendAgent(agent, clientId = clientId)
 
                 # Downloads & Screenshots metadata
                 for lootItem in cq.dbGetLoot():
-                    cq.client.sendLoot(lootItem)
-
-                cq.client.sendEventlogItem(LOG_SUCCESS_SHORT, "Connected to Conquest team server.")
+                    cq.sendLoot(lootItem, clientId = clientId)
 
             of CLIENT_AGENT_TASK:
-                let agentId = event.data["agentId"].getStr()
-                let command = event.data["command"].getStr()
-                let task = event.data["task"].to(Task) 
+                let 
+                    agentId = event.data["agentId"].getStr()
+                    task = event.data["task"].to(Task) 
+                    command = event.data["command"].getStr()
+                    message = event.data["message"].getStr()
+                
                 cq.agents[agentId].tasks.add(task)
-
-                let timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
-                log(fmt"[{timestamp}]{$LOG_COMMAND}{command}", agentId)
+                cq.sendConsoleItem(agentId, LOG_COMMAND, command)
+                cq.sendConsoleItem(agentId, LOG_INFO, message)
 
             of CLIENT_LISTENER_START:
                 let listener = event.data.to(UIListener)
-                cq.listenerStart(listener.listenerId, listener.hosts, listener.address, listener.port, listener.protocol)
+                cq.listenerStart(listener)
             
             of CLIENT_LISTENER_STOP:
                 let listenerId = event.data["listenerId"].getStr()
@@ -90,30 +112,37 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
 
             of CLIENT_AGENT_BUILD:
                 let agentBuildInformation = event.data.to(AgentBuildInformation)
-                let payload = cq.agentBuild(agentBuildInformation)
+                let (name, payload) = cq.agentBuild(agentBuildInformation, clientId = clientId)
                 if payload.len() != 0: 
-                    cq.client.sendAgentPayload(payload)
+                    cq.sendAgentPayload(name, payload, clientId = clientId)
 
             of CLIENT_AGENT_REMOVE: 
                 let agentId = event.data["agentId"].getStr()
-                discard cq.dbDeleteAgentByName(agentId)
-                cq.agents.del(agentId)
+                cq.dbDeleteAgentById(agentId)
 
             of CLIENT_LOOT_REMOVE: 
                 if not cq.dbDeleteLootById(event.data["lootId"].getStr()): 
-                    cq.client.sendEventlogItem(LOG_ERROR, "Failed to delete loot.")
+                    cq.sendEventlogItem(LOG_ERROR, "Failed to delete loot.")
 
             of CLIENT_LOOT_GET: 
                 let loot = cq.dbGetLootById(event.data["lootId"].getStr())
-                cq.client.sendLootData(loot, readFile(loot.path))
+                cq.sendLootData(loot, readFile(loot.path), clientId = clientId)
+
+            of CLIENT_LOG: 
+                log(event.data["message"].getStr(), event.data["agentId"].getStr())
+
+            of CLIENT_CHAT: 
+                cq.sendChatMessage(event.data["user"].getStr(), event.data["message"].getStr())
 
             else: discard
 
         of ErrorEvent:
             discard 
+            
         of CloseEvent:
-            # Set the client instance to nil again to prevent debug error messages
-            cq.client = nil
+            let user = cq.clients[clientId].user
+            cq.clients.del(clientId)
+            cq.sendEventlogItem(LOG_ERROR_SHORT, fmt"User {user} disconnected.")
 
 var lastCtrlCTime = fromUnix(0)
 var ctrlC = 0
@@ -147,15 +176,10 @@ proc startServer*(profilePath: string) =
         cq.info("Using profile \"", cq.profile.getString("name"), "\" (", profilePath ,").")
         
         # Initialize database
-        cq.dbInit()
-        for agent in cq.dbGetAllAgents():
-            cq.agents[agent.agentId] = agent
+        cq.dbInit(cq.profile.getString("database-file"))
+        cq.dbGetAllAgents()
         for listener in cq.dbGetAllListeners():
-            cq.listeners[listener.listenerId] = listener
-
-        # Restart existing listeners
-        for listenerId, listener in cq.listeners: 
-            cq.listenerStart(listenerId, listener.hosts, listener.address, listener.port, listener.protocol)
+            cq.listenerStart(listener)  # Restart existing listener
 
         # Start websocket server
         var router: Router
