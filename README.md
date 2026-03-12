@@ -49,6 +49,8 @@ For more information about architecture, usage and features, check out the [docu
 
 ![Payload generation](assets/readme-2.png)
 
+![Filesystem Browser](assets/readme-4.png)
+
 ![Screenshot Preview](assets/readme-3.png)
 
 ## Acknowledgements
