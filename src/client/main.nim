@@ -1,6 +1,6 @@
 import whisky
-import tables, times, strutils, sequtils, strformat, json, base64, native_dialogs
-import ./utils/[appImGui, globals]
+import tables, times, strutils, sequtils, strformat, json, base64
+import ./utils/[appImGui, globals, dialogs]
 import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, moduleManager, chat]
 import ./views/loot/[screenshots, downloads]
 import ./views/modals/[generatePayload, connect]
@@ -197,9 +197,10 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         cq.sessions.agents[event.data["agentId"].getStr()].latestCheckin = event.timestamp
 
                     of CLIENT_AGENT_PAYLOAD: 
+                        let name = event.data["name"].getStr()
                         let payload = decode(event.data["payload"].getStr())
                         try: 
-                            let path = callDialogFileSave("Save Payload")
+                            let path = callDialogFileSave("Save Payload", name)
                             writeFile(path, payload)
                         except IOError:
                             discard 

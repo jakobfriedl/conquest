@@ -101,7 +101,7 @@ type
         EXE = 0'u8
         SVC = 1'u8 
         DLL = 2'u8 
-        BIN = 3'u8
+        # BIN = 3'u8
 
 type 
     WorkingHours* = ref object 

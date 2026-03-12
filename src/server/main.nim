@@ -112,9 +112,9 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
 
             of CLIENT_AGENT_BUILD:
                 let agentBuildInformation = event.data.to(AgentBuildInformation)
-                let payload = cq.agentBuild(agentBuildInformation, clientId = clientId)
+                let (name, payload) = cq.agentBuild(agentBuildInformation, clientId = clientId)
                 if payload.len() != 0: 
-                    cq.sendAgentPayload(payload, clientId = clientId)
+                    cq.sendAgentPayload(name, payload, clientId = clientId)
 
             of CLIENT_AGENT_REMOVE: 
                 let agentId = event.data["agentId"].getStr()

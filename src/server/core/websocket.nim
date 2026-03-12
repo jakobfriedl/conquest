@@ -155,12 +155,13 @@ proc sendAgentCheckin*(cq: Conquest, agentId: string, clientId: string = "") =
     )
     cq.broadcast(event, clientId)
 
-proc sendAgentPayload*(cq: Conquest, bytes: seq[byte], clientId: string = "") =
+proc sendAgentPayload*(cq: Conquest, name: string, payload: seq[byte], clientId: string = "") =
     let event = Event(
         eventType: CLIENT_AGENT_PAYLOAD, 
         timestamp: now().toTime().toUnix(),
         data: %*{
-            "payload": encode(bytes)
+            "name": name,
+            "payload": encode(payload)
         }
     )
     cq.broadcast(event, clientId)

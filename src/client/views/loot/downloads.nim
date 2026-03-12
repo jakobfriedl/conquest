@@ -1,6 +1,6 @@
-import strformat, strutils, sequtils, times, os, tables, algorithm, native_dialogs
+import strformat, strutils, sequtils, times, os, tables, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
-import ../../utils/[appImGui, globals]
+import ../../utils/[appImGui, globals, dialogs]
 import ../../../types/[common, client, event]
 import ../../core/websocket
 import ../widgets/textarea
@@ -81,7 +81,7 @@ proc draw*(component: DownloadsComponent) =
 
                 if igMenuItem("Download", nil, false, true):                     
                     try: 
-                        let path = callDialogFileSave("Save File")                     
+                        let path = callDialogFileSave("Save File", item.path.extractFilename())                     
                         let data = component.items[component.selectedLootId].contents
                         writeFile(path, data)
                     except IOError: 

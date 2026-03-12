@@ -1,4 +1,4 @@
-import terminal, strformat, strutils, tables, system, osproc, streams
+import terminal, strformat, strutils, tables, system, osproc, streams, os
 
 import ../globals
 import ../core/[logger, websocket]
@@ -87,7 +87,7 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
 --app:lib
 --nomain
 --passL:"-static-libgcc -static-libstdc++ -Wl,-Bstatic -lpthread""""
-    of BIN: ext = "bin"
+    # of BIN: ext = "bin"
 
     let configFile = fmt"{CONQUEST_ROOT}/src/agents/monarch/nim.cfg"  
     let outFile = fmt"{CONQUEST_ROOT}/bin/monarch.{listenerType}_{arch}.{ext}" 
@@ -177,7 +177,7 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte], cli
     return @[]
 
 # Agent generation 
-proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation, clientId: string = ""): seq[byte] =
+proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation, clientId: string = ""): tuple[name: string, payload: seq[byte]] =
 
     # Verify that listener exists
     if not cq.dbListenerExists(agentBuildInformation.listenerId): 
@@ -192,4 +192,4 @@ proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation, cli
         return 
 
     # Return packet to send to client
-    return cq.patch(unpatchedExePath, config, clientId)
+    return (unpatchedExePath.extractFilename(), cq.patch(unpatchedExePath, config, clientId))

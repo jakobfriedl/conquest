@@ -12,7 +12,7 @@ proc `$`(payloadType: PayloadType): string =
     of EXE: "Windows Executable (.exe)"
     of SVC: "Windows Service Executable (.svc.exe)"
     of DLL: "Windows DLL (.dll)"
-    of BIN: "Raw Shellcode (.bin)"
+    # of BIN: "Raw Shellcode (.bin)"
 
 proc AgentModal*(): AgentModalComponent =
     result = new AgentModalComponent
@@ -59,7 +59,7 @@ proc AgentModal*(): AgentModalComponent =
 
 proc resetModalValues*(component: AgentModalComponent) = 
     component.listener = 0
-    component.payloadType = 0  # Reset to PAYLOAD_EXE
+    component.payloadType = 0 
     component.sleepDelay = 5
     component.jitter = 15
     component.sleepMask = 0

@@ -1,8 +1,8 @@
-import times, tables, native_dialogs, sequtils, algorithm
+import times, tables, sequtils, algorithm, os
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../../common/utils
 import ../../../types/[common, client, event]
-import ../../utils/[appImGui, globals]
+import ../../utils/[appImGui, globals, dialogs]
 import ../../core/websocket
 
 proc LootScreenshots*(title: string, showComponent: ptr bool): ScreenshotsComponent =
@@ -86,7 +86,7 @@ proc draw*(component: ScreenshotsComponent) =
 
                 if igMenuItem("Download", nil, false, true):                     
                     try: 
-                        let path = callDialogFileSave("Save File") 
+                        let path = callDialogFileSave("Save File", item.path.extractFilename())                     
                         let data = component.items[component.selectedLootId].texture.data
                         writeFile(path, data)
                     except IOError: 

@@ -1,6 +1,6 @@
 import imguin/[cimgui, glfw_opengl]
-import tables, sequtils, strformat, native_dialogs, algorithm
-import ../utils/appImGui
+import tables, sequtils, strformat, algorithm, os
+import ../utils/[appImGui, dialogs]
 import ../core/scripting/engine
 import ../core/database
 import ../../types/client
@@ -21,8 +21,9 @@ proc draw*(component: ModuleManagerComponent) =
     let textSpacing = igGetStyle().ItemSpacing.x    
     
     if igButton("Load Script", vec2(0.0f, 0.0f)):          
-        let path = callDialogFileSave("Load Script") 
-        loadScript(path)
+        let paths = callDialogFileOpenMultiple("Load Scripts", "", [("Python Files (*.py)", "*.py")])
+        for path in paths:
+            loadScript(path)
     
     let tableFlags = (
         ImGuiTableFlags_Resizable.int32 or 

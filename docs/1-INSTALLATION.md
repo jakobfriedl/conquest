@@ -25,7 +25,7 @@ The Conquest binaries for team server and client are designed to be compiled and
 ```bash
 sudo apt update
 sudo apt install gcc g++ make git curl xz-utils
-sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgtk2.0-0
+sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgtk2.0-dev
 ```
 
 ## 4. Compile Conquest binaries 
