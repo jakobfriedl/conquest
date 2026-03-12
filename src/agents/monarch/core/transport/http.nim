@@ -1,6 +1,6 @@
 when defined(TRANSPORT_HTTP):
 
-    import httpclient, strformat, strutils, asyncdispatch, base64, tables, random
+    import httpclient, strformat, strutils, asyncdispatch, random
     import ../../utils/io
     import ../../../../common/[utils, profile]
     import ../../../../types/[common, agent]

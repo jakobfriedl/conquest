@@ -1,18 +1,10 @@
 import times, tables, strformat, strutils, sequtils, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 
+import ../../types/client
 import ../utils/[appImGui, globals]
-import ../core/[task, websocket]
-import ./[console, moduleManager]
-import ../../types/[common, client]
-
-# type 
-#     SessionsTableComponent* = ref object of RootObj
-#         title: string 
-#         agents*: seq[UIAgent]
-#         selection: ptr ImGuiSelectionBasicStorage
-#         consoles: ptr Table[string, ConsoleComponent]
-#         focusedConsole*: string
+import ../core/websocket
+import ./console
 
 proc SessionsTable*(title: string, showComponent: ptr bool): SessionsTableComponent = 
     result = new SessionsTableComponent

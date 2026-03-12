@@ -1,8 +1,7 @@
 import winim/lean 
-import tables
 import ./[io, token]
-import ../../../common/[utils]
-import ../../../types/[common, agent]
+import ../../../common/utils
+import ../../../types/agent
 
 type 
     NtQuerySystemInformation = proc(systemInformationClass: SYSTEM_INFORMATION_CLASS, systemInformation: PVOID, systemInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}

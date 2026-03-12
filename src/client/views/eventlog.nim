@@ -1,6 +1,6 @@
 import imguin/[cimgui, glfw_opengl]
 import ./widgets/textarea
-import ../utils/[appImGui, globals]
+import ../utils/appImGui
 import ../../types/client
 export addItem
 

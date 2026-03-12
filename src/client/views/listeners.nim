@@ -5,14 +5,6 @@ import ../utils/[appImGui, globals]
 import ../core/websocket
 import ../../types/[common, client]
 
-# type 
-#     ListenersTableComponent* = ref object of RootObj
-#         title: string 
-#         listeners*: seq[UIListener]
-#         selection: ptr ImGuiSelectionBasicStorage
-#         startListenerModal: ListenerModalComponent
-#         generatePayloadModal*: AgentModalComponent
-
 proc ListenersTable*(title: string, showComponent: ptr bool): ListenersTableComponent = 
     result = new ListenersTableComponent
     result.title = title

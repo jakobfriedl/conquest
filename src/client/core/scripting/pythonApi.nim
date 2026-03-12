@@ -1,4 +1,4 @@
-import tables, base64, strformat, strutils, os, unicode
+import tables, strformat, strutils, unicode
 import ../[database, task]
 import ../../utils/globals
 import ../../views/widgets/textarea

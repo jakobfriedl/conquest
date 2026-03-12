@@ -1,7 +1,6 @@
 import whisky, strutils, strformat
 import imguin/[cimgui, glfw_opengl]
 import ../../utils/[appImGui, globals]
-import ../../../common/utils
 import ../../../types/[common, client]
 
 proc ConnectionModal*(host: string, port: int): ConnectionModalComponent =

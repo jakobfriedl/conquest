@@ -1,10 +1,9 @@
 import winim/lean
 import winim/inc/wingdi
-import strformat, times, pixie
+import pixie
 import stb_image/write as stbiw
 import ./io
-import ../protocol/result
-import ../../../common/[utils, serialize]
+import ../../../common/utils
 import ../../../types/[common]
 
 proc bmpToJpeg*(data: seq[byte], quality: int = 80): seq[byte] =

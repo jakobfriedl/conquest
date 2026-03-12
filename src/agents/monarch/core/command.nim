@@ -1,5 +1,5 @@
 import winim/lean
-import tables, strformat, strutils, base64
+import tables, strformat, strutils
 import ../../../common/[serialize, utils]
 import ../../../types/[common, agent, protocol]
 import ../utils/io
@@ -296,12 +296,10 @@ when ((MODULES and cast[uint32](MODULE_PROCESS)) == cast[uint32](MODULE_PROCESS)
         try: 
             print "   [>] Listing running processes."
 
-            var processes: string = ""            
-            var packer = Packer.init() 
-
             let procList = processList() 
             
             # Add process data to send to the team server
+            var packer = Packer.init() 
             packer.add(cast[uint32](procList.len()))    
             for procInfo in procList: 
                 packer

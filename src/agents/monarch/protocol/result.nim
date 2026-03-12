@@ -1,5 +1,5 @@
 import times, zippy
-import ../../../common/[serialize, sequence, crypto, utils]
+import ../../../common/[serialize, sequence, crypto]
 import ../../../types/[common, agent, protocol]
 
 proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, resultData: seq[byte]): TaskResult =     

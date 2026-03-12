@@ -3,7 +3,7 @@ import imguin/[cimgui, glfw_opengl]
 import ./widgets/textarea
 import ../utils/[appImGui, globals]
 import ../core/websocket
-import ../../types/[client, event]
+import ../../types/client
 export addItem
 
 proc Chat*(title: string, showComponent: ptr bool): ChatComponent = 

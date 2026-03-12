@@ -1,4 +1,4 @@
-import nimpy, sets
+import nimpy
 import ../../utils/globals
 
 pyExportModule("conquest")

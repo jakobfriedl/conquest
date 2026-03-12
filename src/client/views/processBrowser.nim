@@ -1,14 +1,8 @@
 import imguin/[cimgui, glfw_opengl]
 import sequtils, strutils, strformat, tables, times, algorithm, options
+import ../../types/client
 import ../utils/[appImGui, globals]
-import ../core/[task, websocket]
-import ./moduleManager
-import ../../types/[common, client]
-
-#     ProcessBrowserComponent* = ref object of RootObj
-#         title: string 
-#         agent: int32
-#         selection*: uint32
+import ../core/task
 
 proc ProcessBrowser*(title: string, showComponent: ptr bool): ProcessBrowserComponent = 
     result = new ProcessBrowserComponent

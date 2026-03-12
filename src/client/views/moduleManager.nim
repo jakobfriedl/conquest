@@ -1,5 +1,5 @@
 import imguin/[cimgui, glfw_opengl]
-import tables, sequtils, strformat, algorithm, os
+import tables, sequtils, strformat
 import ../utils/[appImGui, dialogs]
 import ../core/scripting/engine
 import ../core/database

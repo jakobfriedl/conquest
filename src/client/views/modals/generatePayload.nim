@@ -4,7 +4,6 @@ import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
 import ../../utils/[appImGui, globals]
 import ../../../types/[common, client, event]
-import ../moduleManager
 export addItem
 
 proc `$`(payloadType: PayloadType): string = 

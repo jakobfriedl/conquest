@@ -1,6 +1,5 @@
 import tables, strutils, strformat, sequtils, times, os
 import ./websocket
-import ../views/widgets/textarea
 import ../utils/[utils, globals]
 import ../../common/[sequence, crypto, utils, serialize]
 import ../../types/[common, client, protocol]

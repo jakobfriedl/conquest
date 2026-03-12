@@ -1,8 +1,7 @@
 import imguin/[cimgui, glfw_opengl]
 import sequtils, strutils, strformat, tables, times, algorithm, options, os
 import ../utils/[appImGui, globals]
-import ../core/[task, websocket]
-import ./moduleManager
+import ../core/task
 import ../../types/[common, client]
 
 proc FileBrowser*(title: string, showComponent: ptr bool): FileBrowserComponent = 

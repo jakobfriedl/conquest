@@ -1,7 +1,7 @@
 import times, tables, sequtils, algorithm, os
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../../common/utils
-import ../../../types/[common, client, event]
+import ../../../types/[client, event]
 import ../../utils/[appImGui, globals, dialogs]
 import ../../core/websocket
 
