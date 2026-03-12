@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.0"
+version       = "0.2.0"
 author        = "Jakob Friedl"
 description   = "Conquest command & control/post-exploitation framework"
 license       = "BSD-3-Clause"
