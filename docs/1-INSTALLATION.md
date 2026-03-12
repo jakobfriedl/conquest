@@ -8,6 +8,8 @@ cd conquest
 
 ## 2. Install Nim.
 
+Conquest requires Nim version 2.2.6. To install the latest version, use the following command.
+
 ```bash
 curl https://nim-lang.org/choosenim/init.sh -sSf | sh
 ```
