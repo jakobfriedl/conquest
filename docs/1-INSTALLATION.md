@@ -35,7 +35,13 @@ sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxra
 
 ## 4. Compile Conquest binaries 
 
-The Conquest binaries are compiled using the `nimble` command, which installs and updates all Nim libraries and dependencies automatically.
+The required Nim dependencies can be installed manually using the `nimble` command prior to the compilation.
+
+```
+nimble install -d
+```
+
+The Conquest binaries are compiled using the following commands.
 
 ```
 nimble server
@@ -48,11 +54,7 @@ When building, the Conquest root is set to the directory where `conquest.nimble`
 CONQUEST_ROOT="/usr/share/conquest" nimble server
 ```
 
-Optionally, the required dependencies can be installed manually using the following command prior to the compilation.
 
-```
-nimble install -d
-```
 
 ## 5. Start the Conquest team server with a C2 profile. 
 
