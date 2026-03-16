@@ -24,14 +24,11 @@ requires "gtk2 >= 1.3"
 import os, strformat
 
 let cqRoot = getEnv("CONQUEST_ROOT", getCurrentDir())
-let vendor = cqRoot / "vendor"
-
-proc deps() = exec fmt"nimble --nimbleDir:{vendor} install --depsOnly -y"
 proc build(file: string, debug = false) =
     let flags = if debug: "-d:debug --stackTrace:on --lineTrace:on" else: "-d:release"
     exec fmt"nim c {flags} -d:CONQUEST_ROOT={cqRoot} {file}"
 
-task server,       "Build server":         deps(); build("src/server/main.nim")
-task server_debug, "Build server (debug)": deps(); build("src/server/main.nim", true)
-task client,       "Build client":         deps(); build("src/client/main.nim")
-task client_debug, "Build client (debug)": deps(); build("src/client/main.nim", true)
+task server,       "Build server":         build("src/server/main.nim")
+task server_debug, "Build server (debug)": build("src/server/main.nim", true)
+task client,       "Build client":         build("src/client/main.nim")
+task client_debug, "Build client (debug)": build("src/client/main.nim", true)

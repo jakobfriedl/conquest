@@ -92,8 +92,13 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
     let configFile = fmt"{CONQUEST_ROOT}/src/agents/monarch/nim.cfg"  
     let outFile = fmt"{CONQUEST_ROOT}/bin/monarch.{listenerType}_{arch}.{ext}" 
 
-    let buildCommand = fmt"nim --os:windows --cpu:amd64 --gcc.exe:x86_64-w64-mingw32-gcc --gcc.linkerexe:x86_64-w64-mingw32-gcc -o:{outFile} c {CONQUEST_ROOT}/src/agents/monarch/main.nim"
-
+    # Allow environment variable to specify the location of the nimble dependencies. 
+    # This is primarily used when the team server is running under a context that does not have the packages installed in the default location (~/.nimble/pkgs2)
+    # Usage: NIMBLE_PATH=/path/to/vendor/pkgs2 bin/server -p profile.toml
+    let nimblePath = getEnv("NIMBLE_PATH")
+    let depsDir = if nimblePath != "": fmt"--nimblePath:{nimblePath}" else: ""
+    let buildCommand = fmt"nim {depsDir} --os:windows --cpu:amd64 --gcc.exe:x86_64-w64-mingw32-gcc --gcc.linkerexe:x86_64-w64-mingw32-gcc -o:{outFile} c {CONQUEST_ROOT}/src/agents/monarch/main.nim"
+    
     # Create agent configuration file (nim.cfg)  
     let placeholder = PLACEHOLDER & "A".repeat(placeholderLength - len(PLACEHOLDER))
     let hideConsole = if not agentBuildInformation.verbose: ",-subsystem,windows" else: ""
