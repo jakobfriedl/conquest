@@ -1,31 +1,12 @@
 # Package
-
-version       = "0.2.0"
-author        = "Jakob Friedl"
-description   = "Conquest command & control/post-exploitation framework"
-license       = "BSD-3-Clause"
-srcDir        = "src"
-
-# Build tasks 
-
-import os, strformat
-let cqRoot = getEnv("CONQUEST_ROOT", getCurrentDir())
-task server, "Build conquest server binary": 
-    exec fmt"nim c -d:release -d:CONQUEST_ROOT={cqRoot} src/server/main.nim"
-
-task server_debug, "Build conquest client binary in debug mode":
-    exec fmt"nim c -d:debug --stackTrace:on --lineTrace:on -d:CONQUEST_ROOT={cqRoot} src/server/main.nim"
-
-task client, "Build conquest client binary": 
-    exec fmt"nim c -d:release -d:CONQUEST_ROOT={cqRoot} src/client/main.nim"
-
-task client_debug, "Build conquest client binary in debug mode":
-    exec fmt"nim c -d:debug --stackTrace:on --lineTrace:on -d:CONQUEST_ROOT={cqRoot} src/client/main.nim"
+version     = "0.2.0"
+author      = "Jakob Friedl"
+description = "Conquest command & control/post-exploitation framework"
+license     = "BSD-3-Clause"
+srcDir      = "src"
 
 # Dependencies
-
 requires "nim >= 2.2.6"
-
 requires "nimcrypto >= 0.6.4"
 requires "tiny_sqlite >= 0.2.0"
 requires "winim >= 3.9.4"
@@ -38,3 +19,19 @@ requires "pixie >= 5.1.0"
 requires "cligen >= 1.9.3"
 requires "nimpy >= 0.2.1"
 requires "gtk2 >= 1.3"
+
+# Build tasks
+import os, strformat
+
+let cqRoot = getEnv("CONQUEST_ROOT", getCurrentDir())
+let vendor = cqRoot / "vendor"
+
+proc deps() = exec fmt"nimble --nimbleDir:{vendor} install --depsOnly -y"
+proc build(file: string, debug = false) =
+    let flags = if debug: "-d:debug --stackTrace:on --lineTrace:on" else: "-d:release"
+    exec fmt"nim c {flags} -d:CONQUEST_ROOT={cqRoot} {file}"
+
+task server,       "Build server":         deps(); build("src/server/main.nim")
+task server_debug, "Build server (debug)": deps(); build("src/server/main.nim", true)
+task client,       "Build client":         deps(); build("src/client/main.nim")
+task client_debug, "Build client (debug)": deps(); build("src/client/main.nim", true)

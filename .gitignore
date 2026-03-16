@@ -1,5 +1,4 @@
-# Ignore agents
-# agents/
+/vendor/*
 *.db
 *.ini
 *.key

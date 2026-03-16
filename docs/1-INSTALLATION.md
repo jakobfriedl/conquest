@@ -1,80 +1,75 @@
-# Installation
+# Manual Installation
 
-## 1. Clone the Conquest repository
-
-Use the `--recurse-submodules` flag to clone the conquest-modules repository aswell. 
-
-```
+## 1. Clone the Repository
+Use `--recurse-submodules` to also clone the conquest-modules repository.
+```bash
 git clone https://github.com/jakobfriedl/conquest --recurse-submodules
 cd conquest
 ```
 
-## 2. Install Nim.
-
-Conquest requires Nim version 2.2.6. To install the latest version, use the following command.
-
+## 2. Install Nim
+Conquest requires Nim 2.2.6. Install it via choosenim:
 ```bash
 curl https://nim-lang.org/choosenim/init.sh -sSf | sh
 ```
-
-After it is installed, the Nim binaries need to be added to the PATH. This is done by adding the following line to the `.bashrc`/`.zshrc`/`.profile` configuration.
-
-```
+Then add the Nim binaries to your PATH in `.bashrc`, `.zshrc`, or `.profile`:
+```bash
 export PATH=/home/<user>/.nimble/bin:$PATH
 ```
 
-## 3. Install dependencies
-
-The Conquest binaries for team server and client are designed to be compiled and run on Ubuntu/Debian-based systems. The operator client requires the subsequent dependencies to be installed. To run the client on a Windows host, install the same dependencies in WSL.
-
+## 3. Install Dependencies
+Conquest is designed to be compiled and run on Ubuntu/Debian-based systems. To run the operator client on Windows, install these dependencies in WSL instead.
 ```bash
 sudo apt update
 sudo apt install gcc g++ make git curl xz-utils
 sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgtk2.0-dev
 ```
 
-## 4. Compile Conquest binaries 
-
-The required Nim dependencies can be installed manually using the `nimble` command prior to the compilation.
-
-```
-nimble install -d
-```
-
-The Conquest binaries are compiled using the following commands.
-
-```
+## 4. Compile
+Nim dependencies are installed automatically into `vendor/` on first build.
+```bash
 nimble server
 nimble client
 ```
-
-When building, the Conquest root is set to the directory where `conquest.nimble` is located. If the framework's files are to be placed in a different location (e.g. `/usr/share`), it is possible to specify the root directory using an environment variable as follows. 
-
+To install the framework files to a custom location (e.g. `/usr/share/conquest`), set `CONQUEST_ROOT` before building:
 ```bash
 CONQUEST_ROOT="/usr/share/conquest" nimble server
+CONQUEST_ROOT="/usr/share/conquest" nimble client
 ```
 
-
-
-## 5. Start the Conquest team server with a C2 profile. 
-
-The default profile is located in [data/profile.toml](../data/profile.toml) and can be adapted by the operator.
-```
+## 5. Start the Team Server
+The default C2 profile is located at `data/profiles/profile.toml`.
+```bash
 bin/server -p data/profiles/profile.toml
 ```
-
-On the first start, the Conquest team server creates the Conquest database in the data directory, as well as the team server's private key in data/keys, which is used for the key exchange between team server, client and agent.
+On first start, Conquest initializes the database in `data/` and generates the team server keypair in `data/keys/`, used for key exchange between server, client, and agent.
 
 ![Team server start](../assets/install.png)
 
-## 6. Start the Conquest operator client
-
-```
+## 6. Start the Operator Client
+```bash
 bin/client
 ```
-
-By default, the Conquest client connects to localhost:37573 to connect to the team server. In order to connect to a remote team server, the address and port can be specified from the command-line using the `-i` and `-p` flags. The team server port can be configured in the malleable C2 profile used by the server.
-
-```
+By default, the client connects to `localhost:37573`. To connect to a remote team server, specify the address and port via flags:
+```bash
 bin/client -i <team-server-address> -p <team-server-port>
 ```
+The team server port is configured in the malleable C2 profile.
+
+---
+
+# AUR
+Conquest is available on the [AUR](https://aur.archlinux.org/packages/conquest-git) for Arch-based distributions.
+```bash
+# paru
+paru -S conquest-git
+
+# yay
+yay -S conquest-git
+```
+
+This will automatically resolve all dependencies, build both the server and client binaries from source, and install them to `/usr/share/conquest/`. A symlink to the client binary is created at `/usr/local/bin/conquest`. A systemd service unit is included for running the server as a background service. The default profile is installed to `/etc/conquest/default.toml.
+
+### Dependencies
+The following packages will be pulled in automatically:
+`nim`, `nimble`, `git`, `curl`, `base-devel`, `xz`, `glfw-x11`, `mesa`, `glu`, `libx11`, `libxrandr`, `libxinerama`, `libxcursor`, `libxi`, `gtk2`
