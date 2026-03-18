@@ -7,6 +7,7 @@ srcDir      = "src"
 
 # Dependencies
 requires "nim >= 2.2.6"
+
 requires "nimcrypto >= 0.6.4"
 requires "tiny_sqlite >= 0.2.0"
 requires "winim >= 3.9.4"
@@ -23,8 +24,8 @@ requires "gtk2 >= 1.3"
 # Build tasks
 import os, strformat
 
-let cqRoot = getEnv("CONQUEST_ROOT", getCurrentDir())
 proc build(file: string, debug = false) =
+    let cqRoot = getEnv("CONQUEST_ROOT", getCurrentDir())
     let flags = if debug: "-d:debug --stackTrace:on --lineTrace:on" else: "-d:release"
     exec fmt"nim c {flags} -d:CONQUEST_ROOT={cqRoot} {file}"
 

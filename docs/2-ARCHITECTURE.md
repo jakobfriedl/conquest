@@ -348,8 +348,6 @@ CONQUEST
 │   ├── server/                 : Team server source code
 │   └── types/                  : Type defintions
 │
-├── vendor/                     : Nimble dependencies/packages
-│
 └── conquest.nimble             : "Makefile"
 ```
 
