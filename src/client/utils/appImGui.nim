@@ -18,7 +18,7 @@ type
         theme: Theme
 
     Window* = object
-        handle*: glfw.GLFWwindow
+        handle*: GLFWwindow
         context*: ptr ImGuiContext
         imnodes*: bool
         implot*: bool
