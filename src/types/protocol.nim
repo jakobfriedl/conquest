@@ -15,16 +15,14 @@ type
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8
         STATUS_FAILED = 1'u8
-        STATUS_IN_PROGRESS = 2'u8 
+        STATUS_STARTED = 2'u8
+        STATUS_IN_PROGRESS = 3'u8
+        STATUS_CANCELLED = 4'u8
 
     ResultType* = enum 
-        RESULT_STRING = 0'u8 
-        RESULT_BINARY = 1'u8
-        RESULT_NO_OUTPUT = 2'u8
-        RESULT_PROCESSES = 3'u8
-        RESULT_LINK = 4'u8
-        RESULT_UNLINK = 5'u8
-        RESULT_DIRECTORY_LISTING = 6'u8
+        RESULT_NO_OUTPUT = 0'u8
+        RESULT_STRING = 1'u8 
+        RESULT_BINARY = 2'u8
 
 type 
     Header* = object

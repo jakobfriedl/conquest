@@ -262,3 +262,15 @@ proc sendChatMessage*(cq: Conquest, user, message: string, clientId: string = ""
         }
     )
     cq.broadcast(event, clientId)
+
+proc sendJobs*(cq: Conquest, agentId, jobData: string, silent: bool, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_JOBS, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "jobs": jobData,
+            "silent": silent
+        }
+    )
+    cq.broadcast(event, clientId)

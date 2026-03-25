@@ -1,8 +1,8 @@
 import times, zippy
-import ../../../common/[serialize, sequence, crypto]
+import ../../../common/[serialize, sequence, crypto, utils]
 import ../../../types/[common, agent, protocol]
 
-proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, resultData: seq[byte]): TaskResult =     
+proc createTaskResult*(ctx: AgentCtx, task: Task, status: StatusType, resultType: ResultType, resultData: seq[byte]): TaskResult =     
     return TaskResult(
         header: Header(
             magic: MAGIC,
@@ -10,13 +10,13 @@ proc createTaskResult*(task: Task, status: StatusType, resultType: ResultType, r
             packetType: cast[uint8](MSG_RESULT),
             flags: task.header.flags,
             size: 0'u32,
-            agentId: task.header.agentId,
-            seqNr: nextSequence(task.header.agentId), 
+            agentId: string.toUuid(ctx.agentId),
+            seqNr: nextSequence(string.toUuid(ctx.agentId)), 
             iv: generateBytes(Iv),
             gmac: default(array[16, byte])
         ), 
         taskId: task.taskId,
-        listenerId: task.listenerId,
+        listenerId: string.toUuid(ctx.transport.listenerId),
         timestamp: uint32(now().toTime().toUnix()),
         command: task.command,
         status: cast[uint8](status),

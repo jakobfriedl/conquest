@@ -395,6 +395,32 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"),
                             highlight = user == cq.connection.user
                         )
+                    
+                    of CLIENT_JOBS: 
+                        let
+                            agentId = event.data["agentId"].getStr()
+                            data = event.data["jobs"].getStr()
+                            silent = event.data["silent"].getBool()
+                        
+                        var unpacker = Unpacker.init(data)
+                        let count = unpacker.getUint32() 
+                        if count > 0: 
+                            let console = cq.sessions.agents[agentId].console
+
+                            let headers = @["Task ID ", "Started", "Command"]
+                            console.textarea.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(21) & headers[2])
+                            console.textarea.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(21) & "-".repeat(len(headers[2])))
+
+                            for i in 0 ..< count:
+                                let
+                                    jobId = Uuid.toString(unpacker.getUint32())
+                                    command = $cast[CommandType](unpacker.getUint16())
+                                    timestamp = fromUnix(cast[int64](unpacker.getUint32())).local().format("dd-MM-yyyy HH:mm:ss")
+                                
+                                console.textarea.addItem(LOG_OUTPUT, jobId.alignLeft(10) & timestamp.alignLeft(21) & command)
+
+                        else: 
+                            cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, "No running jobs.")
 
                     else: discard 
             

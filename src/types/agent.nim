@@ -1,6 +1,6 @@
 import winim/lean
 import tables
-import ./common 
+import ./[common, protocol] 
 
 type 
     ExitType* {.size: sizeof(uint8).} = enum 
@@ -29,6 +29,27 @@ type
             pipe*: string 
             hPipe*: HANDLE
 
+type 
+    WorkerProc* = proc(hWrite: HANDLE, task: Task) {.nimcall, gcsafe.}
+    
+    ThreadParameter* = ref object
+        hWrite*: HANDLE
+        task*: Task 
+        worker*: WorkerProc
+
+    JobState* = enum 
+        JOB_RUNNING = 0'u8 
+        JOB_COMPLETED = 1'u8 
+        JOB_CANCELLED = 2'u8
+
+    Job* = ref object 
+        task*: Task
+        state*: JobState 
+        hThread*: HANDLE 
+        hRead*: HANDLE
+        hWrite*: HANDLE
+        threadParams*: ThreadParameter
+
 # Agent context
 type 
     AgentCtx* = ref object
@@ -41,3 +62,4 @@ type
         profile*: Profile
         registered*: bool
         links*: Table[uint32, uint32]
+        jobs*: seq[Job]

