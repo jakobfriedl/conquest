@@ -218,6 +218,9 @@ proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
     component.textarea.addItem(LOG_OUTPUT, "")
 
 proc handleAgentCommand*(component: ConsoleComponent, input: string) =
+    # Insert newline before new command
+    component.textarea.addItem(LOG_OUTPUT, "")
+
     # Convert user input into sequence of string arguments
     let parsedArgs = parseInput(input)
 

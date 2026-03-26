@@ -21,8 +21,8 @@ type
 
     ResultType* = enum 
         RESULT_NO_OUTPUT = 0'u8
-        RESULT_STRING = 1'u8 
-        RESULT_BINARY = 2'u8
+        RESULT_STRING = 1'u8        # Agent console output
+        RESULT_BINARY = 2'u8        # Binary data structures or files
 
 type 
     Header* = object

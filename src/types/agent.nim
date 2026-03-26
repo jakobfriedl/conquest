@@ -30,10 +30,11 @@ type
             hPipe*: HANDLE
 
 type 
-    WorkerProc* = proc(hWrite: HANDLE, task: Task) {.nimcall, gcsafe.}
+    WorkerProc* = proc(hWrite: HANDLE, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.}
     
     ThreadParameter* = ref object
         hWrite*: HANDLE
+        hStopEvent*: HANDLE
         task*: Task 
         worker*: WorkerProc
 
@@ -48,6 +49,7 @@ type
         hThread*: HANDLE 
         hRead*: HANDLE
         hWrite*: HANDLE
+        hStopEvent*: HANDLE
         threadParams*: ThreadParameter
 
 # Agent context

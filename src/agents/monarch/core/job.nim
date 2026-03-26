@@ -14,7 +14,7 @@ proc getResultType(job: Job): ResultType =
 proc jobThreadEntry(lpParam: LPVOID): DWORD {.stdcall.} =
     let param = cast[ThreadParameter](lpParam)
     try:
-        param.worker(param.hWrite, param.task)
+        param.worker(param.hWrite, param.hStopEvent, param.task)
     except CatchableError:
         discard
     return 0
@@ -43,8 +43,16 @@ proc startJob*(ctx: AgentCtx, task: Task, worker: WorkerProc): bool =
     if CreatePipe(addr hRead, addr hWrite, addr sa, 0) == FALSE:
         return false
 
+    # Initialize event for cancelling a job
+    let hStopEvent = CreateEventA(nil, TRUE, FALSE, nil)  
+    if hStopEvent == 0:
+        CloseHandle(hRead)
+        CloseHandle(hWrite)
+        return false
+
     var param = ThreadParameter(
         hWrite: hWrite,
+        hStopEvent: hStopEvent, 
         task: task,
         worker: worker
     )
@@ -63,6 +71,7 @@ proc startJob*(ctx: AgentCtx, task: Task, worker: WorkerProc): bool =
         hThread: hThread,
         hRead: hRead,
         hWrite: hWrite,
+        hStopEvent: hStopEvent,
         threadParams: param
     ))
     
@@ -72,9 +81,7 @@ proc cancelJob*(ctx: AgentCtx, jobId: Uuid): bool =
     for job in ctx.jobs:
         if job.task.taskId == jobId:
             job.state = JOB_CANCELLED
-            if job.hWrite != 0:
-                CloseHandle(job.hWrite)
-                job.hWrite = 0
+            SetEvent(job.hStopEvent)
             return true
     return false
 
@@ -104,14 +111,18 @@ proc handleJobs*(ctx: AgentCtx, packer: var Packer, numResults: var int) =
                 packer.addDataWithLengthPrefix(ctx.serializeTaskResult(result))
                 inc numResults
 
-            # Force-terminate if thread didn't exit
+            # Terminate thread
             var exitCode: DWORD = 0
             GetExitCodeThread(job.hThread, addr exitCode)
             if exitCode == STILL_ACTIVE:
-                discard NtTerminateThread(job.hThread, 0)
+                discard WaitForSingleObject(job.hThread, 1000)
+                GetExitCodeThread(job.hThread, addr exitCode)
+                if exitCode == STILL_ACTIVE:
+                    discard NtTerminateThread(job.hThread, 0)
 
-            # Close all handles
+            # Cleanup
             CloseHandle(job.hThread)
+            CloseHandle(job.hStopEvent)
             if job.hWrite != 0:
                 CloseHandle(job.hWrite)
             CloseHandle(job.hRead)

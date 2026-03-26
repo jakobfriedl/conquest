@@ -281,7 +281,7 @@ proc handleResult*(resultData: seq[byte]) =
                     cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
 
             of STATUS_CANCELLED:
-                cq.sendConsoleItem(agentId, LOG_WARNING, fmt"Job {taskId} cancelled.", silent)
+                cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Job {taskId} cancelled.", silent)
                 cq.info(fmt"Job {taskId} cancelled.")
 
                 # Remove cancelled task
@@ -291,13 +291,11 @@ proc handleResult*(resultData: seq[byte]) =
                 of CMD_DOWNLOAD:
                     if cq.downloads.hasKey(taskId):
                         cq.downloads[taskId].file.close()
-                        removeFile(cq.downloads[taskId].path & ".partial")
+                        removeFile(cq.downloads[taskId].path & ".partial")  # Delete partial download
                         cq.downloads.del(taskId)
                 else: discard
 
             else: discard
             
-            cq.sendConsoleItem(agentId, LOG_OUTPUT, "", silent)
-
         except CatchableError as err:
             cq.error(err.msg, "\n")

