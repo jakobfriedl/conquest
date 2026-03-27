@@ -261,7 +261,6 @@ proc handleResult*(resultData: seq[byte]) =
                 of CMD_JOBS:
                     # Send list of pending job to the client 
                     cq.sendJobs(agentId, Bytes.toString(taskResult.data), silent)
-                    discard
 
                 else: discard 
                 
