@@ -65,3 +65,4 @@ type
         registered*: bool
         links*: Table[uint32, uint32]
         jobs*: seq[Job]
+        hWakeupEvent*: HANDLE

