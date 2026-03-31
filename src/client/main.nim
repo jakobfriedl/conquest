@@ -1,7 +1,7 @@
 import whisky
 import tables, times, strutils, sequtils, strformat, json, base64
 import ./utils/[appImGui, globals, dialogs]
-import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, moduleManager, chat]
+import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, scriptManager, chat]
 import ./views/loot/[screenshots, downloads]
 import ./views/modals/[generatePayload, connect]
 import ../common/[utils, profile, crypto, serialize]
@@ -51,7 +51,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
     # Create components
     var dockspace = Dockspace()
-    cq.moduleManager = ModuleManager(WIDGET_MODULE_MANAGER, addr showModules)
+    cq.scriptManager = ScriptManager(WIDGET_MODULE_MANAGER, addr showModules)
 
     # Modules need to be loaded before other components are created
     loadScript(CONQUEST_ROOT & "/data/modules/default.py")
@@ -102,7 +102,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
             if showScreenshots: cq.screenshots.draw()
             if showProcesses: cq.processBrowser.draw()
             if showFiles: cq.filebrowser.draw()
-            if showModules: cq.moduleManager.draw()
+            if showModules: cq.scriptManager.draw()
             if showChat: cq.chat.draw()   
 
             for agentId, agent in cq.sessions.agents.mpairs():

@@ -116,7 +116,7 @@ type
         startListenerModal*: ListenerModalComponent
         generatePayloadModal*: AgentModalComponent
 
-    ModuleManagerComponent* = ref object of RootObj
+    ScriptManagerComponent* = ref object of RootObj
         title*: string 
         showComponent*: ptr bool
         scripts*: OrderedTable[string, tuple[active: bool, error: string]]
@@ -261,5 +261,5 @@ type
         screenshots*: ScreenshotsComponent
         processBrowser*: ProcessBrowserComponent
         fileBrowser*: FileBrowserComponent
-        moduleManager*: ModuleManagerComponent
+        scriptManager*: ScriptManagerComponent
         connection*: WsConnection

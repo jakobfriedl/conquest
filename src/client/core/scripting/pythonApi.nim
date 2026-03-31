@@ -126,22 +126,22 @@ proc createCommand*(name, description, example, message: string, mitre: seq[stri
     )
 
 proc createModule*(name, description: string) {.exportpy.} =
-    cq.moduleManager.modules[name] = Module(
+    cq.scriptManager.modules[name] = Module(
         name: name,
         description: description,
         commands: @[]
     )
 
 proc registerToGroup*(self: Command, group: string): Command {.exportpy.} = 
-    if not cq.moduleManager.groups.hasKey(group):
-        cq.moduleManager.groups[group] = initOrderedTable[string, Command]() 
-    cq.moduleManager.groups[group][self.name] = self 
+    if not cq.scriptManager.groups.hasKey(group):
+        cq.scriptManager.groups[group] = initOrderedTable[string, Command]() 
+    cq.scriptManager.groups[group][self.name] = self 
     return self
 
 proc registerToModule*(self: Command, module: string): Command {.exportpy.} =
-    if not cq.moduleManager.modules.hasKey(module):
+    if not cq.scriptManager.modules.hasKey(module):
         raise newException(CatchableError, fmt"Module not found: {module}.")
-    cq.moduleManager.modules[module].commands.add(self)
+    cq.scriptManager.modules[module].commands.add(self)
     return self
 
 # Parse and handle BOF arguments

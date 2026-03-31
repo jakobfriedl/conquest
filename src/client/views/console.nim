@@ -69,7 +69,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 
     of ImGui_InputTextFlags_CallbackCompletion.int32: 
         # Handle Tab-autocompletion for agent commands
-        let commands = cq.moduleManager.getCommands().keys().toSeq() & @["help "]
+        let commands = cq.scriptManager.getCommands().keys().toSeq() & @["help "]
 
         # Get the word to complete
         let inputEndPos = data.CursorPos
@@ -130,7 +130,7 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
     Handling console commands
 ]#
 proc displayHelp(component: ConsoleComponent) =
-   for group, commands in cq.moduleManager.groups:
+   for group, commands in cq.scriptManager.groups:
         component.textarea.addItem(LOG_OUTPUT, group.toUpperAscii())
         for cmd in commands.values():
             component.textarea.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
@@ -206,7 +206,7 @@ proc displayCommandHelp(component: ConsoleComponent, command: Command) =
 proc handleHelp(component: ConsoleComponent, parsed: seq[string]) =
     try:
         # Try parsing the first argument passed to 'help' as a command
-        component.displayCommandHelp(cq.moduleManager.getCommand(parsed[1].toLowerAscii()))
+        component.displayCommandHelp(cq.scriptManager.getCommand(parsed[1].toLowerAscii()))
     except IndexDefect:
         # 'help' command is called without additional parameters -> show all available commands
         component.displayHelp()
@@ -232,7 +232,7 @@ proc handleAgentCommand*(component: ConsoleComponent, input: string) =
         
     # Handle commands with actions on the agent
     try:
-        let command = cq.moduleManager.getCommand(parsedArgs[0].toLowerAscii())
+        let command = cq.scriptManager.getCommand(parsedArgs[0].toLowerAscii())
         
         # If the command has a handler, execute it with the parsed arguments
         if command.hasHandler:

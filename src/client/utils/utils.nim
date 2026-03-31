@@ -54,12 +54,12 @@ proc parseModuleType*(moduleName: string): ModuleType =
     of "token": return MODULE_TOKEN
     else: discard
 
-proc getCommands*(component: ModuleManagerComponent): OrderedTable[string, Command] = 
+proc getCommands*(component: ScriptManagerComponent): OrderedTable[string, Command] = 
     for group in component.groups.values(): 
         for name, cmd in group: 
             result[name] = cmd 
 
-proc getCommand*(component: ModuleManagerComponent, name: string): Command = 
+proc getCommand*(component: ScriptManagerComponent, name: string): Command = 
     let commands = component.getCommands()
     if name notin commands:
         raise newException(ValueError, fmt"The command '{name}' does not exist.")

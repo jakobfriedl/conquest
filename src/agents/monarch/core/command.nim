@@ -22,6 +22,7 @@ for cmd in low(CommandType) .. high(CommandType):
     - exit
     - sleep configuration
     - SMB linking 
+    - Job management
 ]#
 
 commands[CMD_EXIT] = proc(ctx: AgentCtx, task: Task): TaskResult = 

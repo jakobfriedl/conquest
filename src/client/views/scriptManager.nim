@@ -5,8 +5,8 @@ import ../core/scripting/engine
 import ../core/database
 import ../../types/client
  
-proc ModuleManager*(title: string, showComponent: ptr bool): ModuleManagerComponent = 
-    result = new ModuleManagerComponent
+proc ScriptManager*(title: string, showComponent: ptr bool): ScriptManagerComponent = 
+    result = new ScriptManagerComponent
     result.title = title
     result.showComponent = showComponent
     result.scripts = initOrderedTable[string, tuple[active: bool, error: string]]()
@@ -14,7 +14,7 @@ proc ModuleManager*(title: string, showComponent: ptr bool): ModuleManagerCompon
     result.groups = initOrderedTable[string, OrderedTable[string, Command]]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
 
-proc draw*(component: ModuleManagerComponent) = 
+proc draw*(component: ScriptManagerComponent) = 
     igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd() 
     

@@ -51,7 +51,7 @@ proc AgentModal*(): AgentModalComponent =
         for cmd in module.commands: 
             result &= " - " & cmd.name & "\n"
 
-    result.moduleSelection = DualListSelection(cq.moduleManager.modules.values.toSeq().sorted(compareModules), moduleName, compareModules, moduleDesc)
+    result.moduleSelection = DualListSelection(cq.scriptManager.modules.values.toSeq().sorted(compareModules), moduleName, compareModules, moduleDesc)
     result.buildLog = Textarea(showTimestamps = false)
     result.killDateModal = KillDateModal()
     result.workingHoursModal = WorkingHoursModal()

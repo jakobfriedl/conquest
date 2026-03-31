@@ -23,8 +23,8 @@ proc loadScript*(file: string) =
         discard builtins.exec(script, globals)
 
         # Set 'active' to true if the script was loaded without errors
-        cq.moduleManager.scripts[file] = (true, "")
+        cq.scriptManager.scripts[file] = (true, "")
 
     except: 
-        cq.moduleManager.scripts[file] = (false, getCurrentExceptionMsg())        
+        cq.scriptManager.scripts[file] = (false, getCurrentExceptionMsg())        
         # echo "Failed to load ", file ,": " , getCurrentExceptionMsg()
