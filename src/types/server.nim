@@ -18,6 +18,7 @@ type
         sleep*: int 
         jitter*: int
         tasks*: seq[Task]
+        taskCommands*: Table[Uuid, string]
         modules*: uint32
         firstCheckin*: int64
         latestCheckin*: int64

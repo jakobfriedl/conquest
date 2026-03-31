@@ -31,6 +31,8 @@ type
         arguments*: seq[Argument]
         hasHandler*: bool
         handler*: PyObject 
+        hasOutputHandler*: bool 
+        outputHandler*: PyObject 
 
     Module* = ref object of RootObj
         name*: string 

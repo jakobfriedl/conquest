@@ -68,7 +68,7 @@ proc getTasks*(heartbeat: seq[byte]): Table[string, seq[seq[byte]]] =
         
         proc collectTasks(agentId: string)=
             var temp = newSeq[seq[byte]]()
-            for task in cq.agents[agentId].tasks.mitems:
+            for task in cq.agents[agentId].tasks.mitems():
                 let taskData = cq.serializeTask(task)
                 temp.add(taskData)
 
@@ -78,7 +78,7 @@ proc getTasks*(heartbeat: seq[byte]): Table[string, seq[seq[byte]]] =
             # Recursively collect tasks for linked agents
             for linkedAgentId in cq.agents[agentId].links:
                 cq.sendAgentCheckin(linkedAgentId)
-                collectTasks(linkedAgentId) 
+                collectTasks(linkedAgentId)
 
             # Clear task queue
             cq.agents[agentId].tasks = @[]
@@ -98,12 +98,12 @@ proc handleResult*(resultData: seq[byte]) =
             
             let silent = (taskResult.header.flags and cast[uint16](FLAG_SILENT)) != 0
 
-            cq.sendConsoleItem(agentId, LOG_INFO, fmt"{$resultData.len} bytes received.", silent)
+            cq.sendConsoleItem(agentId, LOG_INFO, fmt"{$resultData.len} bytes received.", silent = silent)
             cq.info(fmt"{$resultData.len} bytes received.")
             
             case cast[StatusType](taskResult.status):
             of STATUS_STARTED:
-                cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Job started.", silent)
+                cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Job started.", silent = silent)
                 cq.success(fmt"Job {taskId} started.")
 
                 case cast[CommandType](taskResult.command):
@@ -126,7 +126,7 @@ proc handleResult*(resultData: seq[byte]) =
                 
                 else:
                     if taskResult.data.len() > 0:
-                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
+                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent = silent)
 
             of STATUS_IN_PROGRESS:
                 case cast[CommandType](taskResult.command):
@@ -138,20 +138,20 @@ proc handleResult*(resultData: seq[byte]) =
                             download.written += uint64(taskResult.data.len())
 
                             let progress = (download.written.float / download.total.float * 100)
-                            cq.sendConsoleItem(agentId, LOG_INFO, fmt"Task {taskId} in progress: {progress:.2f}%", silent)
+                            cq.sendConsoleItem(agentId, LOG_INFO, fmt"Task {taskId} in progress: {progress:.2f}%", silent = silent)
                 
                 else:
                     if int(taskResult.length) > 0:
-                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
+                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent = silent)
 
                 return
 
             of STATUS_COMPLETED:
-                cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.", silent)
+                cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.", silent = silent)
                 cq.success(fmt"Task {taskId} completed.")
 
-                # Remove completed task
-                cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
+                let command = cq.agents[agentId].taskCommands.getOrDefault(taskResult.taskId, "")
+                cq.agents[agentId].taskCommands.del(taskResult.taskId)
 
                 # Handle command specific actions on task completion (e.g. triggering UI changes, writing files, ...) 
                 case cast[CommandType](taskResult.command):
@@ -180,7 +180,7 @@ proc handleResult*(resultData: seq[byte]) =
                         cq.sendLoot(lootItem)
 
                         cq.output(fmt"File downloaded to {download.path} ({download.written} bytes).", "\n")
-                        cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {download.path} ({download.written} bytes).", silent)
+                        cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {download.path} ({download.written} bytes).", silent = silent)
                         
                         # Remove completed download from in-memory table
                         cq.downloads.del(taskId)
@@ -210,7 +210,7 @@ proc handleResult*(resultData: seq[byte]) =
                     cq.sendLoot(lootItem)
 
                     cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
-                    cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", silent)
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", silent = silent)
 
                 of CMD_MAKE_TOKEN, CMD_STEAL_TOKEN: 
                     # Display token impersonation in UI
@@ -252,39 +252,39 @@ proc handleResult*(resultData: seq[byte]) =
 
                 of CMD_PS:
                     # Send process list to the client
-                    cq.sendProcessList(agentId, Bytes.toString(taskResult.data), silent)
+                    cq.sendProcessList(agentId, Bytes.toString(taskResult.data), silent = silent)
 
                 of CMD_LS:
                     # Send directory listing data to the client
-                    cq.sendDirectoryListing(agentId, Bytes.toString(taskResult.data), silent)
+                    cq.sendDirectoryListing(agentId, Bytes.toString(taskResult.data), silent = silent)
 
                 of CMD_JOBS:
                     # Send list of pending job to the client 
-                    cq.sendJobs(agentId, Bytes.toString(taskResult.data), silent)
+                    cq.sendJobs(agentId, Bytes.toString(taskResult.data), silent = silent)
 
                 else: discard 
                 
                 # Output RESULT_STRING packets to the agent console
                 if cast[ResultType](taskResult.resultType) == RESULT_STRING and int(taskResult.length) > 0:
-                    cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent) 
-                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
+                    cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent = silent) 
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command = command, silent = silent)
 
             of STATUS_FAILED: 
-                cq.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.", silent)
+                cq.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.", silent = silent)
                 cq.error(fmt"Task {taskId} failed.")
 
                 # Remove failed task
-                cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
+                cq.agents[agentId].taskCommands.del(taskResult.taskId)
 
                 if int(taskResult.length) > 0:
-                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent)
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent = silent)
 
             of STATUS_CANCELLED:
-                cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Job {taskId} cancelled.", silent)
+                cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Job {taskId} cancelled.", silent = silent)
                 cq.info(fmt"Job {taskId} cancelled.")
 
                 # Remove cancelled task
-                cq.agents[agentId].tasks = cq.agents[agentId].tasks.filterIt(it.taskId != taskResult.taskId)
+                cq.agents[agentId].taskCommands.del(taskResult.taskId)
 
                 case cast[CommandType](taskResult.command):
                 of CMD_DOWNLOAD:

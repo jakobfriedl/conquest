@@ -1,6 +1,6 @@
 import system, tables, terminal, tiny_sqlite, sequtils
 import ../core/logger
-import ../../types/[common, server]
+import ../../types/[common, server, protocol]
 import ./dbLink
 
 #[
@@ -51,6 +51,7 @@ proc dbGetAllAgents*(cq: Conquest) =
                 modules: cast[uint32](modules),
                 sessionKey: sessionKey,
                 tasks: @[],
+                taskCommands: initTable[Uuid, string](),
                 links: cq.dbGetLinkedAgents(agentId)
             )
     except: 

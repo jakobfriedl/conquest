@@ -99,6 +99,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                     message = event.data["message"].getStr()
                 
                 cq.agents[agentId].tasks.add(task)
+                cq.agents[agentId].taskCommands[task.taskId] = command.split(" ")[0]
                 cq.sendConsoleItem(agentId, LOG_COMMAND, command)
                 cq.sendConsoleItem(agentId, LOG_INFO, message)
 

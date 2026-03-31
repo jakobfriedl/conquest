@@ -1,4 +1,4 @@
-import whisky
+import whisky, nimpy
 import tables, times, strutils, sequtils, strformat, json, base64
 import ./utils/[appImGui, globals, dialogs]
 import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, scriptManager, chat]
@@ -210,13 +210,23 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         cq.listeners.generatePayloadModal.show = false
 
                     of CLIENT_CONSOLE_ITEM: 
-                        let agentId = event.data["agentId"].getStr() 
-                        if cq.sessions.agents.hasKey(agentId):
-                            cq.sessions.agents[agentId].console.textarea.addItem(
-                                cast[LogType](event.data["logType"].getInt()), 
-                                event.data["message"].getStr(), 
-                                event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
-                            )
+                        let
+                            agentId = event.data["agentId"].getStr() 
+                            logType = cast[LogType](event.data["logType"].getInt())
+
+                        var message = event.data["message"].getStr() 
+
+                        try: 
+                            let command = cq.scriptManager.getCommand(event.data["command"].getStr())
+                            if not command.hasOutputHandler:
+                                raise newException(CatchableError, "Command has no output handler.")        
+                            
+                            # Process output using callback handler using Python and use conquest.output to print the formatted data to the console.  
+                            discard command.outputHandler.callObject(agentId, message)
+                        
+                        except CatchableError: 
+                            if cq.sessions.agents.hasKey(agentId):
+                                cq.sessions.agents[agentId].console.textarea.addItem(logType, message, event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
                     
                     of CLIENT_EVENTLOG_ITEM: 
                         cq.eventlog.textarea.addItem(

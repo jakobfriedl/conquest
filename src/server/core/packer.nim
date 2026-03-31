@@ -128,7 +128,8 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte], remoteAddress: string):
         sleep: int(sleep),
         jitter: int(jitter),
         modules: modules,
-        tasks: @[],  
+        tasks: @[],
+        taskCommands: initTable[Uuid, string](),
         firstCheckin: now().toTime().toUnix(),
         latestCheckin: now().toTime().toUnix(),
         sessionKey: sessionKey

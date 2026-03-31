@@ -108,10 +108,16 @@ proc addFlagFile*(self: Command, flag, name, description: string, required: bool
     ))
     return self
 
-proc setHandler*(self: Command, handler: PyObject): Command {.exportpy.} = 
+proc setHandler*(self: Command, handler: PyObject): Command {.exportpy.} =          # handler(agentId: string, cmdline: string, args: seq[TaskArg])
     if not handler.isNil and pyBuiltinsModule().callable(handler).to(bool):
         self.hasHandler = true
         self.handler = handler
+    return self 
+
+proc setOutputHandler*(self: Command, handler: PyObject): Command {.exportpy.} = 
+    if not handler.isNil and pyBuiltinsModule().callable(handler).to(bool):       # handler(agentId: string, output: string)
+        self.hasOutputHandler = true
+        self.outputHandler = handler
     return self 
 
 proc createCommand*(name, description, example, message: string, mitre: seq[string] = @[]): Command {.exportpy.} = 
@@ -250,13 +256,17 @@ proc pack*(types: string, args: seq[PyObject]): seq[byte] {.exportpy.} =
     
     return packer.pack()     
 
-proc log*(message: string) {.exportpy.} = 
+proc debug_log*(message: string) {.exportpy.} = 
     echo ">> ", message
 
 proc error*(agentId, cmdline, message: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_COMMAND, cmdline)
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_ERROR, message)
+
+proc output*(agentId, message: string) {.exportpy.} = 
+    if cq.sessions.agents.hasKey(agentId): 
+        cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, message)
 
 proc modules_root*(): string {.exportpy.} = 
     return CONQUEST_ROOT & "/data/modules"
