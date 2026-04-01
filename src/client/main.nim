@@ -210,11 +210,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         cq.listeners.generatePayloadModal.show = false
 
                     of CLIENT_CONSOLE_ITEM: 
-                        let
+                        let 
                             agentId = event.data["agentId"].getStr() 
-                            logType = cast[LogType](event.data["logType"].getInt())
-
-                        var message = event.data["message"].getStr() 
+                            message = event.data["message"].getStr()
 
                         try: 
                             let command = cq.scriptManager.getCommand(event.data["command"].getStr())
@@ -226,7 +224,10 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         
                         except CatchableError: 
                             if cq.sessions.agents.hasKey(agentId):
-                                cq.sessions.agents[agentId].console.textarea.addItem(logType, message, event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
+                                cq.sessions.agents[agentId].console.textarea.addItem(
+                                    cast[LogType](event.data["logType"].getInt()), 
+                                    message, 
+                                    event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
                     
                     of CLIENT_EVENTLOG_ITEM: 
                         cq.eventlog.textarea.addItem(

@@ -17,6 +17,7 @@ The Python Module API enables users of the Conquest framework to add their own c
     - [`.addArgFile(name, description, required=False, default="") -> Command`](#addargfilename-description-requiredfalse-default---command)
     - [`.addFlagFile(flag, name, description, required=False, default="") -> Command`](#addflagfileflag-name-description-requiredfalse-default---command)
     - [`.setHandler(handler) -> Command`](#sethandlerhandler---command)
+    - [`.setOutputHandler(handler) -> Command`](#setoutputhandlerhandler---command)
     - [`.registerToGroup(group) -> Command`](#registertogroupgroup---command)
     - [`.registerToModule(module) -> Command`](#registertomodulemodule---command)
   - [Command Execution](#command-execution)
@@ -31,9 +32,10 @@ The Python Module API enables users of the Conquest framework to add their own c
     - [`conquest.bof_pack(types, args) -> str`](#conquestbof_packtypes-args---str)
     - [`conquest.pack(types, args) -> list[byte]`](#conquestpacktypes-args---listbyte)
     - [`conquest.error(agentId, cmdline, message)`](#conquesterroragentid-cmdline-message)
+    - [`conquest.output(agentId, message)`](#conquestoutputagentid-message)
     - [`conquest.modules_root() -> str`](#conquestmodules_root---str)
     - [`conquest.user() -> str`](#conquestuser---str)
-    - [`conquest.log(message)`](#conquestlogmessage)
+    - [`conquest.debug_log(message)`](#conquestdebug_logmessage)
 - [Examples](#examples)
   - [scshell](#scshell)
   - [shutdown](#shutdown)
@@ -222,6 +224,33 @@ For simple commands that require no validation or branching, a **lambda** is the
 
 ---
 
+#### `.setOutputHandler(handler) -> Command`
+Attach a Python handler function that is called when the agent returns output for this command. Unlike `setHandler`, which runs before dispatch, the output handler runs after the agent responds.
+
+The handler must have the following signature:
+
+```python
+def _output_handler(agentId, output):
+    # Process or format agent output 
+    conquest.output(agentId, output.upper())
+```
+
+As the command handler, the output handler should be handled using a `lambda` when complex processing is not required.
+
+```python 
+.setOutputHandler(lambda agentId, output: (
+    text := output.split(" ")[0], 
+    conquest.output(agentId, text)
+))
+```
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `agentId` | `str` | ID of the agent that produced the output. |
+| `output` | `str` | Raw output string returned by the agent. |
+
+---
+
 #### `.registerToGroup(group) -> Command`
 Register the command to a command group. The group is created automatically if it does not exist.
 
@@ -397,6 +426,16 @@ Log an error message to the agent console.
 
 ---
 
+#### `conquest.output(agentId, message)`
+Log an output message to the agent console. Intended for use inside output handlers to write post-processed agent output back to the console.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `agentId` | `str` | ID of the target agent. |
+| `message` | `str` | Output message to display. |
+
+---
+
 #### `conquest.modules_root() -> str`
 Return the absolute path to the `data/modules` directory. Use this to locate BOF object files shipped with the module.
 
@@ -411,7 +450,7 @@ Return the username of the currently authenticated operator.
 
 ---
 
-#### `conquest.log(message)`
+#### `conquest.debug_log(message)`
 Print a message to stdout on the client for debugging purposes.
 
 | Parameter | Type | Description |
