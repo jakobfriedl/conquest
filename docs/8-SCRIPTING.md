@@ -1,5 +1,8 @@
 # Python Module API <!-- omit from toc -->
 
+> [!TIP] 
+>  Conquest's module system is covered in-depth in this blog post: https://jakobfriedl.github.io/blog/conquest-modules/. 
+
 The Python Module API enables users of the Conquest framework to add their own commands by creating wrappers for post-exploitation capabilities in the form of Beacon Object Files (BOFs). The advantage of an approach like this is the ablility to keep the payload minimal and limited to the core functionality, instead of implementating all features directly in the agent. Modules are defined in scripts that leverage a powerful and highly user-friendly Python API. 
 
 ## Contents <!-- omit from toc -->
@@ -39,7 +42,6 @@ The Python Module API enables users of the Conquest framework to add their own c
 - [Examples](#examples)
   - [scshell](#scshell)
   - [shutdown](#shutdown)
-
 
 ## Script Manager
 

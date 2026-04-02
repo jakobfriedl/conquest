@@ -20,13 +20,12 @@
 
 Conquest supports malleable C2 profiles written using the TOML configuration language and fully support the TOML v1.0.0 spec. This allows the complete customization of network traffic using data transformation, encoding and randomization. Wildcard characters `#` are replaced by a random alphanumerical character, making it possible to add even more variation to requests via randomized parameters or cookies. There is also the `$` wildcard, which is replaced by a single digit, for randomizing numeric values.  
 
-General settings that are defined at the beginning of the profile are the profile name and the relative location of important files, such as the team server's private key or the Conquest database.
+The only general setting defined at the top of the profile is the profile name.
 
-```toml 
+```toml
 name = "cq-default-profile"
-private-key-file = "data/keys/conquest-server_x25519_private.key"
-database-file = "data/conquest.db"
 ```
+
 
 ## Team server settings 
 The team server settings currently only include the host and port that the team server uses for the Websocket handler. It is set under the `[toml-server]` block. By default, the team server listens on all interfaces on port 37573 for client connections.

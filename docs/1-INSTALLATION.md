@@ -26,12 +26,14 @@ sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxra
 ```
 
 ## 4. Compile
-Nim dependencies are installed automatically into `vendor/` on first build.
+
 ```bash
 nimble server
 nimble client
 ```
+
 To install the framework files to a custom location (e.g. `/usr/share/conquest`), set `CONQUEST_ROOT` before building:
+
 ```bash
 CONQUEST_ROOT="/usr/share/conquest" nimble server
 CONQUEST_ROOT="/usr/share/conquest" nimble client
@@ -42,7 +44,19 @@ The default C2 profile is located at `data/profiles/profile.toml`.
 ```bash
 bin/server -p data/profiles/profile.toml
 ```
-On first start, Conquest initializes the database in `data/` and generates the team server keypair in `data/keys/`, used for key exchange between server, client, and agent.
+On first start, Conquest initializes the database and generates the team server keypair in `data/keys/`, used for key exchange between server, client, and agent.
+
+The server accepts the following flags:
+
+| Flag | Short | Default | Description |
+| --- | --- | --- | --- |
+| `--profile` | `-p` | *(required)* | Path to the Conquest C2 profile (`.toml`) |
+| `--key` | `-k` | `data/keys/conquest-server_x25519_private.key` | Path to the X25519 private key file |
+| `--db` | `-d` | `data/conquest.db` | Path to the team server SQLite database |
+| `--log-dir` | `-l` | `data/logs` | Directory for team server and session logs |
+| `--loot-dir` | `-L` | `data/loot` | Directory for downloaded files and screenshots |
+
+Default values are relative to the `CONQUEST_ROOT` directory but can be overwritten to point to any file on the system.  
 
 ![Team server start](../assets/install.png)
 

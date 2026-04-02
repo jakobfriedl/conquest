@@ -1,5 +1,5 @@
 import mummy, mummy/routers
-import terminal, json, math, base64, times
+import terminal, json, math, base64, times, os
 import strutils, strformat, system, tables
 
 import ./globals
@@ -16,14 +16,16 @@ proc header() =
     echo "─".repeat(21) 
     echo ""
 
-proc init*(T: type Conquest, profileString: string): Conquest = 
+proc init*(T: type Conquest, profileString, privateKey, logDir, lootDir: string): Conquest = 
     var cq = new Conquest
     cq.listeners = initTable[string, Listener]()
     cq.threads = initTable[string, Thread[Listener]]()
     cq.agents = initTable[string, Agent]() 
     cq.profileString = profileString
     cq.profile = parseString(profileString)
-    cq.keyPair = loadKeyPair(CONQUEST_ROOT & "/" & cq.profile.getString("private-key-file"))
+    cq.keyPair = loadKeyPair(privateKey)
+    cq.logDir = logDir
+    cq.lootDir = lootDir
     cq.clients = initTable[string, WsConnection]() 
     return cq
 
@@ -162,7 +164,13 @@ proc handleCtrlC() {.noconv.} =
         echo "\nExiting."
         quit(0)
 
-proc startServer*(profilePath: string) =
+proc startServer*(
+        profile: string, 
+        key: string = CONQUEST_ROOT / "data/keys/conquest-server_x25519_private.key", 
+        db: string = CONQUEST_ROOT / "data/conquest.db",
+        log_dir: string = CONQUEST_ROOT / "data/logs",
+        loot_dir: string = CONQUEST_ROOT / "data/loot"
+    ) =
 
     # Handle team server exit
     setControlCHook(handleCtrlC)
@@ -171,13 +179,13 @@ proc startServer*(profilePath: string) =
     
     try:
         # Initialize framework context
-        let profileString = readFile(profilePath)
-        cq = Conquest.init(profileString)
+        let profileString = readFile(profile)
+        cq = Conquest.init(profileString, key, log_dir, loot_dir)
 
-        cq.info("Using profile \"", cq.profile.getString("name"), "\" (", profilePath ,").")
+        cq.info("Using profile \"", cq.profile.getString("name"), "\" (", profile ,").")
         
         # Initialize database
-        cq.dbInit(cq.profile.getString("database-file"))
+        cq.dbInit(db)
         cq.dbGetAllAgents()
         for listener in cq.dbGetAllListeners():
             cq.listenerStart(listener)  # Restart existing listener
@@ -194,7 +202,17 @@ proc startServer*(profilePath: string) =
         echo err.msg
         quit(0)
     
-
 # Conquest framework entry point
 when isMainModule:
-    import cligen; dispatch startServer
+    import cligen
+    dispatch startServer,
+        cmdName = "server",
+        usage = "$command [options] \n\nOptions:\n$options\n",
+        short = { "profile": 'p', "key": 'k', "db": 'd', "log_dir": 'l', "loot_dir": 'L' },
+        help  = {
+            "profile":  "Path to the Conquest C2 profile (.toml)",
+            "key":      "Path to the X25519 private key file.",
+            "db":       "Path to the team server database.",
+            "log_dir":  "Path to the log directory.",
+            "loot_dir": "Path to the loot directory."
+        }

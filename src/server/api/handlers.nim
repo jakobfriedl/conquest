@@ -1,5 +1,4 @@
 import terminal, strformat, strutils, sequtils, tables, os, times
-import std/[dirs, paths]
 
 import ../globals
 import ../db/database
@@ -114,8 +113,8 @@ proc handleResult*(resultData: seq[byte]) =
                         totalSize = unpacker.getUint64()
 
                     # Create loot directory for the agent
-                    createDir(cast[Path](fmt"{CONQUEST_ROOT}/data/loot/{agentId}"))
-                    let downloadPath = fmt"{CONQUEST_ROOT}/data/loot/{agentId}/{fileName}"
+                    createDir(fmt"{cq.lootDir}/{agentId}")
+                    let downloadPath = fmt"{cq.lootDir}/{agentId}/{fileName}"
 
                     cq.downloads[taskId] = Download(
                         path: downloadPath,
@@ -192,8 +191,8 @@ proc handleResult*(resultData: seq[byte]) =
                         fileName = unpacker.getDataWithLengthPrefix().replace("\\", "_").replace("/", "_").replace(":", "")
                         fileData = unpacker.getDataWithLengthPrefix()
 
-                    createDir(cast[Path](fmt"{CONQUEST_ROOT}/data/loot/{agentId}"))
-                    let downloadPath = fmt"{CONQUEST_ROOT}/data/loot/{agentId}/{fileName}"
+                    createDir(fmt"{cq.lootDir}/{agentId}")
+                    let downloadPath = fmt"{cq.lootDir}/{agentId}/{fileName}"
                     writeFile(downloadPath, fileData)
 
                     let fileInfo = getFileInfo(downloadPath)

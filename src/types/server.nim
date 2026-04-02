@@ -70,3 +70,5 @@ type
         profile*: Profile
         clients*: Table[string, WsConnection]
         downloads*: Table[string, Download]
+        logDir*: string 
+        lootDir*: string
