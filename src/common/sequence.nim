@@ -1,32 +1,31 @@
-import tables 
+import tables
 import ./utils
 import ../types/[common, protocol]
 
-var sequenceTable {.global.}: Table[uint32, uint32]
+var egressTable {.global.}: Table[uint32, uint32]   # Outgoing sequence numbers
+var ingressTable {.global.}: Table[uint32, uint32]  # Incoming sequence numbers
 
-proc nextSequence*(agentId: uint32): uint32 = 
-    sequenceTable[agentId] = sequenceTable.getOrDefault(agentId, 0'u32) + 1
-    return sequenceTable[agentId]
+proc nextSequence*(agentId: uint32): uint32 =
+    egressTable[agentId] = egressTable.getOrDefault(agentId, 0'u32) + 1
+    return egressTable[agentId]
 
-# Sequence tracking is currently broken and needs to be reworked
-proc validateSequence(agentId: uint32, seqNr: uint32, packetType: uint8): bool = 
-    # let lastSeqNr = sequenceTable.getOrDefault(agentId, 0'u32)
+proc validateSequence(agentId: uint32, seqNr: uint32, packetType: uint8): bool =
+    # Heartbeat messages are not used for sequence tracking
+    if cast[PacketType](packetType) == MSG_HEARTBEAT:
+        return true
 
-    # # Heartbeat messages are not used for sequence tracking
-    # if cast[PacketType](packetType) == MSG_HEARTBEAT: 
-    #     return true
+    let lastSeqNr = ingressTable.getOrDefault(agentId, 0'u32)
 
-    # # In order to keep agents running after server restart, accept all connection with seqNr = 1, to update the table
-    # if seqNr == 1'u32:
-    #     sequenceTable[agentId] = seqNr
-    #     return true
+    # Accept seqNr = 1 to allow agents to reconnect after a server restart
+    if seqNr == 1'u32:
+        ingressTable[agentId] = seqNr
+        return true
 
-    # # Validate that the sequence number of the current packet is higher than the currently stored one 
-    # if seqNr < lastSeqNr: 
-    #     return false 
+    # Reject out-of-order and replayed packets
+    if seqNr <= lastSeqNr:
+        return false
 
-    # # Update sequence number
-    # sequenceTable[agentId] = seqNr
+    ingressTable[agentId] = seqNr
     return true
 
 proc validatePacket*(header: Header, expectedType: uint8) = 
