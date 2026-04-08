@@ -27,4 +27,4 @@ proc loadScript*(file: string) =
 
     except: 
         cq.scriptManager.scripts[file] = (false, getCurrentExceptionMsg())        
-        # echo "Failed to load ", file ,": " , getCurrentExceptionMsg()
+        echo "Failed to load ", file ,": " , getCurrentExceptionMsg()

@@ -259,10 +259,19 @@ proc pack*(types: string, args: seq[PyObject]): seq[byte] {.exportpy.} =
 proc debug_log*(message: string) {.exportpy.} = 
     echo ">> ", message
 
-proc error*(agentId, cmdline, message: string) {.exportpy.} = 
+proc error*(agentId, message: string, cmdline: string = "") {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
-        cq.sessions.agents[agentId].console.textarea.addItem(LOG_COMMAND, cmdline)
+        if cmdline != "":
+            cq.sessions.agents[agentId].console.textarea.addItem(LOG_COMMAND, cmdline)
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_ERROR, message)
+
+proc warn*(agentId, message: string) {.exportpy.} = 
+    if cq.sessions.agents.hasKey(agentId):
+        cq.sessions.agents[agentId].console.textarea.addItem(LOG_WARNING, message)
+
+proc info*(agentId, message: string) {.exportpy.} = 
+    if cq.sessions.agents.hasKey(agentId):
+        cq.sessions.agents[agentId].console.textarea.addItem(LOG_INFO, message)
 
 proc output*(agentId, message: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId): 

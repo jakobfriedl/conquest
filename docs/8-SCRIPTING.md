@@ -34,8 +34,10 @@ The Python Module API enables users of the Conquest framework to add their own c
   - [Utility Functions](#utility-functions)
     - [`conquest.bof_pack(types, args) -> str`](#conquestbof_packtypes-args---str)
     - [`conquest.pack(types, args) -> list[byte]`](#conquestpacktypes-args---listbyte)
-    - [`conquest.error(agentId, cmdline, message)`](#conquesterroragentid-cmdline-message)
+    - [`conquest.error(agentId, message, cmdline)`](#conquesterroragentid-message-cmdline)
     - [`conquest.output(agentId, message)`](#conquestoutputagentid-message)
+    - [`conquest.warn(agentId, message)`](#conquestwarnagentid-message)
+    - [`conquest.info(agentId, message)`](#conquestinfoagentid-message)
     - [`conquest.modules_root() -> str`](#conquestmodules_root---str)
     - [`conquest.user() -> str`](#conquestuser---str)
     - [`conquest.debug_log(message)`](#conquestdebug_logmessage)
@@ -189,7 +191,7 @@ Attach a Python handler function to the command. The handler is called on the cl
 def _handler(agentId, cmdline, args):
     confirm = conquest.get_bool(args, 0)
     if not confirm:
-        conquest.error(agentId, cmdline, "Set the --confirm flag to proceed.")
+        conquest.error(agentId, "Set the --confirm flag to proceed.", cmdline)
         return
 
     bof    = conquest.modules_root() + "/path/to/module.x64.o"
@@ -198,7 +200,7 @@ def _handler(agentId, cmdline, args):
     if os.path.exists(bof):
         conquest.execute_alias(agentId, cmdline, f"bof {bof} {params}")
     else:
-        conquest.error(agentId, cmdline, f"Failed to open object file: {bof}")
+        conquest.error(agentId, f"Failed to open object file: {bof}", cmdline)
 ```
 
 For simple commands that require no validation or branching, a **lambda** is the preferred approach. Python's walrus operator (`:=`) is used to assign intermediate values inline:
@@ -207,13 +209,13 @@ For simple commands that require no validation or branching, a **lambda** is the
 .setHandler(lambda agentId, cmdline, args: (
     confirm := conquest.get_bool(args, 0),
 
-    conquest.error(agentId, cmdline, "Set the --confirm flag to proceed.") if not confirm
+    conquest.error(agentId, "Set the --confirm flag to proceed.", cmdline) if not confirm
     else (
         bof    := conquest.modules_root() + "/path/to/module.x64.o",
         params := conquest.bof_pack("z", [conquest.get_string(args, 1)]),
 
         conquest.execute_alias(agentId, cmdline, f"bof {bof} {params}") if os.path.exists(bof)
-        else conquest.error(agentId, cmdline, f"Failed to open object file: {bof}")
+        else conquest.error(agentId, f"Failed to open object file: {bof}", cmdline)
     )
 ))
 ```
@@ -417,19 +419,39 @@ Consider the following resources for more information:
 
 ---
 
-#### `conquest.error(agentId, cmdline, message)`
+#### `conquest.error(agentId, message, cmdline)`
 Log an error message to the agent console.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `agentId` | `str` | ID of the target agent. |
-| `cmdline` | `str` | Command line to display above the error. |
 | `message` | `str` | Error message to display. |
+| `cmdline` | `str` | Command line to display above the error. |
 
 ---
 
 #### `conquest.output(agentId, message)`
 Log an output message to the agent console. Intended for use inside output handlers to write post-processed agent output back to the console.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `agentId` | `str` | ID of the target agent. |
+| `message` | `str` | Output message to display. |
+
+---
+
+#### `conquest.warn(agentId, message)`
+Log an warning message to the agent console.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `agentId` | `str` | ID of the target agent. |
+| `message` | `str` | Output message to display. |
+
+---
+
+#### `conquest.info(agentId, message)`
+Log an informational message to the agent console. 
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -493,7 +515,7 @@ def _scshell(agentId, cmdline, args):
     if os.path.exists(bof):
         conquest.execute_alias(agentId, cmdline, f"bof {bof} {params}")
     else:
-        conquest.error(agentId, cmdline, f"Failed to open object file: {bof}")
+        conquest.error(agentId, f"Failed to open object file: {bof}", cmdline)
 
 cmd_scshell = (
     conquest.createCommand(name="scshell", description="Perform fileless lateral movment by modifying an existing remote service's binary path (SCShell tool).", example="scshell dc01 bin/monarch.smb_x64.svc.exe --service Spooler --name update.exe",
@@ -530,7 +552,7 @@ cmd_shutdown = (
                 reboot := conquest.get_bool(args, 4),
                 confirm := conquest.get_bool(args, 5),
 
-                conquest.error(agentId, cmdline, "Set the --confirm flag to shutdown the target system.") if not confirm
+                conquest.error(agentId, "Set the --confirm flag to shutdown the target system.", cmdline) if not confirm
                 else (
                     
                     bof := conquest.modules_root() + "/remote-operations/CS-Remote-OPs-BOF/Remote/shutdown/shutdown.x64.o",
@@ -543,7 +565,7 @@ cmd_shutdown = (
                     ]),
 
                     conquest.execute_alias(agentId, cmdline, f"bof {bof} {params}") if os.path.exists(bof)
-                    else conquest.error(agentId, cmdline, f"Failed to open object file: {bof}")
+                    else conquest.error(agentId, f"Failed to open object file: {bof}", cmdline)
                 )
             ))
 ).registerToGroup("remote operations")

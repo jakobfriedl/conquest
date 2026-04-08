@@ -116,6 +116,8 @@ proc draw*(component: TextareaWidget, size: ImVec2, filter: ptr ImGuiTextFilter 
                 if igGetScrollY() >= igGetScrollMaxY():
                     igSetScrollHereY(1.0f)
   
+            # Fix text-selection for imguin >= 1.92.7.0: textselect_update() adds DC.Indent.x to cursorPosStart.x, but GetCursorStartPos() already includes it
+            igUnindent(igGetStyle().FramePadding.x)
             component.textSelect.textselect_update()
                     
     except IndexDefect:
