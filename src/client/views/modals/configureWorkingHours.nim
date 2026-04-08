@@ -31,8 +31,7 @@ proc draw*(component: WorkingHoursModalComponent): WorkingHours =
 
     # Center modal
     let vp = igGetMainViewport()
-    var center: ImVec2
-    ImGuiViewport_GetCenter(addr center, vp)
+    var center = ImGuiViewport_GetCenter(vp)
     igSetNextWindowPos(center, ImGuiCond_Appearing.int32, vec2(0.5f, 0.5f))
     
     let modalWidth = max(400.0f, vp.Size.x * 0.2)
@@ -44,11 +43,7 @@ proc draw*(component: WorkingHoursModalComponent): WorkingHours =
         defer: igEndPopup()
         
         let textSpacing = igGetStyle().ItemSpacing.x
-        var availableSize: ImVec2
-    
-        var charSize: ImVec2 
-        igCalcTextSize(addr charSize, "00", nil, false, -1.0)
-        let charWidth = charSize.x + 10.0f
+        let charWidth = igCalcTextSize("00", nil, false, -1.0).x + 10.0f
         
         igText("Start: ")
         igSameLine(0.0f, textSpacing)
@@ -80,7 +75,7 @@ proc draw*(component: WorkingHoursModalComponent): WorkingHours =
         component.workingHours.startMinute = wrapValue(component.workingHours.startMinute, 60)
         component.workingHours.endMinute = wrapValue(component.workingHours.endMinute, 60)
         
-        igGetContentRegionAvail(addr availableSize)
+        var availableSize = igGetContentRegionAvail()
         
         igDummy(vec2(0.0f, 10.0f))
         

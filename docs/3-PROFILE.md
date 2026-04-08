@@ -114,15 +114,15 @@ Instead of using strings for the prefix and suffix, it is also possible to use a
 placement = { type = "body" }
 encoding = { type = "xor", key = 100 }
 prepend = [0x25, 0x50, 0x44, 0x46]           # %PDF
-append = [0x25, 0x25, 0x45, 0x4F, 0x46]     # %%EOF
+append = [0x25, 0x25, 0x45, 0x4F, 0x46]      # %%EOF
 ```
 
 #### More Examples
 
-Check the [default profile](../data/profile.toml) for more examples.
+Check the [default profile](../data/profiles/profile.toml) for more examples.
 
 Other example profiles: 
-- [youtube.profile](../data/youtube.toml): Traffic that resembles watching and interacting with Youtube videos.
+- [youtube.profile](../data/profiles/youtube.toml): Traffic that resembles watching and interacting with Youtube videos.
 
 ### Request options
 

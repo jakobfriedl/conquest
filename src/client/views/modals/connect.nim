@@ -48,8 +48,7 @@ proc draw*(component: ConnectionModalComponent) =
     
     # Center modal
     let vp = igGetMainViewport()
-    var center: ImVec2
-    ImGuiViewport_GetCenter(addr center, vp)
+    var center = ImGuiViewport_GetCenter(vp)
     igSetNextWindowPos(center, ImGuiCond_Always.int32, vec2(0.5f, 0.5f))
 
     let modalWidth = max(500.0f, vp.Size.x * 0.25)
@@ -59,12 +58,11 @@ proc draw*(component: ConnectionModalComponent) =
     if igBeginPopupModal("Connect", addr show, ImGuiWindowFlags_NoMove.int32):
         defer: igEndPopup()
         
-        var availableSize: ImVec2
 
         # Team server IP address
         igText("Host:     ")
         igSameLine(0.0f, textSpacing)
-        igGetContentRegionAvail(addr availableSize)
+        var availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
         igInputText("##InputHost", cast[cstring](addr component.host[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
 
@@ -78,7 +76,7 @@ proc draw*(component: ConnectionModalComponent) =
         # Username
         igText("Username: ")
         igSameLine(0.0f, textSpacing)
-        igGetContentRegionAvail(addr availableSize)
+        availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
         if igIsWindowAppearing(): igSetKeyboardFocusHere(0)
         igInputText("##InputUsername", cast[cstring](addr component.usernameInput[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
@@ -86,7 +84,7 @@ proc draw*(component: ConnectionModalComponent) =
         # Password
         igText("Password: ")
         igSameLine(0.0f, textSpacing)
-        igGetContentRegionAvail(addr availableSize)
+        availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
         if igInputText("##InputPassword", cast[cstring](addr component.passwordInput[0]), 256, ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGui_InputTextFlags_Password.int32, nil, nil): 
             component.connect()
@@ -104,7 +102,7 @@ proc draw*(component: ConnectionModalComponent) =
             ($cast[cstring]((addr component.usernameInput[0])) == "")
         )
 
-        igGetContentRegionAvail(addr availableSize)
+        availableSize = igGetContentRegionAvail()
 
         igDummy(vec2(0.0f, 10.0f))
         igSeparator()

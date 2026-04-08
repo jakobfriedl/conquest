@@ -83,8 +83,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
     
     # Center modal
     let vp = igGetMainViewport()
-    var center: ImVec2
-    ImGuiViewport_GetCenter(addr center, vp)
+    var center = ImGuiViewport_GetCenter(vp)
     igSetNextWindowPos(center, ImGuiCond_Appearing.int32, vec2(0.5f, 0.5f))
 
     let modalWidth = max(500.0f, vp.Size.x * 0.25)
@@ -97,20 +96,18 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         
         component.show = show
 
-        var availableSize: ImVec2
-        igGetContentRegionAvail(addr availableSize)
 
         # Listener selection
         igText("Listener:       ")
         igSameLine(0.0f, textSpacing)
-        igGetContentRegionAvail(addr availableSize)
+        var availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
         igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.listenerId & " (" & $it.listenerType & ")").join("\0") & "\0").cstring , listeners.len().int32)
 
         # Payload type selection
         igText("Payload type:   ")
         igSameLine(0.0f, textSpacing)
-        igGetContentRegionAvail(addr availableSize)
+        availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
         igCombo_Str("##InputPayloadType", addr component.payloadType, (component.payloadTypes.join("\0") & "\0").cstring, component.payloadTypes.len().int32)
 
@@ -161,7 +158,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igSameLine(0.0f, textSpacing)
         
         igBeginDisabled(not component.killDateEnabled)
-        igGetContentRegionAvail(addr availableSize)
+        availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
         if igButton((if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss")  & " UTC" else: "Configure##KillDate").cstring, vec2(-1.0f, 0.0f)):
             igOpenPopup_str("Configure Kill Date", ImGui_PopupFlags_None.int32) 
@@ -178,7 +175,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         igSameLine(0.0f, textSpacing)
         
         igBeginDisabled(not component.workingHoursEnabled)
-        igGetContentRegionAvail(addr availableSize)
+        availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
 
         let workingHoursLabel = fmt"{component.workingHours.startHour:02}:{component.workingHours.startMinute:02} - {component.workingHours.endHour:02}:{component.workingHours.endMinute:02}"
@@ -198,7 +195,7 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
         
         component.moduleSelection.draw()
 
-        igGetContentRegionAvail(addr availableSize)
+        availableSize = igGetContentRegionAvail()
 
         igDummy(vec2(0.0f, 10.0f))
         igSeparator()

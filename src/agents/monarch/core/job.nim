@@ -1,7 +1,7 @@
 import winim/lean
 import sequtils
 import ../../../types/[common, agent, protocol]
-import ../../../common/[serialize, sequence, crypto, utils]
+import ../../../common/[serialize, crypto, utils]
 import ../protocol/result
 
 proc NtTerminateThread(hThread: HANDLE, exitCode: NTSTATUS): NTSTATUS {.cdecl, stdcall, importc: protect("NtTerminateThread"), dynlib: protect("ntdll.dll").}

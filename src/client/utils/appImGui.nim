@@ -18,7 +18,7 @@ type
         theme: Theme
 
     Window* = object
-        handle*: GLFWwindow
+        handle*: glfw.GLFWwindow
         context*: ptr ImGuiContext
         imnodes*: bool
         implot*: bool
@@ -55,7 +55,7 @@ proc createApp*(w: cint = 1024, h: cint = 900, imnodes: bool = false, implot: bo
         if fViewport:
             fDocking = true
 
-    var glfwWin: GLFWwindow
+    var glfwWin: glfw.GLFWwindow
     var glsl_version: string
     
     when defined(windows):
@@ -126,7 +126,7 @@ proc createApp*(w: cint = 1024, h: cint = 900, imnodes: bool = false, implot: bo
             pio.ConfigViewports_NoAutomerge = true
 
     # GLFW + OpenGL
-    doAssert ImGui_ImplGlfw_InitForOpenGL(cast[ptr GLFWwindow](glfwwin), true)
+    doAssert ImGui_ImplGlfw_InitForOpenGL(cast[ptr impl_glfw.GLFWwindow](glfwwin), true)
     doAssert ImGui_ImplOpenGL3_Init(glsl_version.cstring)
 
     if transparentViewport:

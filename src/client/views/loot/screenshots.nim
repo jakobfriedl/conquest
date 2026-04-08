@@ -25,8 +25,7 @@ proc draw*(component: ScreenshotsComponent) =
     igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd()
 
-    var availableSize: ImVec2
-    igGetContentRegionAvail(addr availableSize)
+    var availableSize = igGetContentRegionAvail()
         
     # Left panel (file table) 
     let childFlags = ImGui_ChildFlags_ResizeX.int32 or ImGui_ChildFlags_NavFlattened.int32

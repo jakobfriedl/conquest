@@ -6,12 +6,11 @@ import ../../../types/client
 proc KillDateModal*(): KillDateModalComponent =
     result = new KillDateModalComponent
     result.killDateLevel = 0
-    result.killDateTime = ImPlotTIme()
 
     # Initialize to current date
     # Note: ImPlot starts months at index 0, while nim's "times" module starts at 1, hence the subtraction 
     let now = now()    
-    ImPlot_MakeTime(addr result.killDateTime, now.year.int32, (now.month.ord.int32 - 1), now.monthday.int32, 0, 0, 0, 0) 
+    result.killDateTime = ImPlot_MakeTime(now.year.int32, (now.month.ord.int32 - 1), now.monthday.int32, 0, 0, 0, 0) 
 
     result.killDateHour = 0
     result.killDateMinute = 0
@@ -24,11 +23,10 @@ proc wrapValue(value: int32, max: int32): int32 =
 
 proc resetModalValues*(component: KillDateModalComponent) = 
     component.killDateLevel = 0
-    component.killDateTime = ImPlotTIme()
     
     # Initialize to current date
     let now = now() 
-    ImPlot_MakeTime(addr component.killDateTime, now.year.int32, (now.month.ord.int32 - 1), now.monthday.int32, 0, 0, 0, 0)  
+    component.killDateTime = ImPlot_MakeTime(now.year.int32, (now.month.ord.int32 - 1), now.monthday.int32, 0, 0, 0, 0)  
     
     component.killDateHour = 0
     component.killDateMinute = 0
@@ -39,8 +37,7 @@ proc draw*(component: KillDateModalComponent): int64 =
     
     # Center modal
     let vp = igGetMainViewport()
-    var center: ImVec2
-    ImGuiViewport_GetCenter(addr center, vp)
+    var center = ImGuiViewport_GetCenter(vp)
     igSetNextWindowPos(center, ImGuiCond_Appearing.int32, vec2(0.5f, 0.5f))
     
     let modalWidth = max(400.0f, vp.Size.x * 0.2)
@@ -52,7 +49,6 @@ proc draw*(component: KillDateModalComponent): int64 =
         defer: igEndPopup()
         
         let textSpacing = igGetStyle().ItemSpacing.x
-        var availableSize: ImVec2
         
         # Date picker
         if ImPlot_ShowDatePicker("##KillDate", addr component.killDateLevel, addr component.killDateTime, nil, nil): 
@@ -63,9 +59,7 @@ proc draw*(component: KillDateModalComponent): int64 =
         igDummy(vec2(0.0f, 10.0f))
         
         # Time input fields
-        var charSize: ImVec2 
-        igCalcTextSize(addr charSize, "00", nil, false, -1.0)
-        let charWidth = charSize.x + 10.0f
+        let charWidth = igCalcTextSize("00", nil, false, -1.0).x + 10.0f
         
         let dateText = component.killDateTime.S.fromUnix().utc().format("dd. MMMM yyyy") & '\0' 
         igInputText("##Text", dateText.cstring, dateText.len().csize_t, ImGui_InputTextFlags_ReadOnly.int32, nil, nil)
@@ -92,7 +86,7 @@ proc draw*(component: KillDateModalComponent): int64 =
         component.killDateMinute = wrapValue(component.killDateMinute, 60)
         component.killDateSecond = wrapValue(component.killDateSecond, 60)
         
-        igGetContentRegionAvail(addr availableSize)
+        var availableSize = igGetContentRegionAvail()
         
         igDummy(vec2(0.0f, 10.0f))
         

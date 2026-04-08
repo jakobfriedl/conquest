@@ -58,9 +58,7 @@ proc draw*[T](component: DualListSelectionWidget[T]) =
 
         # Header
         var text = "Available"
-        var textSize: ImVec2
-        igCalcTextSize(addr textSize, text.cstring, nil, false, 0.0f)
-        igSetCursorPosX(igGetCursorPosX() + (igGetColumnWidth(0) - textSize.x) * 0.5f)
+        igSetCursorPosX(igGetCursorPosX() + (igGetColumnWidth(0) - igCalcTextSize(text.cstring, nil, false, 0.0f).x) * 0.5f)
         igTextColored(GRAY, text.cstring)
         
         # Set the size of selection box to fit all modules
@@ -114,8 +112,7 @@ proc draw*[T](component: DualListSelectionWidget[T]) =
 
         # Header
         text = "Selected"
-        igCalcTextSize(addr textSize, text.cstring, nil, false, 0.0f)
-        igSetCursorPosX(igGetCursorPosX() + (igGetColumnWidth(2) - textSize.x) * 0.5f)
+        igSetCursorPosX(igGetCursorPosX() + (igGetColumnWidth(2) - igCalcTextSize(text.cstring, nil, false, 0.0f).x) * 0.5f)
         igTextColored(GRAY, text.cstring)
         
         # Set the size of selection box to fit all modules

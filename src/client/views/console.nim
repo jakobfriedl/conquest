@@ -359,10 +359,8 @@ proc draw*(component: ConsoleComponent) =
     #[
         Filter & Options
     ]# 
-    var availableSize: ImVec2
-    igGetContentRegionAvail(addr availableSize)
-    var labelSize: ImVec2
-    igCalcTextSize(addr labelSize, ICON_FA_MAGNIFYING_GLASS, nil, false, 0.0f)
+    var availableSize = igGetContentRegionAvail()
+    var labelSize = igCalcTextSize(ICON_FA_MAGNIFYING_GLASS, nil, false, 0.0f)
     
     let searchBoxWidth: float32 = 400.0f
     igSameLine(0.0f, availableSize.x  - (labelSize.x + textSpacing) - searchBoxWidth)
@@ -398,7 +396,7 @@ proc draw*(component: ConsoleComponent) =
     igSameLine(0.0f, textSpacing)
     
     # Calculate available width for input
-    igGetContentRegionAvail(addr availableSize)
+    availableSize = igGetContentRegionAvail()
     igSetNextItemWidth(availableSize.x)
     
     let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32 or ImGuiInputTextFlags_CallbackHistory.int32 or ImGuiInputTextFlags_CallbackCompletion.int32

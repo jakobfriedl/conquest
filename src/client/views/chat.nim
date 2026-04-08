@@ -28,8 +28,7 @@ proc draw*(component: ChatComponent) =
     igText(fmt"[{cq.connection.user}]".cstring) 
     igSameLine(0.0f, textSpacing)    
 
-    var availableSize: ImVec2
-    igGetContentRegionAvail(addr availableSize)
+    var availableSize = igGetContentRegionAvail()
     igSetNextItemWidth(availableSize.x)
     
     let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32

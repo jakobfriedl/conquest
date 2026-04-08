@@ -26,8 +26,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
     
     # Center modal
     let vp = igGetMainViewport()
-    var center: ImVec2
-    ImGuiViewport_GetCenter(addr center, vp)
+    var center = ImGuiViewport_GetCenter(vp)
     igSetNextWindowPos(center, ImGuiCond_Appearing.int32, vec2(0.5f, 0.5f))
 
     let modalWidth = max(500.0f, vp.Size.x * 0.25)
@@ -37,13 +36,11 @@ proc draw*(component: ListenerModalComponent): UIListener =
     let windowFlags = ImGuiWindowFlags_None.int32 # or ImGuiWindowFlags_NoMove.int32
     if igBeginPopupModal("Start Listener", addr show, windowFlags):
         defer: igEndPopup()
-        
-        var availableSize: ImVec2
 
         # Listener protocol/type dropdown selection
         igText("Listener Type:    ")
         igSameLine(0.0f, textSpacing)
-        igGetContentRegionAvail(addr availableSize)
+        var availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
         igCombo_Str("##InputProtocol", addr component.protocol, (component.protocols.join("\0") & "\0").cstring , component.protocols.len().int32)
         
@@ -57,7 +54,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
             # Listener bindAddress 
             igText("Host (Bind):      ")
             igSameLine(0.0f, textSpacing)
-            igGetContentRegionAvail(addr availableSize)
+            availableSize = igGetContentRegionAvail()
             igSetNextItemWidth(availableSize.x)
             igInputTextWithHint("##InputAddressBind", "0.0.0.0", cast[cstring](addr component.bindAddress[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
 
@@ -71,7 +68,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
             # Callback hosts
             igText("Hosts (Callback): ")
             igSameLine(0.0f, textSpacing)
-            igGetContentRegionAvail(addr availableSize)
+            availableSize = igGetContentRegionAvail()
             igSetNextItemWidth(availableSize.x)
             igInputTextMultiline("##InputCallbackHosts", cast[cstring](addr component.callbackHosts[0]), 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
       
@@ -84,14 +81,14 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igSameLine(0.0f, textSpacing)
             igText("\\\\.\\pipe\\")
             igSameLine(0.0f, textSpacing)
-            igGetContentRegionAvail(addr availableSize)
+            availableSize = igGetContentRegionAvail()
             igSetNextItemWidth(availableSize.x)
             igInputText("##InputPipe", cast[cstring](addr component.pipe[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
 
             # Only enabled the start button when valid values have been entered
             igBeginDisabled($cast[cstring]((addr component.pipe[0])) == "")
 
-        igGetContentRegionAvail(addr availableSize)
+        availableSize = igGetContentRegionAvail()
 
         igDummy(vec2(0.0f, 10.0f))
         igSeparator()
