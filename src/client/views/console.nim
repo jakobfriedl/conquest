@@ -379,8 +379,7 @@ proc draw*(component: ConsoleComponent) =
         else: fmt"0 / {matchCount}"
     
     let totalWidth =
-        if component.searchActive:
-            igCalcTextSize(matchLabel.cstring, nil, false, 0.0f).x + textSpacing + searchBoxWidth + 4 * buttonWidth + 4 * textSpacing
+        if component.searchActive: igCalcTextSize(matchLabel.cstring, nil, false, 0.0f).x + textSpacing + searchBoxWidth + 5 * buttonWidth + 5 * textSpacing
         else: 0.0f
 
     let availableSize = igGetContentRegionAvail()
@@ -421,13 +420,28 @@ proc draw*(component: ConsoleComponent) =
         let searchInputFocused = igIsItemFocused()
         if igIsItemHovered(ImGuiHoveredFlags_None.int32):
             igBeginTooltip()
+            igText("[Alt + C]           Match case.")
+            igText("[Alt + R]           Use regular expression.")
             igText("[Enter]             Jump to next match.")
             igText("[Shift + Enter]     Jump to previous match.")
             igText("[Escape]            Close console search.")
-            igText("[Alt + R]           Toggle regex mode.")
             igEndTooltip()
 
-        # Toggle regex button
+        # Toggle case matching
+        igSameLine(0.0f, textSpacing)
+        let matchCase = component.searchMatchCase
+        if matchCase:
+            igPushStyleColor_Vec4(ImGui_Col_Button.int32, igGetStyle().Colors[ImGui_Col_ButtonActive.int32])
+        
+        if igButton("Aa".cstring, vec2(buttonWidth, 0.0f)):
+            component.searchMatchCase = not component.searchMatchCase
+            component.searchPrevQuery = ""
+            component.searchFocus = true
+        
+        if matchCase:
+            igPopStyleColor(1)
+
+        # Toggle regular expression support
         igSameLine(0.0f, textSpacing)
         let regexActive = component.searchRegex
         if regexActive:
@@ -440,48 +454,6 @@ proc draw*(component: ConsoleComponent) =
         
         if regexActive:
             igPopStyleColor(1)
-
-        # Compute results when search query changes
-        let currentQuery = ($cast[cstring](addr component.searchBuffer[0])).strip()
-        if currentQuery != component.searchPrevQuery:
-            component.searchPrevQuery = currentQuery
-            component.searchMatches = component.textarea.search(currentQuery, component.searchRegex)
-            
-            # Jump to first match
-            if component.searchMatches.len > 0:
-                component.currentMatch = 0
-                component.scrollToCurrentMatch = true
-            
-            else:
-                component.currentMatch = -1
-
-        # Handle keyboard shortcuts:
-        # - Alt+R to toggle regex mode
-        # - Enter to jump to next match
-        # - Shift+Enter to jump to previous match
-        # - Escape to close console search
-        if searchInputFocused and io.KeyAlt and igIsKeyPressed_Bool(ImGuiKey_R, false):
-            component.searchRegex = not component.searchRegex
-            component.searchPrevQuery = ""
-
-        if searchInputFocused and igIsKeyPressed_Bool(ImGuiKey_Enter, false):
-            if matchCount > 0:
-                if io.KeyShift:
-                    component.currentMatch = (component.currentMatch - 1 + matchCount) mod matchCount
-                else:
-                    component.currentMatch = (component.currentMatch + 1) mod matchCount
-                component.scrollToCurrentMatch = true
-                component.textarea.autoScroll = false
-
-        if searchInputFocused and igIsKeyPressed_Bool(ImGuiKey_Escape, false):
-            component.searchActive = false
-            zeroMem(addr component.searchBuffer[0], 256)
-            component.searchPrevQuery = ""
-            component.searchMatches = @[]
-            component.currentMatch = -1
-            component.scrollToCurrentMatch = false
-            component.textarea.autoScroll = true
-            focusInput = true
 
         # Match navigation
         igSameLine(0.0f, textSpacing)
@@ -501,6 +473,55 @@ proc draw*(component: ConsoleComponent) =
         # Close and reset console search
         igSameLine(0.0f, textSpacing)
         if igButton(ICON_FA_XMARK, vec2(buttonWidth, 0.0f)):
+            component.searchActive = false
+            zeroMem(addr component.searchBuffer[0], 256)
+            component.searchPrevQuery = ""
+            component.searchMatches = @[]
+            component.currentMatch = -1
+            component.scrollToCurrentMatch = false
+            component.textarea.autoScroll = true
+            focusInput = true
+
+        # Compute the matches as soon as the query changes
+        let currentQuery = ($cast[cstring](addr component.searchBuffer[0])).strip()
+        if currentQuery != component.searchPrevQuery:
+            component.searchPrevQuery = currentQuery
+            component.searchMatches = component.textarea.search(currentQuery, component.searchMatchCase, component.searchRegex)
+            
+            # Jump to first match
+            if component.searchMatches.len > 0:
+                component.currentMatch = 0
+                component.scrollToCurrentMatch = true
+            
+            else:
+                component.currentMatch = -1
+
+        # Handle keyboard shortcuts:
+        # - Alt+C to toggle case-sensitivity
+        # - Alt+R to toggle regex mode
+        # - Enter to jump to next match
+        # - Shift+Enter to jump to previous match
+        # - Escape to close console search
+        
+        if searchInputFocused and io.KeyAlt:
+            if igIsKeyPressed_Bool(ImGuiKey_C, false):
+                component.searchMatchCase = not component.searchMatchCase
+                component.searchPrevQuery = ""
+                
+            elif igIsKeyPressed_Bool(ImGuiKey_R, false):
+                component.searchRegex = not component.searchRegex
+                component.searchPrevQuery = ""
+
+        if searchInputFocused and igIsKeyPressed_Bool(ImGuiKey_Enter, false):
+            if matchCount > 0:
+                if io.KeyShift:
+                    component.currentMatch = (component.currentMatch - 1 + matchCount) mod matchCount
+                else:
+                    component.currentMatch = (component.currentMatch + 1) mod matchCount
+                component.scrollToCurrentMatch = true
+                component.textarea.autoScroll = false
+
+        if searchInputFocused and igIsKeyPressed_Bool(ImGuiKey_Escape, false):
             component.searchActive = false
             zeroMem(addr component.searchBuffer[0], 256)
             component.searchPrevQuery = ""

@@ -1,4 +1,4 @@
-import strutils, times, regex
+import strutils, times, tables, regex
 import imguin/[cimgui, glfw_opengl]
 import ../../utils/[appImGui, globals]
 import ../../../types/[common, client]
@@ -58,38 +58,45 @@ proc clear*(component: TextareaWidget) =
 proc isEmpty*(component: TextareaWidget): bool =
     return component.content.items.len() <= 0
 
-# Returns the indices of all content items matching the query (case-insensitive).
-proc search*(component: TextareaWidget, query: string, regex: bool = false): seq[int] =
+# Returns a list of all matched words across all lines.
+proc search*(component: TextareaWidget, query: string, matchCase, useRegex: bool = false): seq[tuple[line: int, a: int, b: int]] =
     if query.len == 0: return
 
-    if regex:
+    if useRegex:
+        # Match regular expression
         let pattern =
-            try: re("(?i)" & query)
+            try: re2((if matchCase: "" else: "(?i)") & query)
             except CatchableError: return
 
-        # Find matching items
         for i, item in component.content.items:
-            if ($item.getText()).contains(pattern):
-                result.add(i)
-    
+            for m in ($item.getText()).findAll(pattern):
+                result.add((line: i, a: m.boundaries.a, b: m.boundaries.b + 1))
     else:
-        # Perform simple case-insensitive search
+        # Perform regular search
+        let searchQuery = if matchCase: query else: query.toLowerAscii()
         for i, item in component.content.items:
-            if ($item.getText()).toLowerAscii().contains(query.toLowerAscii()):
-                result.add(i)
+            let text = if matchCase: $item.getText() else: ($item.getText()).toLowerAscii()
+            var pos = 0
+            while pos < text.len:
+                let idx = text.find(searchQuery, pos)
+                if idx < 0: break
+                result.add((line: i, a: idx, b: idx + query.len()))
+                pos = idx + 1
 
 # Drawing
-proc print(component: TextareaWidget, item: ConsoleItem, isCurrentMatch: bool, isMatch: bool) =
+proc print(component: TextareaWidget, item: ConsoleItem, spans: seq[tuple[a: int, b: int]], currentSpan: tuple[a: int, b: int]) =
     let drawList = igGetWindowDrawList()
     let cursorPos = igGetCursorScreenPos()
     let lineHeight = igGetTextLineHeightWithSpacing()
-    let availWidth = igGetContentRegionAvail().x
 
-    # Highlight match
-    if isCurrentMatch:
-        drawList.ImDrawList_AddRectFilled(cursorPos, ImVec2(x: cursorPos.x + availWidth, y: cursorPos.y + lineHeight), SEARCH_CURRENT_MATCH, 0.0f, 0)
-    elif isMatch:
-        drawList.ImDrawList_AddRectFilled(cursorPos, ImVec2(x: cursorPos.x + availWidth, y: cursorPos.y + lineHeight), SEARCH_MATCH, 0.0f, 0)
+    # Draw highlight over matched word
+    if spans.len > 0:
+        let text = $item.getText()
+        for span in spans:
+            let color = if span == currentSpan: SEARCH_CURRENT_MATCH else: SEARCH_MATCH
+            let x0 = cursorPos.x + igCalcTextSize(text[0..<span.a].cstring, nil, false, 0.0f).x
+            let x1 = cursorPos.x + igCalcTextSize(text[0..<span.b].cstring, nil, false, 0.0f).x
+            drawList.ImDrawList_AddRectFilled(ImVec2(x: x0, y: cursorPos.y), ImVec2(x: x1, y: cursorPos.y + lineHeight), color, 0.0f, 0)
 
     if item.itemType != LOG_OUTPUT and component.showTimestamps:
         igTextColored(GRAY, ("[" & item.timestamp & "]").cstring, nil)
@@ -116,7 +123,7 @@ proc print(component: TextareaWidget, item: ConsoleItem, isCurrentMatch: bool, i
     else:
         igTextColored(CONSOLE_HIGHLIGHT, item.text.cstring)
 
-proc draw*(component: TextareaWidget, size: ImVec2, matches: seq[int] = @[], currentMatch: int = -1, scrollToMatch: ptr bool = nil) =
+proc draw*(component: TextareaWidget, size: ImVec2, matches: seq[tuple[line: int, a: int, b: int]] = @[], currentMatch: int = -1, scrollToMatch: ptr bool = nil) =
     try:
         igPushStyleColor_Vec4(ImGui_Col_FrameBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
         igPushStyleColor_Vec4(ImGui_Col_ScrollbarBg.int32, vec4(0.1f, 0.1f, 0.1f, 1.0f))
@@ -126,30 +133,28 @@ proc draw*(component: TextareaWidget, size: ImVec2, matches: seq[int] = @[], cur
         let flags = ImGuiChildFlags_NavFlattened.int32 or ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AlwaysUseWindowPadding.int32 or ImGuiChildFlags_FrameStyle.int32
         if igBeginChild_Str("##TextArea", size, flags, ImGuiWindowFlags_HorizontalScrollbar.int32):
 
-            # Create seq[bool] for faster lookup   
-            let numItems = component.content.items.len()
-            var matchedLines = newSeq[bool](numItems)
-            for i in matches:
-                if i < numItems:
-                    matchedLines[i] = true
+            var spanLookup = initTable[int, seq[tuple[a: int, b: int]]]()
+            for match in matches:
+                spanLookup.mgetOrPut(match.line, @[]).add((a: match.a, b: match.b))
 
-            let currentMatchItem =
-                if currentMatch >= 0 and currentMatch < matches.len(): matches[currentMatch]
+            let currentMatchLine =
+                if currentMatch >= 0 and currentMatch < matches.len(): matches[currentMatch].line
                 else: -1
+                
+            let currentSpan =
+                if currentMatch >= 0 and currentMatch < matches.len(): (a: matches[currentMatch].a, b: matches[currentMatch].b)
+                else: (a: -1, b: -1)
 
-            # Display console items (highlight matches accordingly)
             var scrolledToMatch = false
             for i, item in component.content.items:
-                let isCurrent = i == currentMatchItem 
-                let isMatch = matchedLines[i]
+                let spans = spanLookup.getOrDefault(i, @[])
 
-                # Scroll to first match
-                if isCurrent and not scrollToMatch.isNil and scrollToMatch[]:
+                if i == currentMatchLine and not scrollToMatch.isNil and scrollToMatch[]:
                     igSetScrollHereY(0.5f)
                     scrollToMatch[] = false
                     scrolledToMatch = true
 
-                component.print(item, isCurrent, isMatch)
+                component.print(item, spans, if i == currentMatchLine: currentSpan else: (a: -1, b: -1))
 
             if component.autoScroll and not scrolledToMatch:
                 if igGetScrollY() >= igGetScrollMaxY():

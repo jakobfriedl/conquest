@@ -194,8 +194,9 @@ type
         searchActive*: bool
         searchFocus*: bool
         searchRegex*: bool
+        searchMatchCase*: bool
         searchPrevQuery*: string
-        searchMatches*: seq[int]
+        searchMatches*: seq[tuple[line: int, a: int, b: int]]  
         currentMatch*: int
         scrollToCurrentMatch*: bool
 
