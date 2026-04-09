@@ -176,7 +176,6 @@ type
     
     TextareaWidget* = ref object of RootObj
         content*: ConsoleItems
-        contentDisplayed*: ConsoleItems
         textSelect*: ptr TextSelect
         showTimestamps*: bool
         autoScroll*: bool
@@ -187,11 +186,20 @@ type
         inputBuffer*: array[MAX_INPUT_LENGTH, char]
         textarea*: TextareaWidget
         history*: seq[string]
-        historyPosition*: int 
+        historyPosition*: int
         currentInput*: string
-        filter*: ptr ImGuiTextFilter
-    
-    ProcessInfo* = object 
+
+        # Search functionality
+        searchBuffer*: array[256, char]
+        searchActive*: bool
+        searchFocus*: bool
+        searchRegex*: bool
+        searchPrevQuery*: string
+        searchMatches*: seq[int]
+        currentMatch*: int
+        scrollToCurrentMatch*: bool
+
+    ProcessInfo* = object
         pid*: uint32
         ppid*: uint32 
         name*: string 

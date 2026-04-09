@@ -13,9 +13,15 @@ proc Console*(agentId: string): ConsoleComponent =
     zeroMem(addr result.inputBuffer[0], MAX_INPUT_LENGTH)
     result.textarea = Textarea()
     result.history = @[]
-    result.historyPosition = -1  
+    result.historyPosition = -1
     result.currentInput = ""
-    result.filter = ImGuiTextFilter_ImGuiTextFilter("")
+
+    # Search functionality
+    result.searchActive = false
+    zeroMem(addr result.searchBuffer[0], 256)
+    result.searchMatches = @[]
+    result.currentMatch = -1
+    result.scrollToCurrentMatch = false
 
 #[
     Text input callback function for managing console history and autocompletion 
@@ -342,49 +348,177 @@ proc draw*(component: ConsoleComponent) =
     ]#
     let consolePadding: float = 10.0f 
     let footerHeight = (consolePadding * 2) + (igGetStyle().ItemSpacing.y + igGetFrameHeightWithSpacing()) * 0.75f
-    let textSpacing = igGetStyle().ItemSpacing.x    
-
-    # Padding 
-    igDummy(vec2(0.0f, consolePadding))
-    
+    let textSpacing = igGetStyle().ItemSpacing.x        
 
     #[
-        Session information
+        Session information 
     ]#
+    igAlignTextToFramePadding()
     let domain = if agent.domain.isEmptyOrWhitespace(): "" else: fmt".{agent.domain}"
     let sessionInfo = fmt"{agent.username}@{agent.hostname}{domain} | {agent.ipInternal} | {$agent.pid}/{agent.process}".cstring
     igTextColored(GRAY, sessionInfo)
     igSameLine(0.0f, 0.0f)
 
     #[
-        Filter & Options
-    ]# 
-    var availableSize = igGetContentRegionAvail()
-    var labelSize = igCalcTextSize(ICON_FA_MAGNIFYING_GLASS, nil, false, 0.0f)
+        Search bar 
+    ]#
     
-    let searchBoxWidth: float32 = 400.0f
-    igSameLine(0.0f, availableSize.x  - (labelSize.x + textSpacing) - searchBoxWidth)
-
-    # Show tooltip when hovering the search icon
-    igTextUnformatted(ICON_FA_MAGNIFYING_GLASS.cstring, nil)
-    if igIsItemHovered(ImGuiHoveredFlags_None.int32):
-        igBeginTooltip()
-        igText("Press CTRL+F to focus console filter.")
-        igText("Use \",\" as a delimiter to filter for multiple values.")
-        igText("Use \"-\" to exclude values.")
-        igText("Example: \"-warning,a,b\" returns all lines that do not include \"warning\" but include either \"a\" or \"b\".")
-        igEndTooltip()
-
+    # Handle CTRL+F
     if igIsWindowFocused(ImGui_FocusedFlags_ChildWindows.int32) and io.KeyCtrl and igIsKeyPressed_Bool(ImGuiKey_F, false):
-        igSetKeyboardFocusHere(0) 
+        component.searchActive = true
+        component.searchFocus = true
 
-    igSameLine(0.0f, textSpacing)
-    component.filter.ImGuiTextFilter_Draw("##ConsoleSearch", searchBoxWidth)    
+    let searchBoxWidth: float32 = 300.0f
+    let buttonWidth: float32 = 25.0f
+
+    let matchCount = component.searchMatches.len()
+    let matchLabel = 
+        if ($cast[cstring](addr component.searchBuffer[0])).strip().len() == 0: ""
+        elif matchCount == 0: "No results"
+        elif component.currentMatch >= 0: fmt"{component.currentMatch + 1} / {matchCount}"
+        else: fmt"0 / {matchCount}"
+    
+    let totalWidth =
+        if component.searchActive:
+            igCalcTextSize(matchLabel.cstring, nil, false, 0.0f).x + textSpacing + searchBoxWidth + 4 * buttonWidth + 4 * textSpacing
+        else: 0.0f
+
+    let availableSize = igGetContentRegionAvail()
+
+    # When search is inactive, show a button to open the search bar 
+    if not component.searchActive:
+        let searchBtnWidth = igCalcTextSize((ICON_FA_MAGNIFYING_GLASS & " Search").cstring, nil, false, 0.0f).x + igGetStyle().FramePadding.x * 2.0f
+        igSameLine(0.0f, max(0.0f, availableSize.x - searchBtnWidth))
+        igAlignTextToFramePadding()
+        if igButton((ICON_FA_MAGNIFYING_GLASS & " Search").cstring, vec2(0.0f, 0.0f)): 
+            component.searchActive = true
+            component.searchFocus = true
+
+        if igIsItemHovered(ImGuiHoveredFlags_None.int32):
+            igBeginTooltip()
+            igText("Press CTRL+F to search console.")
+            igEndTooltip()
+
+    # When search is active, show the search bar right-aligned or in a new line if it doesn't fit next to the session information
+    else:
+        if not component.searchActive or (availableSize.x >= totalWidth):
+            igSameLine(0.0f, max(0.0f, availableSize.x - totalWidth))
+        else:
+            igNewLine()
+
+        igAlignTextToFramePadding()
+        igTextColored(GRAY, matchLabel.cstring)
+        igSameLine(0.0f, textSpacing)
+
+        # Focus search bar
+        if component.searchFocus:
+            igSetKeyboardFocusHere(0)
+            component.searchFocus = false
+
+        igAlignTextToFramePadding()
+        igSetNextItemWidth(searchBoxWidth)
+        igInputTextWithHint("##ConsoleSearch", ICON_FA_MAGNIFYING_GLASS.cstring, cast[cstring](addr component.searchBuffer[0]), 256, 0, nil, nil)
+        let searchInputFocused = igIsItemFocused()
+        if igIsItemHovered(ImGuiHoveredFlags_None.int32):
+            igBeginTooltip()
+            igText("[Enter]             Jump to next match.")
+            igText("[Shift + Enter]     Jump to previous match.")
+            igText("[Escape]            Close console search.")
+            igText("[Alt + R]           Toggle regex mode.")
+            igEndTooltip()
+
+        # Toggle regex button
+        igSameLine(0.0f, textSpacing)
+        let regexActive = component.searchRegex
+        if regexActive:
+            igPushStyleColor_Vec4(ImGui_Col_Button.int32, igGetStyle().Colors[ImGui_Col_ButtonActive.int32])
+        
+        if igButton(".*".cstring, vec2(buttonWidth, 0.0f)):
+            component.searchRegex = not component.searchRegex
+            component.searchPrevQuery = ""
+            component.searchFocus = true
+        
+        if regexActive:
+            igPopStyleColor(1)
+
+        # Compute results when search query changes
+        let currentQuery = ($cast[cstring](addr component.searchBuffer[0])).strip()
+        if currentQuery != component.searchPrevQuery:
+            component.searchPrevQuery = currentQuery
+            component.searchMatches = component.textarea.search(currentQuery, component.searchRegex)
+            
+            # Jump to first match
+            if component.searchMatches.len > 0:
+                component.currentMatch = 0
+                component.scrollToCurrentMatch = true
+            
+            else:
+                component.currentMatch = -1
+
+        # Handle keyboard shortcuts:
+        # - Alt+R to toggle regex mode
+        # - Enter to jump to next match
+        # - Shift+Enter to jump to previous match
+        # - Escape to close console search
+        if searchInputFocused and io.KeyAlt and igIsKeyPressed_Bool(ImGuiKey_R, false):
+            component.searchRegex = not component.searchRegex
+            component.searchPrevQuery = ""
+
+        if searchInputFocused and igIsKeyPressed_Bool(ImGuiKey_Enter, false):
+            if matchCount > 0:
+                if io.KeyShift:
+                    component.currentMatch = (component.currentMatch - 1 + matchCount) mod matchCount
+                else:
+                    component.currentMatch = (component.currentMatch + 1) mod matchCount
+                component.scrollToCurrentMatch = true
+                component.textarea.autoScroll = false
+
+        if searchInputFocused and igIsKeyPressed_Bool(ImGuiKey_Escape, false):
+            component.searchActive = false
+            zeroMem(addr component.searchBuffer[0], 256)
+            component.searchPrevQuery = ""
+            component.searchMatches = @[]
+            component.currentMatch = -1
+            component.scrollToCurrentMatch = false
+            component.textarea.autoScroll = true
+            focusInput = true
+
+        # Match navigation
+        igSameLine(0.0f, textSpacing)
+        if igButton(ICON_FA_ARROW_UP, vec2(buttonWidth, 0.0f)):
+            if matchCount > 0:
+                component.currentMatch = (component.currentMatch - 1 + matchCount) mod matchCount   # Rotate to next match
+                component.scrollToCurrentMatch = true
+                component.textarea.autoScroll = false
+
+        igSameLine(0.0f, textSpacing)
+        if igButton(ICON_FA_ARROW_DOWN, vec2(buttonWidth, 0.0f)):
+            if matchCount > 0:
+                component.currentMatch = (component.currentMatch + 1) mod matchCount    # Rotate to previous match
+                component.scrollToCurrentMatch = true
+                component.textarea.autoScroll = false
+
+        # Close and reset console search
+        igSameLine(0.0f, textSpacing)
+        if igButton(ICON_FA_XMARK, vec2(buttonWidth, 0.0f)):
+            component.searchActive = false
+            zeroMem(addr component.searchBuffer[0], 256)
+            component.searchPrevQuery = ""
+            component.searchMatches = @[]
+            component.currentMatch = -1
+            component.scrollToCurrentMatch = false
+            component.textarea.autoScroll = true
+            focusInput = true
 
     #[
         Console textarea
-    ]# 
-    component.textarea.draw(vec2(-1.0f, -footerHeight), component.filter)
+    ]#
+    component.textarea.draw(
+        vec2(-1.0f, -footerHeight),
+        component.searchMatches,
+        component.currentMatch,
+        addr component.scrollToCurrentMatch
+    )
     
     # Padding 
     igDummy(vec2(0.0f, consolePadding))
@@ -396,8 +530,7 @@ proc draw*(component: ConsoleComponent) =
     igSameLine(0.0f, textSpacing)
     
     # Calculate available width for input
-    availableSize = igGetContentRegionAvail()
-    igSetNextItemWidth(availableSize.x)
+    igSetNextItemWidth(igGetContentRegionAvail().x)
     
     let inputFlags = ImGuiInputTextFlags_EnterReturnsTrue.int32 or ImGuiInputTextFlags_EscapeClearsAll.int32 or ImGuiInputTextFlags_CallbackHistory.int32 or ImGuiInputTextFlags_CallbackCompletion.int32
     if igInputText("##Input", cast[cstring](addr component.inputBuffer[0]), MAX_INPUT_LENGTH, inputFlags, callback, cast[pointer](component)):

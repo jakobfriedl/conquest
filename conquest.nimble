@@ -20,6 +20,7 @@ requires "pixie >= 5.1.0"
 requires "cligen >= 1.9.3"
 requires "nimpy >= 0.2.1"
 requires "gtk2 >= 1.3"
+requires "regex >= 0.26.3"
 
 # Build tasks
 import os, strformat

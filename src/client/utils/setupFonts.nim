@@ -45,6 +45,7 @@ proc new_ImFontConfig(): ImFontConfig =
     result.GlyphMaxAdvanceX = float.high
     result.RasterizerMultiply = 1.0
     result.RasterizerDensity = 1.0
+    result.ExtraSizeScale = 1.0 # Required for icons since Imgui 1.92.7.0
     result.MergeMode = false
     result.EllipsisChar = cast[ImWchar](-1)
 
