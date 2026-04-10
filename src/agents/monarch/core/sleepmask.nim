@@ -129,10 +129,7 @@ proc GetRandomThreadCtx(): CONTEXT =
     Delay execution without sleep obfuscation
 ]#
 proc sleepNone(sleepDelay: int, hWakeupEvent: HANDLE) =
-    if hWakeupEvent != 0:
-        discard WaitForSingleObject(hWakeupEvent, cast[DWORD](sleepDelay))
-    else:
-        sleep(sleepDelay)
+    discard WaitForSingleObject(if hWakeupEvent != 0: hWakeupEvent else: cast[HANDLE](-1), cast[DWORD](sleepDelay))
 
 #[
     Ekko sleep obfuscation based on Timers API using RtlCreateTimer
@@ -254,7 +251,7 @@ proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, hWakeupEvent: HAN
 
         # ctx[5] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached.
         ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
-        ctx[gadget].Rcx = cast[DWORD64](hWakeupEvent)               # Interrupt sleep on wake-up event (BeaconWakeUp()).
+        ctx[gadget].Rcx = cast[DWORD64](if hWakeupEvent != 0: hWakeupEvent else: cast[HANDLE](-1))
         ctx[gadget].Rdx = cast[DWORD64](cast[DWORD](sleepDelay))
         ctx[gadget].R8  = cast[DWORD64](FALSE)
         inc gadget
@@ -422,7 +419,7 @@ proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, hWakeupEvent: H
 
         # ctx[5] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached.
         ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
-        ctx[gadget].Rcx = cast[DWORD64](hWakeupEvent)              # Interrupt sleep on wake-up event (BeaconWakeUp()).
+        ctx[gadget].Rcx = cast[DWORD64](if hWakeupEvent != 0: hWakeupEvent else: cast[HANDLE](-1))
         ctx[gadget].Rdx = cast[DWORD64](cast[DWORD](sleepDelay))
         ctx[gadget].R8  = cast[DWORD64](FALSE)
         inc gadget
@@ -536,7 +533,7 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int, hWakeupEvent: 
 
         # ctx[3] contains the call to WaitForSingleObjectEx, which delays execution and simulates sleeping until the specified timeout is reached.
         ctx[gadget].Rip = cast[DWORD64](WaitForSingleObjectEx)
-        ctx[gadget].Rcx = cast[DWORD64](hWakeupEvent)               # Interrupt sleep on wake-up event (BeaconWakeUp()).
+        ctx[gadget].Rcx = cast[DWORD64](if hWakeupEvent != 0: hWakeupEvent else: cast[HANDLE](-1))
         ctx[gadget].Rdx = cast[DWORD64](cast[DWORD](sleepDelay))
         ctx[gadget].R8  = cast[DWORD64](FALSE)
         inc gadget
