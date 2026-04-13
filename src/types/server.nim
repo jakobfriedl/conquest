@@ -63,7 +63,6 @@ type
     Conquest* = ref object
         db*: DbConn
         listeners*: Table[string, Listener]
-        threads*: Table[string, Thread[Listener]]
         agents*: Table[string, Agent]
         keyPair*: KeyPair
         profileString*: string

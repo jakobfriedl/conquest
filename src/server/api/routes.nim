@@ -13,7 +13,7 @@ proc error404*(request: Request) =
 
 # Method not allowed 
 proc error405*(request: Request) = 
-    request.respond(404, body = "") 
+    request.respond(405, body = "") 
 
 # Utils 
 proc hasKey(headers: seq[(string, string)], headerName: string): bool =

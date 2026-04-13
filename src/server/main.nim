@@ -19,7 +19,6 @@ proc header() =
 proc init*(T: type Conquest, profileString, privateKey, logDir, lootDir: string): Conquest = 
     var cq = new Conquest
     cq.listeners = initTable[string, Listener]()
-    cq.threads = initTable[string, Thread[Listener]]()
     cq.agents = initTable[string, Agent]() 
     cq.profileString = profileString
     cq.profile = parseString(profileString)
@@ -187,8 +186,13 @@ proc startServer*(
         # Initialize database
         cq.dbInit(db)
         cq.dbGetAllAgents()
+
+        # Initialize listener error channel
+        openErrorChannel()
+
+        # Restart existing listeners
         for listener in cq.dbGetAllListeners():
-            cq.listenerStart(listener)  # Restart existing listener
+            cq.listenerStart(listener)  
 
         # Start websocket server
         var router: Router
