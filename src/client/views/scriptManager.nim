@@ -25,6 +25,12 @@ proc draw*(component: ScriptManagerComponent) =
         for path in paths:
             loadScript(path)
     
+    igSameLine(0.0f, textSpacing)
+
+    if igButton("Reload All", vec2(0.0f, 0.0f)):
+        for path in component.scripts.keys().toSeq():
+            loadScript(path)
+
     let tableFlags = (
         ImGuiTableFlags_Resizable.int32 or 
         ImGuiTableFlags_Reorderable.int32 or 
