@@ -125,3 +125,14 @@ proc sendChatMessage*(connection: WsConnection, message: string) =
         }
     )
     connection.ws.sendEvent(event, connection.sessionKey)
+
+proc sendImpersonationToken*(connection: WsConnection, agentId, impersonationToken: string) = 
+    let event = Event(
+        eventType: CLIENT_IMPERSONATE_TOKEN, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "impersonationToken": impersonationToken
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)

@@ -1,5 +1,5 @@
 import tables, strformat, strutils, unicode
-import ../[database, task]
+import ../[database, task, websocket]
 import ../../utils/globals
 import ../../views/widgets/textarea
 import ../../../common/[utils, serialize]
@@ -283,11 +283,16 @@ proc modules_root*(): string {.exportpy.} =
 proc user*(): string {.exportpy.} = 
     return cq.connection.user
 
+proc set_impersonation(agentId, token: string) {.exportpy.} = 
+    if cq.sessions.agents.hasKey(agentId):
+        cq.sessions.agents[agentId].impersonationToken = token
+        cq.connection.sendImpersonationToken(agentId, token)
+
 # Execute a command 
 proc execute_command*(agentId, command: string, silent: bool = false) {.exportpy.} = 
     sendTask(agentId, command, silent)
 
-# Takes a command string as the argument that is executed instead 
+# Execute an alias command string instead of the entered command 
 proc execute_alias*(agentId, command, alias: string, silent: bool = false) {.exportpy.} =
     sendTask(agentId, command, alias, silent)
 

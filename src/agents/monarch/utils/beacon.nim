@@ -2,6 +2,7 @@ import winim/lean
 import ptr_math
 import strformat
 import ../../../common/utils 
+import ./token
 
 #[
     References: 
@@ -293,9 +294,11 @@ proc BeaconDownload(filename: PCHAR, buffer: PCHAR, length: uint): BOOL {.stdcal
     Token Functions
 ]#
 proc BeaconUseToken(token: HANDLE): BOOL {.stdcall.} =
-    if SetThreadToken(nil, token) != 0:
+    try:
+        impersonate(token)
         return TRUE
-    return FALSE
+    except:
+        return FALSE
 
 proc BeaconRevertToken(): void {.stdcall.} =
     discard RevertToSelf()

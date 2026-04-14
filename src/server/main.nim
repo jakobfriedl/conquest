@@ -136,6 +136,14 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
             of CLIENT_CHAT: 
                 cq.sendChatMessage(event.data["user"].getStr(), event.data["message"].getStr())
 
+            of CLIENT_IMPERSONATE_TOKEN:
+                let 
+                    agentId = event.data["agentId"].getStr()
+                    impersonationToken = event.data["impersonationToken"].getStr() 
+                
+                if cq.dbUpdateTokenImpersonation(agentId, impersonationToken):
+                    cq.agents[agentId].impersonationToken = impersonationToken
+
             else: discard
 
         of ErrorEvent:

@@ -197,13 +197,13 @@ proc sendLootData*(cq: Conquest, loot: LootItem, data: string, clientId: string 
     )
     cq.broadcast(event, clientId)
 
-proc sendImpersonateToken*(cq: Conquest, agentId, username: string, clientId: string = "") = 
+proc sendImpersonationToken*(cq: Conquest, agentId, impersonationToken: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_IMPERSONATE_TOKEN,
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
-            "username": username
+            "impersonationToken": impersonationToken
         }
     )
     cq.broadcast(event, clientId)

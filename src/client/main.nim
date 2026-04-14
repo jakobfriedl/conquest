@@ -269,7 +269,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     of CLIENT_IMPERSONATE_TOKEN: 
                         let 
                             agentId = event.data["agentId"].getStr()
-                            impersonationToken = event.data["username"].getStr()
+                            impersonationToken = event.data["impersonationToken"].getStr()
                         cq.sessions.agents[agentId].impersonationToken = impersonationToken
 
                     of CLIENT_REVERT_TOKEN: 
