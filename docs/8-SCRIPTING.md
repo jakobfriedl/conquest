@@ -38,6 +38,7 @@ The Python Module API enables users of the Conquest framework to add their own c
     - [`conquest.output(agentId, message)`](#conquestoutputagentid-message)
     - [`conquest.warn(agentId, message)`](#conquestwarnagentid-message)
     - [`conquest.info(agentId, message)`](#conquestinfoagentid-message)
+    - [`conquest.set_impersonation(agentId, token)`](#conquestset_impersonationagentid-token)
     - [`conquest.modules_root() -> str`](#conquestmodules_root---str)
     - [`conquest.user() -> str`](#conquestuser---str)
     - [`conquest.debug_log(message)`](#conquestdebug_logmessage)
@@ -457,6 +458,16 @@ Log an informational message to the agent console.
 | --- | --- | --- |
 | `agentId` | `str` | ID of the target agent. |
 | `message` | `str` | Output message to display. |
+
+---
+
+#### `conquest.set_impersonation(agentId, token)`
+Set the agent's token impersonation.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `agentId` | `str` | ID of the target agent. |
+| `token` | `str` | Impersonation token/username of the impersonated user. |
 
 ---
 
