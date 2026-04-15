@@ -141,6 +141,7 @@ proc handleResult*(resultData: seq[byte]) =
                 
                 else:
                     if int(taskResult.length) > 0:
+                        cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent = silent)
                         cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent = silent)
 
                 return

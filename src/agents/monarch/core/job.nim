@@ -14,9 +14,12 @@ proc getResultType(job: Job): ResultType =
 proc jobThreadEntry(lpParam: LPVOID): DWORD {.stdcall.} =
     let param = cast[ThreadParameter](lpParam)
     try:
-        param.worker(param.hWrite, param.hStopEvent, param.task)
-    except CatchableError:
-        discard
+        param.worker(param.ctx, param.hWrite, param.hStopEvent, param.task)
+    except Exception as err:
+        param.failed = true
+        var dwBytesWritten: DWORD
+        if param.hWrite != 0 and err.msg.len() > 0:
+            discard WriteFile(param.hWrite, addr err.msg[0], DWORD(err.msg.len()), addr dwBytesWritten, nil)
     return 0
 
 proc drainOutput(job: Job): seq[byte] =
@@ -51,8 +54,9 @@ proc startJob*(ctx: AgentCtx, task: Task, worker: WorkerProc): bool =
         return false
 
     var param = ThreadParameter(
+        ctx: ctx,
         hWrite: hWrite,
-        hStopEvent: hStopEvent, 
+        hStopEvent: hStopEvent,
         task: task,
         worker: worker
     )
@@ -128,7 +132,10 @@ proc handleJobs*(ctx: AgentCtx, packer: var Packer, numResults: var int) =
             CloseHandle(job.hRead)
 
             # Notify the server that the task has finished
-            let status = if job.state == JOB_COMPLETED: STATUS_COMPLETED else: STATUS_CANCELLED
+            let status = 
+                if job.threadParams.failed: STATUS_FAILED
+                elif job.state == JOB_CANCELLED: STATUS_CANCELLED
+                else: STATUS_COMPLETED
             var result = ctx.createTaskResult(job.task, status, RESULT_NO_OUTPUT, @[])
             packer.addDataWithLengthPrefix(ctx.serializeTaskResult(result))
             inc numResults

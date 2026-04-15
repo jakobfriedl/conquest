@@ -47,6 +47,7 @@ proc parseModuleType*(moduleName: string): ModuleType =
     of "shell": return MODULE_SHELL
     of "bof": return MODULE_BOF
     of "dotnet": return MODULE_DOTNET
+    of "dll": return MODULE_DLL
     of "filesystem": return MODULE_FILESYSTEM
     of "filetransfer": return MODULE_FILETRANSFER
     of "screenshot": return MODULE_SCREENSHOT

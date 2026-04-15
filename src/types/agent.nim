@@ -29,31 +29,7 @@ type
             pipe*: string 
             hPipe*: HANDLE
 
-type 
-    WorkerProc* = proc(hWrite: HANDLE, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.}
-    
-    ThreadParameter* = ref object
-        hWrite*: HANDLE
-        hStopEvent*: HANDLE
-        task*: Task 
-        worker*: WorkerProc
-
-    JobState* = enum 
-        JOB_RUNNING = 0'u8 
-        JOB_COMPLETED = 1'u8 
-        JOB_CANCELLED = 2'u8
-
-    Job* = ref object 
-        task*: Task
-        state*: JobState 
-        hThread*: HANDLE 
-        hRead*: HANDLE
-        hWrite*: HANDLE
-        hStopEvent*: HANDLE
-        threadParams*: ThreadParameter
-
-# Agent context
-type 
+type
     AgentCtx* = ref object
         agentId*: string
         transport*: TransportSettings
@@ -66,3 +42,27 @@ type
         links*: Table[uint32, uint32]
         jobs*: seq[Job]
         hWakeupEvent*: HANDLE
+
+    WorkerProc* = proc(ctx: AgentCtx, hWrite: HANDLE, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.}
+
+    ThreadParameter* = ref object
+        ctx*: AgentCtx
+        hWrite*: HANDLE
+        hStopEvent*: HANDLE
+        task*: Task
+        worker*: WorkerProc
+        failed*: bool
+
+    JobState* = enum
+        JOB_RUNNING   = 0'u8
+        JOB_COMPLETED = 1'u8
+        JOB_CANCELLED = 2'u8
+
+    Job* = ref object
+        task*: Task
+        state*: JobState
+        hThread*: HANDLE
+        hRead*: HANDLE
+        hWrite*: HANDLE
+        hStopEvent*: HANDLE
+        threadParams*: ThreadParameter

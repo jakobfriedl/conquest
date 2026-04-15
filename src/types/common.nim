@@ -29,6 +29,7 @@ type
         CMD_SHELL = "shell"
         CMD_BOF = "bof"
         CMD_DOTNET = "dotnet"
+        CMD_DLL ="dll"
         CMD_DOWNLOAD = "download"
         CMD_UPLOAD = "upload"
         CMD_SCREENSHOT = "screenshot"
@@ -56,7 +57,7 @@ type
         MODULE_SCREENSHOT = 32'u32
         MODULE_PROCESS = 64'u32 
         MODULE_TOKEN = 128'u32
-        MODULE_RDLL = 256'u32
+        MODULE_DLL = 256'u32
 
     ListenerType* {.size: sizeof(uint8).} = enum
         LISTENER_HTTP = "HTTP"
