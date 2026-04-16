@@ -50,7 +50,7 @@ commands[CMD_SLEEP] = proc(ctx: AgentCtx, task: Task): TaskResult =
         print fmt"   [>] Setting sleep delay to {delay} seconds."
         ctx.sleepSettings.sleepDelay = delay
 
-        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
+        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}s, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
         return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
 
     except CatchableError as err: 
@@ -66,7 +66,7 @@ commands[CMD_JITTER] = proc(ctx: AgentCtx, task: Task): TaskResult =
         print fmt"   [>] Setting jitter to {jitter}%."
         ctx.sleepSettings.jitter = jitter 
 
-        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
+        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}s, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
         return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
     
     except CatchableError as err: 
@@ -85,7 +85,7 @@ commands[CMD_SLEEPMASK] = proc(ctx: AgentCtx, task: Task): TaskResult =
             ctx.sleepSettings.sleepTechnique = parseEnum[SleepObfuscationTechnique](Bytes.toString(task.args[0].data).toUpperAscii())
             ctx.sleepSettings.spoofStack = spoofStack
 
-        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}ms, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
+        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}s, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
         return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
 
     except CatchableError as err: 

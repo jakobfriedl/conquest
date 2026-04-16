@@ -1,3 +1,6 @@
 [submodule "data/modules"]
 	path = data/modules
 	url = https://github.com/jakobfriedl/conquest-modules
+[submodule "data/resources/async-bof-loader"]
+	path = data/resources/async-bof-loader
+	url = https://github.com/jakobfriedl/async-bof-loader

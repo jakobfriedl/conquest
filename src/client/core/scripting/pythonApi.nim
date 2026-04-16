@@ -203,6 +203,14 @@ proc bof_pack*(types: string, args: seq[PyObject]): string {.exportpy.} =
     let data = packer.pack()
     return Bytes.toHex(uint32.toBytes(uint32(data.len())) & data)
 
+# Pack object file and params for asynchronous BOF execution using the async-bof post-ex DLL
+# Format: [objLen][objBytes][argsLen][argsBytes] 
+proc async_bof_pack*(bof, params: string): string {.exportpy.} =
+    var packer = Packer.init() 
+    packer.addDataWithLengthPrefix(string.toBytes(readFile(bof)))
+    packer.addDataWithLengthPrefix(if params.len > 0: Bytes.fromHex(string.toBytes(params)) else: @[])
+    return Bytes.toHex(packer.pack() )
+ 
 # Pack arguments into bytes
 # https://sleep.dashnine.org/manual/pack.html
 proc pack*(types: string, args: seq[PyObject]): seq[byte] {.exportpy.} = 
@@ -280,6 +288,9 @@ proc output*(agentId, message: string) {.exportpy.} =
 proc modules_root*(): string {.exportpy.} = 
     return CONQUEST_ROOT & "/data/modules"
 
+proc resources_root*(): string {.exportpy.} = 
+    return CONQUEST_ROOT & "/data/resources"
+
 proc user*(): string {.exportpy.} = 
     return cq.connection.user
 
@@ -288,11 +299,11 @@ proc set_impersonation(agentId, token: string) {.exportpy.} =
         cq.sessions.agents[agentId].impersonationToken = token
         cq.connection.sendImpersonationToken(agentId, token)
 
-# Execute a command 
-proc execute_command*(agentId, command: string, silent: bool = false) {.exportpy.} = 
+# Execute a command
+proc execute_command*(agentId, command: string, silent: bool = false) {.exportpy.} =
     sendTask(agentId, command, silent)
 
-# Execute an alias command string instead of the entered command 
+# Execute an alias command string instead of the entered command
 proc execute_alias*(agentId, command, alias: string, silent: bool = false) {.exportpy.} =
     sendTask(agentId, command, alias, silent)
 

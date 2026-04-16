@@ -31,15 +31,19 @@ The Python Module API enables users of the Conquest framework to add their own c
     - [`conquest.get_int(args, i=0) -> int`](#conquestget_intargs-i0---int)
     - [`conquest.get_bool(args, i=0) -> bool`](#conquestget_boolargs-i0---bool)
     - [`conquest.get_file(args, i=0) -> tuple[str, list[byte]]`](#conquestget_fileargs-i0---tuplestr-listbyte)
-  - [Utility Functions](#utility-functions)
+  - [Argument Packing](#argument-packing)
     - [`conquest.bof_pack(types, args) -> str`](#conquestbof_packtypes-args---str)
+    - [`conquest.async_bof_pack(bof, params) -> str`](#conquestasync_bof_packbof-params---str)
     - [`conquest.pack(types, args) -> list[byte]`](#conquestpacktypes-args---listbyte)
+  - [Console Output](#console-output)
     - [`conquest.error(agentId, message, cmdline)`](#conquesterroragentid-message-cmdline)
     - [`conquest.output(agentId, message)`](#conquestoutputagentid-message)
     - [`conquest.warn(agentId, message)`](#conquestwarnagentid-message)
     - [`conquest.info(agentId, message)`](#conquestinfoagentid-message)
+  - [Utility](#utility)
     - [`conquest.set_impersonation(agentId, token)`](#conquestset_impersonationagentid-token)
     - [`conquest.modules_root() -> str`](#conquestmodules_root---str)
+    - [`conquest.resources_root() -> str`](#conquestresources_root---str)
     - [`conquest.user() -> str`](#conquestuser---str)
     - [`conquest.debug_log(message)`](#conquestdebug_logmessage)
 - [Examples](#examples)
@@ -355,7 +359,7 @@ text = bytes(data).decode('<encoding>')
 
 ---
 
-### Utility Functions
+### Argument Packing 
 
 #### `conquest.bof_pack(types, args) -> str`
 Pack arguments into a HEX-encoded string for use with the `bof` command. Returns a HEX string prefixed with the total data length.
@@ -393,6 +397,24 @@ The `bof_pack` function is based on the Cobalt Strike's Agressor Script function
 
 ---
 
+#### `conquest.async_bof_pack(bof, params) -> str`
+Pack a BOF object file and its pre-packed arguments into a HEX-encoded string for use with the `async_bof` command. The output format is `[objLen][objBytes][argsLen][argsBytes]`, which matches the input format expected by the async BOF loader.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `bof` | `str` | Absolute path to the BOF object file (`.x64.o`). |
+| `params` | `str` | HEX-encoded packed arguments produced by `bof_pack`. Pass an empty string if the BOF takes no arguments. |
+
+```python
+bof = conquest.modules_root() + "/path/to/objectfile.x64.o"
+params = conquest.bof_pack("zz", [arg1, arg2])
+packed = conquest.async_bof_pack(bof, params)
+
+conquest.execute_alias(agentId, cmdline, f"dll /path/to/async-bof.dll Run {packed}")
+```
+
+---
+
 #### `conquest.pack(types, args) -> list[byte]`
 Pack arguments into raw bytes. 
 
@@ -419,6 +441,8 @@ Consider the following resources for more information:
 - https://sleep.dashnine.org/manual/pack.html
 
 ---
+
+### Console Output
 
 #### `conquest.error(agentId, message, cmdline)`
 Log an error message to the agent console.
@@ -461,6 +485,7 @@ Log an informational message to the agent console.
 
 ---
 
+### Utility 
 #### `conquest.set_impersonation(agentId, token)`
 Set the agent's token impersonation.
 
@@ -471,11 +496,21 @@ Set the agent's token impersonation.
 
 ---
 
+
 #### `conquest.modules_root() -> str`
 Return the absolute path to the `data/modules` directory. Use this to locate BOF object files shipped with the module.
 
 ```python
 bof = conquest.modules_root() + "/path/to/objectfile.x64.o"
+```
+
+---
+
+#### `conquest.resources_root() -> str`
+Return the absolute path to the `data/resources` directory. Use this to locate post-exploitation DLLs and other runtime resources shipped with the framework.
+
+```python
+dll = conquest.resources_root() + "/async-bof-loader/dist/async-bof.dll"
 ```
 
 ---

@@ -335,6 +335,7 @@ CONQUEST
 │   ├── loot/
 │   │   ├── <AGENT-UUID>/       : Agent loot (screenshots, downloads)
 │   ├── modules/                : Python modules for extending aegnt functionality
+│   ├── resources/              : Post-exploitation DLLs and other standalone capabilities
 │   └── profiles/               
 │       └── profiles.toml       : Default profile
 │

@@ -122,8 +122,8 @@ proc objectResolveSymbol(symbol: var PSTR, stringTable: PCHAR): PVOID =
         buffer: array[MAX_PATH, char]
         hModule: HANDLE
 
-    if symbol == nil: 
-        return nil 
+    if symbol == nil:
+        raise newException(CatchableError, protect("Symbol is nil."))
 
     let fullSymbol = $symbol
     
@@ -206,7 +206,7 @@ proc objectRelocation(uType: ULONG, pRelocAddress: PVOID, pSecBase: PVOID) =
 #[
     Section processing
 ]#
-proc objectProcessSection(objCtx: POBJECT_CTX): bool = 
+proc objectProcessSection(objCtx: POBJECT_CTX) =
     var 
         secBase: PVOID 
         objRel: PIMAGE_RELOCATION
@@ -239,11 +239,9 @@ proc objectProcessSection(objCtx: POBJECT_CTX): bool =
             reloc = cast[PVOID](cast[uint](secMap[i].base) + uint(objRel.union1.VirtualAddress))
             resolved = nil 
 
-            # Check if symbol starts with `__ipm_` (imported functions)
-            if symName.startsWith("__imp_"): 
+            # Check if symbol starts with `__imp_` (imported functions)
+            if symName.startsWith("__imp_"):
                 resolved = objectResolveSymbol(symbol, stringTable)
-                if resolved == nil: 
-                    return false
             
             # Perform relocation on the imported function 
             if (objRel.Type == IMAGE_REL_AMD64_REL32 or 
@@ -273,8 +271,6 @@ proc objectProcessSection(objCtx: POBJECT_CTX): bool =
             # Handle next relocation item/symbol
             objRel = cast[PIMAGE_RELOCATION](cast[uint](objRel) + uint(sizeof(IMAGE_RELOCATION)))
 
-    return true
-
 #[
     Object file execution
     Arguments: 
@@ -282,7 +278,7 @@ proc objectProcessSection(objCtx: POBJECT_CTX): bool =
     - entry: Name of the entry function to be executed
     - args: Arguments passed to the object file
 ]#
-proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]): bool = 
+proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]) =
     var 
         objSym: PIMAGE_SYMBOL
         secBase: PVOID 
@@ -316,12 +312,12 @@ proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]): bool =
             else: 
                 entryPoint(nil, 0)
 
-            if VirtualProtect(secBase, secSize, oldProtect, addr oldProtect) == 0: 
+            if VirtualProtect(secBase, secSize, oldProtect, addr oldProtect) == 0:
                 raise newException(CatchableError, GetLastError().getError())
 
-            return true
+            return
 
-    return false
+    raise newException(CatchableError, fmt"Failed to find entry function: {$entry}")
 
 #[
     Loads, parses and executes a object file in memory
@@ -331,7 +327,7 @@ proc objectExecute(objCtx: POBJECT_CTX, entry: PSTR, args: seq[byte]): bool =
     - args: Bytes of the COFF arguments
     - entryFunction: Name of the entry function to look for, usually "go"
 ]#
-proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction: string = "go"): bool = 
+proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction: string = "go") =
     var 
         objCtx: OBJECT_CTX
         virtSize: ULONG
@@ -360,7 +356,6 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
         RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
         raise newException(CatchableError, protect("Only x64 object files are supported."))
 
-    
     # Calculate required virtual memory
     virtSize = objectVirtualSize(addr objCtx)
     print fmt"[*] Virtual size of object file: {virtSize} bytes"
@@ -403,19 +398,14 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     objCtx.symMap = cast[ptr PVOID](secBase)
 
     print protect("[*] Processing sections and performing relocations.")
-    if not objectProcessSection(addr objCtx): 
-        RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-        raise newException(CatchableError, protect("Failed to process sections."))
+    objectProcessSection(addr objCtx)
 
-    # Executing the object file 
+    # Executing the object file
     print protect("[*] Executing.")
-    if not objectExecute(addr objCtx, entryFunction, args): 
-        RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-        raise newException(CatchableError, fmt"Failed to execute function {$entryFunction}.")
-    print protect("[+] Object file executed successfully.") 
-    
+    objectExecute(addr objCtx, entryFunction, args)
+    print protect("[+] Object file executed successfully.")
+
     RtlSecureZeroMemory(addr objCtx, sizeof(objCtx))
-    return true
 
 #[ 
     Execute a object file in memory and retrieve the output using the BeaconGetOutputData API
@@ -424,9 +414,8 @@ proc inlineExecute*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction:
     - args: Bytes of the COFF arguments
     - entryFunction: Name of the entry function to look for, usually "go"
 ]#
-proc inlineExecuteGetOutput*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction: string = "go"): string = 
-    if not inlineExecute(objectFile, args, entryFunction): 
-        raise newException(CatchableError, protect("Failed to execute object file."))
+proc inlineExecuteGetOutput*(objectFile: seq[byte], args: seq[byte] = @[], entryFunction: string = "go"): string =
+    inlineExecute(objectFile, args, entryFunction)
 
     var outSize: int = 0
     var output = BeaconGetOutputData(addr outSize)

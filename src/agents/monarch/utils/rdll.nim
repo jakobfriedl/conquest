@@ -42,7 +42,7 @@ type
     PIMAGE_RUNTIME_FUNCTION_ENTRY = ptr IMAGE_RUNTIME_FUNCTION_ENTRY
 
     DllMainProc = proc(hinstDLL: HINSTANCE, fdwReason: DWORD, lpvReserved: LPVOID): BOOL {.stdcall.}
-    RunProc = proc(args: PBYTE, dwSize: DWORD, hWrite, hWakeup, hStopEvent: HANDLE) {.stdcall.}
+    RunProc = proc(args: PBYTE, dwSize: DWORD, hWrite, hWakeup, hStopEvent: HANDLE): BOOL {.stdcall.}
 
 const 
     IMAGE_ORDINAL_FLAG64 = 0x8000000000000000'i64
@@ -271,6 +271,7 @@ proc execDll*(dllBytes: seq[byte], exportName: string, args: seq[byte], hWrite, 
     pPeBase = cast[PBYTE](VirtualAlloc(NULL, peHdrs.pImgNtHdrs.OptionalHeader.SizeOfImage, MEM_RESERVE or MEM_COMMIT, PAGE_READWRITE))
     if pPeBase == nil: 
         raise newException(CatchableError, GetLastError().getError())
+    defer: VirtualFree(pPeBase, 0, MEM_RELEASE)
 
     # Copy headers 
     copyMem(pPeBase, peHdrs.pFileBuffer, peHdrs.pImgNtHdrs.OptionalHeader.SizeOfHeaders)
@@ -321,9 +322,11 @@ proc execDll*(dllBytes: seq[byte], exportName: string, args: seq[byte], hWrite, 
 
     # Execute exported function
     # If the DLL is implemented in Nim, the NimMain() function needs to be called first (either by DllMain or at the beginning of the exported function)
-    let run = cast[RunProc](pExportedFunction)
     {.cast(gcsafe).}:
-        run(if args.len > 0: cast[PBYTE](addr args[0]) else: nil, cast[DWORD](args.len), hWrite, hWakeupEvent, hStopEvent)
+        let run = cast[RunProc](pExportedFunction)
+        let status = run(if args.len > 0: cast[PBYTE](addr args[0]) else: nil, cast[DWORD](args.len), hWrite, hWakeupEvent, hStopEvent)
+        if status == FALSE:
+            raise newException(CatchableError, "")
 
     # Cleanup
     if peHdrs.pEntryExceptionDataDir.Size != 0:

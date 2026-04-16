@@ -357,8 +357,7 @@ proc BeaconCleanupProcess(pInfo: ptr PROCESS_INFORMATION): void {.stdcall.} =
 proc toWideChar(src: PCHAR, dst: PWSTR, max: int): BOOL {.stdcall.} =
     if max < sizeof(WCHAR):
         return FALSE
-    let result = MultiByteToWideChar(CP_ACP, 0, src, -1, dst, int32(max div sizeof(WCHAR)))
-    return if result != 0: TRUE else: FALSE
+    return if MultiByteToWideChar(CP_ACP, 0, src, -1, dst, int32(max div sizeof(WCHAR))) != 0: TRUE else: FALSE
 
 proc BeaconGetOutputData*(outSize: ptr int): PCHAR {.stdcall.} =
     var outData: PCHAR = beaconCompatibilityOutput

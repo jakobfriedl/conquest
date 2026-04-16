@@ -632,7 +632,7 @@ proc sleepObfuscate*(sleepSettings: SleepSettings, hWakeupEvent: HANDLE) =
             # Calculate minutes until midnight and add the minutes until the start of the workday
             delay = int(((24 * 60 - minutesSinceMidnight) + minutesUntilWorkday) * 60 - int(time.wSecond)) * 1000
 
-    print fmt"[*] Sleepmask settings: Technique: {$sleepSettings.sleepTechnique}, Delay: {$delay}ms, Stack spoofing: {$sleepSettings.spoofStack}"
+    print fmt"[*] Sleepmask settings: Technique: {$sleepSettings.sleepTechnique}, Delay: {$delay}s, Stack spoofing: {$sleepSettings.spoofStack}"
 
     var img: USTRING = USTRING(Length: 0)
     var key: USTRING = USTRING(Length: 0)
