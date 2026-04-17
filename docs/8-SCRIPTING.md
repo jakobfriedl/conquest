@@ -8,6 +8,7 @@ The Python Module API enables users of the Conquest framework to add their own c
 ## Contents <!-- omit from toc -->
 - [Script Manager](#script-manager)
 - [Scripting Engine](#scripting-engine)
+  - [Global Variables](#global-variables)
 - [API Reference](#api-reference)
   - [Command Creation](#command-creation)
     - [`conquest.createModule(name, description)`](#conquestcreatemodulename-description)
@@ -62,6 +63,18 @@ The scripting engine processes a Python module and adds commands to command grou
 
 - **Modules** can be enabled/disabled during payload generation. In practice, this should only be used for the default core modules (filesystem, token, ...)
 - **Command Groups** are used to structure commands in the output of the `help` command. This allows the module developer group together commands that fall under the same category (such as conducting situational awareness or execute code). Every command needs to be added to at least one command group to be able to be used. 
+
+### Global Variables 
+
+The scripting engine injects `__file__` into every script's globals, so BOF paths can be resolved relative to the script itself. This allows modules to be loaded from any location outside of `data/modules`.
+```python
+import conquest
+import os.path
+
+SCRIPT_DIR = os.path.dirname(__file__)
+
+bof = os.path.join(SCRIPT_DIR, "path/to/objectfile.x64.o")
+```
 
 ## API Reference 
 Import the `conquest` module at the top of any script to access the API:
@@ -193,13 +206,15 @@ Add a named file flag.
 Attach a Python handler function to the command. The handler is called on the client side before the command is dispatched to the agent, allowing for preprocessing, validation, and BOF argument construction. Longer commands should make use of a named handler that is defined as a function with the following signature:
 
 ```python
+SCRIPT_DIR = os.path.dirname(__file__)
+
 def _handler(agentId, cmdline, args):
     confirm = conquest.get_bool(args, 0)
     if not confirm:
         conquest.error(agentId, "Set the --confirm flag to proceed.", cmdline)
         return
 
-    bof    = conquest.modules_root() + "/path/to/module.x64.o"
+    bof    = os.path.join(SCRIPT_DIR, "path/to/module.x64.o")
     params = conquest.bof_pack("z", [conquest.get_string(args, 1)])
 
     if os.path.exists(bof):
@@ -216,7 +231,7 @@ For simple commands that require no validation or branching, a **lambda** is the
 
     conquest.error(agentId, "Set the --confirm flag to proceed.", cmdline) if not confirm
     else (
-        bof    := conquest.modules_root() + "/path/to/module.x64.o",
+        bof    := os.path.join(SCRIPT_DIR, "path/to/module.x64.o"),
         params := conquest.bof_pack("z", [conquest.get_string(args, 1)]),
 
         conquest.execute_alias(agentId, cmdline, f"bof {bof} {params}") if os.path.exists(bof)
@@ -498,7 +513,7 @@ Set the agent's token impersonation.
 
 
 #### `conquest.modules_root() -> str`
-Return the absolute path to the `data/modules` directory. Use this to locate BOF object files shipped with the module.
+Return the absolute path to the `data/modules` directory.
 
 ```python
 bof = conquest.modules_root() + "/path/to/objectfile.x64.o"
@@ -537,7 +552,9 @@ For implementation references and examples, check out the official [conquest-mod
 
 ```python
 import conquest 
-import os.path 
+import os.path
+
+SCRIPT_DIR = os.path.dirname(__file__)
 
 def _scshell(agentId, cmdline, args): 
     target = conquest.get_string(args, 0)
@@ -550,7 +567,7 @@ def _scshell(agentId, cmdline, args):
     path = f"\\\\{target}\\{share}\\{name if name else service}"
     if not path.endswith(".exe"): path += ".exe"
 
-    bof = conquest.modules_root() + "/lateral-movement/scshell/scshell.x64.o"
+    bof = os.path.join(SCRIPT_DIR, "scshell/scshell.x64.o")
     params = conquest.bof_pack("zzzb", [
         target,         # z: Target system
         service,        # z: Target service
@@ -581,6 +598,8 @@ cmd_scshell = (
 import conquest
 import os.path
 
+SCRIPT_DIR = os.path.dirname(__file__)
+
 cmd_shutdown = ( 
     conquest.createCommand(name="shutdown", description="Shutdown or reboot a target system.", example="shutdown --message \"Goodbye from Conquest\" --in 20 --reboot",
                            message="Tasked agent to shutdown a computer.", mitre=[])
@@ -601,7 +620,7 @@ cmd_shutdown = (
                 conquest.error(agentId, "Set the --confirm flag to shutdown the target system.", cmdline) if not confirm
                 else (
                     
-                    bof := conquest.modules_root() + "/remote-operations/CS-Remote-OPs-BOF/Remote/shutdown/shutdown.x64.o",
+                    bof := os.path.join(SCRIPT_DIR, "CS-Remote-OPs-BOF/Remote/shutdown/shutdown.x64.o"),
                     params := conquest.bof_pack("zziss", [
                         target,                 # z: Target system
                         message,                # z: Shutdown message

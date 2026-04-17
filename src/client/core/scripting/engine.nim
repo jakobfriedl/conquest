@@ -14,7 +14,8 @@ proc loadScript*(file: string) =
         let script = readFile(file)
         let builtins = pyBuiltinsModule()
         let globals = pyDict()
-        globals["__builtins__"] = builtins  
+        globals["__builtins__"] = builtins
+        globals["__file__"] = file
 
         # Store script in database 
         if not dbScriptExists(file):
