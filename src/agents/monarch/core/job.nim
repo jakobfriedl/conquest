@@ -6,6 +6,8 @@ import ../protocol/result
 
 proc NtTerminateThread(hThread: HANDLE, exitCode: NTSTATUS): NTSTATUS {.cdecl, stdcall, importc: protect("NtTerminateThread"), dynlib: protect("ntdll.dll").}
 
+const PIPE_BUFFER_MAX = 0x10000 # 64KB
+
 proc getResultType(job: Job): ResultType =
     case cast[CommandType](job.task.command):
     of CMD_DOWNLOAD: RESULT_BINARY
@@ -43,7 +45,7 @@ proc startJob*(ctx: AgentCtx, task: Task, worker: WorkerProc): bool =
     sa.bInheritHandle = FALSE
     sa.lpSecurityDescriptor = nil
 
-    if CreatePipe(addr hRead, addr hWrite, addr sa, 0) == FALSE:
+    if CreatePipe(addr hRead, addr hWrite, addr sa, PIPE_BUFFER_MAX) == FALSE:
         return false
 
     # Initialize event for cancelling a job
