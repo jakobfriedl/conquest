@@ -247,7 +247,7 @@ proc handleAgentCommand*(component: ConsoleComponent, input: string) =
         else:
             sendTask(cq.sessions.agents[component.agentId].agentId, input)
 
-    except CatchableError:
+    except Exception:
         cq.connection.sendLog(component.agentId, component.textarea.addItem(LOG_COMMAND, input))
         cq.connection.sendLog(component.agentId, component.textarea.addItem(LOG_ERROR, getCurrentExceptionMsg()))
 
