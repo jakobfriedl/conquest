@@ -141,8 +141,9 @@ proc handleResult*(resultData: seq[byte]) =
                 
                 else:
                     if int(taskResult.length) > 0:
+                        let command = cq.agents[agentId].taskCommands.getOrDefault(taskResult.taskId, "")
                         cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent = silent)
-                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent = silent)
+                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command = command, silent = silent)
 
                 return
 
