@@ -282,28 +282,23 @@ proc execDll*(dllBytes: seq[byte], exportName: string, args: seq[byte], hWrite, 
         let pDst = cast[PBYTE](cast[uint](pPeBase) + cast[uint](sections[i].VirtualAddress))
         let pSrc = cast[PBYTE](cast[uint](peHdrs.pFileBuffer) + cast[uint](sections[i].PointerToRawData))
         copyMem(pDst, pSrc, sections[i].SizeOfRawData)
-        print fmt"    [>] {$(addr sections[i].Name)} @ 0x{sections[i].PointerToRawData.repr} ({$sections[i].SizeOfRawData} bytes))"
 
     # Fix relocations
     if not fixRelocations(peHdrs.pEntryBaseRelocDataDir, pPeBase, cast[PBYTE](peHdrs.pImgNtHdrs.OptionalHeader.ImageBase)):
         raise newException(CatchableError, GetLastError().getError())
-    print protect("    [+] Relocations fixed.")
 
     # Fix Import Address Table
     if not fixImportAddressTable(peHdrs.pEntryImportDataDir, pPeBase): 
         raise newException(CatchableError, GetLastError().getError())
-    print protect("    [+] IAT fixed.")
 
     # Fix memory permissions
     if not fixMemoryPermissions(pPeBase, peHdrs.pImgNtHdrs, peHdrs.pImgSecHdr): 
         raise newException(CatchableError, GetLastError().getError())
-    print protect("    [+] Memory permissions fixed.")
 
     # Resolve exported function
     pExportedFunction = getExportAddress(peHdrs.pEntryExportDataDir, pPeBase, exportName)
     if pExportedFunction == nil: 
         raise newException(CatchableError, protect("Exported function not found."))
-    print protect("    [*] Exported function: 0x"), pExportedFunction.repr
 
     # Register exception handlers
     if peHdrs.pEntryExceptionDataDir.Size != 0 and not registerExceptionHandlers(peHdrs.pEntryExceptionDataDir, pPeBase):

