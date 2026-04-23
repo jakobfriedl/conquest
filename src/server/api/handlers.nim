@@ -128,6 +128,9 @@ proc handleResult*(resultData: seq[byte]) =
                         cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), silent = silent)
 
             of STATUS_IN_PROGRESS:
+                # Get command for output handler
+                let command = cq.agents[agentId].taskCommands.getOrDefault(taskResult.taskId, "")
+                
                 case cast[CommandType](taskResult.command):
                 of CMD_DOWNLOAD:
                     if cq.downloads.hasKey(taskId):
@@ -140,8 +143,7 @@ proc handleResult*(resultData: seq[byte]) =
                             cq.sendConsoleItem(agentId, LOG_INFO, fmt"Task {taskId} in progress: {progress:.2f}%", silent = silent)
                 
                 else:
-                    if int(taskResult.length) > 0:
-                        let command = cq.agents[agentId].taskCommands.getOrDefault(taskResult.taskId, "")
+                    if int(taskResult.length) > 0:        
                         cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent = silent)
                         cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command = command, silent = silent)
 
@@ -151,6 +153,7 @@ proc handleResult*(resultData: seq[byte]) =
                 cq.sendConsoleItem(agentId, LOG_SUCCESS, fmt"Task {taskId} completed.", silent = silent)
                 cq.success(fmt"Task {taskId} completed.")
 
+                # Get command for output handler
                 let command = cq.agents[agentId].taskCommands.getOrDefault(taskResult.taskId, "")
                 cq.agents[agentId].taskCommands.del(taskResult.taskId)
 

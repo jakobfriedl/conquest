@@ -281,6 +281,10 @@ proc info*(agentId, message: string) {.exportpy.} =
     if cq.sessions.agents.hasKey(agentId):
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_INFO, message)
 
+proc success*(agentId, message: string) {.exportpy.} = 
+    if cq.sessions.agents.hasKey(agentId):
+        cq.sessions.agents[agentId].console.textarea.addItem(LOG_SUCCESS, message)
+
 proc output*(agentId, message: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId): 
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, message)

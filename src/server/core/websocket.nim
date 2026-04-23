@@ -265,12 +265,19 @@ proc sendChatMessage*(cq: Conquest, user, message: string, clientId: string = ""
     cq.broadcast(event, clientId)
 
 proc sendJobs*(cq: Conquest, agentId, jobData: string, silent: bool, clientId: string = "") = 
+    
+    # Include table with the display names of the jobs in the request, so the client can label running jobs correctly
+    var commands = newJObject()
+    for taskId, cmd in cq.agents[agentId].taskCommands:
+        commands[Uuid.toString(taskId)] = %cmd 
+    
     let event = Event(
         eventType: CLIENT_JOBS, 
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
             "jobs": jobData,
+            "commands": commands,
             "silent": silent
         }
     )

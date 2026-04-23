@@ -411,6 +411,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         let
                             agentId = event.data["agentId"].getStr()
                             data = event.data["jobs"].getStr()
+                            commands = event.data["commands"]
                             silent = event.data["silent"].getBool()
                         
                         var unpacker = Unpacker.init(data)
@@ -425,7 +426,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             for i in 0 ..< count:
                                 let
                                     jobId = Uuid.toString(unpacker.getUint32())
-                                    command = $cast[CommandType](unpacker.getUint16())
+                                    command = commands{jobId}.getStr($cast[CommandType](unpacker.getUint16())) # Prioritize display name over alias command name ("tgt-monitor" instead of "dll")
                                     timestamp = fromUnix(cast[int64](unpacker.getUint32())).local().format("dd-MM-yyyy HH:mm:ss")
                                 
                                 console.textarea.addItem(LOG_OUTPUT, jobId.alignLeft(10) & timestamp.alignLeft(21) & command)
