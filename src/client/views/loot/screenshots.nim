@@ -45,38 +45,41 @@ proc draw*(component: ScreenshotsComponent) =
             ImGui_TableFlags_SizingStretchSame.int32
         )
         
-        let cols: int32 = 5
+        let cols: int32 = 6
         if igBeginTable("##Items", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
             igTableSetupColumn("ID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-            igTableSetupColumn("AgentID", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
             igTableSetupColumn("Host", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+            igTableSetupColumn("AgentID", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
+            igTableSetupColumn("Filename", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("Creation Date", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("File Size", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupScrollFreeze(0, 1)
             igTableHeadersRow()
-        
+
             for i, entry in component.items.values().toSeq().sortedByIt(it.item.timestamp):
                 let item = entry.item
                 igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
-                
+
                 if igTableSetColumnIndex(0):
                     igPushID_Int(i.int32)
                     let isSelected = component.selectedLootId == item.lootId
                     if igSelectable_Bool(item.lootId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0)):
                         component.selectedLootId = item.lootId
-                
+
                     if igIsItemHovered(ImGuiHoveredFlags_None.int32) and igIsMouseClicked_Bool(ImGuiMouseButton_Right.int32, false):
                         component.selectedLootId = item.lootId
-                    
-                    igPopID()                
+
+                    igPopID()
 
                 if igTableSetColumnIndex(1):
-                    igText(item.agentId.cstring)
-                if igTableSetColumnIndex(2):
                     igText(item.host.cstring)
+                if igTableSetColumnIndex(2):
+                    igText(item.agentId.cstring)
                 if igTableSetColumnIndex(3):
-                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss").cstring)
+                    igText(item.path.extractFilename().cstring)
                 if igTableSetColumnIndex(4):
+                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss").cstring)
+                if igTableSetColumnIndex(5):
                     igText(($item.size).cstring)
 
             # Handle right-click context menu

