@@ -138,10 +138,16 @@ proc createModule*(name, description: string) {.exportpy.} =
         commands: @[]
     )
 
-proc registerToGroup*(self: Command, group: string): Command {.exportpy.} = 
+proc registerToGroup*(self: Command, group: string): Command {.exportpy.} =
     if not cq.scriptManager.groups.hasKey(group):
-        cq.scriptManager.groups[group] = initOrderedTable[string, Command]() 
-    cq.scriptManager.groups[group][self.name] = self 
+        cq.scriptManager.groups[group] = initOrderedTable[string, Command]()
+    cq.scriptManager.groups[group][self.name] = self
+    
+    if scriptPath != "" and cq.scriptManager.scripts.hasKey(scriptPath):
+        var entry = cq.scriptManager.scripts[scriptPath]
+        entry.commands.add((group: group, name: self.name))
+        cq.scriptManager.scripts[scriptPath] = entry
+
     return self
 
 proc registerToModule*(self: Command, module: string): Command {.exportpy.} =

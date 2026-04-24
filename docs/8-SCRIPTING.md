@@ -10,6 +10,9 @@ The Python Module API enables users of the Conquest framework to add their own c
 - [Scripting Engine](#scripting-engine)
   - [Global Variables](#global-variables)
 - [API Reference](#api-reference)
+  - [Script Management](#script-management)
+    - [`conquest.load_script(path)`](#conquestload_scriptpath)
+    - [`conquest.unload_script(path)`](#conquestunload_scriptpath)
   - [Command Creation](#command-creation)
     - [`conquest.createModule(name, description)`](#conquestcreatemodulename-description)
     - [`conquest.createCommand(name, description, example, message, mitre=[]) -> Command`](#conquestcreatecommandname-description-example-message-mitre---command)
@@ -83,9 +86,28 @@ Import the `conquest` module at the top of any script to access the API:
 import conquest
 ```
 
-The API is divided into four categories: command creation, command execution, argument parsing, and utilities.
+---
+
+
+### Script Management
+
+#### `conquest.load_script(path)`
+Load a Python module script from the given path. The script is executed immediately, registering all commands and modules it defines. 
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `path` | `str` | Absolute path to the Python script to load. |
 
 ---
+
+#### `conquest.unload_script(path)`
+
+Unload a previously loaded script and remove all commands it registered from every command group and module. Commands are removed immediately without requiring a client restart.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `path` | `str` | Absolute path to the script to unload. |
+
 
 ### Command Creation
 

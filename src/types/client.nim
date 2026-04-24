@@ -121,7 +121,7 @@ type
     ScriptManagerComponent* = ref object of RootObj
         title*: string 
         showComponent*: ptr bool
-        scripts*: OrderedTable[string, tuple[active: bool, error: string]]
+        scripts*: OrderedTable[string, tuple[active: bool, error: string, commands: seq[tuple[group: string, name: string]]]]
         modules*: Table[string, Module]
         groups*: OrderedTable[string, OrderedTable[string, Command]] 
         selection*: ptr ImGuiSelectionBasicStorage

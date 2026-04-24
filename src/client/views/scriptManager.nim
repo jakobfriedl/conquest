@@ -2,14 +2,13 @@ import imguin/[cimgui, glfw_opengl]
 import tables, sequtils, strformat
 import ../utils/[appImGui, dialogs]
 import ../core/scripting/engine
-import ../core/database
 import ../../types/client
  
 proc ScriptManager*(title: string, showComponent: ptr bool): ScriptManagerComponent = 
     result = new ScriptManagerComponent
     result.title = title
     result.showComponent = showComponent
-    result.scripts = initOrderedTable[string, tuple[active: bool, error: string]]()
+    result.scripts = initOrderedTable[string, tuple[active: bool, error: string, commands: seq[tuple[group: string, name: string]]]]()
     result.modules = initTable[string, Module]()
     result.groups = initOrderedTable[string, OrderedTable[string, Command]]()
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
@@ -62,21 +61,29 @@ proc draw*(component: ScriptManagerComponent) =
         
         let scripts = component.scripts.keys().toSeq()
         for i, path in scripts:
-            let (active, error) = component.scripts[path]
+            let entry = component.scripts[path]
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
             if igTableSetColumnIndex(0):
                 igSetNextItemSelectionUserData(i.int32)
                 var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i))
 
-                if not active:
+                if not entry.active:
                     igPushStyleColor_Vec4(ImGui_Col_Text.cint, CONSOLE_ERROR)
 
                 discard igSelectable_Bool(path.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
 
-                if igTableSetColumnIndex(1): 
-                    igText(if active: "Active".cstring else: fmt"Error: {error}".cstring)
+                # Show commands
+                if igIsItemHovered(ImGuiHoveredFlags_None.int32) and entry.commands.len > 0:
+                    igBeginTooltip()
+                    igText(fmt"Available commands:".cstring)
+                    for cmd in entry.commands:
+                        igText(fmt" - {cmd.name}".cstring)
+                    igEndTooltip()
 
-                if not active:
+                if igTableSetColumnIndex(1):
+                    igText(if entry.active: "Active".cstring else: fmt"Error: {entry.error}".cstring)
+
+                if not entry.active:
                     igPopStyleColor(1)
 
         # Handle right-click context menu
@@ -84,18 +91,14 @@ proc draw*(component: ScriptManagerComponent) =
             if igMenuItem("Reload", nil, false, true): 
                 for i, path in scripts:
                     if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        # Reload python script
                         loadScript(path)
-
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
                 
             if igMenuItem("Remove", nil, false, true):
                 for i, path in scripts:
                     if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        # Delete script
-                        if dbRemoveScript(path):
-                            component.scripts.del(path)
+                        unloadScript(path)
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
                 
