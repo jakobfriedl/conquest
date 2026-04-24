@@ -15,7 +15,9 @@ include ./pythonApi
     - execute scripts to register commands & modules
 ]#
 proc unregisterCommands(path: string) =
-    if not cq.scriptManager.scripts.hasKey(path): return
+    if not cq.scriptManager.scripts.hasKey(path): 
+        return
+
     for cmd in cq.scriptManager.scripts[path].commands:
         if cq.scriptManager.groups.hasKey(cmd.group):
             cq.scriptManager.groups[cmd.group].del(cmd.name)
@@ -24,6 +26,7 @@ proc unregisterCommands(path: string) =
 
 proc load_script*(path: string) {.exportpy.} =
     try:
+        # Unregister commands before reloading
         unregisterCommands(path)
         scriptPath = path
         cq.scriptManager.scripts[path] = (active: false, error: "", commands: @[])

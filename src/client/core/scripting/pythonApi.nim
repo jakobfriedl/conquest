@@ -3,7 +3,7 @@ import ../[database, task, websocket]
 import ../../utils/globals
 import ../../views/widgets/textarea
 import ../../../common/[utils, serialize]
-import ../../../types/[common, client, protocol]
+import ../../../types/[common, client, event, protocol]
 
 #[
     Conquest Python API
@@ -309,6 +309,14 @@ proc set_impersonation(agentId, token: string) {.exportpy.} =
         cq.sessions.agents[agentId].impersonationToken = token
         cq.connection.sendImpersonationToken(agentId, token)
 
+proc add_screenshot*(agentId, filename: string, contents: seq[byte]) {.exportpy.} =
+    if cq.sessions.agents.hasKey(agentId):
+        cq.connection.sendLootStore(agentId, filename, SCREENSHOT, contents)
+
+proc add_download*(agentId, filename: string, contents: seq[byte]) {.exportpy.} =
+    if cq.sessions.agents.hasKey(agentId):
+        cq.connection.sendLootStore(agentId, filename, DOWNLOAD, contents)
+
 # Execute a command
 proc execute_command*(agentId, command: string, silent: bool = false) {.exportpy.} =
     sendTask(agentId, command, silent)
@@ -332,7 +340,7 @@ proc get_bool*(args: seq[TaskArg], i: int = 0): bool {.exportpy.} =
         return false
     return cast[bool](args[i].data[0])
 
-proc get_file*(args: seq[TaskArg], i: int = 0): tuple[name: string, data: seq[byte]] {.exportpy.} = 
+proc get_file*(args: seq[TaskArg], i: int = 0): tuple[name: string, data: seq[byte]] {.exportpy.} =
     if i >= args.len():
         return ("", @[])
     var unpacker = Unpacker.init(Bytes.toString(args[i].data))

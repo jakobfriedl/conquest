@@ -42,10 +42,13 @@ The Python Module API enables users of the Conquest framework to add their own c
   - [Console Output](#console-output)
     - [`conquest.error(agentId, message, cmdline)`](#conquesterroragentid-message-cmdline)
     - [`conquest.output(agentId, message)`](#conquestoutputagentid-message)
+    - [`conquest.success(agentId, message)`](#conquestsuccessagentid-message)
     - [`conquest.warn(agentId, message)`](#conquestwarnagentid-message)
     - [`conquest.info(agentId, message)`](#conquestinfoagentid-message)
   - [Utility](#utility)
     - [`conquest.set_impersonation(agentId, token)`](#conquestset_impersonationagentid-token)
+    - [`conquest.add_screenshot(agentId, filename, contents)`](#conquestadd_screenshotagentid-filename-contents)
+    - [`conquest.add_download(agentId, filename, contents)`](#conquestadd_downloadagentid-filename-contents)
     - [`conquest.modules_root() -> str`](#conquestmodules_root---str)
     - [`conquest.resources_root() -> str`](#conquestresources_root---str)
     - [`conquest.user() -> str`](#conquestuser---str)
@@ -502,8 +505,18 @@ Log an output message to the agent console. Intended for use inside output handl
 
 ---
 
+#### `conquest.success(agentId, message)`
+Log a success message to the agent console.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `agentId` | `str` | ID of the target agent. |
+| `message` | `str` | Success message to display. |
+
+---
+
 #### `conquest.warn(agentId, message)`
-Log an warning message to the agent console.
+Log a warning message to the agent console.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -522,7 +535,8 @@ Log an informational message to the agent console.
 
 ---
 
-### Utility 
+### Utility
+
 #### `conquest.set_impersonation(agentId, token)`
 Set the agent's token impersonation.
 
@@ -533,22 +547,35 @@ Set the agent's token impersonation.
 
 ---
 
+#### `conquest.add_screenshot(agentId, filename, contents)`
+Store raw image bytes as a screenshot loot item on the team server. The file is saved under the agent's loot directory and synced to all connected clients, appearing in the **Screenshots** tab.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `agentId` | `str` | ID of the target agent. |
+| `filename` | `str` | Filename to store the screenshot under (e.g. `clipboard_1234.bmp`). |
+| `contents` | `bytes` | Raw image bytes. |
+
+---
+
+#### `conquest.add_download(agentId, filename, contents)`
+Store raw bytes as a download loot item on the team server. The file is saved under the agent's loot directory and synced to all connected clients, appearing in the **Downloads** tab.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `agentId` | `str` | ID of the target agent. |
+| `filename` | `str` | Filename to store the download under (e.g. `sam.hive`). |
+| `contents` | `bytes` | Raw file bytes. |
+
+---
 
 #### `conquest.modules_root() -> str`
 Return the absolute path to the `data/modules` directory.
-
-```python
-bof = conquest.modules_root() + "/path/to/objectfile.x64.o"
-```
 
 ---
 
 #### `conquest.resources_root() -> str`
 Return the absolute path to the `data/resources` directory. Use this to locate post-exploitation DLLs and other runtime resources shipped with the framework.
-
-```python
-dll = conquest.resources_root() + "/async-bof-loader/dist/async-bof.dll"
-```
 
 ---
 

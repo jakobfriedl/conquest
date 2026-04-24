@@ -130,7 +130,35 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 let loot = cq.dbGetLootById(event.data["lootId"].getStr())
                 cq.sendLootData(loot, readFile(loot.path), clientId = clientId)
 
-            of CLIENT_LOG: 
+            of CLIENT_LOOT_STORE:
+                let
+                    agentId  = event.data["agentId"].getStr()
+                    filename = event.data["filename"].getStr()
+                    contents = decode(event.data["contents"].getStr())
+                    itemType = cast[LootItemType](event.data["itemType"].getInt())
+                
+                # Create loot directory if it does not exist
+                createDir(fmt"{cq.lootDir}/{agentId}")
+
+                # Store loot
+                let path = fmt"{cq.lootDir}/{agentId}/{filename}"
+                writeFile(path, contents)
+                let fileInfo = getFileInfo(path)
+                var loot = LootItem(
+                    lootId:    generateUuid(),
+                    itemType:  itemType,
+                    agentId:   agentId,
+                    host:      if cq.agents.hasKey(agentId): cq.agents[agentId].hostname else: "",
+                    path:      path,
+                    timestamp: fileInfo.creationTime.toUnix(),
+                    size:      fileInfo.size
+                )
+                discard cq.dbStoreLoot(loot)
+                
+                # Sync to all clients
+                cq.sendLoot(loot)
+
+            of CLIENT_LOG:
                 log(event.data["message"].getStr(), event.data["agentId"].getStr())
 
             of CLIENT_CHAT: 

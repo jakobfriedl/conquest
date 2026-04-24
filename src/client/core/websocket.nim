@@ -126,7 +126,20 @@ proc sendChatMessage*(connection: WsConnection, message: string) =
     )
     connection.ws.sendEvent(event, connection.sessionKey)
 
-proc sendImpersonationToken*(connection: WsConnection, agentId, impersonationToken: string) = 
+proc sendLootStore*(connection: WsConnection, agentId, filename: string, itemType: LootItemType, contents: seq[byte]) =
+    let event = Event(
+        eventType: CLIENT_LOOT_STORE,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId":  agentId,
+            "filename": filename,
+            "itemType": cast[uint8](itemType),
+            "contents": encode(Bytes.toString(contents))
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)
+
+proc sendImpersonationToken*(connection: WsConnection, agentId, impersonationToken: string) =
     let event = Event(
         eventType: CLIENT_IMPERSONATE_TOKEN, 
         timestamp: now().toTime().toUnix(),
