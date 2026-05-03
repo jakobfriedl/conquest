@@ -2,7 +2,7 @@ import whisky, nimpy
 import tables, times, strutils, sequtils, strformat, json, base64
 import ./utils/[appImGui, globals, dialogs]
 import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, scriptManager, chat]
-import ./views/loot/[screenshots, downloads]
+import ./views/loot/[screenshots, downloads, credentials]
 import ./views/modals/[generatePayload, connect]
 import ../common/[utils, profile, crypto, serialize]
 import ../types/[common, client, event]
@@ -25,6 +25,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         showEventlog = true
         showDownloads = false
         showScreenshots = false
+        showCredentials = false
         showProcesses = false
         showFiles = false
         showModules = false
@@ -42,6 +43,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
     views["Chat"] = addr showChat
     views["Loot:Downloads"] = addr showDownloads
     views["Loot:Screenshots"] = addr showScreenshots
+    views["Loot:Credentials"] = addr showCredentials
     views["Process Browser"] = addr showProcesses
     views["Filesystem Browser"] = addr showFiles
     views["Script Manager"] = addr showModules
@@ -64,6 +66,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
     cq.eventlog = Eventlog(WIDGET_EVENTLOG, addr showEventlog)
     cq.downloads = LootDownloads(WIDGET_DOWNLOADS, addr showDownloads)
     cq.screenshots = LootScreenshots(WIDGET_SCREENSHOTS, addr showScreenshots)
+    cq.credentials = LootCredentials(WIDGET_CREDENTIALS, addr showCredentials)
     cq.processBrowser = ProcessBrowser(WIDGET_PROCESS_BROWSER, addr showProcesses)
     cq.filebrowser = FileBrowser(WIDGET_FILE_BROWSER, addr showFiles)
 
@@ -100,6 +103,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
             if showEventlog: cq.eventlog.draw()
             if showDownloads: cq.downloads.draw()
             if showScreenshots: cq.screenshots.draw()
+            if showCredentials: cq.credentials.draw() 
             if showProcesses: cq.processBrowser.draw()
             if showFiles: cq.filebrowser.draw()
             if showModules: cq.scriptManager.draw()
@@ -243,7 +247,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
                         )
 
-                    of CLIENT_LOOT_ADD: 
+                    of CLIENT_LOOT_ADD:
                         let lootItem = event.data.to(LootItem)
                         case lootItem.itemType:
                         of DOWNLOAD:
@@ -252,7 +256,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         of SCREENSHOT:
                             if not cq.screenshots.items.hasKey(lootItem.lootId):
                                 cq.screenshots.items[lootItem.lootId] = (item: lootItem, texture: nil)
-                        else: discard 
+                        of CREDENTIAL:
+                            if not cq.credentials.items.hasKey(lootItem.lootId):
+                                cq.credentials.items[lootItem.lootId] = lootItem
 
                     of CLIENT_LOOT_DATA:
                         let

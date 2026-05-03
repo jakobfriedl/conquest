@@ -36,14 +36,15 @@ proc draw*(component: DownloadsComponent) =
             ImGui_TableFlags_SizingStretchSame.int32
         )
         
-        let cols: int32 = 6
+        let cols: int32 = 7
         if igBeginTable("##Items", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
-            igTableSetupColumn("ID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+            igTableSetupColumn("ID", ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
             igTableSetupColumn("AgentID", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
             igTableSetupColumn("Host", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("Path", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
-            igTableSetupColumn("Creation Date", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("Size", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+            igTableSetupColumn("Creation Date", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+            igTableSetupColumn("Note", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupScrollFreeze(0, 1)
             igTableHeadersRow()
         
@@ -70,10 +71,12 @@ proc draw*(component: DownloadsComponent) =
                 if igTableSetColumnIndex(3):
                     igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/").cstring)
                 if igTableSetColumnIndex(4):
-                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss").cstring)
-                if igTableSetColumnIndex(5):
                     igText(($item.size).cstring)
-                                        
+                if igTableSetColumnIndex(5):
+                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss").cstring)
+                if igTableSetColumnIndex(6):
+                    igText(item.note.cstring)
+
             # Handle right-click context menu
             if component.selectedLootId != "" and component.items.hasKey(component.selectedLootId) and igBeginPopupContextWindow("Downloads", ImGui_PopupFlags_MouseButtonRight.int32): 
                 let item = component.items[component.selectedLootId].item

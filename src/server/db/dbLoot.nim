@@ -6,55 +6,65 @@ import ../../types/[common, server, event]
     Loot database functions
 ]#
 
-proc dbStoreLoot*(cq: Conquest, loot: LootItem): bool = 
-    try: 
-        cq.db.exec("""
-        INSERT INTO loot (lootId, itemType, agentId, host, path, timestamp, size)
-        VALUES (?, ?, ?, ?, ?, ?, ?);
-        """, loot.lootId, int(loot.itemType), loot.agentId, loot.host, loot.path, loot.timestamp, loot.size)
-    except: 
+proc dbStoreLoot*(cq: Conquest, loot: LootItem): bool =
+    try:
+        cq.db.exec("INSERT INTO loot VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+            loot.lootId, int(loot.itemType), loot.agentId, loot.host,
+            loot.timestamp, loot.note, loot.path, loot.size,
+            int(loot.credType), loot.username, loot.value)
+    except:
         cq.error(getCurrentExceptionMsg())
         return false
     return true
 
-proc dbGetLoot*(cq: Conquest): seq[LootItem] = 
+proc dbGetLoot*(cq: Conquest): seq[LootItem] =
     try:
-        let rows = cq.db.all("SELECT lootId, itemType, agentId, host, path, timestamp, size FROM loot;")
+        let rows = cq.db.all("SELECT lootId, itemType, agentId, host, timestamp, note, path, size, credType, username, value FROM loot;")
         for row in rows:
-            let (lootId, itemType, agentId, host, path, timestamp, size) = row.unpack((string, int, string, string, string, int64, int))
+            let (lootId, itemType, agentId, host, timestamp, note, path, size, credType, username, value) =
+                row.unpack((string, int, string, string, int64, string, string, int, int, string, string))
             result.add(LootItem(
-                lootId: lootId, 
+                lootId: lootId,
                 itemType: cast[LootItemType](itemType),
                 agentId: agentId,
-                host: host, 
+                host: host,
+                timestamp: timestamp,
+                note: note,
                 path: path,
-                timestamp: timestamp, 
-                size: size
+                size: size,
+                credType: cast[CredentialType](credType),
+                username: username,
+                value: value
             ))
-    except: 
+    except:
         cq.error(getCurrentExceptionMsg())
 
-proc dbGetLootById*(cq: Conquest, lootId: string): LootItem = 
+proc dbGetLootById*(cq: Conquest, lootId: string): LootItem =
     try:
-        let row = cq.db.one("SELECT lootId, itemType, agentId, host, path, timestamp, size FROM loot WHERE lootId = ?;", lootId)
+        let row = cq.db.one("SELECT lootId, itemType, agentId, host, timestamp, note, path, size, credType, username, value FROM loot WHERE lootId = ?;", lootId)
         if row.isSome:
-            let (id, itemType, agentId, host, path, timestamp, size) = row.get.unpack((string, int, string, string, string, int64, int))
+            let (id, itemType, agentId, host, timestamp, note, path, size, credType, username, value) =
+                row.get.unpack((string, int, string, string, int64, string, string, int, int, string, string))
             result = LootItem(
                 lootId: id,
                 itemType: cast[LootItemType](itemType),
                 agentId: agentId,
                 host: host,
-                path: path,
                 timestamp: timestamp,
-                size: size
+                note: note,
+                path: path,
+                size: size,
+                credType: cast[CredentialType](credType),
+                username: username,
+                value: value
             )
-    except: 
+    except:
         cq.error(getCurrentExceptionMsg())
 
 proc dbDeleteLootById*(cq: Conquest, lootId: string): bool =
-    try: 
+    try:
         cq.db.exec("DELETE FROM loot WHERE lootId = ?", lootId)
-    except: 
+    except:
         cq.error(getCurrentExceptionMsg())
         return false
     return true

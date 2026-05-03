@@ -47,8 +47,9 @@ The Python Module API enables users of the Conquest framework to add their own c
     - [`conquest.info(agentId, message)`](#conquestinfoagentid-message)
   - [Utility](#utility)
     - [`conquest.set_impersonation(agentId, token)`](#conquestset_impersonationagentid-token)
-    - [`conquest.add_screenshot(agentId, filename, contents)`](#conquestadd_screenshotagentid-filename-contents)
-    - [`conquest.add_download(agentId, filename, contents)`](#conquestadd_downloadagentid-filename-contents)
+    - [`conquest.add_screenshot(agentId, filename, contents, note="")`](#conquestadd_screenshotagentid-filename-contents-note)
+    - [`conquest.add_download(agentId, filename, contents, note="")`](#conquestadd_downloadagentid-filename-contents-note)
+    - [`conquest.add_credential(agentId, credType, username, value, note="")`](#conquestadd_credentialagentid-credtype-username-value-note)
     - [`conquest.modules_root() -> str`](#conquestmodules_root---str)
     - [`conquest.resources_root() -> str`](#conquestresources_root---str)
     - [`conquest.user() -> str`](#conquestuser---str)
@@ -547,7 +548,7 @@ Set the agent's token impersonation.
 
 ---
 
-#### `conquest.add_screenshot(agentId, filename, contents)`
+#### `conquest.add_screenshot(agentId, filename, contents, note="")`
 Store raw image bytes as a screenshot loot item on the team server. The file is saved under the agent's loot directory and synced to all connected clients, appearing in the **Screenshots** tab.
 
 | Parameter | Type | Description |
@@ -555,10 +556,11 @@ Store raw image bytes as a screenshot loot item on the team server. The file is 
 | `agentId` | `str` | ID of the target agent. |
 | `filename` | `str` | Filename to store the screenshot under (e.g. `clipboard_1234.bmp`). |
 | `contents` | `bytes` | Raw image bytes. |
+| `note` | `str` | Optional note to attach to the loot item. Default: `""`. |
 
 ---
 
-#### `conquest.add_download(agentId, filename, contents)`
+#### `conquest.add_download(agentId, filename, contents, note="")`
 Store raw bytes as a download loot item on the team server. The file is saved under the agent's loot directory and synced to all connected clients, appearing in the **Downloads** tab.
 
 | Parameter | Type | Description |
@@ -566,6 +568,20 @@ Store raw bytes as a download loot item on the team server. The file is saved un
 | `agentId` | `str` | ID of the target agent. |
 | `filename` | `str` | Filename to store the download under (e.g. `sam.hive`). |
 | `contents` | `bytes` | Raw file bytes. |
+| `note` | `str` | Optional note to attach to the loot item. Default: `""`. |
+
+---
+
+#### `conquest.add_credential(agentId, credType, username, value, note="")`
+Store a credential loot item on the team server. Synced to all connected clients, appearing in the **Credentials** tab.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `agentId` | `str` | ID of the target agent. |
+| `credType` | `int` | Credential type. `0` = Password, `1` = NTLM Hash. |
+| `username` | `str` | Username associated with the credential. |
+| `value` | `str` | Credential. |
+| `note` | `str` | Optional note to attach to the loot item. Default: `""`. |
 
 ---
 

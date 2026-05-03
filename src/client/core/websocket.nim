@@ -4,7 +4,7 @@ import ../../types/[common, client, event, protocol]
 export recvEvent
 
 #[
-    Client -> Server 
+    Client -> Server
 ]#
 proc sendPublicKey*(connection: WsConnection, publicKey: Key) = 
     let event = Event(
@@ -126,14 +126,12 @@ proc sendChatMessage*(connection: WsConnection, message: string) =
     )
     connection.ws.sendEvent(event, connection.sessionKey)
 
-proc sendLootStore*(connection: WsConnection, agentId, filename: string, itemType: LootItemType, contents: seq[byte]) =
+proc sendLootStore*(connection: WsConnection, item: LootItem, contents: seq[byte]) =
     let event = Event(
         eventType: CLIENT_LOOT_STORE,
         timestamp: now().toTime().toUnix(),
         data: %*{
-            "agentId":  agentId,
-            "filename": filename,
-            "itemType": cast[uint8](itemType),
+            "item": %item,
             "contents": encode(Bytes.toString(contents))
         }
     )

@@ -309,13 +309,38 @@ proc set_impersonation(agentId, token: string) {.exportpy.} =
         cq.sessions.agents[agentId].impersonationToken = token
         cq.connection.sendImpersonationToken(agentId, token)
 
-proc add_screenshot*(agentId, filename: string, contents: seq[byte]) {.exportpy.} =
-    if cq.sessions.agents.hasKey(agentId):
-        cq.connection.sendLootStore(agentId, filename, SCREENSHOT, contents)
 
-proc add_download*(agentId, filename: string, contents: seq[byte]) {.exportpy.} =
+proc add_screenshot*(agentId, filename: string, contents: seq[byte], note: string = "") {.exportpy.} =
     if cq.sessions.agents.hasKey(agentId):
-        cq.connection.sendLootStore(agentId, filename, DOWNLOAD, contents)
+        let loot = LootItem(
+            itemType: SCREENSHOT,
+            agentId: agentId,
+            path: filename,
+            note: note
+        )
+        cq.connection.sendLootStore(loot, contents)
+
+proc add_download*(agentId, filename: string, contents: seq[byte], note: string = "") {.exportpy.} =
+    if cq.sessions.agents.hasKey(agentId):
+        let loot = LootItem(
+            itemType: DOWNLOAD,
+            agentId: agentId,
+            path: filename,
+            note: note
+        )
+        cq.connection.sendLootStore(loot, contents)
+
+proc add_credential*(agentId: string, credType: int, username, value: string, note: string = "") {.exportpy.} =
+    if cq.sessions.agents.hasKey(agentId):
+        let loot = LootItem(
+            itemType: CREDENTIAL,
+            agentId: agentId,
+            credType: cast[CredentialType](credType),
+            username: username,
+            value: value,
+            note: note
+        )
+        cq.connection.sendLootStore(loot, @[])
 
 # Execute a command
 proc execute_command*(agentId, command: string, silent: bool = false) {.exportpy.} =

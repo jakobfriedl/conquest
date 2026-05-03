@@ -59,12 +59,22 @@ type
     LootItemType* = enum 
         DOWNLOAD = 0'u8 
         SCREENSHOT = 1'u8
+        CREDENTIAL = 2'u8
 
-    LootItem* = ref object 
-        itemType*: LootItemType
+    CredentialType* {.size: sizeof(uint16).} = enum 
+        PASSWORD = "Password"
+        NTLM = "NTLM Hash"
+
+    LootItem* = ref object
         lootId*: string
         agentId*: string
-        host*: string 
-        path*: string 
+        host*: string
         timestamp*: int64
-        size*: int 
+        note*: string
+        itemType*: LootItemType
+        path*: string
+        size*: int
+        credType*: CredentialType
+        username*: string
+        value*: string
+    

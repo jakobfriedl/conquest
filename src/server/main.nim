@@ -131,31 +131,39 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 cq.sendLootData(loot, readFile(loot.path), clientId = clientId)
 
             of CLIENT_LOOT_STORE:
-                let
-                    agentId  = event.data["agentId"].getStr()
-                    filename = event.data["filename"].getStr()
-                    contents = decode(event.data["contents"].getStr())
-                    itemType = cast[LootItemType](event.data["itemType"].getInt())
-                
-                # Create loot directory if it does not exist
-                createDir(fmt"{cq.lootDir}/{agentId}")
+                let item = event.data["item"]
 
-                # Store loot
-                let path = fmt"{cq.lootDir}/{agentId}/{filename}"
-                writeFile(path, contents)
-                let fileInfo = getFileInfo(path)
+                let itemType = parseEnum[LootItemType](item["itemType"].getStr())
+                let lootId = generateUuid()
+                let agentId = item["agentId"].getStr()
+                let host = if cq.agents.hasKey(agentId): cq.agents[agentId].hostname else: ""
+
                 var loot = LootItem(
-                    lootId:    generateUuid(),
-                    itemType:  itemType,
-                    agentId:   agentId,
-                    host:      if cq.agents.hasKey(agentId): cq.agents[agentId].hostname else: "",
-                    path:      path,
-                    timestamp: fileInfo.creationTime.toUnix(),
-                    size:      fileInfo.size
+                    lootId: lootId,
+                    itemType: itemType,
+                    agentId: agentId,
+                    host: host,
+                    note: item["note"].getStr()
                 )
+
+                case itemType
+                of DOWNLOAD, SCREENSHOT:
+                    let filename = item["path"].getStr()
+                    let contents = decode(event.data["contents"].getStr())
+                    createDir(fmt"{cq.lootDir}/{agentId}")
+                    let path = fmt"{cq.lootDir}/{agentId}/{filename}"
+                    writeFile(path, contents)
+                    let fileInfo = getFileInfo(path)
+                    loot.path = path
+                    loot.size = fileInfo.size.int
+                    loot.timestamp = fileInfo.creationTime.toUnix()
+                of CREDENTIAL:
+                    loot.credType = parseEnum[CredentialType](item["credType"].getStr())
+                    loot.username = item["username"].getStr()
+                    loot.value = item["value"].getStr()
+                    loot.timestamp = getTime().toUnix()
+
                 discard cq.dbStoreLoot(loot)
-                
-                # Sync to all clients
                 cq.sendLoot(loot)
 
             of CLIENT_LOG:

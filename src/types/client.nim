@@ -165,6 +165,12 @@ type
         items*: Table[string, tuple[item: LootItem, texture: ScreenshotTexture]]
         selectedLootId*: string
 
+    CredentialsComponent* = ref object of RootObj
+        title*: string 
+        showComponent*: ptr bool 
+        items*: Table[string, LootItem]
+        selectedLootId*: string
+
     ConsoleItem* = ref object 
         itemType*: LogType
         timestamp*: string
@@ -270,6 +276,7 @@ type
         eventlog*: EventlogComponent
         downloads*: DownloadsComponent
         screenshots*: ScreenshotsComponent
+        credentials*: CredentialsComponent
         processBrowser*: ProcessBrowserComponent
         fileBrowser*: FileBrowserComponent
         scriptManager*: ScriptManagerComponent
