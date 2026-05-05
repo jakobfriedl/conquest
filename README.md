@@ -21,7 +21,10 @@ For more information about architecture, usage and features, check out the [docu
 - Advanced malleable C2 profile system for configuring network traffic (TOML v1.1)
 - Encrypted C2 communication leveraging AES256-GCM and X25519 key exchange
 - Logging of all operator activity
-- Loot management for downloads and screenshots
+- Loot management:
+  - Downloads
+  - Screenshots
+  - Credentials
 
 ### Operator Client
 
@@ -30,7 +33,8 @@ For more information about architecture, usage and features, check out the [docu
 - Flexible payload generation with module selection
 - File and process browser components
 - Console history and auto-complete for agent commands
-- Extensible Python Scripting API for creating commands and modules
+- Powerful console search functionality with Regex support
+- Powerful and extensible Python Scripting API for creating commands
 - Battle-tested [module ecosystem](https://github.com/jakobfriedl/conquest-modules) 
 
 ### Monarch Agent
@@ -38,7 +42,7 @@ For more information about architecture, usage and features, check out the [docu
 - Different payload types: .exe, .dll, .svc.exe
 - Sleep obfuscation via Ekko, Zilean or Foliage with support for call stack spoofing
 - Stable COFF/BOF Loader
-- Asynchronous execution of long running tasks (downloads, Async BOFs)
+- Asynchronous execution of long-running tasks (downloads, Async BOFs)
 - In-memory execution of .NET assemblies
 - In-memory execution of DLLs
 - Token manipulation 

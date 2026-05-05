@@ -108,8 +108,9 @@ proc handleResult*(resultData: seq[byte]) =
                 case cast[CommandType](taskResult.command):
                 of CMD_DOWNLOAD:
                     var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
-                    let 
-                        fileName = unpacker.getDataWithLengthPrefix().replace("\\", "_").replace("/", "_").replace(":", "")
+                    let
+                        remoteFilePath = unpacker.getDataWithLengthPrefix()
+                        fileName = remoteFilePath.replace("\\", "_").replace("/", "_").replace(":", "")
                         totalSize = unpacker.getUint64()
 
                     # Create loot directory for the agent
@@ -118,6 +119,7 @@ proc handleResult*(resultData: seq[byte]) =
 
                     cq.downloads[taskId] = Download(
                         path: downloadPath,
+                        remotePath: remoteFilePath,
                         total: totalSize,
                         written: 0,
                         file: open(downloadPath & ".partial", fmWrite)  # Downloads are stored with a .partial extension until the full file is received
@@ -174,10 +176,11 @@ proc handleResult*(resultData: seq[byte]) =
                         var lootItem = LootItem(
                             lootId: generateUuid(),
                             itemType: DOWNLOAD,
-                            agentId: agentId, 
-                            path: download.path, 
+                            agentId: agentId,
+                            path: download.path,
+                            remotePath: download.remotePath,
                             timestamp: fileInfo.creationTime.toUnix(),
-                            size: fileInfo.size, 
+                            size: fileInfo.size,
                             host: cq.agents[agentId].hostname
                         )
                         discard cq.dbStoreLoot(lootItem)
@@ -192,8 +195,9 @@ proc handleResult*(resultData: seq[byte]) =
                 of CMD_SCREENSHOT:
                     # Write screenshot data to disk
                     var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
-                    let 
-                        fileName = unpacker.getDataWithLengthPrefix().replace("\\", "_").replace("/", "_").replace(":", "")
+                    let
+                        remoteFileName = unpacker.getDataWithLengthPrefix()
+                        fileName = remoteFileName.replace("\\", "_").replace("/", "_").replace(":", "")
                         fileData = unpacker.getDataWithLengthPrefix()
 
                     createDir(fmt"{cq.lootDir}/{agentId}")
@@ -204,10 +208,11 @@ proc handleResult*(resultData: seq[byte]) =
                     var lootItem = LootItem(
                         lootId: generateUuid(),
                         itemType: SCREENSHOT,
-                        agentId: agentId, 
-                        path: downloadPath, 
+                        agentId: agentId,
+                        path: downloadPath,
+                        remotePath: remoteFileName,
                         timestamp: fileInfo.creationTime.toUnix(),
-                        size: fileInfo.size, 
+                        size: fileInfo.size,
                         host: cq.agents[agentId].hostname
                     )
                     discard cq.dbStoreLoot(lootItem)

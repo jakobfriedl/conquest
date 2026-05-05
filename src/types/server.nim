@@ -52,9 +52,10 @@ type
         sessionKey*: Key
         user*: string
 
-    Download* = object 
-        path*: string 
-        total*: uint64 
+    Download* = object
+        path*: string
+        remotePath*: string
+        total*: uint64
         written*: uint64
         file*: File
 

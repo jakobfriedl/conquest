@@ -11,10 +11,14 @@
   - [sleepmask](#sleepmask)
   - [link](#link)
   - [unlink](#unlink)
+  - [jobs](#jobs)
+  - [cancel](#cancel)
 - [SHELL](#shell)
   - [shell](#shell-1)
 - [BOF](#bof)
   - [bof](#bof-1)
+- [DLL](#dll)
+  - [dll](#dll-1)
 - [DOTNET](#dotnet)
   - [dotnet](#dotnet-1)
 - [FILESYSTEM](#filesystem)
@@ -160,6 +164,27 @@ Required arguments:
   agent                     STRING     ID of the agent to unlink.
 ```
 
+### jobs
+List running jobs.
+
+```
+Usage  : jobs
+Example: jobs
+```
+
+![Jobs command](../assets/modules-11.png)
+
+### cancel
+Cancel a running job.
+
+```
+Usage  : cancel <job>
+Example: cancel DEADBEEF
+
+Required arguments:
+  job                       STRING     ID of the job to cancel.
+```
+
 ## SHELL
 
 The `shell` module executes shell commands using Nim's `execCmdEx` function. Double-quoted strings are parsed as a single argument.
@@ -201,6 +226,44 @@ Optional arguments:
 ![Bof whoami](../assets/modules-2.png)
 
 In order to create the `arguments` HEX-string, it is recommended to use the [beacon_generate.py](https://github.com/trustedsec/COFFLoader/blob/main/beacon_generate.py) script provided by trustedsec. More commonly, the `bof` command is needed when using the Python API to create commands for third-party post-exploitation capabilities, such as [CS-Situational-Awareness-BOF](https://github.com/trustedsec/CS-Situational-Awareness-BOF).
+
+## DLL 
+
+The `dll` module provides an in memory DLL loader that reads external post-exploitation DLLs from disk on the client and executes them in a new thread. The DLLs run in the background without blocking the agent.
+
+>[!Important]
+> This module is used and required for executing **Async BOFs**!
+
+### dll
+Execute a DLL asynchronously in memory.
+
+```
+Usage: dll <dll> <function> [arguments]
+Example: dll /path/to/async-bof.dll Run <packed-args>
+
+Required arguments:
+  dll                       FILE       Path to the DLL to execute.
+  function                  STRING     Name of the exported function to execute.
+
+Optional arguments:
+  arguments                 STRING     Arguments to pass to the exported function, packed as a HEX string.
+```
+
+The DLL loader uses an exported function that expects the following signature:
+
+```c
+BOOL Run(PBYTE args, DWORD argsLen, HANDLE hWrite, HANDLE hWakeup, HANDLE hStop)
+```
+
+The three handles an external DLL receives from the DLL loader are used to communicate with the agent.
+
+| Handle | Usage | 
+| --- | --- | 
+| **hWrite** | Pipe for output redirection. The `BeaconOutput` and `BeaconPrintf` write to this pipe whenever the APIs are invoked. On each check-in, the agent drains this pipe and prints the data in it to the agent console.
+| **hWakeup** | An event used to wake up a sleeping agent. Set in the `BeaconWakeup` API, it interrupts the agents sleep delay and forces it to check-in. |
+| **hStop** | An event used to stop the BOF execution using the `cancel` command from the agent console. |  
+
+Any arguments that are passed to the DLL have to be formatted as a HEX-string when executing the command directly. The `dll` command should primarily be used to create alias commands using the [Python API](./8-SCRIPTING.md). For example, the [async-bof](../data/modules/execution/async-bof.py) command, which loads the `async-bof.dll` with the `dll` command, requires the raw object file bytes as well as the BOF arguments to be packed together and passed to the DLL.
 
 ## DOTNET
 

@@ -46,17 +46,18 @@ proc dbInit*(cq: Conquest, dbPath: string) =
         );
 
         CREATE TABLE IF NOT EXISTS loot (
-            lootId    TEXT    NOT NULL,
-            itemType  INTEGER NOT NULL,
-            agentId   TEXT    NOT NULL,
-            host      TEXT    NOT NULL,
-            timestamp INTEGER NOT NULL,
-            note      TEXT    NOT NULL DEFAULT '',
-            path      TEXT    NOT NULL DEFAULT '',
-            size      INTEGER NOT NULL DEFAULT 0,
-            credType  INTEGER NOT NULL DEFAULT 0,
-            username  TEXT    NOT NULL DEFAULT '',
-            value     TEXT    NOT NULL DEFAULT ''
+            lootId     TEXT    NOT NULL,
+            itemType   INTEGER NOT NULL,
+            agentId    TEXT    NOT NULL,
+            host       TEXT    NOT NULL,
+            timestamp  INTEGER NOT NULL,
+            note       TEXT    NOT NULL DEFAULT '',
+            path       TEXT    NOT NULL DEFAULT '',
+            remotePath TEXT    NOT NULL DEFAULT '',
+            size       INTEGER NOT NULL DEFAULT 0,
+            credType   INTEGER NOT NULL DEFAULT 0,
+            username   TEXT    NOT NULL DEFAULT '',
+            value      TEXT    NOT NULL DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS links (

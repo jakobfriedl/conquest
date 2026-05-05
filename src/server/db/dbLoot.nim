@@ -8,9 +8,9 @@ import ../../types/[common, server, event]
 
 proc dbStoreLoot*(cq: Conquest, loot: LootItem): bool =
     try:
-        cq.db.exec("INSERT INTO loot VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        cq.db.exec("INSERT INTO loot VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             loot.lootId, int(loot.itemType), loot.agentId, loot.host,
-            loot.timestamp, loot.note, loot.path, loot.size,
+            loot.timestamp, loot.note, loot.path, loot.remotePath, loot.size,
             int(loot.credType), loot.username, loot.value)
     except:
         cq.error(getCurrentExceptionMsg())
@@ -19,10 +19,10 @@ proc dbStoreLoot*(cq: Conquest, loot: LootItem): bool =
 
 proc dbGetLoot*(cq: Conquest): seq[LootItem] =
     try:
-        let rows = cq.db.all("SELECT lootId, itemType, agentId, host, timestamp, note, path, size, credType, username, value FROM loot;")
+        let rows = cq.db.all("SELECT lootId, itemType, agentId, host, timestamp, note, path, remotePath, size, credType, username, value FROM loot;")
         for row in rows:
-            let (lootId, itemType, agentId, host, timestamp, note, path, size, credType, username, value) =
-                row.unpack((string, int, string, string, int64, string, string, int, int, string, string))
+            let (lootId, itemType, agentId, host, timestamp, note, path, remotePath, size, credType, username, value) =
+                row.unpack((string, int, string, string, int64, string, string, string, int, int, string, string))
             result.add(LootItem(
                 lootId: lootId,
                 itemType: cast[LootItemType](itemType),
@@ -31,6 +31,7 @@ proc dbGetLoot*(cq: Conquest): seq[LootItem] =
                 timestamp: timestamp,
                 note: note,
                 path: path,
+                remotePath: remotePath,
                 size: size,
                 credType: cast[CredentialType](credType),
                 username: username,
@@ -41,10 +42,10 @@ proc dbGetLoot*(cq: Conquest): seq[LootItem] =
 
 proc dbGetLootById*(cq: Conquest, lootId: string): LootItem =
     try:
-        let row = cq.db.one("SELECT lootId, itemType, agentId, host, timestamp, note, path, size, credType, username, value FROM loot WHERE lootId = ?;", lootId)
+        let row = cq.db.one("SELECT lootId, itemType, agentId, host, timestamp, note, path, remotePath, size, credType, username, value FROM loot WHERE lootId = ?;", lootId)
         if row.isSome:
-            let (id, itemType, agentId, host, timestamp, note, path, size, credType, username, value) =
-                row.get.unpack((string, int, string, string, int64, string, string, int, int, string, string))
+            let (id, itemType, agentId, host, timestamp, note, path, remotePath, size, credType, username, value) =
+                row.get.unpack((string, int, string, string, int64, string, string, string, int, int, string, string))
             result = LootItem(
                 lootId: id,
                 itemType: cast[LootItemType](itemType),
@@ -53,6 +54,7 @@ proc dbGetLootById*(cq: Conquest, lootId: string): LootItem =
                 timestamp: timestamp,
                 note: note,
                 path: path,
+                remotePath: remotePath,
                 size: size,
                 credType: cast[CredentialType](credType),
                 username: username,

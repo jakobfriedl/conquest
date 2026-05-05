@@ -73,6 +73,7 @@ type
         note*: string
         itemType*: LootItemType
         path*: string
+        remotePath*: string
         size*: int
         credType*: CredentialType
         username*: string

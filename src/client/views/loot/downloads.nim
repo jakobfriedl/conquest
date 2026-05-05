@@ -69,7 +69,7 @@ proc draw*(component: DownloadsComponent) =
                 if igTableSetColumnIndex(2):
                     igTextWithTooltip(item.host)
                 if igTableSetColumnIndex(3):
-                    igTextWithTooltip(item.path.extractFilename().replace("C_", "C:/").replace("_", "/"))
+                    igTextWithTooltip(item.remotePath)
                 if igTableSetColumnIndex(4):
                     igTextWithTooltip($item.size)
                 if igTableSetColumnIndex(5):
@@ -86,7 +86,7 @@ proc draw*(component: DownloadsComponent) =
                         igSetClipboardText(item.path.cstring)
                         igCloseCurrentPopup()
                     if igMenuItem("Remote Path", nil, false, true):
-                        igSetClipboardText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/").cstring)
+                        igSetClipboardText(item.remotePath.cstring)
                         igCloseCurrentPopup()
                     if igMenuItem("Note", nil, false, true):
                         igSetClipboardText(item.note.cstring)
@@ -131,7 +131,7 @@ proc draw*(component: DownloadsComponent) =
             else: 
                 igText(fmt"[{item.host}] ".cstring)
                 igSameLine(0.0f, 0.0f)
-                igText(item.path.extractFilename().replace("C_", "C:/").replace("_", "/").cstring)
+                igText(item.remotePath.cstring)
                 
                 igDummy(vec2(0.0f, 5.0f))
                 igSeparator()
