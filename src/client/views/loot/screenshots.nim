@@ -73,21 +73,30 @@ proc draw*(component: ScreenshotsComponent) =
                     igPopID()
 
                 if igTableSetColumnIndex(2):
-                    igText(item.agentId.cstring)
+                    igTextWithTooltip(item.agentId)
                 if igTableSetColumnIndex(1):
-                    igText(item.host.cstring)
+                    igTextWithTooltip(item.host)
                 if igTableSetColumnIndex(3):
-                    igText(item.path.extractFilename().cstring)
+                    igTextWithTooltip(item.path.extractFilename())
                 if igTableSetColumnIndex(4):
-                    igText(($item.size).cstring)
+                    igTextWithTooltip($item.size)
                 if igTableSetColumnIndex(5):
-                    igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss").cstring)
+                    igTextWithTooltip(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
                 if igTableSetColumnIndex(6):
-                    igText(item.note.cstring)
+                    igTextWithTooltip(item.note)
 
             # Handle right-click context menu
             if component.selectedLootId != "" and component.items.hasKey(component.selectedLootId) and igBeginPopupContextWindow("Downloads", ImGui_PopupFlags_MouseButtonRight.int32): 
                 let item = component.items[component.selectedLootId].item
+
+                if igBeginMenu("Copy", true):
+                    if igMenuItem("Local Path", nil, false, true):
+                        igSetClipboardText(item.path.cstring)
+                        igCloseCurrentPopup()
+                    if igMenuItem("Note", nil, false, true):
+                        igSetClipboardText(item.note.cstring)
+                        igCloseCurrentPopup()
+                    igEndMenu()
 
                 if igMenuItem("Download", nil, false, true):                     
                     try: 

@@ -1,7 +1,8 @@
-import strutils, sequtils, times, tables, algorithm
+import sequtils, times, tables, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, globals]
-import ../../../types/[common, client, event]
+import ../../../types/[client, event]
+import ../modals/addCredential
 import ../../core/websocket
 
 proc LootCredentials*(title: string, showComponent: ptr bool): CredentialsComponent =
@@ -9,10 +10,16 @@ proc LootCredentials*(title: string, showComponent: ptr bool): CredentialsCompon
     result.title = title
     result.showComponent = showComponent
     result.items = initTable[string, LootItem]()
+    result.credentialModal = CredentialModal() 
 
 proc draw*(component: CredentialsComponent) =
     igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd()
+
+    # Modal for adding credentials manually 
+    if igButton("Add Credential", vec2(0.0f, 0.0f)):
+        igOpenPopup_str("Add Credential", ImGui_PopupFlags_None.int32)
+    component.credentialModal.draw()
 
     let tableFlags = (
         ImGui_TableFlags_Resizable.int32 or
@@ -41,7 +48,7 @@ proc draw*(component: CredentialsComponent) =
         igTableSetupScrollFreeze(0, 1)
         igTableHeadersRow()
 
-        for i, item in component.items.values().toSeq().sortedByIt(it.lootId):
+        for i, item in component.items.values().toSeq().sortedByIt(it.timestamp):
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
             if igTableSetColumnIndex(0):
@@ -56,19 +63,19 @@ proc draw*(component: CredentialsComponent) =
                 igPopID()
 
             if igTableSetColumnIndex(1):
-                igText(item.agentId.cstring)
+                igTextWithTooltip(item.agentId)
             if igTableSetColumnIndex(2):
-                igText(item.host.cstring)
+                igTextWithTooltip(item.host)
             if igTableSetColumnIndex(3):
-                igText(($item.credType).cstring)
+                igTextWithTooltip($item.credType)
             if igTableSetColumnIndex(4):
-                igText(item.username.cstring)
+                igTextWithTooltip(item.username)
             if igTableSetColumnIndex(5):
-                igText(item.value.cstring)
+                igTextWithTooltip(item.value)
             if igTableSetColumnIndex(6):
-                igText(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss").cstring)
+                igTextWithTooltip(item.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
             if igTableSetColumnIndex(7):
-                igText(item.note.cstring)
+                igTextWithTooltip(item.note)
 
         # Handle right-click context menu
         if component.selectedLootId != "" and component.items.hasKey(component.selectedLootId) and igBeginPopupContextWindow("Credentials", ImGui_PopupFlags_MouseButtonRight.int32):
@@ -80,6 +87,12 @@ proc draw*(component: CredentialsComponent) =
                     igCloseCurrentPopup()
                 if igMenuItem("Value", nil, false, true):
                     igSetClipboardText(item.value.cstring)
+                    igCloseCurrentPopup()
+                if igMenuItem("Username:Value", nil, false, true):
+                    igSetClipboardText((item.username & ":" & item.value).cstring)
+                    igCloseCurrentPopup()
+                if igMenuItem("Note", nil, false, true):
+                    igSetClipboardText(item.note.cstring)
                     igCloseCurrentPopup()
                 igEndMenu()
 

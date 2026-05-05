@@ -12,16 +12,20 @@ proc vec2*(x, y: auto): ImVec2 =
 proc vec4*(x, y, z, w: auto): ImVec4 =
     ImVec4(x: x.cfloat , y: y.cfloat , z: z.cfloat , w: w.cfloat)
 
-#---------------
-#--- setTooltip
-#---------------
-proc setTooltip*(str:string, delay=Imgui_HoveredFlags_DelayNormal.cint, color=ImVec4(x: 1.0, y: 1.0, z: 1.0, w: 1.0)) =
+# Tooltips
+proc setTooltip*(str: string, delay = Imgui_HoveredFlags_DelayNormal.cint, color = ImVec4(x: 1.0, y: 1.0, z: 1.0, w: 1.0)) =
     if igIsItemHovered(delay):
         if igBeginTooltip():
             igPushStyleColorVec4(ImGuiCol_Text.cint, color)
-            igText(str)
+            igPushTextWrapPos(igGetFontSize() * 30.0f)
+            igTextUnformatted(str.cstring, nil)
+            igPopTextWrapPos()
             igPopStyleColor(1)
             igEndTooltip()
+
+proc igTextWithTooltip*(text: string) = 
+    igText(text.cstring)
+    if text.len > 0: setTooltip(text)    
 
 type
     Theme* = enum

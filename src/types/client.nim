@@ -104,6 +104,15 @@ type
         killDateModal*: KillDateModalComponent
         workingHoursModal*: WorkingHoursModalComponent
 
+    CredentialModalComponent* = ref object of RootObj
+        show*: bool
+        credType*: int32
+        host*: array[256, char]
+        username*: array[256, char]
+        value*: array[512, char]
+        note*: array[MAX_INPUT_LENGTH, char]
+        credTypes*: seq[string]
+
     ChatComponent* = ref object of RootObj 
         title*: string 
         showComponent*: ptr bool 
@@ -170,6 +179,7 @@ type
         showComponent*: ptr bool 
         items*: Table[string, LootItem]
         selectedLootId*: string
+        credentialModal*: CredentialModalComponent
 
     ConsoleItem* = ref object
         itemType*: LogType

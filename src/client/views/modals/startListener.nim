@@ -97,8 +97,8 @@ proc draw*(component: ListenerModalComponent): UIListener =
         if igButton("Start", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)): 
 
             let uuid = generateUUID() 
-            # Process input values
 
+            # Process input values
             case cast[ListenerType](component.protocol):
             of LISTENER_HTTP: 
                 var hosts: string = ""

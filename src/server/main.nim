@@ -136,7 +136,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 let itemType = parseEnum[LootItemType](item["itemType"].getStr())
                 let lootId = generateUuid()
                 let agentId = item["agentId"].getStr()
-                let host = if cq.agents.hasKey(agentId): cq.agents[agentId].hostname else: ""
+                let host = if cq.agents.hasKey(agentId): cq.agents[agentId].hostname else: item["host"].getStr()
 
                 var loot = LootItem(
                     lootId: lootId,
