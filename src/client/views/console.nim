@@ -356,7 +356,7 @@ proc draw*(component: ConsoleComponent) =
     igAlignTextToFramePadding()
     let domain = if agent.domain.isEmptyOrWhitespace(): "" else: fmt".{agent.domain}"
     let sessionInfo = fmt"{agent.username}@{agent.hostname}{domain} | {agent.ipInternal} | {$agent.pid}/{agent.process}".cstring
-    igTextColored(GRAY, sessionInfo)
+    igTextColored(CONSOLE_GRAY, sessionInfo)
     igSameLine(0.0f, 0.0f)
 
     #[
@@ -406,7 +406,7 @@ proc draw*(component: ConsoleComponent) =
             igNewLine()
 
         igAlignTextToFramePadding()
-        igTextColored(GRAY, matchLabel.cstring)
+        igTextColored(CONSOLE_GRAY, matchLabel.cstring)
         igSameLine(0.0f, textSpacing)
 
         # Focus search bar

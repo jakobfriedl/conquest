@@ -139,7 +139,7 @@ proc draw*(component: SessionsTableComponent) =
                 
                 let timeText = fmt"{hours:02d}:{minutes:02d}:{seconds:02d} ago"
                 if totalSeconds > agent.sleep: 
-                    igTextColored(GRAY, timeText.cstring)
+                    igTextColored(CONSOLE_GRAY, timeText.cstring)
                 else: 
                     igText(timeText.cstring)
 

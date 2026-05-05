@@ -171,11 +171,12 @@ type
         items*: Table[string, LootItem]
         selectedLootId*: string
 
-    ConsoleItem* = ref object 
+    ConsoleItem* = ref object
         itemType*: LogType
         timestamp*: string
         text*: string
         highlight*: bool
+        segments*: seq[tuple[text: string, color: ImVec4]]
 
     ConsoleItems* = ref object
         items*: seq[ConsoleItem]

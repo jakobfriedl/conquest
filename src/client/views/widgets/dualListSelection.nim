@@ -59,7 +59,7 @@ proc draw*[T](component: DualListSelectionWidget[T]) =
         # Header
         var text = "Available"
         igSetCursorPosX(igGetCursorPosX() + (igGetColumnWidth(0) - igCalcTextSize(text.cstring, nil, false, 0.0f).x) * 0.5f)
-        igTextColored(GRAY, text.cstring)
+        igTextColored(CONSOLE_GRAY, text.cstring)
         
         # Set the size of selection box to fit all modules
         igSetNextWindowContentSize(vec2(0.0f, float(modules.len()) * igGetTextLineHeightWithSpacing()))
@@ -113,7 +113,7 @@ proc draw*[T](component: DualListSelectionWidget[T]) =
         # Header
         text = "Selected"
         igSetCursorPosX(igGetCursorPosX() + (igGetColumnWidth(2) - igCalcTextSize(text.cstring, nil, false, 0.0f).x) * 0.5f)
-        igTextColored(GRAY, text.cstring)
+        igTextColored(CONSOLE_GRAY, text.cstring)
         
         # Set the size of selection box to fit all modules
         igSetNextWindowContentSize(vec2(0.0f, float(modules.len()) * igGetTextLineHeightWithSpacing()))

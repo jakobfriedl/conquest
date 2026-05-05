@@ -118,7 +118,7 @@ proc draw*(component: FileBrowserComponent) =
 
                     # Grey out unloaded directories and add icons for better readability
                     if isDir and not entry.isLoaded: 
-                        igPushStyleColor_Vec4(ImGuiCol_Text.int32, GRAY)
+                        igPushStyleColor_Vec4(ImGuiCol_Text.int32, CONSOLE_GRAY)
                         name = ICON_FA_FOLDER_CLOSED & " " & entry.name
                     elif isDir and entry.isLoaded:
                         name = ICON_FA_FOLDER_OPEN & " " & entry.name

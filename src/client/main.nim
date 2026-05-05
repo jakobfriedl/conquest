@@ -158,9 +158,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         cq.listeners.listeners.del(listenerId)
 
                     of CLIENT_AGENT_ADD: 
-                        let agentId = event.data["agentId"].getStr()
                         var agent = UIAgent(
-                            agentId: agentId,
+                            agentId: event.data["agentId"].getStr(),
                             listenerId: event.data["listenerId"].getStr(),
                             username: event.data["username"].getStr(),
                             impersonationToken: event.data["impersonationToken"].getStr(),
@@ -180,16 +179,31 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             processes: none(Processes),
                             filesystem: none(OrderedTable[string, DirectoryEntry]),
                             workingDirectory: none(string),
-                            console: Console(agentId)
                         )
                     
                         agent.consoleTitle = fmt" {ICON_FA_TERMINAL} [{agent.agentId}] {agent.username}@{agent.hostname}"
+                        agent.console = Console(agent.agentId)
+                        agent.console.textarea.addItem(LOG_OUTPUT, @[
+                            ("[" & agent.firstCheckin.fromUnix().local().format("dd-MM-yyyy HH:mm:ss") & "]", CONSOLE_GRAY),
+                            (" Agent ", CONSOLE_DEFAULT),
+                            (agent.agentId, CONSOLE_INFO),
+                            (" connected from ", CONSOLE_DEFAULT),
+                            (agent.username & "@" & agent.hostname, CONSOLE_INFO),
+                            (" <> ", CONSOLE_ERROR),
+                            ("[OS: ", CONSOLE_DEFAULT),
+                            (agent.os, CONSOLE_INFO),
+                            ("] [Internal: ", CONSOLE_DEFAULT),
+                            (agent.ipInternal, CONSOLE_INFO),
+                            ("] [Process: ", CONSOLE_DEFAULT),
+                            ($agent.pid & "/" & agent.process, CONSOLE_INFO),
+                            ("]", CONSOLE_DEFAULT),
+                        ])
                         cq.sessions.agents[agent.agentId] = agent
 
-                        # # Initialize position of console windows to bottom by drawing them once when they are added
-                        # # By default, the consoles are attached to the same DockNode as the Listeners table (Default: bottom), 
-                        # # so if you place your listeners somewhere else, the console windows show up somewhere else too
-                        # # The only case that is not covered is when the listeners table is hidden and the bottom panel was split
+                        # Initialize position of console windows to bottom by drawing them once when they are added
+                        # By default, the consoles are attached to the same DockNode as the Listeners table (Default: bottom), 
+                        # so if you place your listeners somewhere else, the console windows show up somewhere else too
+                        # The only case that is not covered is when the listeners table is hidden and the bottom panel was split
                         let listenersWindow = igFindWindowByName(WIDGET_LISTENERS) 
                         if listenersWindow != nil and listenersWindow.DockNode != nil:
                             igSetNextWindowDockID(listenersWindow.DockNode.ID, ImGuiCond_FirstUseEver.int32)
@@ -406,12 +420,12 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     of CLIENT_CHAT: 
                         let user = event.data["user"].getStr()
                         let message = event.data["message"].getStr()
-                        cq.chat.textarea.addItem(
-                            LOG_COMMAND_SHORT, 
-                            fmt"{user}: {message}", 
-                            event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"),
-                            highlight = user == cq.connection.user
-                        )
+                        let userColor = if user == cq.connection.user: CONSOLE_INFO else: CONSOLE_GRAY
+                        cq.chat.textarea.addItem(LOG_OUTPUT, @[
+                            ("[" & event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss") & "] ", CONSOLE_GRAY),
+                            (user & ": ", userColor),
+                            (message, CONSOLE_DEFAULT),
+                        ])
                     
                     of CLIENT_JOBS: 
                         let

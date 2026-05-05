@@ -17,13 +17,14 @@ const WIDGET_FILE_BROWSER* = " " & ICON_FA_FOLDER_TREE & " " & "Filesystem Brows
 const WIDGET_CHAT* = " " & ICON_FA_COMMENTS & " " & "Chat"
 
 # Colors
-const GRAY* = vec4(0.369f, 0.369f, 0.369f, 1.0f)
+const CONSOLE_GRAY* = vec4(0.369f, 0.369f, 0.369f, 1.0f)
 const CONSOLE_ERROR* = vec4(0.878f, 0.188f, 0.149f, 1.0f)
 const CONSOLE_INFO* = vec4(0.588f, 0.843f, 0.89f, 1.0f)
 const CONSOLE_SUCCESS* = vec4(0.176f, 0.569f, 0.075f, 1.0f)
 const CONSOLE_WARNING* = vec4(1.0f, 0.5f, 0.0f, 1.0f)
 const CONSOLE_COMMAND* = vec4(0.922f, 0.914f, 0.463f, 1.0f)
 const CONSOLE_HIGHLIGHT* = vec4(0.890f, 0.855f, 0.161f, 1.0f)
+const CONSOLE_DEFAULT* = vec4(1.0f, 1.0f, 1.0f, 1.0f)
 
 const SEARCH_CURRENT_MATCH* = 0xC0205080'u32
 const SEARCH_MATCH* = 0xC0492F1D'u32  

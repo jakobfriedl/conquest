@@ -1,4 +1,4 @@
-import strutils, times, tables, regex
+import strutils, sequtils, times, tables, regex
 import imguin/[cimgui, glfw_opengl]
 import ../../utils/[appImGui, globals]
 import ../../../types/[common, client]
@@ -51,6 +51,17 @@ proc addItem*(component: TextareaWidget, item: ConsoleItem): string {.discardabl
     component.content.items.add(item)
     result = $(item.getText())
 
+# Color individual words using segments
+proc addItem*(component: TextareaWidget, itemType: LogType, segments: seq[tuple[text: string, color: ImVec4]], timestamp: string = now().format("dd-MM-yyyy HH:mm:ss")): string {.discardable.} =
+    let item = ConsoleItem(
+        timestamp: timestamp,
+        itemType: itemType,
+        text: segments.mapIt(it.text).join(""),
+        segments: segments,
+    )
+    component.content.items.add(item)
+    result = $(item.getText())
+
 proc clear*(component: TextareaWidget) =
     component.content.items.setLen(0)
     component.textSelect.textselect_clear_selection()
@@ -99,7 +110,7 @@ proc print(component: TextareaWidget, item: ConsoleItem, spans: seq[tuple[a: int
             drawList.ImDrawList_AddRectFilled(ImVec2(x: x0, y: cursorPos.y), ImVec2(x: x1, y: cursorPos.y + lineHeight), color, 0.0f, 0)
 
     if item.itemType != LOG_OUTPUT and component.showTimestamps:
-        igTextColored(GRAY, ("[" & item.timestamp & "]").cstring, nil)
+        igTextColored(CONSOLE_GRAY, ("[" & item.timestamp & "]").cstring, nil)
         igSameLine(0.0f, 0.0f)
 
     case item.itemType:
@@ -118,10 +129,15 @@ proc print(component: TextareaWidget, item: ConsoleItem, spans: seq[tuple[a: int
 
     igSameLine(0.0f, 0.0f)
 
-    if not item.highlight:
-        igTextUnformatted(item.text.cstring, nil)
-    else:
+    if item.segments.len > 0:
+        for i, seg in item.segments:
+            igTextColored(seg.color, seg.text.cstring)
+            if i < item.segments.high:
+                igSameLine(0.0f, 0.0f)
+    elif item.highlight:
         igTextColored(CONSOLE_HIGHLIGHT, item.text.cstring)
+    else:
+        igTextUnformatted(item.text.cstring, nil)
 
 proc draw*(component: TextareaWidget, size: ImVec2, matches: seq[tuple[line: int, a: int, b: int]] = @[], currentMatch: int = -1, scrollToMatch: ptr bool = nil) =
     try:
