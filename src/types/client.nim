@@ -112,6 +112,7 @@ type
         value*: array[512, char]
         note*: array[MAX_INPUT_LENGTH, char]
         credTypes*: seq[string]
+        editingItem*: LootItem
 
     ChatComponent* = ref object of RootObj 
         title*: string 
@@ -175,10 +176,10 @@ type
         selectedLootId*: string
 
     CredentialsComponent* = ref object of RootObj
-        title*: string 
-        showComponent*: ptr bool 
+        title*: string
+        showComponent*: ptr bool
         items*: Table[string, LootItem]
-        selectedLootId*: string
+        selection*: ptr ImGuiSelectionBasicStorage
         credentialModal*: CredentialModalComponent
 
     ConsoleItem* = ref object

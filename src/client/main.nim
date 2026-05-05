@@ -271,8 +271,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             if not cq.screenshots.items.hasKey(lootItem.lootId):
                                 cq.screenshots.items[lootItem.lootId] = (item: lootItem, texture: nil)
                         of CREDENTIAL:
-                            if not cq.credentials.items.hasKey(lootItem.lootId):
-                                cq.credentials.items[lootItem.lootId] = lootItem
+                            cq.credentials.items[lootItem.lootId] = lootItem
 
                     of CLIENT_LOOT_DATA:
                         let

@@ -8,7 +8,7 @@ import ../../types/[common, server, event]
 
 proc dbStoreLoot*(cq: Conquest, loot: LootItem): bool =
     try:
-        cq.db.exec("INSERT INTO loot VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        cq.db.exec("INSERT OR REPLACE INTO loot VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             loot.lootId, int(loot.itemType), loot.agentId, loot.host,
             loot.timestamp, loot.note, loot.path, loot.remotePath, loot.size,
             int(loot.credType), loot.username, loot.value)

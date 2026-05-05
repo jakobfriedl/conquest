@@ -134,7 +134,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 let item = event.data["item"]
 
                 let itemType = parseEnum[LootItemType](item["itemType"].getStr())
-                let lootId = generateUuid()
+                let lootId = if item["lootId"].getStr() != "": item["lootId"].getStr() else: generateUuid()
                 let agentId = item["agentId"].getStr()
                 let host = if cq.agents.hasKey(agentId): cq.agents[agentId].hostname else: item["host"].getStr()
 
@@ -146,7 +146,7 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                     note: item["note"].getStr()
                 )
 
-                case itemType
+                case itemType:
                 of DOWNLOAD, SCREENSHOT:
                     let filename = item["path"].getStr()
                     let contents = decode(event.data["contents"].getStr())
@@ -157,11 +157,12 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                     loot.path = path
                     loot.size = fileInfo.size.int
                     loot.timestamp = fileInfo.creationTime.toUnix()
+                
                 of CREDENTIAL:
                     loot.credType = parseEnum[CredentialType](item["credType"].getStr())
                     loot.username = item["username"].getStr()
                     loot.value = item["value"].getStr()
-                    loot.timestamp = getTime().toUnix()
+                    loot.timestamp = if item["timestamp"].getInt() != 0: item["timestamp"].getInt() else: getTime().toUnix()
 
                 discard cq.dbStoreLoot(loot)
                 cq.sendLoot(loot)

@@ -1,4 +1,4 @@
-import sequtils, times, tables, algorithm
+import strutils, sequtils, times, tables, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, globals]
 import ../../../types/[client, event]
@@ -10,16 +10,17 @@ proc LootCredentials*(title: string, showComponent: ptr bool): CredentialsCompon
     result.title = title
     result.showComponent = showComponent
     result.items = initTable[string, LootItem]()
-    result.credentialModal = CredentialModal() 
+    result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
+    result.credentialModal = CredentialModal()
 
 proc draw*(component: CredentialsComponent) =
     igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd()
 
-    # Modal for adding credentials manually 
+    # Modal for manually adding credentials
     if igButton("Add Credential", vec2(0.0f, 0.0f)):
+        component.credentialModal.editingItem = nil
         igOpenPopup_str("Add Credential", ImGui_PopupFlags_None.int32)
-    component.credentialModal.draw()
 
     let tableFlags = (
         ImGui_TableFlags_Resizable.int32 or
@@ -35,6 +36,8 @@ proc draw*(component: CredentialsComponent) =
         ImGui_TableFlags_SizingStretchSame.int32
     )
 
+    var pendingEdit = false
+
     let cols: int32 = 8
     if igBeginTable("##Credentials", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
         igTableSetupColumn("ID", ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
@@ -48,19 +51,17 @@ proc draw*(component: CredentialsComponent) =
         igTableSetupScrollFreeze(0, 1)
         igTableHeadersRow()
 
-        for i, item in component.items.values().toSeq().sortedByIt(it.timestamp):
+        var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.items.len()))
+        ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
+
+        let items = component.items.values().toSeq().sortedByIt(it.timestamp)
+        for i, item in items:
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
             if igTableSetColumnIndex(0):
-                igPushID_Int(i.int32)
-                let isSelected = component.selectedLootId == item.lootId
-                if igSelectable_Bool(item.lootId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0)):
-                    component.selectedLootId = item.lootId
-
-                if igIsItemHovered(ImGuiHoveredFlags_None.int32) and igIsMouseClicked_Bool(ImGuiMouseButton_Right.int32, false):
-                    component.selectedLootId = item.lootId
-
-                igPopID()
+                igSetNextItemSelectionUserData(i)
+                var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i))
+                discard igSelectable_Bool(item.lootId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32 or ImGuiSelectableFlags_AllowOverlap.int32, vec2(0, 0))
 
             if igTableSetColumnIndex(1):
                 igTextWithTooltip(item.agentId)
@@ -77,34 +78,49 @@ proc draw*(component: CredentialsComponent) =
             if igTableSetColumnIndex(7):
                 igTextWithTooltip(item.note)
 
-        # Handle right-click context menu
-        if component.selectedLootId != "" and component.items.hasKey(component.selectedLootId) and igBeginPopupContextWindow("Credentials", ImGui_PopupFlags_MouseButtonRight.int32):
-            let item = component.items[component.selectedLootId]
-
+        if component.selection[].Size > 0 and igBeginPopupContextWindow("Credentials", ImGui_PopupFlags_MouseButtonRight.int32):
             if igBeginMenu("Copy", true):
-                if igMenuItem("Username", nil, false, true):
-                    igSetClipboardText(item.username.cstring)
-                    igCloseCurrentPopup()
-                if igMenuItem("Value", nil, false, true):
-                    igSetClipboardText(item.value.cstring)
-                    igCloseCurrentPopup()
-                if igMenuItem("Username:Value", nil, false, true):
-                    igSetClipboardText((item.username & ":" & item.value).cstring)
-                    igCloseCurrentPopup()
-                if igMenuItem("Note", nil, false, true):
-                    igSetClipboardText(item.note.cstring)
-                    igCloseCurrentPopup()
+                for label in ["Username", "Value", "Username:Value", "Note"]:
+                    if igMenuItem(label.cstring, nil, false, true):
+                        var toCopy = ""
+                        for i, item in items:
+                            if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                                toCopy &= (case label:
+                                    of "Username": item.username
+                                    of "Value": item.value
+                                    of "Username:Value": item.username & ":" & item.value
+                                    of "Note": item.note
+                                    else: "") & "\n"
+                        igSetClipboardText(toCopy.strip().cstring)
+                        igCloseCurrentPopup()
                 igEndMenu()
 
+            # Editing is only allowed when a single item is selected
+            igBeginDisabled(component.selection[].Size != 1)
+            if igMenuItem("Edit", nil, false, true):
+                var it: pointer = nil
+                var row: ImGuiID
+                if ImGuiSelectionBasicStorage_GetNextSelectedItem(component.selection, addr it, addr row):
+                    component.credentialModal.setEdit(items[row])
+                    pendingEdit = true
+                igCloseCurrentPopup()
+            igEndDisabled()
+
             if igMenuItem("Remove", nil, false, true):
-                cq.connection.sendRemoveLoot(item.lootId)
-                component.items.del(item.lootId)
-                component.selectedLootId = ""
+                for i, item in items:
+                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                        cq.connection.sendRemoveLoot(item.lootId)
+                        component.items.del(item.lootId)
+                ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()
 
             igEndPopup()
 
-        if igIsKeyPressed_Bool(ImGui_Key_Escape, false):
-            component.selectedLootId = ""
+        multiSelectIO = igEndMultiSelect()
+        ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
         igEndTable()
+
+    if pendingEdit:
+        igOpenPopup_str("Edit Credential", ImGui_PopupFlags_None.int32)
+    component.credentialModal.draw()
