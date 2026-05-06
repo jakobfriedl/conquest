@@ -4,12 +4,14 @@ import ../../../common/utils
 import ../../../types/[client, event]
 import ../../utils/[appImGui, globals, dialogs]
 import ../../core/websocket
+import ../modals/editNote
 
 proc LootScreenshots*(title: string, showComponent: ptr bool): ScreenshotsComponent =
     result = new ScreenshotsComponent
     result.title = title
     result.showComponent = showComponent
     result.items = initTable[string, tuple[item: LootItem, texture: ScreenshotTexture]]()
+    result.noteModal = NoteModal()
 
 proc addTexture*(component: ScreenshotsComponent, lootId: string, data: string) = 
     var textureId: GLuint
@@ -25,6 +27,7 @@ proc draw*(component: ScreenshotsComponent) =
     igBegin(component.title.cstring, component.showComponent, 0)
     defer: igEnd()
 
+    var pendingNoteEdit = false
     var availableSize = igGetContentRegionAvail()
         
     # Left panel (file table) 
@@ -98,16 +101,21 @@ proc draw*(component: ScreenshotsComponent) =
                         igCloseCurrentPopup()
                     igEndMenu()
 
-                if igMenuItem("Download", nil, false, true):                     
-                    try: 
-                        let path = callDialogFileSave("Save File", item.path.extractFilename())                     
-                        let data = component.items[component.selectedLootId].texture.data
-                        writeFile(path, data)
-                    except IOError: 
-                        discard 
+                if igMenuItem("Edit Note", nil, false, true):
+                    component.noteModal.setEdit(item)
+                    pendingNoteEdit = true
                     igCloseCurrentPopup()
 
-                if igMenuItem("Remove", nil, false, true): 
+                if igMenuItem("Download", nil, false, true):
+                    try:
+                        let path = callDialogFileSave("Save File", item.path.extractFilename())
+                        let data = component.items[component.selectedLootId].texture.data
+                        writeFile(path, data)
+                    except IOError:
+                        discard
+                    igCloseCurrentPopup()
+
+                if igMenuItem("Remove", nil, false, true):
                     cq.connection.sendRemoveLoot(item.lootId)
                     component.items.del(item.lootId)
                     component.selectedLootId = ""
@@ -116,10 +124,14 @@ proc draw*(component: ScreenshotsComponent) =
                 igEndPopup()
 
             igEndTable()
-        
+
+        if pendingNoteEdit:
+            igOpenPopup_str("Edit Note", ImGui_PopupFlags_None.int32)
+        component.noteModal.draw()
+
     igEndChild()
     igSameLine(0.0f, 0.0f)
-    
+
     if igIsKeyPressed_Bool(ImGui_Key_Escape, false):
         component.selectedLootId = ""
 

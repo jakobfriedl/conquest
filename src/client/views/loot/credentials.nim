@@ -2,7 +2,7 @@ import strutils, sequtils, times, tables, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, globals]
 import ../../../types/[client, event]
-import ../modals/addCredential
+import ../modals/editCredential
 import ../../core/websocket
 
 proc LootCredentials*(title: string, showComponent: ptr bool): CredentialsComponent =
@@ -42,8 +42,8 @@ proc draw*(component: CredentialsComponent) =
     if igBeginTable("##Credentials", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
         igTableSetupColumn("ID", ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
         igTableSetupColumn("AgentID", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
-        igTableSetupColumn("Host", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Credential Type", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Host", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Username", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Value", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Creation Date", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
@@ -66,9 +66,9 @@ proc draw*(component: CredentialsComponent) =
             if igTableSetColumnIndex(1):
                 igTextWithTooltip(item.agentId)
             if igTableSetColumnIndex(2):
-                igTextWithTooltip(item.host)
-            if igTableSetColumnIndex(3):
                 igTextWithTooltip($item.credType)
+            if igTableSetColumnIndex(3):
+                igTextWithTooltip(item.host)
             if igTableSetColumnIndex(4):
                 igTextWithTooltip(item.username)
             if igTableSetColumnIndex(5):

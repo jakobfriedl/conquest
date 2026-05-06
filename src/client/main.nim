@@ -265,10 +265,14 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         let lootItem = event.data.to(LootItem)
                         case lootItem.itemType:
                         of DOWNLOAD:
-                            if not cq.downloads.items.hasKey(lootItem.lootId):
+                            if cq.downloads.items.hasKey(lootItem.lootId):
+                                cq.downloads.items[lootItem.lootId].item = lootItem
+                            else:
                                 cq.downloads.items[lootItem.lootId] = (item: lootItem, contents: "")
                         of SCREENSHOT:
-                            if not cq.screenshots.items.hasKey(lootItem.lootId):
+                            if cq.screenshots.items.hasKey(lootItem.lootId):
+                                cq.screenshots.items[lootItem.lootId].item = lootItem
+                            else:
                                 cq.screenshots.items[lootItem.lootId] = (item: lootItem, texture: nil)
                         of CREDENTIAL:
                             cq.credentials.items[lootItem.lootId] = lootItem

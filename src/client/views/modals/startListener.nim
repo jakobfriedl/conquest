@@ -11,6 +11,7 @@ proc ListenerModal*(): ListenerModalComponent =
     zeroMem(addr result.callbackHosts[0], 256 * 32)
     zeroMem(addr result.bindAddress[0], 256)
     result.bindPort = DEFAULT_PORT
+    zeroMem(addr result.pipe[0], 256)
     result.protocol = 0
     for p in ListenerType.low .. ListenerType.high:
         result.protocols.add($p)
@@ -19,6 +20,7 @@ proc resetModalValues(component: ListenerModalComponent) =
     zeroMem(addr component.callbackHosts[0], 256 * 32)
     zeroMem(addr component.bindAddress[0], 256)
     component.bindPort = DEFAULT_PORT
+    zeroMem(addr component.pipe[0], 256)
     component.protocol = 0
 
 proc draw*(component: ListenerModalComponent): UIListener =

@@ -130,39 +130,28 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                 let loot = cq.dbGetLootById(event.data["lootId"].getStr())
                 cq.sendLootData(loot, readFile(loot.path), clientId = clientId)
 
-            of CLIENT_LOOT_STORE:
-                let item = event.data["item"]
+            of CLIENT_LOOT_MODIFY:
+                var loot = event.data["item"].to(LootItem)
+                if loot.lootId == "": 
+                    loot.lootId = generateUuid()
+                if cq.agents.hasKey(loot.agentId): 
+                    loot.host = cq.agents[loot.agentId].hostname
 
-                let itemType = parseEnum[LootItemType](item["itemType"].getStr())
-                let lootId = if item["lootId"].getStr() != "": item["lootId"].getStr() else: generateUuid()
-                let agentId = item["agentId"].getStr()
-                let host = if cq.agents.hasKey(agentId): cq.agents[agentId].hostname else: item["host"].getStr()
-
-                var loot = LootItem(
-                    lootId: lootId,
-                    itemType: itemType,
-                    agentId: agentId,
-                    host: host,
-                    note: item["note"].getStr()
-                )
-
-                case itemType:
+                case loot.itemType:
                 of DOWNLOAD, SCREENSHOT:
-                    let filename = item["path"].getStr()
-                    let contents = decode(event.data["contents"].getStr())
-                    createDir(fmt"{cq.lootDir}/{agentId}")
-                    let path = fmt"{cq.lootDir}/{agentId}/{filename}"
-                    writeFile(path, contents)
-                    let fileInfo = getFileInfo(path)
-                    loot.path = path
-                    loot.size = fileInfo.size.int
-                    loot.timestamp = fileInfo.creationTime.toUnix()
-                
+                    if not fileExists(loot.path):
+                        let contents = decode(event.data["contents"].getStr())
+                        createDir(fmt"{cq.lootDir}/{loot.agentId}")
+                        let path = fmt"{cq.lootDir}/{loot.agentId}/{loot.path}"
+                        writeFile(path, contents)
+                        let fileInfo = getFileInfo(path)
+                        loot.path = path
+                        loot.size = fileInfo.size.int
+                        loot.timestamp = fileInfo.creationTime.toUnix()
+
                 of CREDENTIAL:
-                    loot.credType = parseEnum[CredentialType](item["credType"].getStr())
-                    loot.username = item["username"].getStr()
-                    loot.value = item["value"].getStr()
-                    loot.timestamp = if item["timestamp"].getInt() != 0: item["timestamp"].getInt() else: getTime().toUnix()
+                    if loot.timestamp == 0: 
+                        loot.timestamp = getTime().toUnix() # Set to current timestamp
 
                 discard cq.dbStoreLoot(loot)
                 cq.sendLoot(loot)

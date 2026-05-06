@@ -114,6 +114,11 @@ type
         credTypes*: seq[string]
         editingItem*: LootItem
 
+    NoteModalComponent* = ref object of RootObj
+        show*: bool 
+        note*: array[MAX_INPUT_LENGTH, char]
+        editingItem*: LootItem
+
     ChatComponent* = ref object of RootObj 
         title*: string 
         showComponent*: ptr bool 
@@ -162,18 +167,20 @@ type
         items*: Table[string, tuple[item: LootItem, contents: string]]
         textarea*: TextareaWidget
         selectedLootId*: string
+        noteModal*: NoteModalComponent
 
-    ScreenshotTexture* = ref object 
+    ScreenshotTexture* = ref object
         textureId*: GLuint
         data*: string
-        width*: int 
-        height*: int 
+        width*: int
+        height*: int
 
     ScreenshotsComponent* = ref object of RootObj
         title*: string
         showComponent*: ptr bool
         items*: Table[string, tuple[item: LootItem, texture: ScreenshotTexture]]
         selectedLootId*: string
+        noteModal*: NoteModalComponent
 
     CredentialsComponent* = ref object of RootObj
         title*: string

@@ -126,9 +126,9 @@ proc sendChatMessage*(connection: WsConnection, message: string) =
     )
     connection.ws.sendEvent(event, connection.sessionKey)
 
-proc sendLootStore*(connection: WsConnection, item: LootItem, contents: seq[byte]) =
+proc sendLootModify*(connection: WsConnection, item: LootItem, contents: seq[byte]) =
     let event = Event(
-        eventType: CLIENT_LOOT_STORE,
+        eventType: CLIENT_LOOT_MODIFY,
         timestamp: now().toTime().toUnix(),
         data: %*{
             "item": %item,

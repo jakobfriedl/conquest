@@ -1,6 +1,5 @@
 import tables, strformat, strutils, unicode
-import ../[database, task, websocket]
-import ../../utils/globals
+import ../[task, websocket]
 import ../../views/widgets/textarea
 import ../../../common/[utils, serialize]
 import ../../../types/[common, client, event, protocol]
@@ -318,7 +317,7 @@ proc add_screenshot*(agentId, filename: string, contents: seq[byte], note: strin
             path: filename,
             note: note
         )
-        cq.connection.sendLootStore(loot, contents)
+        cq.connection.sendLootModify(loot, contents)
 
 proc add_download*(agentId, filename: string, contents: seq[byte], note: string = "") {.exportpy.} =
     if cq.sessions.agents.hasKey(agentId):
@@ -328,7 +327,7 @@ proc add_download*(agentId, filename: string, contents: seq[byte], note: string 
             path: filename,
             note: note
         )
-        cq.connection.sendLootStore(loot, contents)
+        cq.connection.sendLootModify(loot, contents)
 
 proc add_credential*(agentId: string, credType: int, username, value: string, note: string = "") {.exportpy.} =
     if cq.sessions.agents.hasKey(agentId):
@@ -340,7 +339,7 @@ proc add_credential*(agentId: string, credType: int, username, value: string, no
             value: value,
             note: note
         )
-        cq.connection.sendLootStore(loot, @[])
+        cq.connection.sendLootModify(loot, @[])
 
 # Execute a command
 proc execute_command*(agentId, command: string, silent: bool = false) {.exportpy.} =

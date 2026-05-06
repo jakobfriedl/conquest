@@ -51,7 +51,7 @@ proc draw*(component: CredentialModalComponent) =
     if igBeginPopupModal(modalLabel.cstring, addr show, ImGuiWindowFlags_None.int32):
         defer: igEndPopup()
 
-        igText("Type:      ")
+        igText("Type:     ")
         igSameLine(0.0f, textSpacing)
         var availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
@@ -61,19 +61,20 @@ proc draw*(component: CredentialModalComponent) =
         igSeparator()
         igDummy(vec2(0.0f, 10.0f))
 
-        igText("Host:      ")
+        igText("Host:     ")
         igSameLine(0.0f, textSpacing)
         availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
+        if igIsWindowAppearing(): igSetKeyboardFocusHere(0)
         igInputText("##InputHost", cast[cstring](addr component.host[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
 
-        igText("Username:  ")
+        igText("Username: ")
         igSameLine(0.0f, textSpacing)
         availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
         igInputText("##InputUsername", cast[cstring](addr component.username[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
 
-        igText("Value:     ")
+        igText("Value:    ")
         igSameLine(0.0f, textSpacing)
         availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
@@ -83,7 +84,7 @@ proc draw*(component: CredentialModalComponent) =
         igSeparator()
         igDummy(vec2(0.0f, 10.0f))
 
-        igText("Note:      ")
+        igText("Note:     ")
         igSameLine(0.0f, textSpacing)
         availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
@@ -109,7 +110,7 @@ proc draw*(component: CredentialModalComponent) =
                 note: $cast[cstring](addr component.note[0])
             )
 
-            cq.connection.sendLootStore(item, @[])
+            cq.connection.sendLootModify(item, @[])
 
             component.resetModalValues()
             igCloseCurrentPopup()
