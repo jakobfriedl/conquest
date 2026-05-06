@@ -41,8 +41,9 @@ For more information about architecture, usage and features, check out the [docu
 
 - Different payload types: .exe, .dll, .svc.exe
 - Sleep obfuscation via Ekko, Zilean or Foliage with support for call stack spoofing
+- Asynchronous job system for long-running tasks
 - Stable COFF/BOF Loader
-- Asynchronous execution of long-running tasks (downloads, Async BOFs)
+  - Support for Async BOFs
 - In-memory execution of .NET assemblies
 - In-memory execution of DLLs
 - Token manipulation 

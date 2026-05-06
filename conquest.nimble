@@ -1,12 +1,12 @@
 # Package
-version     = "0.2.0"
+version     = "0.3.0"
 author      = "Jakob Friedl"
 description = "Conquest command & control/post-exploitation framework"
 license     = "BSD-3-Clause"
 srcDir      = "src"
 
 # Dependencies
-requires "nim >= 2.2.8"
+requires "nim >= 2.2.10"
 
 requires "nimcrypto >= 0.6.4"
 requires "tiny_sqlite >= 0.2.0"
