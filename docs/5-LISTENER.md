@@ -10,11 +10,11 @@ HTTP Listeners are used for outbound network traffic that directly reaches the t
 
 ![HTTP Listener](../assets/listener.png)
 
-| Name | Description |
-| --- | --- | 
-| Host (Bind) | IP address or interface that the listener binds to on the team server | 
-| Port (Bind) | Port that the listeners bind to on the team server | 
-| Hosts (Callback) | Callback hosts, one per line. The hosts are defined, separated by new-lines, in the format `<ip/domain>:<port>`. If no port is specified, the bind port is used instead. If no callback hosts are defined at all, the bind host and bind port are used.<br>Callback hosts are the endpoints that the `Monarch` agent connects to. If multiple are defined, a random entry of the list of callback hosts is selected for each request.
+| Name | Type | Description |
+| --- | --- | --- | 
+| Host (Bind) | String |  IP address or interface that the listener binds to on the team server | 
+| Port (Bind) | Integer | Port that the listeners bind to on the team server | 
+| Hosts (Callback) | Multi-line String |  Callback hosts, one per line. The hosts are defined, separated by new-lines, in the format `<ip/domain>:<port>`. If no port is specified, the bind port is used instead. If no callback hosts are defined at all, the bind host and bind port are used.<br>Callback hosts are the endpoints that the `Monarch` agent connects to. If multiple are defined, a random entry of the list of callback hosts is selected for each request.
 
 ## SMB Listeners
 
@@ -22,6 +22,6 @@ SMB listeners handle peer-to-peer connections between agents, useful for pivotin
 
 ![SMB Listener](../assets/listener-2.png)
 
-| Name | Description |
-| --- | --- | 
-| Pipe name | Name of the named pipe to create for SMB traffic (prefixed with `\\.\pipe\`) | 
+| Name | Type | Description |
+| --- | --- |--- | 
+| Pipe name | String | Name of the named pipe to create for SMB traffic (prefixed with `\\.\pipe\`) | 

@@ -62,8 +62,9 @@ type
         CREDENTIAL = 2'u8
 
     CredentialType* {.size: sizeof(uint16).} = enum 
-        PASSWORD = "Password"
-        NTLM = "NTLM Hash"
+        CRED_PASSWORD = "Password"
+        CRED_NTLM = "NTLM Hash"
+        CRED_OTHER = "Other"
 
     LootItem* = ref object
         lootId*: string

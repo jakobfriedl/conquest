@@ -78,6 +78,7 @@ proc draw*(component: CredentialsComponent) =
             if igTableSetColumnIndex(7):
                 igTextWithTooltip(item.note)
 
+        # Handle right-click context menu
         if component.selection[].Size > 0 and igBeginPopupContextWindow("Credentials", ImGui_PopupFlags_MouseButtonRight.int32):
             if igBeginMenu("Copy", true):
                 for label in ["Username", "Value", "Username:Value", "Note"]:

@@ -97,28 +97,28 @@ proc draw*(component: SessionsTableComponent) =
                     component.interact = true
 
             if igTableSetColumnIndex(1): 
-                igText(agent.listenerId.cstring)
+                igTextWithTooltip(agent.listenerId)
             if igTableSetColumnIndex(2): 
-                igText(agent.ipInternal.cstring)
+                igTextWithTooltip(agent.ipInternal)
             if igTableSetColumnIndex(3): 
-                igText(agent.ipExternal.cstring)
+                igTextWithTooltip(agent.ipExternal)
             if igTableSetColumnIndex(4): 
 
-                igText(agent.username.cstring)
+                igTextWithTooltip(agent.username)
                 if agent.impersonationToken != "":
                     igSameLine(0.0f, textSpacing)
                     igText(fmt"[{component.agents[agent.agentId].impersonationToken}]".cstring)
 
             if igTableSetColumnIndex(5): 
-                igText(agent.hostname.cstring)
+                igTextWithTooltip(agent.hostname)
             if igTableSetColumnIndex(6): 
-                igText(agent.domain.cstring)
+                igTextWithTooltip(agent.domain)
             if igTableSetColumnIndex(7): 
-                igText(agent.os.cstring)
+                igTextWithTooltip(agent.os)
             if igTableSetColumnIndex(8): 
-                igText(agent.process.cstring)
+                igTextWithTooltip(agent.process)
             if igTableSetColumnIndex(9): 
-                igText(($agent.pid).cstring)
+                igTextWithTooltip($agent.pid)
             if igTableSetColumnIndex(10): 
                 let duration = now() - agent.firstCheckin.fromUnix().local()
                 let totalSeconds = duration.inSeconds
@@ -187,50 +187,26 @@ proc draw*(component: SessionsTableComponent) =
 
             # Menu to copy fields of the agent object to clipboard
             if igBeginMenu("Copy", true): 
-                const copyableFields = [
-                    ("agentId", "AgentID"),
-                    ("listenerId", "ListenerID"),
-                    ("username", "Username"),
-                    ("impersonationToken", "Impersonation Token"),
-                    ("hostname", "Hostname"),
-                    ("domain", "Domain"),
-                    ("ipInternal", "IP (Internal)"),
-                    ("ipExternal", "IP (External)"),
-                    ("os", "Operating System"),
-                    ("process", "Process Name"),
-                    ("pid", "ProcessID"),
-                    ("elevated", "IsElevated"),
-                    ("sleep", "Sleep"),
-                    ("jitter", "Jitter")
-                ]
-                
-                for (fieldName, displayName) in copyableFields:
-                    if igMenuItem(displayName.cstring, nil, false, true):
+                for label in ["AgentID", "ListenerID", "Username", "Impersonation Token", "Hostname", "Domain", "IP (Internal)", "IP (External)", "Operating System", "Process", "PID"]:
+                    if igMenuItem(label.cstring, nil, false, true):
                         var toCopy: string = ""
                         for i, agent in agents:
                             if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                                let value = case fieldName:
-                                    of "agentId": agent.agentId
-                                    of "listenerId": agent.listenerId
-                                    of "username": agent.username
-                                    of "impersonationToken": agent.impersonationToken
-                                    of "hostname": agent.hostname
-                                    of "domain": agent.domain
-                                    of "ipInternal": agent.ipInternal
-                                    of "ipExternal": agent.ipExternal
-                                    of "os": agent.os
-                                    of "process": agent.process
-                                    of "pid": $agent.pid
-                                    of "elevated": $agent.elevated
-                                    of "sleep": $agent.sleep
-                                    of "jitter": $agent.jitter
-                                    else: ""
-                                
-                                toCopy &= value & "\n"
-                        
+                                toCopy &= (case label:
+                                    of "AgentID": agent.agentId
+                                    of "ListenerID": agent.listenerId
+                                    of "Username": agent.username
+                                    of "Impersonation Token": agent.impersonationToken
+                                    of "Hostname": agent.hostname
+                                    of "Domain": agent.domain
+                                    of "IP (Internal)": agent.ipInternal
+                                    of "IP (External)": agent.ipExternal
+                                    of "Operating System": agent.os
+                                    of "Process": agent.process
+                                    of "PID": $agent.pid
+                                    else: "") & "\n"                                
                         igSetClipboardText(toCopy.strip().cstring)
                         igCloseCurrentPopup()
-                
                 igEndMenu()
 
             # Menu to exit the agent process in different ways

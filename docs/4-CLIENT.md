@@ -7,8 +7,10 @@
 - [Listeners](#listeners)
 - [Sessions](#sessions)
 - [Agent Console](#agent-console)
-- [Downloads](#downloads)
-- [Screenshots](#screenshots)
+- [Loot](#loot)
+  - [Downloads](#downloads)
+  - [Screenshots](#screenshots)
+  - [Credentials](#credentials)
 - [Eventlog](#eventlog)
 - [File Browser](#file-browser)
 - [Process Browser](#process-browser)
@@ -70,7 +72,19 @@ Available keyboard shortcuts:
 | CTRL + C | Copy selection | 
 | CTRL + V | Paste clipboard | 
 
-## Downloads 
+When the search feature is active, the following shortcuts can be used: 
+
+| Shortcut | Action |
+| --- | --- |
+| ALT + C | Toggle match case | 
+| ALT + R | Toggle Regex | 
+| ENTER | Jump to next match | 
+| SHIFT + ENTER | Jump to previous match | 
+| ESCAPE | Close search input | 
+
+## Loot
+
+### Downloads 
 
 The **Downloads** view is hidden by default and can be enabled via the menu bar: `Views -> Loot -> Downloads`. By default, it opens in the bottom panel and displays information about the downloaded files on the left and the contents of the file on the right. The content is fetched from the team server when a loot row is selected for the first time.
 
@@ -81,11 +95,29 @@ Right-clicking a row opens a context menu with two options:
 - Download: Download the file to disk
 - Remove: Ask the team server to remove the loot item from the database
 
-## Screenshots
+### Screenshots
 
 Similar to the downloads, the **Screenshots** view is hidden by default and can be enabled by selecting `Views -> Loot -> Screenshots`. A preview of the screenshot is shown directly in the operator client. The ../assets/client can again be downloaded to disk by right-clicking the item and selecting `Download`.
 
 ![Screenshots View](../assets/client-9.png)
+
+### Credentials 
+
+The **Credentials** view is a table view that shows collected credentials from all agents. It is hidden by default and can be enabled by selecting `Views -> Loot -> Credentials`. Credentials can be added manually via a modal by clicking the **Add Credential** button or programmatically using the Python API function `add_credential`. Existing redentials can be edited and updated via the right-click context menu. 
+
+![Credentials View](../assets/client-17.png)
+
+The **Credential Modal** is used to manually add or edit credentials and has the following fields.
+
+| Name | Type | Description |
+| --- | --- | --- | 
+| Type | Dropdown menu | Credential type. The current options are: `Password`, `NTLM Hash` and `Other`. | 
+| Host | String | Hostname of the system the credential belongs to. When added via Python API, this field is filled in based on the Agent ID. | 
+| Username | String | Credential Username. | 
+| Value | String | Credential data (cleartext password, NT hash, ...). | 
+| Note |  Multi-line String | Additional notes. | 
+
+![Adding/Editing Credentials](../assets/client-18.png)
 
 ## Eventlog
 
@@ -115,6 +147,8 @@ The process list is refreshed either by running the ps command in the agent cons
 The **Script Manager** component is used to load and unload Conquest Python Modules on the client. These modules define commands that can be used in the agent console. Clicking the `Load Script` button opens a file explorer where an appropriate file can be chosen. This UI component is hidden by default and can be shown by selecting `Views -> Script Manager`. When a loaded script contains a syntax error, it is highlighted in red as seen in the screenshot below. 
 
 ![Script Manager](../assets/client-10.png)
+
+Hovering over a script shows all the commands that are imported by that file.
 
 ## Operator Chat
 
