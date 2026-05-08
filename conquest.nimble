@@ -35,7 +35,9 @@ proc buildResources() =
     for kind, dir in walkDir("data/resources"):
         if kind != pcDir: continue
         let dist = dir / "dist"
-        if dirExists(dist) and listFiles(dist).len == 0:
+        if not dirExists(dist):
+            mkDir(dist)
+        if listFiles(dist).len == 0:
             withDir(dir): exec "nimble dll"
 
 task server, "Build server": 
@@ -51,3 +53,6 @@ task client, "Build client":
 task client_debug, "Build client (debug)": 
     buildResources()
     build("src/client/main.nim", true)
+
+task resources, "Build resources":
+    buildResources()
