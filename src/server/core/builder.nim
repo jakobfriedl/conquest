@@ -1,5 +1,4 @@
-import terminal, strformat, strutils, tables, system, osproc, streams, os, 
-import std/enumutils
+import terminal, strformat, strutils, tables, system, osproc, streams, os
 
 import ../globals
 import ../core/[logger, websocket]
@@ -80,15 +79,15 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
     var additionalFlags: string = ""
 
     case agentBuildInformation.payloadType
-    of EXE: ext = "exe"
-    of SVC: ext = "svc.exe"
-    of DLL:
+    of PAYLOAD_EXE: ext = "exe"
+    of PAYLOAD_SVC: ext = "svc.exe"
+    of PAYLOAD_DLL:
         ext = "dll"
         additionalFlags = """
 --app:lib
 --nomain
 --passL:"-static-libgcc -static-libstdc++ -Wl,-Bstatic -lpthread""""
-    # of BIN: ext = "bin"
+    # of PAYLOAD_BIN: ext = "bin"
 
     let configFile = fmt"{CONQUEST_ROOT}/src/agents/monarch/nim.cfg"  
     let outFile = fmt"{CONQUEST_ROOT}/bin/monarch.{listenerType}_{arch}.{ext}" 
@@ -114,7 +113,7 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
 -d:MODULES={$agentBuildInformation.modules}
 -d:VERBOSE={$agentBuildInformation.verbose}
 -d:TRANSPORT_{$(listener.listenerType)}
--d:PAYLOAD_{symbolName(agentBuildInformation.payloadType)}"""
+-d:{$(agentBuildInformation.payloadType)}"""
 
     writeFile(configFile, config)
 

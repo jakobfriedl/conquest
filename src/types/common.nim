@@ -59,17 +59,17 @@ type
         MODULE_TOKEN = 128'u32
         MODULE_DLL = 256'u32
 
-    AgentType* {.size: sizeof(uint8).} = enum 
-        MONARCH = "Monarch"
+    AgentType* = enum
+        AGENT_MONARCH = 0'u8
 
-    PayloadType* {.size: sizeof(uint8).} = enum 
-        EXE = "Windows Executable (.exe)"
-        SVC = "Windows Service Executable (.svc.exe)"
-        DLL = "Windows DLL (.dll)"
-        # BIN = "Raw Shellcode (.bin)"
+    PayloadType* = enum
+        PAYLOAD_EXE = 0'u8
+        PAYLOAD_SVC = 1'u8
+        PAYLOAD_DLL = 2'u8
+        # PAYLOAD_BIN = 3'u8
 
-    ArchType* {.size: sizeof(uint8).} = enum
-        ARCH_X64 = "x64"
+    ArchType* = enum
+        ARCH_X64 = 0'u8
 
     ListenerType* {.size: sizeof(uint8).} = enum
         LISTENER_HTTP = "HTTP"

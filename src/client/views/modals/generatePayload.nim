@@ -6,6 +6,21 @@ import ../../utils/[appImGui, globals]
 import ../../../types/[common, client, event]
 export addItem
 
+proc `$`(agentType: AgentType): string =
+    case agentType:
+    of AGENT_MONARCH: "Monarch"
+
+proc `$`(payloadType: PayloadType): string =
+    case payloadType:
+    of PAYLOAD_EXE: "Windows Executable (.exe)"
+    of PAYLOAD_SVC: "Windows Service Executable (.svc.exe)"
+    of PAYLOAD_DLL: "Windows DLL (.dll)"
+    # of PAYLOAD_BIN: "Raw Shellcode (.bin)"
+
+proc `$`(arch: ArchType): string =
+    case arch:
+    of ARCH_X64: "x64"
+
 proc PayloadModal*(): PayloadModalComponent =
     result = new PayloadModalComponent
     result.sleepDelay = 5
