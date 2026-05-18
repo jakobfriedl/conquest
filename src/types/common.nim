@@ -59,6 +59,18 @@ type
         MODULE_TOKEN = 128'u32
         MODULE_DLL = 256'u32
 
+    AgentType* {.size: sizeof(uint8).} = enum 
+        MONARCH = "Monarch"
+
+    PayloadType* {.size: sizeof(uint8).} = enum 
+        EXE = "Windows Executable (.exe)"
+        SVC = "Windows Service Executable (.svc.exe)"
+        DLL = "Windows DLL (.dll)"
+        # BIN = "Raw Shellcode (.bin)"
+
+    ArchType* {.size: sizeof(uint8).} = enum
+        ARCH_X64 = "x64"
+
     ListenerType* {.size: sizeof(uint8).} = enum
         LISTENER_HTTP = "HTTP"
         LISTENER_SMB = "SMB"
@@ -100,12 +112,6 @@ type
         MSG_RESULT = 1'u8 
         MSG_REGISTER = 2'u8
         MSG_HEARTBEAT = 100'u8
-
-    PayloadType* = enum 
-        EXE = 0'u8
-        SVC = 1'u8 
-        DLL = 2'u8 
-        # BIN = 3'u8
 
 type 
     WorkingHours* = ref object 

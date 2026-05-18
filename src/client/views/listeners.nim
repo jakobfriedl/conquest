@@ -12,7 +12,7 @@ proc ListenersTable*(title: string, showComponent: ptr bool): ListenersTableComp
     result.listeners = initTable[string, UIListener]() 
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.startListenerModal = ListenerModal()
-    result.generatePayloadModal = AgentModal()
+    result.generatePayloadModal = PayloadModal()
 
 proc draw*(component: ListenersTableComponent) = 
     igBegin(component.title.cstring, component.showComponent, 0)

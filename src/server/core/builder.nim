@@ -1,4 +1,5 @@
-import terminal, strformat, strutils, tables, system, osproc, streams, os
+import terminal, strformat, strutils, tables, system, osproc, streams, os, 
+import std/enumutils
 
 import ../globals
 import ../core/[logger, websocket]
@@ -113,7 +114,7 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
 -d:MODULES={$agentBuildInformation.modules}
 -d:VERBOSE={$agentBuildInformation.verbose}
 -d:TRANSPORT_{$(listener.listenerType)}
--d:PAYLOAD_{$(agentBuildInformation.payloadType)}"""
+-d:PAYLOAD_{symbolName(agentBuildInformation.payloadType)}"""
 
     writeFile(configFile, config)
 

@@ -6,25 +6,10 @@ import ../../utils/[appImGui, globals]
 import ../../../types/[common, client, event]
 export addItem
 
-proc `$`(payloadType: PayloadType): string = 
-    case payloadType: 
-    of EXE: "Windows Executable (.exe)"
-    of SVC: "Windows Service Executable (.svc.exe)"
-    of DLL: "Windows DLL (.dll)"
-    # of BIN: "Raw Shellcode (.bin)"
-
-proc AgentModal*(): AgentModalComponent =
-    result = new AgentModalComponent
-    result.show = false
-    result.listener = 0
-    result.payloadType = 0 
+proc PayloadModal*(): PayloadModalComponent =
+    result = new PayloadModalComponent
     result.sleepDelay = 5
     result.jitter = 15
-    result.sleepMask = 0
-    result.spoofStack = false
-    result.killDateEnabled = false
-    result.killDate = 0
-    result.workingHoursEnabled = false 
     result.workingHours = WorkingHours(
         enabled: false, 
         startHour: 0,
@@ -32,13 +17,14 @@ proc AgentModal*(): AgentModalComponent =
         endHour: 0,
         endMinute: 0
     )
-    result.verbose = false
 
-    # Populate payload types
+    # Populate dropdowns
+    for agentType in AgentType.low .. AgentType.high: 
+        result.agentTypes.add($agentType)
     for payloadType in PayloadType.low .. PayloadType.high:
         result.payloadTypes.add($payloadType)
-
-    # Populate sleep techniques
+    for arch in ArchType.low .. ArchType.high:
+        result.architectures.add($arch)
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
 
@@ -56,8 +42,10 @@ proc AgentModal*(): AgentModalComponent =
     result.killDateModal = KillDateModal()
     result.workingHoursModal = WorkingHoursModal()
 
-proc resetModalValues*(component: AgentModalComponent) = 
+proc resetModalValues*(component: PayloadModalComponent) = 
     component.listener = 0
+    component.agentType = 0
+    component.arch = 0
     component.payloadType = 0 
     component.sleepDelay = 5
     component.jitter = 15
@@ -77,7 +65,7 @@ proc resetModalValues*(component: AgentModalComponent) =
     component.moduleSelection.reset()
     component.buildLog.clear()
 
-proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBuildInformation =
+proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentBuildInformation =
 
     let textSpacing = igGetStyle().ItemSpacing.x    
     
@@ -87,159 +75,218 @@ proc draw*(component: AgentModalComponent, listeners: seq[UIListener]): AgentBui
     igSetNextWindowPos(center, ImGuiCond_Appearing.int32, vec2(0.5f, 0.5f))
 
     let modalWidth = max(500.0f, vp.Size.x * 0.25)
-    igSetNextWindowSize(vec2(modalWidth, 0.0f), ImGuiCond_Always.int32)
+    let modalHeight= max(350.0f, vp.Size.y * 0.25)
+    igSetNextWindowSize(vec2(modalWidth, modalHeight), ImGuiCond_Always.int32)
     
     var show = component.show
-    let windowFlags = ImGuiWindowFlags_None.int32 # or ImGuiWindowFlags_NoMove.int32
+    let windowFlags = ImGuiWindowFlags_NoResize.int32
     if igBeginPopupModal("Generate Payload", addr show, windowFlags):
         defer: igEndPopup()
         
         component.show = show
 
-
-        # Listener selection
-        igText("Listener:       ")
-        igSameLine(0.0f, textSpacing)
         var availableSize = igGetContentRegionAvail()
-        igSetNextItemWidth(availableSize.x)
-        igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.listenerId & " (" & $it.listenerType & ")").join("\0") & "\0").cstring , listeners.len().int32)
+        if igBeginTabBar("##Tabs", ImGuiTabBarFlags_None.int32): 
+            defer: igEndTabBar()
 
-        # Payload type selection
-        igText("Payload type:   ")
-        igSameLine(0.0f, textSpacing)
-        availableSize = igGetContentRegionAvail()
-        igSetNextItemWidth(availableSize.x)
-        igCombo_Str("##InputPayloadType", addr component.payloadType, (component.payloadTypes.join("\0") & "\0").cstring, component.payloadTypes.len().int32)
+            # Tab 1: General settings
+            if igBeginTabItem("General", nil, ImGuiTabBarFlags_None.int32):
+                defer: igEndTabItem()
 
-        # Sleep delay
-        let step: uint32 = 1
-        igText("Sleep delay:    ")
-        igSameLine(0.0f, textSpacing)
-        igSetNextItemWidth(availableSize.x)
-        igInputScalar("##InputSleepDelay", ImGuiDataType_U32.int32, addr component.sleepDelay, addr step, nil, "%hu", ImGui_InputTextFlags_CharsDecimal.int32)
+                igDummy(vec2(0.0f, 8.0f))
 
-        # Jitter
-        igText("Jitter:         ")
-        igSameLine(0.0f, textSpacing)
-        igSetNextItemWidth(availableSize.x)
-        igSliderInt("##InputJitter", addr component.jitter, 0, 100, "%d%%", ImGui_SliderFlags_None.int32)
+                # Listener selection
+                igText("Listener:     ")
+                igSameLine(0.0f, textSpacing)
+                availableSize = igGetContentRegionAvail()
+                igSetNextItemWidth(availableSize.x)
+                igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.listenerId & " (" & $it.listenerType & ")").join("\0") & "\0").cstring , listeners.len().int32)
 
-        # Agent sleep obfuscation technique dropdown selection
-        igText("Sleep mask:     ")
-        igSameLine(0.0f, textSpacing)
-        igSetNextItemWidth(availableSize.x)
-        igCombo_Str("##InputSleepMask", addr component.sleepMask, (component.sleepMaskTechniques.join("\0") & "\0").cstring , component.sleepMaskTechniques.len().int32)
+                # Verbose mode checkbox
+                igText("Verbose:      ")
+                igSameLine(0.0f, textSpacing)
+                igSetNextItemWidth(availableSize.x)
+                igCheckbox("##InputVerbose", addr component.verbose)
 
-        # Stack spoofing checkbox (only for EKKO/ZILEAN)
-        igText("Stack spoofing: ")
-        igSameLine(0.0f, textSpacing)
-        igSetNextItemWidth(availableSize.x)
+                igDummy(vec2(0.0f, 10.0f))
+                igSeparator()
+                igDummy(vec2(0.0f, 10.0f))
 
-        igBeginDisabled((component.sleepMaskTechniques[component.sleepMask] != $EKKO and component.sleepMaskTechniques[component.sleepMask] != $ZILEAN))
-        if (component.sleepMaskTechniques[component.sleepMask] != $EKKO and component.sleepMaskTechniques[component.sleepMask] != $ZILEAN):
-            component.spoofStack = false
-        igCheckbox("##InputSpoofStack", addr component.spoofStack)
-        igEndDisabled()
+                # Agent type selection
+                igText("Agent:        ")
+                igSameLine(0.0f, textSpacing)
+                availableSize = igGetContentRegionAvail()
+                igSetNextItemWidth(availableSize.x)
+                igCombo_Str("##InputAgentType", addr component.agentType, (component.agentTypes.join("\0") & "\0").cstring, component.agentTypes.len().int32)
+ 
+                # Architecture selection
+                igText("Arch:         ")
+                igSameLine(0.0f, textSpacing)
+                availableSize = igGetContentRegionAvail()
+                igSetNextItemWidth(availableSize.x)
+                igCombo_Str("##InputArch", addr component.arch, (component.architectures.join("\0") & "\0").cstring, component.architectures.len().int32)
 
-        # Verbose mode checkbox
-        igText("Verbose:        ")
-        igSameLine(0.0f, textSpacing)
-        igSetNextItemWidth(availableSize.x)
-        igCheckbox("##InputVerbose", addr component.verbose)
+                # Payload type selection
+                igText("Payload type: ")
+                igSameLine(0.0f, textSpacing)
+                availableSize = igGetContentRegionAvail()
+                igSetNextItemWidth(availableSize.x)
+                igCombo_Str("##InputPayloadType", addr component.payloadType, (component.payloadTypes.join("\0") & "\0").cstring, component.payloadTypes.len().int32)
 
-        igDummy(vec2(0.0f, 10.0f))
-        igSeparator()
-        igDummy(vec2(0.0f, 10.0f))
 
-        # Kill date (checkbox & button to choose date)
-        igText("Kill date:      ")
-        igSameLine(0.0f, textSpacing)
-        igCheckbox("##InputKillDate", addr component.killDateEnabled)        
-        igSameLine(0.0f, textSpacing)
-        
-        igBeginDisabled(not component.killDateEnabled)
-        availableSize = igGetContentRegionAvail()
-        igSetNextItemWidth(availableSize.x)
-        if igButton((if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss")  & " UTC" else: "Configure##KillDate").cstring, vec2(-1.0f, 0.0f)):
-            igOpenPopup_str("Configure Kill Date", ImGui_PopupFlags_None.int32) 
-        igEndDisabled()
+                igDummy(vec2(0.0f, 10.0f))
+                igSeparator()
+                igDummy(vec2(0.0f, 10.0f))
 
-        let killDate = component.killDateModal.draw()
-        if killDate != 0: 
-            component.killDate = killDate
+                # TODO: Execution Guardrails
+                # - Domain-joined (optionally specify domain name)
+                # - IP-based (IP range, CIDR, comma-separated)
+                # - Hostname-based (List of hostnames) 
+                # igText("Guardrails:     ")
 
-        # Working hours
-        igText("Working hours:  ")
-        igSameLine(0.0f, textSpacing)
-        igCheckbox("##InputWorkingHours", addr component.workingHoursEnabled)        
-        igSameLine(0.0f, textSpacing)
-        
-        igBeginDisabled(not component.workingHoursEnabled)
-        availableSize = igGetContentRegionAvail()
-        igSetNextItemWidth(availableSize.x)
+            # Tab 2: Sleep Settings
+            if igBeginTabItem("Sleep", nil, ImGuiTabBarFlags_None.int32):
+                defer: igEndTabItem()
 
-        let workingHoursLabel = fmt"{component.workingHours.startHour:02}:{component.workingHours.startMinute:02} - {component.workingHours.endHour:02}:{component.workingHours.endMinute:02}"
-        if igButton((if component.workingHours.enabled: workingHoursLabel else: "Configure##WorkingHours").cstring, vec2(-1.0f, 0.0f)):
-            igOpenPopup_str("Configure Working Hours", ImGui_PopupFlags_None.int32) 
-        igEndDisabled()
+                igDummy(vec2(0.0f, 8.0f))
 
-        let workingHours = component.workingHoursModal.draw()
-        if workingHours.enabled: 
-            component.workingHours = workingHours
+                # Sleep delay
+                let step: uint32 = 1
+                igText("Sleep delay:    ")
+                igSameLine(0.0f, textSpacing)
+                availableSize = igGetContentRegionAvail()
+                igSetNextItemWidth(availableSize.x)
+                igInputScalar("##InputSleepDelay", ImGuiDataType_U32.int32, addr component.sleepDelay, addr step, nil, "%hu", ImGui_InputTextFlags_CharsDecimal.int32)
 
-        igDummy(vec2(0.0f, 10.0f))
-        igSeparator()
-        igDummy(vec2(0.0f, 10.0f))
+                # Jitter
+                igText("Jitter:         ")
+                igSameLine(0.0f, textSpacing)
+                igSetNextItemWidth(availableSize.x)
+                igSliderInt("##InputJitter", addr component.jitter, 0, 100, "%d%%", ImGui_SliderFlags_None.int32)
 
-        igText("Modules: ")
-        
-        component.moduleSelection.draw()
+                # Agent sleep obfuscation technique dropdown selection
+                igText("Sleep mask:     ")
+                igSameLine(0.0f, textSpacing)
+                igSetNextItemWidth(availableSize.x)
+                igCombo_Str("##InputSleepMask", addr component.sleepMask, (component.sleepMaskTechniques.join("\0") & "\0").cstring , component.sleepMaskTechniques.len().int32)
 
-        availableSize = igGetContentRegionAvail()
+                # Stack spoofing checkbox (only for EKKO/ZILEAN)
+                igText("Stack spoofing: ")
+                igSameLine(0.0f, textSpacing)
+                igSetNextItemWidth(availableSize.x)
 
-        igDummy(vec2(0.0f, 10.0f))
-        igSeparator()
-        igDummy(vec2(0.0f, 10.0f))
+                igBeginDisabled((component.sleepMaskTechniques[component.sleepMask] != $EKKO and component.sleepMaskTechniques[component.sleepMask] != $ZILEAN))
+                if (component.sleepMaskTechniques[component.sleepMask] != $EKKO and component.sleepMaskTechniques[component.sleepMask] != $ZILEAN):
+                    component.spoofStack = false
+                igCheckbox("##InputSpoofStack", addr component.spoofStack)
+                igEndDisabled()
 
-        igText("Build log: ")
-        let buildLogHeight = igGetTextLineHeightWithSpacing() * 7.0f  + igGetStyle().ItemSpacing.y
-        component.buildLog.draw(vec2(-1.0f, buildLogHeight))
+                igDummy(vec2(0.0f, 10.0f))
+                igSeparator()
+                igDummy(vec2(0.0f, 10.0f))
 
-        igDummy(vec2(0.0f, 10.0f))
-        igSeparator()
-        igDummy(vec2(0.0f, 10.0f))
+                # Kill date (checkbox & button to choose date)
+                igText("Kill date:      ")
+                igSameLine(0.0f, textSpacing)
+                igCheckbox("##InputKillDate", addr component.killDateEnabled)        
+                igSameLine(0.0f, textSpacing)
+                
+                igBeginDisabled(not component.killDateEnabled)
+                availableSize = igGetContentRegionAvail()
+                igSetNextItemWidth(availableSize.x)
+                if igButton((if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss")  & " UTC" else: "Configure##KillDate").cstring, vec2(-1.0f, 0.0f)):
+                    igOpenPopup_str("Configure Kill Date", ImGui_PopupFlags_None.int32) 
+                igEndDisabled()
 
-        # Enable "Build" button if at least one module has been selected
-        igBeginDisabled(component.moduleSelection.items[1].len() == 0)
+                let killDate = component.killDateModal.draw()
+                if killDate != 0: 
+                    component.killDate = killDate
 
-        if igButton("Build", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+                # Working hours
+                igText("Working hours:  ")
+                igSameLine(0.0f, textSpacing)
+                igCheckbox("##InputWorkingHours", addr component.workingHoursEnabled)        
+                igSameLine(0.0f, textSpacing)
+                
+                igBeginDisabled(not component.workingHoursEnabled)
+                availableSize = igGetContentRegionAvail()
+                igSetNextItemWidth(availableSize.x)
 
-            component.buildLog.clear()
+                let workingHoursLabel = fmt"{component.workingHours.startHour:02}:{component.workingHours.startMinute:02} - {component.workingHours.endHour:02}:{component.workingHours.endMinute:02}"
+                if igButton((if component.workingHours.enabled: workingHoursLabel else: "Configure##WorkingHours").cstring, vec2(-1.0f, 0.0f)):
+                    igOpenPopup_str("Configure Working Hours", ImGui_PopupFlags_None.int32) 
+                igEndDisabled()
 
-            # Iterate over modules
-            var modules: uint32 = 0
+                let workingHours = component.workingHoursModal.draw()
+                if workingHours.enabled: 
+                    component.workingHours = workingHours
 
-            for m in component.moduleSelection.items[1]: 
-                modules = modules or uint32(parseModuleType(m.name))
+            # TODO: OPSEC/Evasion Settings
+            # if igBeginTabItem("Evasion", nil, ImGuiTabBarFlags_None.int32):
+            #     defer: igEndTabItem()
 
-            result = AgentBuildInformation(
-                listenerId: listeners[component.listener].listenerId,
-                payloadType: cast[PayloadType](component.payloadType),  # Cast int32 to PayloadType
-                sleepSettings: SleepSettings(
-                    sleepDelay: component.sleepDelay,
-                    jitter: cast[uint32](component.jitter), 
-                    sleepTechnique: cast[SleepObfuscationTechnique](component.sleepMask),
-                    spoofStack: component.spoofStack,
-                    workingHours: if component.workingHoursEnabled: component.workingHours else: WorkingHours(enabled: false, startHour: 0, startMinute: 0, endHour: 0, endMinute: 0)
-                ),
-                verbose: component.verbose,
-                killDate: if component.killDateEnabled: component.killDate else: 0, 
-                modules: modules
-            )
+            #     igText("TODO")
 
-        igEndDisabled()
-        igSameLine(0.0f, textSpacing)
+            # Tab 3: Modules
+            if igBeginTabItem("Modules", nil, ImGuiTabBarFlags_None.int32):
+                defer: igEndTabItem()
 
-        if igButton("Close", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
-            component.resetModalValues()
-            igCloseCurrentPopup()
+                igDummy(vec2(0.0f, 8.0f))
+                component.moduleSelection.draw()
+
+            # TODO: Config Preview
+            # if igBeginTabItem("Preview", nil, ImGuiTabBarFlags_None.int32):
+            #     defer: igEndTabItem()
+
+            #     igText("TODO")
+
+            # Tab 4: Build Log
+            if igBeginTabItem("Build", nil, ImGuiTabBarFlags_None.int32):
+                defer: igEndTabItem()
+
+                igDummy(vec2(0.0f, 8.0f))
+
+                let style = igGetStyle()
+                let reserve = 10.0f + 1.0f + 10.0f + igGetFrameHeight() + style.ItemSpacing.y * 5.0f
+                let logHeight = igGetContentRegionAvail().y - reserve
+                component.buildLog.draw(vec2(-1.0f, logHeight))
+
+                igDummy(vec2(0.0f, 10.0f))
+                igSeparator()
+                igDummy(vec2(0.0f, 10.0f))
+
+                # Enable "Build" button if at least one module has been selected
+                igBeginDisabled(component.moduleSelection.items[1].len() == 0)
+
+                availableSize = igGetContentRegionAvail()
+                if igButton("Build", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+
+                    component.buildLog.clear()
+
+                    # Iterate over modules
+                    var modules: uint32 = 0
+
+                    for m in component.moduleSelection.items[1]: 
+                        modules = modules or uint32(parseModuleType(m.name))
+
+                    result = AgentBuildInformation(
+                        listenerId: listeners[component.listener].listenerId,
+                        payloadType: cast[PayloadType](component.payloadType),  # Cast int32 to PayloadType
+                        sleepSettings: SleepSettings(
+                            sleepDelay: component.sleepDelay,
+                            jitter: cast[uint32](component.jitter), 
+                            sleepTechnique: cast[SleepObfuscationTechnique](component.sleepMask),
+                            spoofStack: component.spoofStack,
+                            workingHours: if component.workingHoursEnabled: component.workingHours else: WorkingHours(enabled: false, startHour: 0, startMinute: 0, endHour: 0, endMinute: 0)
+                        ),
+                        verbose: component.verbose,
+                        killDate: if component.killDateEnabled: component.killDate else: 0, 
+                        modules: modules
+                    )
+
+                igEndDisabled()
+                igSameLine(0.0f, textSpacing)
+
+                if igButton("Close", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+                    component.resetModalValues()
+                    igCloseCurrentPopup()
