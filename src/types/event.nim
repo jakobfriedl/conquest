@@ -1,7 +1,7 @@
 import json
-import ./common
 
 type 
+    # Websocket events
     EventType* = enum
         CLIENT_HEARTBEAT = 0'u8             # Basic checkin 
         CLIENT_KEY_EXCHANGE = 200'u8        # Unencrypted public key sent by both parties for key exchange
@@ -45,38 +45,3 @@ type
         eventType*: EventType               
         timestamp*: int64 
         data*: JsonNode 
-
-# Shared types for client & server
-type 
-    AgentBuildInformation* = ref object 
-        listenerId*: string
-        payloadType*: PayloadType
-        sleepSettings*: SleepSettings
-        verbose*: bool
-        killDate*: int64
-        modules*: uint32
-
-    LootItemType* = enum 
-        DOWNLOAD = 0'u8 
-        SCREENSHOT = 1'u8
-        CREDENTIAL = 2'u8
-
-    CredentialType* {.size: sizeof(uint16).} = enum 
-        CRED_PASSWORD = "Password"
-        CRED_NTLM = "NTLM Hash"
-        CRED_OTHER = "Other"
-
-    LootItem* = ref object
-        lootId*: string
-        agentId*: string
-        host*: string
-        timestamp*: int64
-        note*: string
-        itemType*: LootItemType
-        path*: string
-        remotePath*: string
-        size*: int
-        credType*: CredentialType
-        username*: string
-        value*: string
-    

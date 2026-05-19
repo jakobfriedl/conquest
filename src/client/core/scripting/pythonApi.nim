@@ -2,7 +2,7 @@ import tables, strformat, strutils, unicode
 import ../[task, websocket]
 import ../../views/widgets/textarea
 import ../../../common/[utils, serialize]
-import ../../../types/[common, client, event, protocol]
+import ../../../types/[common, client, protocol]
 
 #[
     Conquest Python API

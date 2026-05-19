@@ -1,7 +1,7 @@
 import imguin/[cimgui, glfw_opengl]
 import nimgl/[opengl, glfw]
 import nimpy, whisky, tables, std/options
-import ./[common, event]
+import ./common
 
 # Modules & commands
 type 
@@ -107,6 +107,7 @@ type
         buildLog*: TextareaWidget
         killDateModal*: KillDateModalComponent
         workingHoursModal*: WorkingHoursModalComponent
+        resetTab*: bool
 
     CredentialModalComponent* = ref object of RootObj
         show*: bool

@@ -1,7 +1,7 @@
 import strformat, strutils, sequtils, times, os, tables, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 import ../../utils/[appImGui, globals, dialogs]
-import ../../../types/[common, client, event]
+import ../../../types/[common, client]
 import ../../core/websocket
 import ../widgets/textarea
 import ../modals/editNote

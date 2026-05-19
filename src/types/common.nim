@@ -59,22 +59,6 @@ type
         MODULE_TOKEN = 128'u32
         MODULE_DLL = 256'u32
 
-    AgentType* = enum
-        AGENT_MONARCH = 0'u8
-
-    PayloadType* = enum
-        PAYLOAD_EXE = 0'u8
-        PAYLOAD_SVC = 1'u8
-        PAYLOAD_DLL = 2'u8
-        # PAYLOAD_BIN = 3'u8
-
-    ArchType* = enum
-        ARCH_X64 = 0'u8
-
-    ListenerType* {.size: sizeof(uint8).} = enum
-        LISTENER_HTTP = "HTTP"
-        LISTENER_SMB = "SMB"
-
     SleepObfuscationTechnique* = enum 
         NONE = 0'u8
         EKKO = 1'u8 
@@ -127,3 +111,59 @@ type
         sleepTechnique*: SleepObfuscationTechnique
         spoofStack*: bool
         workingHours*: WorkingHours
+
+# Shared types for client & server
+when defined(client) or defined(server): 
+    type 
+        # Payload generation
+        AgentType* {.size: sizeof(uint8).} = enum
+            AGENT_MONARCH = "Monarch"
+
+        PayloadType* {.size: sizeof(uint8).} = enum
+            PAYLOAD_EXE = "Windows Executable (.exe)"
+            PAYLOAD_SVC = "Windows Service Executable (.svc.exe)" 
+            PAYLOAD_DLL = "Windows DLL (.dll)"
+            # PAYLOAD_BIN = "Raw shellcode (.bin)"
+
+        Architecture* {.size: sizeof(uint8).} = enum
+            ARCH_X64 = "x64"
+
+        ListenerType* {.size: sizeof(uint8).} = enum
+            LISTENER_HTTP = "HTTP"
+            LISTENER_SMB = "SMB"
+
+        AgentBuildInformation* = ref object 
+            listenerId*: string
+            agentType*: AgentType
+            arch*: Architecture
+            payloadType*: PayloadType
+            sleepSettings*: SleepSettings
+            verbose*: bool
+            killDate*: int64
+            modules*: uint32
+
+        # Loot management
+        LootItemType* = enum 
+            DOWNLOAD = 0'u8 
+            SCREENSHOT = 1'u8
+            CREDENTIAL = 2'u8
+
+        CredentialType* {.size: sizeof(uint16).} = enum 
+            CRED_PASSWORD = "Password"
+            CRED_NTLM = "NTLM Hash"
+            CRED_OTHER = "Other"
+
+        LootItem* = ref object
+            lootId*: string
+            agentId*: string
+            host*: string
+            timestamp*: int64
+            note*: string
+            itemType*: LootItemType
+            path*: string
+            remotePath*: string
+            size*: int
+            credType*: CredentialType
+            username*: string
+            value*: string
+        

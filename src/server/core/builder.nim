@@ -1,10 +1,11 @@
 import terminal, strformat, strutils, tables, system, osproc, streams, os
+import std/enumutils
 
 import ../globals
 import ../core/[logger, websocket]
 import ../db/database 
 import ../../common/[utils, serialize, crypto]
-import ../../types/[common, server, event]
+import ../../types/[common, server]
 
 const PLACEHOLDER = "PLACEHOLDER"
 
@@ -72,8 +73,9 @@ proc serializeConfiguration(cq: Conquest, agentBuildInformation: AgentBuildInfor
 proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentBuildInformation, listener: Listener, clientId: string = ""): string = 
     
     # Build payload name 
-    let listenerType = ($listener.listenerType).toLowerAscii()
-    let arch = "x64"
+    let listenerType = ($listener.listenerType)
+    let agentType = ($agentBuildInformation.agentType).toLowerAscii() 
+    let arch = $agentBuildInformation.arch 
 
     var ext: string = ""
     var additionalFlags: string = ""
@@ -89,15 +91,15 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
 --passL:"-static-libgcc -static-libstdc++ -Wl,-Bstatic -lpthread""""
     # of PAYLOAD_BIN: ext = "bin"
 
-    let configFile = fmt"{CONQUEST_ROOT}/src/agents/monarch/nim.cfg"  
-    let outFile = fmt"{CONQUEST_ROOT}/bin/monarch.{listenerType}_{arch}.{ext}" 
+    let configFile = fmt"{CONQUEST_ROOT}/src/agents/{agentType}/nim.cfg"  
+    let outFile = fmt"{CONQUEST_ROOT}/bin/{agentType}.{listenerType.toLowerAscii()}_{arch}.{ext}" 
 
     # Allow environment variable to specify the location of the nimble dependencies. 
     # This is primarily used when the team server is running under a context that does not have the packages installed in the default location (~/.nimble/pkgs2)
     # Usage: NIMBLE_PATH=/path/to/vendor/pkgs2 bin/server -p profile.toml
     let nimblePath = getEnv("NIMBLE_PATH")
     let depsDir = if nimblePath != "": fmt"--nimblePath:{nimblePath}" else: ""
-    let buildCommand = fmt"nim {depsDir} --os:windows --cpu:amd64 --gcc.exe:x86_64-w64-mingw32-gcc --gcc.linkerexe:x86_64-w64-mingw32-gcc -o:{outFile} c {CONQUEST_ROOT}/src/agents/monarch/main.nim"
+    let buildCommand = fmt"nim {depsDir} --os:windows --cpu:amd64 --gcc.exe:x86_64-w64-mingw32-gcc --gcc.linkerexe:x86_64-w64-mingw32-gcc -o:{outFile} c {CONQUEST_ROOT}/src/agents/{agentType}/main.nim"
     
     # Create agent configuration file (nim.cfg)  
     let placeholder = PLACEHOLDER & "A".repeat(placeholderLength - len(PLACEHOLDER))
@@ -112,8 +114,8 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
 -d:CONFIGURATION="{placeholder}"
 -d:MODULES={$agentBuildInformation.modules}
 -d:VERBOSE={$agentBuildInformation.verbose}
--d:TRANSPORT_{$(listener.listenerType)}
--d:{$(agentBuildInformation.payloadType)}"""
+-d:TRANSPORT_{listenerType}
+-d:{symbolName(agentBuildInformation.payloadType)}"""
 
     writeFile(configFile, config)
 

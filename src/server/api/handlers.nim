@@ -4,7 +4,7 @@ import ../globals
 import ../db/database
 import ../core/[packer, logger, websocket]
 import ../../common/[utils, serialize]
-import ../../types/[common, server, protocol, event]
+import ../../types/[common, server, protocol]
 
 #[
   Agent API

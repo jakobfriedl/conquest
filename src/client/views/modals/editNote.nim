@@ -1,7 +1,7 @@
 import imguin/[cimgui, glfw_opengl]
 import ../../utils/[appImGui, globals]
 import ../../core/websocket
-import ../../../types/[client, event]
+import ../../../types/[common, client]
 
 proc NoteModal*(): NoteModalComponent =
     result = new NoteModalComponent

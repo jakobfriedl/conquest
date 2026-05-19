@@ -3,23 +3,8 @@ import imguin/[cimgui, glfw_opengl]
 import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
 import ../../utils/[appImGui, globals]
-import ../../../types/[common, client, event]
+import ../../../types/[common, client]
 export addItem
-
-proc `$`(agentType: AgentType): string =
-    case agentType:
-    of AGENT_MONARCH: "Monarch"
-
-proc `$`(payloadType: PayloadType): string =
-    case payloadType:
-    of PAYLOAD_EXE: "Windows Executable (.exe)"
-    of PAYLOAD_SVC: "Windows Service Executable (.svc.exe)"
-    of PAYLOAD_DLL: "Windows DLL (.dll)"
-    # of PAYLOAD_BIN: "Raw Shellcode (.bin)"
-
-proc `$`(arch: ArchType): string =
-    case arch:
-    of ARCH_X64: "x64"
 
 proc PayloadModal*(): PayloadModalComponent =
     result = new PayloadModalComponent
@@ -38,7 +23,7 @@ proc PayloadModal*(): PayloadModalComponent =
         result.agentTypes.add($agentType)
     for payloadType in PayloadType.low .. PayloadType.high:
         result.payloadTypes.add($payloadType)
-    for arch in ArchType.low .. ArchType.high:
+    for arch in Architecture.low .. Architecture.high:
         result.architectures.add($arch)
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
@@ -79,6 +64,7 @@ proc resetModalValues*(component: PayloadModalComponent) =
     component.verbose = false
     component.moduleSelection.reset()
     component.buildLog.clear()
+    component.resetTab = true
 
 proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentBuildInformation =
 
@@ -105,27 +91,12 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
             defer: igEndTabBar()
 
             # Tab 1: General settings
-            if igBeginTabItem("General", nil, ImGuiTabBarFlags_None.int32):
+            if igBeginTabItem("General", nil, if component.resetTab: ImGuiTabItemFlags_SetSelected.int32 else: ImGuiTabBarFlags_None.int32):
                 defer: igEndTabItem()
+                
+                if component.resetTab: component.resetTab = false
 
                 igDummy(vec2(0.0f, 8.0f))
-
-                # Listener selection
-                igText("Listener:     ")
-                igSameLine(0.0f, textSpacing)
-                availableSize = igGetContentRegionAvail()
-                igSetNextItemWidth(availableSize.x)
-                igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.listenerId & " (" & $it.listenerType & ")").join("\0") & "\0").cstring , listeners.len().int32)
-
-                # Verbose mode checkbox
-                igText("Verbose:      ")
-                igSameLine(0.0f, textSpacing)
-                igSetNextItemWidth(availableSize.x)
-                igCheckbox("##InputVerbose", addr component.verbose)
-
-                igDummy(vec2(0.0f, 10.0f))
-                igSeparator()
-                igDummy(vec2(0.0f, 10.0f))
 
                 # Agent type selection
                 igText("Agent:        ")
@@ -133,7 +104,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x)
                 igCombo_Str("##InputAgentType", addr component.agentType, (component.agentTypes.join("\0") & "\0").cstring, component.agentTypes.len().int32)
- 
+
                 # Architecture selection
                 igText("Arch:         ")
                 igSameLine(0.0f, textSpacing)
@@ -148,6 +119,22 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igSetNextItemWidth(availableSize.x)
                 igCombo_Str("##InputPayloadType", addr component.payloadType, (component.payloadTypes.join("\0") & "\0").cstring, component.payloadTypes.len().int32)
 
+                igDummy(vec2(0.0f, 10.0f))
+                igSeparator()
+                igDummy(vec2(0.0f, 10.0f))
+
+                # Listener selection
+                igText("Listener:     ")
+                igSameLine(0.0f, textSpacing)
+                availableSize = igGetContentRegionAvail()
+                igSetNextItemWidth(availableSize.x)
+                igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.listenerId & " (" & $it.listenerType & ")").join("\0") & "\0").cstring , listeners.len().int32)
+
+                # Verbose mode checkbox
+                igText("Verbose:      ")
+                igSameLine(0.0f, textSpacing)
+                igSetNextItemWidth(availableSize.x)
+                igCheckbox("##InputVerbose", addr component.verbose)
 
                 igDummy(vec2(0.0f, 10.0f))
                 igSeparator()
@@ -286,6 +273,8 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
 
                     result = AgentBuildInformation(
                         listenerId: listeners[component.listener].listenerId,
+                        agentType: cast[AgentType](component.agentType),
+                        arch: cast[Architecture](component.arch),
                         payloadType: cast[PayloadType](component.payloadType),  # Cast int32 to PayloadType
                         sleepSettings: SleepSettings(
                             sleepDelay: component.sleepDelay,

@@ -25,7 +25,12 @@ proc setTooltip*(str: string, delay = Imgui_HoveredFlags_DelayNormal.cint, color
 
 proc igTextWithTooltip*(text: string) = 
     igText(text.cstring)
-    if text.len > 0: setTooltip(text)    
+    if text.len > 0: setTooltip(text)
+
+proc igHelpMarker(text: string) =
+    igSameLine(0.0f, igGetStyle().ItemSpacing.x)
+    igTextDisabled("(?)")
+    setTooltip(text)    
 
 type
     Theme* = enum

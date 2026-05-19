@@ -1,6 +1,6 @@
 import system, terminal, tiny_sqlite
 import ../core/logger
-import ../../types/[common, server, event]
+import ../../types/[common, server]
 
 #[
     Loot database functions

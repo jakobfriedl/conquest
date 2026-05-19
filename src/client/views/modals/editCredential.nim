@@ -3,7 +3,7 @@ import imguin/[cimgui, glfw_opengl]
 import ../../utils/[appImGui, globals]
 import ../../core/websocket
 import ../../../common/utils
-import ../../../types/[client, event]
+import ../../../types/[common, client]
 
 proc CredentialModal*(): CredentialModalComponent =
     result = new CredentialModalComponent
