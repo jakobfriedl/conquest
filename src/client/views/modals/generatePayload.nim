@@ -2,7 +2,7 @@ import strutils, strformat, sequtils, tables, times, algorithm
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
-import ../../utils/[appImGui, globals]
+import ../../utils/[appImGui, globals, utils]
 import ../../../types/[common, client]
 export addItem
 
@@ -68,7 +68,8 @@ proc resetModalValues*(component: PayloadModalComponent) =
 
 proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentBuildInformation =
 
-    let textSpacing = igGetStyle().ItemSpacing.x    
+    let textSpacing = igGetStyle().ItemSpacing.x
+    let markerWidth = igCalcTextSize("(?)", nil, false, -1.0f).x + textSpacing
     
     # Center modal
     let vp = igGetMainViewport()
@@ -133,8 +134,8 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 # Verbose mode checkbox
                 igText("Verbose:      ")
                 igSameLine(0.0f, textSpacing)
-                igSetNextItemWidth(availableSize.x)
                 igCheckbox("##InputVerbose", addr component.verbose)
+                igHelpMarker("Verbose mode will cause the agent to print check-ins, tasks and task output on the target system.")
 
                 igDummy(vec2(0.0f, 10.0f))
                 igSeparator()
@@ -157,20 +158,27 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igText("Sleep delay:    ")
                 igSameLine(0.0f, textSpacing)
                 availableSize = igGetContentRegionAvail()
-                igSetNextItemWidth(availableSize.x)
+                igSetNextItemWidth(availableSize.x - markerWidth)
                 igInputScalar("##InputSleepDelay", ImGuiDataType_U32.int32, addr component.sleepDelay, addr step, nil, "%hu", ImGui_InputTextFlags_CharsDecimal.int32)
+                igHelpMarker("Sleep delay between heartbeat requests in seconds.")
 
                 # Jitter
                 igText("Jitter:         ")
                 igSameLine(0.0f, textSpacing)
-                igSetNextItemWidth(availableSize.x)
+                igSetNextItemWidth(availableSize.x - markerWidth)
                 igSliderInt("##InputJitter", addr component.jitter, 0, 100, "%d%%", ImGui_SliderFlags_None.int32)
+                igHelpMarker("Jitter in % to add variation to sleep intervals. Example: A jitter of 20% on a delay of 10 seconds causes the sleep intervals to be anything between 8 and 12 seconds.")
 
                 # Agent sleep obfuscation technique dropdown selection
-                igText("Sleep mask:     ")
+                igText("Sleepmask:      ")
                 igSameLine(0.0f, textSpacing)
-                igSetNextItemWidth(availableSize.x)
+                igSetNextItemWidth(availableSize.x - markerWidth)
                 igCombo_Str("##InputSleepMask", addr component.sleepMask, (component.sleepMaskTechniques.join("\0") & "\0").cstring , component.sleepMaskTechniques.len().int32)
+                igHelpMarker("""Conquest supports the following sleep obfuscation techniques:
+- NONE    : Regular delayed execution using WaitForSingleObject
+- EKKO    : Obfuscate agent memory during sleep using Timers API (RtlCreateTimer)
+- ZILEAN  : Obfuscate agent memory during sleep using Timers API (RtlRegisterWait)
+- FOLIAGE : Obfuscate agent memory during sleep using Asynchronous Procedure Calls (APC)""")
 
                 # Stack spoofing checkbox (only for EKKO/ZILEAN)
                 igText("Stack spoofing: ")
@@ -182,7 +190,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                     component.spoofStack = false
                 igCheckbox("##InputSpoofStack", addr component.spoofStack)
                 igEndDisabled()
-
+                igHelpMarker("Spoof the call stack while sleeping by duplicating another thread's stack.\n\nOnly available when EKKO or ZILEAN are used for sleep obfuscation.")
                 igDummy(vec2(0.0f, 10.0f))
                 igSeparator()
                 igDummy(vec2(0.0f, 10.0f))
@@ -195,29 +203,28 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 
                 igBeginDisabled(not component.killDateEnabled)
                 availableSize = igGetContentRegionAvail()
-                igSetNextItemWidth(availableSize.x)
-                if igButton((if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss")  & " UTC" else: "Configure##KillDate").cstring, vec2(-1.0f, 0.0f)):
-                    igOpenPopup_str("Configure Kill Date", ImGui_PopupFlags_None.int32) 
+                if igButton((if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss") & " UTC" else: "Configure##KillDate").cstring, vec2(availableSize.x - markerWidth, 0.0f)):
+                    igOpenPopup_str("Configure Kill Date", ImGui_PopupFlags_None.int32)
                 igEndDisabled()
+                igHelpMarker("The agent terminates after the configured date & time (UTC) has been reached.")
 
                 let killDate = component.killDateModal.draw()
-                if killDate != 0: 
+                if killDate != 0:
                     component.killDate = killDate
 
                 # Working hours
                 igText("Working hours:  ")
                 igSameLine(0.0f, textSpacing)
-                igCheckbox("##InputWorkingHours", addr component.workingHoursEnabled)        
+                igCheckbox("##InputWorkingHours", addr component.workingHoursEnabled)
                 igSameLine(0.0f, textSpacing)
-                
+
                 igBeginDisabled(not component.workingHoursEnabled)
                 availableSize = igGetContentRegionAvail()
-                igSetNextItemWidth(availableSize.x)
-
                 let workingHoursLabel = fmt"{component.workingHours.startHour:02}:{component.workingHours.startMinute:02} - {component.workingHours.endHour:02}:{component.workingHours.endMinute:02}"
-                if igButton((if component.workingHours.enabled: workingHoursLabel else: "Configure##WorkingHours").cstring, vec2(-1.0f, 0.0f)):
-                    igOpenPopup_str("Configure Working Hours", ImGui_PopupFlags_None.int32) 
+                if igButton((if component.workingHours.enabled: workingHoursLabel else: "Configure##WorkingHours").cstring, vec2(availableSize.x - markerWidth, 0.0f)):
+                    igOpenPopup_str("Configure Working Hours", ImGui_PopupFlags_None.int32)
                 igEndDisabled()
+                igHelpMarker("The agent only calls back in the regular sleep interval during the configured working hours.")
 
                 let workingHours = component.workingHoursModal.draw()
                 if workingHours.enabled: 

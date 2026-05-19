@@ -27,7 +27,7 @@ proc igTextWithTooltip*(text: string) =
     igText(text.cstring)
     if text.len > 0: setTooltip(text)
 
-proc igHelpMarker(text: string) =
+proc igHelpMarker*(text: string) =
     igSameLine(0.0f, igGetStyle().ItemSpacing.x)
     igTextDisabled("(?)")
     setTooltip(text)    
