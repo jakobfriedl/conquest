@@ -93,7 +93,13 @@ type
         sleepDelay*: uint32
         jitter*: int32 
         sleepMask*: int32 
-        spoofStack*: bool 
+        spoofStack*: bool
+        domainGuardrailEnabled*: bool 
+        domainGuardrail*: array[MAX_INPUT_LENGTH, char]
+        ipGuardrailEnabled*: bool 
+        ipGuardrail*: array[MAX_INPUT_LENGTH, char]
+        hostGuardrailEnabled*: bool 
+        hostGuardrail*: array[MAX_INPUT_LENGTH, char]
         killDateEnabled*: bool 
         killDate*: int64
         workingHoursEnabled*: bool

@@ -8,8 +8,14 @@ export addItem
 
 proc PayloadModal*(): PayloadModalComponent =
     result = new PayloadModalComponent
+    
+    # Default values 
     result.sleepDelay = 5
     result.jitter = 15
+
+    zeroMem(addr result.domainGuardrail[0], MAX_INPUT_LENGTH)
+    zeroMem(addr result.ipGuardrail[0], MAX_INPUT_LENGTH)
+    zeroMem(addr result.hostGuardrail[0], MAX_INPUT_LENGTH)
     result.workingHours = WorkingHours(
         enabled: false, 
         startHour: 0,
@@ -43,14 +49,27 @@ proc PayloadModal*(): PayloadModalComponent =
     result.workingHoursModal = WorkingHoursModal()
 
 proc resetModalValues*(component: PayloadModalComponent) = 
+    # General
     component.listener = 0
     component.agentType = 0
     component.arch = 0
     component.payloadType = 0 
+    component.verbose = false
+    
+    # Sleep settings
     component.sleepDelay = 5
     component.jitter = 15
     component.sleepMask = 0
     component.spoofStack = false 
+
+    # Guardrails
+    component.domainGuardrailEnabled = false
+    zeroMem(addr component.domainGuardrail[0], MAX_INPUT_LENGTH)
+    component.ipGuardrailEnabled = false
+    zeroMem(addr component.ipGuardrail[0], MAX_INPUT_LENGTH)
+    component.hostGuardrailEnabled = false
+    zeroMem(addr component.hostGuardrail[0], MAX_INPUT_LENGTH)
+
     component.killDateEnabled = false
     component.killDate = 0
     component.workingHoursEnabled = false
@@ -61,7 +80,7 @@ proc resetModalValues*(component: PayloadModalComponent) =
         endHour: 0,
         endMinute: 0
     )
-    component.verbose = false
+
     component.moduleSelection.reset()
     component.buildLog.clear()
     component.resetTab = true
@@ -141,11 +160,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igSeparator()
                 igDummy(vec2(0.0f, 10.0f))
 
-                # TODO: Execution Guardrails
-                # - Domain-joined (optionally specify domain name)
-                # - IP-based (IP range, CIDR, comma-separated)
-                # - Hostname-based (List of hostnames) 
-                # igText("Guardrails:     ")
+                # TODO: Agent Description text label
 
             # Tab 2: Sleep Settings
             if igBeginTabItem("Sleep", nil, ImGuiTabBarFlags_None.int32):
@@ -175,10 +190,10 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igSetNextItemWidth(availableSize.x - markerWidth)
                 igCombo_Str("##InputSleepMask", addr component.sleepMask, (component.sleepMaskTechniques.join("\0") & "\0").cstring , component.sleepMaskTechniques.len().int32)
                 igHelpMarker("""Conquest supports the following sleep obfuscation techniques:
-- NONE    : Regular delayed execution using WaitForSingleObject
-- EKKO    : Obfuscate agent memory during sleep using Timers API (RtlCreateTimer)
-- ZILEAN  : Obfuscate agent memory during sleep using Timers API (RtlRegisterWait)
-- FOLIAGE : Obfuscate agent memory during sleep using Asynchronous Procedure Calls (APC)""")
+- NONE: Regular delayed execution using WaitForSingleObject.
+- EKKO: Encrypt agent memory during sleep via RtlCreateTimer.
+- ZILEAN: Encrypt agent memory during sleep via RtlRegisterWait.
+- FOLIAGE: Encrypt agent memory during sleep via Asynchronous Procedure Calls.""")
 
                 # Stack spoofing checkbox (only for EKKO/ZILEAN)
                 igText("Stack spoofing: ")
@@ -191,12 +206,73 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igCheckbox("##InputSpoofStack", addr component.spoofStack)
                 igEndDisabled()
                 igHelpMarker("Spoof the call stack while sleeping by duplicating another thread's stack.\n\nOnly available when EKKO or ZILEAN are used for sleep obfuscation.")
+                
+                igDummy(vec2(0.0f, 10.0f))
+                igSeparator()
+                igDummy(vec2(0.0f, 10.0f))
+
+                let 
+                    delayMin = component.sleepDelay.float * (1.0 - component.jitter.float / 100.0)
+                    delayMax = component.sleepDelay.float * (1.0 + component.jitter.float / 100.0)
+                igText(fmt"Sleep delay can range from {delayMin:.1f}s to {delayMax:.1f}s.".cstring)
+            
+            # Guardrails
+            if igBeginTabItem("Guardrails", nil, ImGuiTabBarFlags_None.int32):
+                defer: igEndTabItem()
+
+                igDummy(vec2(0.0f, 8.0f))
+                
+                # Execution guardrails
+                igText("Guardrails:    ")
+
+                # Domain Guardrail
+                # Execute only on domain-joined machines. Optionally, pass a specific AD domain to check for
+                igText("  Domain:      ")
+                igSameLine(0.0f, textSpacing)
+                igCheckbox("##InputDomainGuardrail", addr component.domainGuardrailEnabled)        
+                igSameLine(0.0f, textSpacing)
+                
+                igBeginDisabled(not component.domainGuardrailEnabled)
+                availableSize = igGetContentRegionAvail()
+                igSetNextItemWidth(availableSize.x - markerWidth)
+                igInputText("##InputDomain", cast[cstring](addr component.domainGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
+                igEndDisabled()
+                igHelpMarker("Terminate agent when the target is not joined to a specific Active Directory domain. Leave input empty to execute on any domain-joined host.")
+
+                # IP Guardrail
+                # Execute only on specific IP addresses (comma-separated, ranges, CIDR, ...)
+                igText("  IP Address:  ")
+                igSameLine(0.0f, textSpacing)
+                igCheckbox("##InputIPGuardrail", addr component.ipGuardrailEnabled)        
+                igSameLine(0.0f, textSpacing)
+                
+                igBeginDisabled(not component.ipGuardrailEnabled)
+                availableSize = igGetContentRegionAvail()
+                igSetNextItemWidth(availableSize.x - markerWidth)
+                igInputText("##InputIP", cast[cstring](addr component.ipGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
+                igEndDisabled()
+                igHelpMarker("Terminate agent when the target is not within a specific IP range.")
+
+                # Hostname Guardrail
+                # Execute only on systems with a specific hostname. Supports wildcards (*)
+                igText("  Hostname:    ")
+                igSameLine(0.0f, textSpacing)
+                igCheckbox("##InputHostGuardrail", addr component.hostGuardrailEnabled)        
+                igSameLine(0.0f, textSpacing)
+                
+                igBeginDisabled(not component.hostGuardrailEnabled)
+                availableSize = igGetContentRegionAvail()
+                igSetNextItemWidth(availableSize.x - markerWidth)
+                igInputText("##InputHostname", cast[cstring](addr component.hostGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
+                igEndDisabled()
+                igHelpMarker("Terminate agent when the target does not have a specific hostname.")
+
                 igDummy(vec2(0.0f, 10.0f))
                 igSeparator()
                 igDummy(vec2(0.0f, 10.0f))
 
                 # Kill date (checkbox & button to choose date)
-                igText("Kill date:      ")
+                igText("Kill date:     ")
                 igSameLine(0.0f, textSpacing)
                 igCheckbox("##InputKillDate", addr component.killDateEnabled)        
                 igSameLine(0.0f, textSpacing)
@@ -213,7 +289,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                     component.killDate = killDate
 
                 # Working hours
-                igText("Working hours:  ")
+                igText("Working hours: ")
                 igSameLine(0.0f, textSpacing)
                 igCheckbox("##InputWorkingHours", addr component.workingHoursEnabled)
                 igSameLine(0.0f, textSpacing)
@@ -274,15 +350,21 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
 
                     # Iterate over modules
                     var modules: uint32 = 0
-
                     for m in component.moduleSelection.items[1]: 
                         modules = modules or uint32(parseModuleType(m.name))
+
+                    # Get selected guardrails
+                    var guardrails: uint32 = 0
+                    if component.domainGuardrailEnabled: guardrails = guardrails or uint32(GUARDRAIL_DOMAIN)
+                    if component.ipGuardrailEnabled: guardrails = guardrails or uint32(GUARDRAIL_IP)
+                    if component.hostGuardrailEnabled: guardrails = guardrails or uint32(GUARDRAIL_HOSTNAME)
 
                     result = AgentBuildInformation(
                         listenerId: listeners[component.listener].listenerId,
                         agentType: cast[AgentType](component.agentType),
                         arch: cast[Architecture](component.arch),
-                        payloadType: cast[PayloadType](component.payloadType),  # Cast int32 to PayloadType
+                        payloadType: cast[PayloadType](component.payloadType),  
+                        verbose: component.verbose,
                         sleepSettings: SleepSettings(
                             sleepDelay: component.sleepDelay,
                             jitter: cast[uint32](component.jitter), 
@@ -290,7 +372,12 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                             spoofStack: component.spoofStack,
                             workingHours: if component.workingHoursEnabled: component.workingHours else: WorkingHours(enabled: false, startHour: 0, startMinute: 0, endHour: 0, endMinute: 0)
                         ),
-                        verbose: component.verbose,
+                        guardrails : Guardrails(
+                            guardrails: guardrails,
+                            domain: if component.domainGuardrailEnabled: $(cast[cstring](addr component.domainGuardrail[0])) else: "",
+                            ip: if component.ipGuardrailEnabled: $(cast[cstring](addr component.ipGuardrail[0])) else: "",
+                            hostname: if component.hostGuardrailEnabled: $(cast[cstring](addr component.hostGuardrail[0])) else: ""
+                        ),
                         killDate: if component.killDateEnabled: component.killDate else: 0, 
                         modules: modules
                     )

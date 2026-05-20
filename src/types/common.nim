@@ -97,7 +97,18 @@ type
         MSG_REGISTER = 2'u8
         MSG_HEARTBEAT = 100'u8
 
+    GuardrailType* = enum 
+        GUARDRAIL_DOMAIN = 1'u8
+        GUARDRAIL_IP = 2'u8
+        GUARDRAIL_HOSTNAME = 4'u8
+
 type 
+    Guardrails* = ref object 
+        guardrails*: uint32  
+        domain*: string 
+        ip*: string 
+        hostname*: string
+
     WorkingHours* = ref object 
         enabled*: bool
         startHour*: int32 
@@ -137,8 +148,9 @@ when defined(client) or defined(server):
             agentType*: AgentType
             arch*: Architecture
             payloadType*: PayloadType
-            sleepSettings*: SleepSettings
             verbose*: bool
+            sleepSettings*: SleepSettings
+            guardrails*: Guardrails
             killDate*: int64
             modules*: uint32
 
