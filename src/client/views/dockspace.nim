@@ -16,7 +16,7 @@ proc Dockspace*(): DockspaceComponent =
     result.windowFlags =  ImGuiWindowFlags_MenuBar.int32 or ImGuiWindowFlags_NoDocking.int32
     result.initialized = false
 
-proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: OrderedTable[string, ptr bool], dockTop, dockBottom, dockTopLeft, dockTopRight: ptr ImGuiID) = 
+proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: OrderedTable[string, tuple[shortcut: string, show: ptr bool]], dockTop, dockBottom, dockTopLeft, dockTopRight: ptr ImGuiID) = 
 
     var vp = igGetMainViewport()
     igSetNextWindowPos(vp.WorkPos, ImGui_Cond_None.int32, vec2(0.0f, 0.0f))
@@ -62,7 +62,7 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Ordere
             igDockBuilderDockWindow(WIDGET_CREDENTIALS, dockBottom[])
             igDockBuilderDockWindow(WIDGET_PROCESS_BROWSER, dockBottom[])
             igDockBuilderDockWindow(WIDGET_FILE_BROWSER, dockBottom[])
-            igDockBuilderDockWindow(WIDGET_MODULE_MANAGER, dockBottom[])
+            igDockBuilderDockWindow(WIDGET_SCRIPT_MANAGER, dockBottom[])
             igDockBuilderDockWindow("Dear ImGui Demo", dockTopRight[])
             
             igDockBuilderFinish(dockspaceId)
@@ -86,17 +86,17 @@ proc draw*(component: DockspaceComponent, showComponent: ptr bool, views: Ordere
         
         if igBeginMenu("Views", true): 
             # Create a menu item to toggle each of the main views of the application
-            for view, showView in views: 
+            for view, viewEntry in views: 
                 if not view.startsWith("Loot:"):
-                    if igMenuItem(view.cstring, nil, showView[], showView != nil):
-                        showView[] = not showView[]        
+                    if igMenuItem(view.cstring, if viewEntry.shortcut.len() > 0: viewEntry.shortcut.cstring else: nil, viewEntry.show[], viewEntry.show != nil):
+                        viewEntry.show[] = not viewEntry.show[]        
                 
             if igBeginMenu("Loot", true):
-                for view, showView in views: 
+                for view, viewEntry in views: 
                     if view.startsWith("Loot:"):
                         let itemName = view.split(":")[1]
-                        if igMenuItem(itemName.cstring, nil, showView[], showView != nil):
-                            showView[] = not showView[]        
+                        if igMenuItem(itemName.cstring, if viewEntry.shortcut.len() > 0: viewEntry.shortcut.cstring else: nil, viewEntry.show[], viewEntry.show != nil):
+                            viewEntry.show[] = not viewEntry.show[]        
                 igEndMenu()
 
             igEndMenu()

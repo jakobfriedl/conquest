@@ -12,7 +12,7 @@ const WIDGET_DOWNLOADS* = " " & ICON_FA_DOWNLOAD & " " & "Downloads"
 const WIDGET_SCREENSHOTS* = " " & ICON_FA_IMAGE & " " & "Screenshots"
 const WIDGET_CREDENTIALS* = " " & ICON_FA_KEY & " " & "Credentials"
 const WIDGET_PROCESS_BROWSER* = " " & ICON_FA_MICROCHIP & " " & "Process Browser"
-const WIDGET_MODULE_MANAGER* = " " & ICON_FA_TOOLBOX & " " & "Script Manager"
+const WIDGET_SCRIPT_MANAGER* = " " & ICON_FA_TOOLBOX & " " & "Script Manager"
 const WIDGET_FILE_BROWSER* = " " & ICON_FA_FOLDER_TREE & " " & "Filesystem Browser"
 const WIDGET_CHAT* = " " & ICON_FA_COMMENTS & " " & "Chat"
 

@@ -18,7 +18,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
  
     var 
         profile: Profile
-        views: OrderedTable[string, ptr bool]
+        views: OrderedTable[string, tuple[shortcut: string, show: ptr bool]]
         showConquest = true
         showSessionsTable = true
         showListeners = true
@@ -28,7 +28,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         showCredentials = false
         showProcesses = false
         showFiles = false
-        showModules = false
+        showScriptManager = false
         showChat = false
 
     var 
@@ -37,23 +37,23 @@ proc main(ip: string = "localhost", port: int = 37573) =
         dockTopLeft: ImGuiID = 0
         dockTopRight: ImGuiID = 0
 
-    views["Sessions"] = addr showSessionsTable 
-    views["Listeners"] = addr showListeners
-    views["Eventlog"] = addr showEventlog
-    views["Chat"] = addr showChat
-    views["Loot:Downloads"] = addr showDownloads
-    views["Loot:Screenshots"] = addr showScreenshots
-    views["Loot:Credentials"] = addr showCredentials
-    views["Process Browser"] = addr showProcesses
-    views["Filesystem Browser"] = addr showFiles
-    views["Script Manager"] = addr showModules
+    views["Sessions"] = (shortcut: "Alt+A", show: addr showSessionsTable)
+    views["Listeners"] = (shortcut: "Alt+L", show: addr showListeners)
+    views["Eventlog"] = (shortcut: "Alt+E", show: addr showEventlog)
+    views["Chat"] = (shortcut: "Alt+T", show: addr showChat)
+    views["Loot:Downloads"] = (shortcut: "Alt+D", show: addr showDownloads)
+    views["Loot:Screenshots"] = (shortcut: "Alt+S", show: addr showScreenshots)
+    views["Loot:Credentials"] = (shortcut: "Alt+C", show: addr showCredentials)
+    views["Process Browser"] = (shortcut: "Alt+P", show: addr showProcesses)
+    views["Filesystem Browser"] = (shortcut: "Alt+F", show: addr showFiles)
+    views["Script Manager"] = (shortcut: "Alt+M", show: addr showScriptManager)
 
     # Initialize database 
     dbInit()
 
     # Create components
     var dockspace = Dockspace()
-    cq.scriptManager = ScriptManager(WIDGET_MODULE_MANAGER, addr showModules)
+    cq.scriptManager = ScriptManager(WIDGET_SCRIPT_MANAGER, addr showScriptManager)
 
     # Modules need to be loaded before other components are created
     loadScript(CONQUEST_ROOT & "/data/modules/default.py")
@@ -88,6 +88,32 @@ proc main(ip: string = "localhost", port: int = 37573) =
             continue 
         newFrame()
 
+        # Handle keyboard shortcuts to open/focus UI components
+        template openAndFocus(show: var bool, widget: string) =
+            show = true
+            igSetWindowFocus_Str(widget.cstring)
+
+        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_A, false):
+            openAndFocus(showSessionsTable, WIDGET_SESSIONS)
+        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_L, false):
+            openAndFocus(showListeners, WIDGET_LISTENERS)
+        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_E, false):
+            openAndFocus(showEventlog, WIDGET_EVENTLOG)
+        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_T, false):
+            openAndFocus(showChat, WIDGET_CHAT)
+        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_P, false):
+            openAndFocus(showProcesses, WIDGET_PROCESS_BROWSER)
+        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_F, false):
+            openAndFocus(showFiles, WIDGET_FILE_BROWSER)
+        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_S, false):
+            openAndFocus(showScreenshots, WIDGET_SCREENSHOTS)
+        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_D, false):
+            openAndFocus(showDownloads, WIDGET_DOWNLOADS)
+        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_C, false):
+            openAndFocus(showCredentials, WIDGET_CREDENTIALS)
+        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_M, false):
+            openAndFocus(showScriptManager, WIDGET_SCRIPT_MANAGER)
+
         # Initialize dockspace and docking layout 
         dockspace.draw(addr showConquest, views, addr dockTop, addr dockBottom, addr dockTopLeft, addr dockTopRight)
 
@@ -106,7 +132,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
             if showCredentials: cq.credentials.draw() 
             if showProcesses: cq.processBrowser.draw()
             if showFiles: cq.filebrowser.draw()
-            if showModules: cq.scriptManager.draw()
+            if showScriptManager: cq.scriptManager.draw()
             if showChat: cq.chat.draw()   
 
             for agentId, agent in cq.sessions.agents.mpairs():
