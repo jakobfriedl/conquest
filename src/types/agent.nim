@@ -34,6 +34,7 @@ type
         agentId*: string
         transport*: TransportSettings
         sleepSettings*: SleepSettings
+        guardrails*: Guardrails
         killDate*: int64
         sessionKey*: Key
         agentPublicKey*: Key

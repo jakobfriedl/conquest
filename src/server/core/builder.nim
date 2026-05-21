@@ -38,6 +38,12 @@ proc serializeConfiguration(cq: Conquest, agentBuildInformation: AgentBuildInfor
     packer.add(uint32(agentBuildInformation.sleepSettings.workingHours.endHour))
     packer.add(uint32(agentBuildInformation.sleepSettings.workingHours.endMinute))
 
+    # Execution guardrails
+    packer.add(agentBuildInformation.guardrails.guardrails)
+    packer.addDataWithLengthPrefix(string.toBytes(agentBuildInformation.guardrails.domain))
+    packer.addDataWithLengthPrefix(string.toBytes(agentBuildInformation.guardrails.ip))
+    packer.addDataWithLengthPrefix(string.toBytes(agentBuildInformation.guardrails.hostname))
+
     # Kill date
     packer.add(uint64(agentBuildInformation.killDate))
 

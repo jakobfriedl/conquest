@@ -1,7 +1,7 @@
 import winim/lean
 import os, strutils, strformat
 
-import ../../../common/[serialize, crypto, utils]
+import ../../../common/[crypto, utils]
 import ../../../types/[common, agent, protocol]
 
 const MODULES* {.intdefine.} = 0
