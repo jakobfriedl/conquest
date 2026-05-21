@@ -85,25 +85,33 @@ proc resetModalValues*(component: PayloadModalComponent) =
     component.buildLog.clear()
     component.resetTab = true
 
+proc igBeginTabItemWithValidation(label: string, hasError: bool): bool =
+    if hasError:
+        igPushStyleColor(ImGuiCol_Tab.int32, CONSOLE_ERROR_DIM)
+        igPushStyleColor(ImGuiCol_TabHovered.int32, CONSOLE_ERROR_HOVERED)
+        igPushStyleColor(ImGuiCol_TabSelected.int32, CONSOLE_ERROR)
+    result = igBeginTabItem(label.cstring, nil, ImGuiTabBarFlags_None.int32)
+    if hasError: igPopStyleColor(3)
+
 #[
     Input Validators
 ]#
 proc validateDomainGuardrail(input: string): string =
-    if input.strip().len == 0: return ""
+    if input.strip().len() == 0: return ""
     let pattern = re2"[a-zA-Z0-9][a-zA-Z0-9\-\*\?\.]*"
     for raw in input.split(','):
         let entry = raw.strip()
-        if entry.len == 0: return "Empty entry in list."
+        if entry.len() == 0: return "Empty entry in list."
         let value = if entry.startsWith("!"): entry[1..^1] else: entry
         if not value.match(pattern): return "Invalid entry: '" & entry & "'"
     return ""
 
 proc validateIPGuardrail(input: string): string =
-    if input.strip().len == 0: return "At least one IP entry required."
+    if input.strip().len() == 0: return "At least one IP entry required."
     let pattern = re2"(\d{1,3}|\*)\.(\d{1,3}|\*)\.(\d{1,3}|\*)\.(\d{1,3}|\*)"
     for raw in input.split(','):
         let entry = raw.strip()
-        if entry.len == 0: return "Empty entry in list."
+        if entry.len() == 0: return "Empty entry in list."
         let value = if entry.startsWith("!"): entry[1..^1] else: entry
         if not value.match(pattern): return "Invalid IP: '" & entry & "'"
         for part in value.split('.'):
@@ -114,13 +122,20 @@ proc validateIPGuardrail(input: string): string =
     return ""
 
 proc validateHostnameGuardrail(input: string): string =
-    if input.strip().len == 0: return "At least one hostname entry required."
+    if input.strip().len() == 0: return "At least one hostname entry required."
     let pattern = re2"[a-zA-Z0-9\*\?][a-zA-Z0-9\-\*\?]*"
     for raw in input.split(','):
         let entry = raw.strip()
-        if entry.len == 0: return "Empty entry in list."
+        if entry.len() == 0: return "Empty entry in list."
         let value = if entry.startsWith("!"): entry[1..^1] else: entry
         if not value.match(pattern): return "Invalid hostname: '" & entry & "'"
+    return ""
+
+proc validateKillDate(input: int): string =
+    if input == 0: 
+        return "Missing kill date configuration."
+    if input <= now().toTime().toUnix(): 
+        return "Kill date must not be in the past."
     return ""
 
 proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentBuildInformation =
@@ -145,7 +160,18 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
         component.show = show
 
         var availableSize = igGetContentRegionAvail()
-        if igBeginTabBar("##Tabs", ImGuiTabBarFlags_None.int32): 
+
+        # Input/settings validation 
+        let domainError = if component.domainGuardrailEnabled: validateDomainGuardrail($cast[cstring](addr component.domainGuardrail[0])) else: ""
+        let ipError = if component.ipGuardrailEnabled: validateIPGuardrail($cast[cstring](addr component.ipGuardrail[0])) else: ""
+        let hostError = if component.hostGuardrailEnabled: validateHostnameGuardrail($cast[cstring](addr component.hostGuardrail[0])) else: ""
+        let killDateError = if component.killDateEnabled: validateKillDate(component.killDate) else: ""
+        let workingHoursError = if component.workingHoursEnabled and not component.workingHours.enabled: "Missing working hours configuration." else: ""
+        
+        let guardrailsError = domainError.len() > 0 or ipError.len() > 0 or hostError.len() > 0 or killDateError.len() > 0 or workingHoursError.len() > 0
+        let modulesError = component.moduleSelection.items[1].len() == 0
+
+        if igBeginTabBar("##Tabs", ImGuiTabBarFlags_None.int32):
             defer: igEndTabBar()
 
             # Tab 1: General settings
@@ -193,12 +219,6 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igSameLine(0.0f, textSpacing)
                 igCheckbox("##InputVerbose", addr component.verbose)
                 igHelpMarker("Verbose mode will cause the agent to print check-ins, tasks and task output on the target system.")
-
-                igDummy(vec2(0.0f, 10.0f))
-                igSeparator()
-                igDummy(vec2(0.0f, 10.0f))
-
-                # TODO: Agent Description text label
 
             # Tab 2: Sleep Settings
             if igBeginTabItem("Sleep", nil, ImGuiTabBarFlags_None.int32):
@@ -255,7 +275,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igText(fmt"Sleep delay can range from {delayMin:.1f}s to {delayMax:.1f}s.".cstring)
             
             # Guardrails
-            if igBeginTabItem("Guardrails", nil, ImGuiTabBarFlags_None.int32):
+            if igBeginTabItemWithValidation("Guardrails", guardrailsError):
                 defer: igEndTabItem()
 
                 igDummy(vec2(0.0f, 8.0f))
@@ -272,11 +292,21 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igCheckbox("##InputDomainGuardrail", addr component.domainGuardrailEnabled)
                 igSameLine(0.0f, textSpacing)
 
+                if domainError.len() > 0:
+                    igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+                    igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+                    igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+                
                 igBeginDisabled(not component.domainGuardrailEnabled)
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x - markerWidth)
                 igInputTextWithHint("##InputDomain", (if component.domainGuardrailEnabled: "Any domain-joined target" else: "conquest.local").cstring, cast[cstring](addr component.domainGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
                 igEndDisabled()
+                
+                if domainError.len() > 0:
+                    igPopStyleColor(3)
+                    if igIsItemHovered(0): setTooltip(domainError)
+                
                 igHelpMarker("Comma-separated AD domain patterns. Leave empty to match any domain-joined host.")
 
                 # IP Guardrail
@@ -286,11 +316,20 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igCheckbox("##InputIPGuardrail", addr component.ipGuardrailEnabled)
                 igSameLine(0.0f, textSpacing)
 
+                if ipError.len() > 0:
+                    igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+                    igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+                    igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+                
                 igBeginDisabled(not component.ipGuardrailEnabled)
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x - markerWidth)
                 igInputTextWithHint("##InputIP", (if component.ipGuardrailEnabled: "" else: "192.168.168.*,!192.168.168.50").cstring, cast[cstring](addr component.ipGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
                 igEndDisabled()
+                
+                if ipError.len() > 0:
+                    igPopStyleColor(3)
+                    if igIsItemHovered(0): setTooltip(ipError)
                 igHelpMarker("Comma-separated IP address patterns.")
 
                 # Hostname Guardrail
@@ -300,11 +339,20 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igCheckbox("##InputHostGuardrail", addr component.hostGuardrailEnabled)
                 igSameLine(0.0f, textSpacing)
 
+                if hostError.len() > 0:
+                    igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+                    igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+                    igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+                
                 igBeginDisabled(not component.hostGuardrailEnabled)
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x - markerWidth)
                 igInputTextWithHint("##InputHostname", (if component.hostGuardrailEnabled: "" else: "SRV-*,!*-OT*-").cstring, cast[cstring](addr component.hostGuardrail[0]), MAX_INPUT_LENGTH, ImGui_InputTextFlags_None.int32, nil, nil)
                 igEndDisabled()
+                
+                if hostError.len() > 0:
+                    igPopStyleColor(3)
+                    if igIsItemHovered(0): setTooltip(hostError)
                 igHelpMarker("Comma-separated hostname patterns.")
 
                 igDummy(vec2(0.0f, 10.0f))
@@ -317,11 +365,20 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igCheckbox("##InputKillDate", addr component.killDateEnabled)        
                 igSameLine(0.0f, textSpacing)
                 
+                if killDateError.len() > 0:
+                    igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_DIM)
+                    igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR_HOVERED)
+                    igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
+                
                 igBeginDisabled(not component.killDateEnabled)
                 availableSize = igGetContentRegionAvail()
                 if igButton((if component.killDate != 0: component.killDate.fromUnix().utc().format("dd. MMMM yyyy HH:mm:ss") & " UTC" else: "Configure##KillDate").cstring, vec2(availableSize.x - markerWidth, 0.0f)):
                     igOpenPopup_str("Configure Kill Date", ImGui_PopupFlags_None.int32)
                 igEndDisabled()
+                
+                if killDateError.len() > 0:
+                    igPopStyleColor(3)
+                    if igIsItemHovered(0): setTooltip(killDateError)
                 igHelpMarker("The agent terminates after the configured date & time (UTC) has been reached.")
 
                 let killDate = component.killDateModal.draw()
@@ -334,26 +391,29 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igCheckbox("##InputWorkingHours", addr component.workingHoursEnabled)
                 igSameLine(0.0f, textSpacing)
 
+                if workingHoursError.len() > 0:
+                    igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_DIM)
+                    igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR_HOVERED)
+                    igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
+                
                 igBeginDisabled(not component.workingHoursEnabled)
                 availableSize = igGetContentRegionAvail()
                 let workingHoursLabel = fmt"{component.workingHours.startHour:02}:{component.workingHours.startMinute:02} - {component.workingHours.endHour:02}:{component.workingHours.endMinute:02}"
                 if igButton((if component.workingHours.enabled: workingHoursLabel else: "Configure##WorkingHours").cstring, vec2(availableSize.x - markerWidth, 0.0f)):
                     igOpenPopup_str("Configure Working Hours", ImGui_PopupFlags_None.int32)
                 igEndDisabled()
+                
+                if workingHoursError.len() > 0:
+                    igPopStyleColor(3)
+                    if igIsItemHovered(0): setTooltip(workingHoursError)
                 igHelpMarker("The agent only calls back in the regular sleep interval during the configured working hours.")
 
                 let workingHours = component.workingHoursModal.draw()
                 if workingHours.enabled: 
                     component.workingHours = workingHours
 
-            # TODO: OPSEC/Evasion Settings
-            # if igBeginTabItem("Evasion", nil, ImGuiTabBarFlags_None.int32):
-            #     defer: igEndTabItem()
-
-            #     igText("TODO")
-
             # Tab 3: Modules
-            if igBeginTabItem("Modules", nil, ImGuiTabBarFlags_None.int32):
+            if igBeginTabItemWithValidation("Modules", modulesError):
                 defer: igEndTabItem()
 
                 igDummy(vec2(0.0f, 8.0f))
@@ -381,13 +441,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igDummy(vec2(0.0f, 10.0f))
 
                 # Enable "Build" button if there are no missing settings or errors
-                let buildDisabled =
-                    (component.domainGuardrailEnabled and validateDomainGuardrail($cast[cstring](addr component.domainGuardrail[0])).len > 0) or
-                    (component.ipGuardrailEnabled and validateIPGuardrail($cast[cstring](addr component.ipGuardrail[0])).len > 0) or
-                    (component.hostGuardrailEnabled and validateHostnameGuardrail($cast[cstring](addr component.hostGuardrail[0])).len > 0) or
-                    (component.moduleSelection.items[1].len() == 0)  
-                igBeginDisabled(buildDisabled)
-
+                igBeginDisabled(guardrailsError or modulesError)
                 availableSize = igGetContentRegionAvail()
                 if igButton("Build", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
 
@@ -395,7 +449,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
 
                     # Iterate over modules
                     var modules: uint32 = 0
-                    for m in component.moduleSelection.items[1]: 
+                    for m in component.moduleSelection.items[1]:
                         modules = modules or uint32(parseModuleType(m.name))
 
                     # Get selected guardrails
@@ -408,11 +462,11 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                         listenerId: listeners[component.listener].listenerId,
                         agentType: cast[AgentType](component.agentType),
                         arch: cast[Architecture](component.arch),
-                        payloadType: cast[PayloadType](component.payloadType),  
+                        payloadType: cast[PayloadType](component.payloadType),
                         verbose: component.verbose,
                         sleepSettings: SleepSettings(
                             sleepDelay: component.sleepDelay,
-                            jitter: cast[uint32](component.jitter), 
+                            jitter: cast[uint32](component.jitter),
                             sleepTechnique: cast[SleepObfuscationTechnique](component.sleepMask),
                             spoofStack: component.spoofStack,
                             workingHours: if component.workingHoursEnabled: component.workingHours else: WorkingHours(enabled: false, startHour: 0, startMinute: 0, endHour: 0, endMinute: 0)
@@ -423,7 +477,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                             ip: if component.ipGuardrailEnabled: $(cast[cstring](addr component.ipGuardrail[0])) else: "",
                             hostname: if component.hostGuardrailEnabled: $(cast[cstring](addr component.hostGuardrail[0])) else: ""
                         ),
-                        killDate: if component.killDateEnabled: component.killDate else: 0, 
+                        killDate: if component.killDateEnabled: component.killDate else: 0,
                         modules: modules
                     )
 

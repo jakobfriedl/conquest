@@ -19,6 +19,8 @@ const WIDGET_CHAT* = " " & ICON_FA_COMMENTS & " " & "Chat"
 # Colors
 const CONSOLE_GRAY* = vec4(0.369f, 0.369f, 0.369f, 1.0f)
 const CONSOLE_ERROR* = vec4(0.878f, 0.188f, 0.149f, 1.0f)
+const CONSOLE_ERROR_HOVERED* = vec4(0.878f, 0.188f, 0.149f, 0.7f)
+const CONSOLE_ERROR_DIM* = vec4(0.878f, 0.188f, 0.149f, 0.4f)
 const CONSOLE_INFO* = vec4(0.588f, 0.843f, 0.89f, 1.0f)
 const CONSOLE_SUCCESS* = vec4(0.176f, 0.569f, 0.075f, 1.0f)
 const CONSOLE_WARNING* = vec4(1.0f, 0.5f, 0.0f, 1.0f)
