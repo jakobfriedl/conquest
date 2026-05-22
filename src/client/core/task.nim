@@ -37,7 +37,7 @@ proc parseArgument*(argument: Argument, value: string): TaskArg =
     var arg: TaskArg
     arg.argType = cast[uint8](argument.argType)  
     case argument.argType:
-    of INT: 
+    of INT:
         let intValue = cast[uint32](parseUInt(value))
         arg.data = @[byte(intValue and 0xFF), byte((intValue shr 8) and 0xFF), byte((intValue shr 16) and 0xFF), byte((intValue shr 24) and 0xFF)]
     of BOOL: 

@@ -84,6 +84,7 @@ proc init*(T: type AgentCtx): AgentCtx =
         ctx.registered = false
         ctx.links = initTable[uint32, uint32]() 
         ctx.jobs = @[]
+        ctx.tokenVault = @[]
         ctx.hWakeupEvent = CreateEventA(nil, FALSE, FALSE, nil)
         return ctx
 

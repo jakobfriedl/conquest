@@ -42,6 +42,7 @@ type
         registered*: bool
         links*: Table[uint32, uint32]
         jobs*: seq[Job]
+        tokenVault*: seq[HANDLE]
         hWakeupEvent*: HANDLE
 
     WorkerProc* = proc(ctx: AgentCtx, hWrite: HANDLE, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.}

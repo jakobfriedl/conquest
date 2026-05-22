@@ -39,7 +39,10 @@
 - [TOKEN](#token)
   - [make-token](#make-token)
   - [steal-token](#steal-token)
+  - [use-token](#use-token)
+  - [remove-token](#remove-token)
   - [rev2self](#rev2self)
+  - [token-vault](#token-vault)
   - [token-info](#token-info)
   - [enable-privilege](#enable-privilege)
   - [disable-privilege](#disable-privilege)
@@ -72,7 +75,10 @@ Modules are bundles of agent commands that can be embedded into the executable w
  * ps                       Display running processes.
  * make-token               Create an access token from username and password.
  * steal-token              Steal the primary access token of a remote process.
+ * use-token                Use and impersonate access token from the vault.
+ * remove-token             Remove access token from the vault.
  * rev2self                 Revert to original access token.
+ * token-vault              List access tokens stored in the vault.
  * token-info               Retrieve information about the current access token.
  * enable-privilege         Enable a token privilege.
  * disable-privilege        Disable a token privilege.
@@ -422,13 +428,13 @@ Example: ps
 
 ## TOKEN
 
-The `token` module provides commands for manipulating Windows access tokens and privileges.
+The `token` module provides commands for manipulating Windows access tokens and privileges. It also features the **Token Vault**, an in-memory list of handles to stored access tokens. Tokens that are stored in the vault can be impersonated using the `use-token` command without having to create or steal them additional times.  
 
 ### make-token
 Create an access token from a username and password and impersonate it immediately. This command can be executed from a medium-integrity (non-elevated) process. The current impersonation is displayed in the **Username** column of the **Sessions** view.
 
 ```
-Usage  : make-token <domain\username> <password> [--type logonType]
+Usage  : make-token <domain\username> <password> [--type logonType] [--store]
 Example: make-token LAB\john Password123!
 
 Required arguments:
@@ -443,6 +449,7 @@ Optional arguments:
                                          - 5: LOGON_SERVICE
                                          - 8: LOGON_NETWORK_CLEARTEXT
                                          - 9: LOGON_NEW_CREDENTIALS (default)
+  --store                   BOOL       Store access token in vault.
 ```
 
 By default, logon type 9 (NewCredentials) is used, which is also the default in frameworks like Cobalt Strike. Credentials are not validated with this logon type, making it possible to create a logon session without knowing the password and inject a valid Kerberos ticket into it to impersonate the target user. The following logon types are supported:
@@ -463,16 +470,42 @@ By default, logon type 9 (NewCredentials) is used, which is also the default in 
 Steal the primary access token of a remote process. Requires the agent to be running in a high-integrity (elevated) process.
 
 ```
-Usage  : steal-token <pid>
+Usage  : steal-token <pid> [--store]
 Example: steal-token 1234
 
 Required arguments:
   pid                       INT        Process ID of the target process.
+
+Optional arguments:
+  --store                   BOOL       Store access token in vault.
 ```
 
 In the screenshot below, the target PID belongs to `winlogon.exe`, which runs as `NT AUTHORITY\SYSTEM`.
 
 ![Token steal](../assets/modules-6.png)
+
+### use-token
+Use and impersonate an access token from the vault.
+
+```
+Usage  : use-token <token>
+Example: use-token 1
+
+Required arguments:
+  token                     INT        ID of the token to impersonate.
+```
+
+### remove-token
+Remove an access token from the vault.
+
+```
+Usage  : remove-token [token] [--all]
+Example: remove-token 1
+
+Optional arguments:
+  token                     INT        ID of the token to remove.
+  --all                     BOOL       Remove all tokens from the vault.
+```
 
 ### rev2self
 Stop impersonating and revert to the original access token.
@@ -481,6 +514,16 @@ Stop impersonating and revert to the original access token.
 Usage  : rev2self
 Example: rev2self
 ```
+
+### token-vault
+List access tokens stored in the vault. Token IDs start at 1. 
+
+```
+Usage  : token-vault
+Example: token-vault
+```
+
+![Token vault](../assets/modules-12.png)
 
 ### token-info
 Retrieve information about the current access token, including token type, elevation, user, group memberships, and privileges.

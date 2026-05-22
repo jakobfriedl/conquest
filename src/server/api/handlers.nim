@@ -221,7 +221,7 @@ proc handleResult*(resultData: seq[byte]) =
                     cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
                     cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", silent = silent)
 
-                of CMD_MAKE_TOKEN, CMD_STEAL_TOKEN: 
+                of CMD_MAKE_TOKEN, CMD_STEAL_TOKEN, CMD_USE_TOKEN: 
                     # Display token impersonation in UI
                     let impersonationToken: string = Bytes.toString(taskResult.data).split(" ", 1)[1..^1].join(" ")[0..^2]
                     if cq.dbUpdateTokenImpersonation(agentId, impersonationToken):
