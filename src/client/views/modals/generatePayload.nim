@@ -1,10 +1,19 @@
-import strutils, strformat, sequtils, tables, times, algorithm, regex
+import strutils, strformat, sequtils, tables, times, algorithm, regex, json
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
-import ../../utils/[appImGui, globals, utils]
+import ../../utils/[appImGui, globals, utils, dialogs]
 import ../../../types/[common, client]
 export addItem
+
+proc compareModules(x, y: Module): int = 
+    return cmp(x.name, y.name) 
+proc moduleName(module: Module): string = 
+    return module.name
+proc moduleDesc(module: Module): string = 
+    result = module.description & "\nModule commands:\n"
+    for cmd in module.commands: 
+        result &= " - " & cmd.name & "\n"
 
 proc PayloadModal*(): PayloadModalComponent =
     result = new PayloadModalComponent
@@ -34,17 +43,11 @@ proc PayloadModal*(): PayloadModalComponent =
     for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
         result.sleepMaskTechniques.add($technique)
 
-    proc compareModules(x, y: Module): int = 
-        return cmp(x.name, y.name) 
-    proc moduleName(module: Module): string = 
-        return module.name
-    proc moduleDesc(module: Module): string = 
-        result = module.description & "\nModule commands:\n"
-        for cmd in module.commands: 
-            result &= " - " & cmd.name & "\n"
-
     result.moduleSelection = DualListSelection(cq.scriptManager.modules.values.toSeq().sorted(compareModules), moduleName, compareModules, moduleDesc)
+    
+    result.configPreview = Textarea(showTimestamps = false, autoScroll = false)
     result.buildLog = Textarea(showTimestamps = false)
+    
     result.killDateModal = KillDateModal()
     result.workingHoursModal = WorkingHoursModal()
 
@@ -137,6 +140,86 @@ proc validateKillDate(input: int): string =
     if input <= now().toTime().toUnix(): 
         return "Kill date must not be in the past."
     return ""
+
+#[
+    Save/load payload configuration from JSON file
+]#
+proc serializeConfig(component: PayloadModalComponent): string =
+    var config = newJObject()
+
+    config["agentType"] = %component.agentTypes[component.agentType]
+    config["arch"] = %component.architectures[component.arch]
+    config["payloadType"] = %component.payloadTypes[component.payloadType]
+    config["verbose"] = %component.verbose
+    config["sleepDelay"] = %component.sleepDelay.int
+    config["jitter"] = %component.jitter.int
+    config["sleepMask"] = %component.sleepMaskTechniques[component.sleepMask]
+    config["spoofStack"] = %component.spoofStack
+
+    config["guardrails"] = newJObject()
+    if component.domainGuardrailEnabled: config["guardrails"]["domain"] = %($cast[cstring](addr component.domainGuardrail[0]))
+    if component.ipGuardrailEnabled: config["guardrails"]["ip"] = %($cast[cstring](addr component.ipGuardrail[0]))
+    if component.hostGuardrailEnabled: config["guardrails"]["hostname"] = %($cast[cstring](addr component.hostGuardrail[0]))
+    config["killDate"] = %(if component.killDateEnabled: component.killDate else: 0'i64)
+    
+    config["workingHours"] = newJObject()
+    if component.workingHoursEnabled and component.workingHours.enabled:
+        config["workingHours"]["startHour"] = %component.workingHours.startHour.int
+        config["workingHours"]["startMinute"] = %component.workingHours.startMinute.int
+        config["workingHours"]["endHour"] = %component.workingHours.endHour.int
+        config["workingHours"]["endMinute"] = %component.workingHours.endMinute.int
+
+    config["modules"] = %component.moduleSelection.items[1].mapIt(it.name)
+    return config.pretty()
+
+proc saveBuildConfig(component: PayloadModalComponent, configPath: string) =
+    if configPath.len == 0: 
+        return
+    writeFile(configPath, component.serializeConfig())
+
+proc loadBuildConfig(component: PayloadModalComponent, configPath: string) =
+    if configPath.len == 0: 
+        return
+    let configJson = parseJson(readFile(configPath))
+
+    component.agentType = int32(parseEnum[AgentType](configJson["agentType"].getStr()))
+    component.arch = int32(parseEnum[Architecture](configJson["arch"].getStr()))
+    component.payloadType = int32(parseEnum[PayloadType](configJson["payloadType"].getStr()))
+    component.verbose = configJson["verbose"].getBool()
+    component.sleepDelay = configJson["sleepDelay"].getInt().uint32
+    component.jitter = configJson["jitter"].getInt().int32
+    component.sleepMask = int32(parseEnum[SleepObfuscationTechnique](configJson["sleepMask"].getStr()))
+    component.spoofStack = configJson["spoofStack"].getBool()
+
+    # Guardrails
+    proc loadGuardrail(key: string, enabled: var bool, buf: var array[MAX_INPUT_LENGTH, char], val: JsonNode) =
+        enabled = val.hasKey(key)
+        zeroMem(addr buf[0], MAX_INPUT_LENGTH)
+        if enabled:
+            let s = val[key].getStr()
+            copyMem(addr buf[0], cstring(s), min(s.len, MAX_INPUT_LENGTH - 1))
+
+    loadGuardrail("domain", component.domainGuardrailEnabled, component.domainGuardrail, configJson["guardrails"])
+    loadGuardrail("ip", component.ipGuardrailEnabled, component.ipGuardrail, configJson["guardrails"])
+    loadGuardrail("hostname", component.hostGuardrailEnabled, component.hostGuardrail, configJson["guardrails"])
+
+    component.killDate = configJson["killDate"].getBiggestInt()
+    component.killDateEnabled = component.killDate != 0
+    component.workingHours = WorkingHours(
+        enabled: configJson["workingHours"].len() > 0,
+        startHour: configJson["workingHours"].getOrDefault("startHour").getInt().int32,
+        startMinute: configJson["workingHours"].getOrDefault("startMinute").getInt().int32,
+        endHour: configJson["workingHours"].getOrDefault("endHour").getInt().int32,
+        endMinute: configJson["workingHours"].getOrDefault("endMinute").getInt().int32
+    )
+    component.workingHoursEnabled = component.workingHours.enabled
+
+    # Modules
+    component.moduleSelection.reset()
+    let selectedNames = configJson["modules"].getElems().mapIt(it.getStr())
+    let modules = cq.scriptManager.modules.values.toSeq()
+    component.moduleSelection.items[0] = modules.filterIt(it.name notin selectedNames)
+    component.moduleSelection.items[1] = modules.filterIt(it.name in selectedNames).sorted(compareModules)
 
 proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentBuildInformation =
 
@@ -274,7 +357,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                     delayMax = component.sleepDelay.float * (1.0 + component.jitter.float / 100.0)
                 igText(fmt"Sleep delay can range from {delayMin:.1f}s to {delayMax:.1f}s.".cstring)
             
-            # Guardrails
+            # Tab 3: Guardrails
             if igBeginTabItemWithValidation("Guardrails", guardrailsError):
                 defer: igEndTabItem()
 
@@ -306,7 +389,6 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 if domainError.len() > 0:
                     igPopStyleColor(3)
                     if igIsItemHovered(0): setTooltip(domainError)
-                
                 igHelpMarker("Comma-separated AD domain patterns. Leave empty to match any domain-joined host.")
 
                 # IP Guardrail
@@ -412,20 +494,49 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 if workingHours.enabled: 
                     component.workingHours = workingHours
 
-            # Tab 3: Modules
+            # Tab 4: Modules
             if igBeginTabItemWithValidation("Modules", modulesError):
                 defer: igEndTabItem()
 
                 igDummy(vec2(0.0f, 8.0f))
                 component.moduleSelection.draw()
 
-            # TODO: Config Preview
-            # if igBeginTabItem("Preview", nil, ImGuiTabBarFlags_None.int32):
-            #     defer: igEndTabItem()
+            # Tab 5: Config Preview
+            if igBeginTabItem("Config", nil, ImGuiTabBarFlags_None.int32):
+                defer: igEndTabItem()
 
-            #     igText("TODO")
+                igDummy(vec2(0.0f, 8.0f))
 
-            # Tab 4: Build Log
+                let style = igGetStyle()
+                let reserve = 10.0f + 1.0f + 10.0f + igGetFrameHeight() + style.ItemSpacing.y * 5.0f
+                let logHeight = igGetContentRegionAvail().y - reserve
+                
+                # Only update the config preview if the settings have changed
+                let configJson = component.serializeConfig()
+                if configJson != component.configJson:
+                    component.configJson = configJson
+                    component.configPreview.clear()
+                    component.configPreview.addItem(LOG_OUTPUT, configJson)
+                component.configPreview.draw(vec2(-1.0f, logHeight))
+
+                igDummy(vec2(0.0f, 10.0f))
+                igSeparator()
+                igDummy(vec2(0.0f, 10.0f))
+
+                availableSize = igGetContentRegionAvail()            
+                if igButton("Load", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+                    let path = callDialogFileOpen("Load Build Config", "", [("*.json", "*.json")])
+                    component.loadBuildConfig(path)
+                igSameLine(0.0f, textSpacing)
+
+                # Disable save button when there are config errors
+                igBeginDisabled(guardrailsError or modulesError)
+                if igButton("Save", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+                    let path = callDialogFileSave("Save Build Config", "config.json")
+                    component.saveBuildConfig(path) 
+                igEndDisabled()
+
+            # Tab 6: Build Log
             if igBeginTabItem("Build", nil, ImGuiTabBarFlags_None.int32):
                 defer: igEndTabItem()
 

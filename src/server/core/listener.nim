@@ -91,7 +91,12 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
         # Store listener in database
         if not cq.dbListenerExists(listener.listenerId):
             if not cq.dbStoreListener(l):
-                raise newException(CatchableError, "Failed to store listener in database.")
+                # Stop serving
+                if l.listenerType == LISTENER_HTTP: 
+                    try: l.server.close() 
+                    except: discard
+                cq.listeners.del(listener.listenerId)
+                raise newException(CatchableError, "Failed to store listener in database")
 
         cq.success("Started listener", fgGreen, fmt" {l.listenerId}.")
         cq.sendListener(l)
@@ -102,7 +107,6 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
         cq.sendEventlogItem(LOG_ERROR_SHORT, fmt"Failed to start listener: {err.msg}.")
 
 proc listenerStop*(cq: Conquest, name: string) =
-
     # Verify that listener exists
     if not cq.dbListenerExists(name):
         cq.error(fmt"Listener {name} does not exist.")

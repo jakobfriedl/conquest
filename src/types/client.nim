@@ -110,6 +110,8 @@ type
         payloadTypes*: seq[string]  
         sleepMaskTechniques*: seq[string]
         moduleSelection*: DualListSelectionWidget[Module]
+        configJson*: string
+        configPreview*: TextareaWidget
         buildLog*: TextareaWidget
         killDateModal*: KillDateModalComponent
         workingHoursModal*: WorkingHoursModalComponent
