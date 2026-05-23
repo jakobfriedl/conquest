@@ -251,7 +251,8 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
         let killDateError = if component.killDateEnabled: validateKillDate(component.killDate) else: ""
         let workingHoursError = if component.workingHoursEnabled and not component.workingHours.enabled: "Missing working hours configuration." else: ""
         
-        let guardrailsError = domainError.len() > 0 or ipError.len() > 0 or hostError.len() > 0 or killDateError.len() > 0 or workingHoursError.len() > 0
+        let sleepError = workingHoursError.len() > 0
+        let guardrailsError = domainError.len() > 0 or ipError.len() > 0 or hostError.len() > 0 or killDateError.len() > 0
         let modulesError = component.moduleSelection.items[1].len() == 0
 
         if igBeginTabBar("##Tabs", ImGuiTabBarFlags_None.int32):
@@ -304,7 +305,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igHelpMarker("Verbose mode will cause the agent to print check-ins, tasks and task output on the target system.")
 
             # Tab 2: Sleep Settings
-            if igBeginTabItem("Sleep", nil, ImGuiTabBarFlags_None.int32):
+            if igBeginTabItemWithValidation("Sleep", sleepError):
                 defer: igEndTabItem()
 
                 igDummy(vec2(0.0f, 8.0f))
@@ -348,6 +349,37 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igEndDisabled()
                 igHelpMarker("Spoof the call stack while sleeping by duplicating another thread's stack.\n\nOnly available when EKKO or ZILEAN are used for sleep obfuscation.")
                 
+                igDummy(vec2(0.0f, 10.0f))
+                igSeparator()
+                igDummy(vec2(0.0f, 10.0f))
+
+                # Working hours
+                igText("Working hours: ")
+                igSameLine(0.0f, textSpacing)
+                igCheckbox("##InputWorkingHours", addr component.workingHoursEnabled)
+                igSameLine(0.0f, textSpacing)
+
+                if workingHoursError.len() > 0:
+                    igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_DIM)
+                    igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR_HOVERED)
+                    igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
+                
+                igBeginDisabled(not component.workingHoursEnabled)
+                availableSize = igGetContentRegionAvail()
+                let workingHoursLabel = fmt"{component.workingHours.startHour:02}:{component.workingHours.startMinute:02} - {component.workingHours.endHour:02}:{component.workingHours.endMinute:02}"
+                if igButton((if component.workingHours.enabled: workingHoursLabel else: "Configure##WorkingHours").cstring, vec2(availableSize.x - markerWidth, 0.0f)):
+                    igOpenPopup_str("Configure Working Hours", ImGui_PopupFlags_None.int32)
+                igEndDisabled()
+                
+                if workingHoursError.len() > 0:
+                    igPopStyleColor(3)
+                    if igIsItemHovered(0): setTooltip(workingHoursError)
+                igHelpMarker("The agent only calls back in the regular sleep interval during the configured working hours.")
+
+                let workingHours = component.workingHoursModal.draw()
+                if workingHours.enabled: 
+                    component.workingHours = workingHours
+
                 igDummy(vec2(0.0f, 10.0f))
                 igSeparator()
                 igDummy(vec2(0.0f, 10.0f))
@@ -467,33 +499,6 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 if killDate != 0:
                     component.killDate = killDate
 
-                # Working hours
-                igText("Working hours: ")
-                igSameLine(0.0f, textSpacing)
-                igCheckbox("##InputWorkingHours", addr component.workingHoursEnabled)
-                igSameLine(0.0f, textSpacing)
-
-                if workingHoursError.len() > 0:
-                    igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_DIM)
-                    igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR_HOVERED)
-                    igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
-                
-                igBeginDisabled(not component.workingHoursEnabled)
-                availableSize = igGetContentRegionAvail()
-                let workingHoursLabel = fmt"{component.workingHours.startHour:02}:{component.workingHours.startMinute:02} - {component.workingHours.endHour:02}:{component.workingHours.endMinute:02}"
-                if igButton((if component.workingHours.enabled: workingHoursLabel else: "Configure##WorkingHours").cstring, vec2(availableSize.x - markerWidth, 0.0f)):
-                    igOpenPopup_str("Configure Working Hours", ImGui_PopupFlags_None.int32)
-                igEndDisabled()
-                
-                if workingHoursError.len() > 0:
-                    igPopStyleColor(3)
-                    if igIsItemHovered(0): setTooltip(workingHoursError)
-                igHelpMarker("The agent only calls back in the regular sleep interval during the configured working hours.")
-
-                let workingHours = component.workingHoursModal.draw()
-                if workingHours.enabled: 
-                    component.workingHours = workingHours
-
             # Tab 4: Modules
             if igBeginTabItemWithValidation("Modules", modulesError):
                 defer: igEndTabItem()
@@ -524,14 +529,14 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igDummy(vec2(0.0f, 10.0f))
 
                 availableSize = igGetContentRegionAvail()            
-                if igButton("Load", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+                if igButton("Import", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
                     let path = callDialogFileOpen("Load Build Config", "", [("*.json", "*.json")])
                     component.loadBuildConfig(path)
                 igSameLine(0.0f, textSpacing)
 
-                # Disable save button when there are config errors
-                igBeginDisabled(guardrailsError or modulesError)
-                if igButton("Save", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+                # Disable export button when there are config errors
+                igBeginDisabled(sleepError or guardrailsError or modulesError)
+                if igButton("Export", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
                     let path = callDialogFileSave("Save Build Config", "config.json")
                     component.saveBuildConfig(path) 
                 igEndDisabled()
@@ -552,7 +557,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igDummy(vec2(0.0f, 10.0f))
 
                 # Enable "Build" button if there are no missing settings or errors
-                igBeginDisabled(guardrailsError or modulesError)
+                igBeginDisabled(sleepError or guardrailsError or modulesError)
                 availableSize = igGetContentRegionAvail()
                 if igButton("Build", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
 
