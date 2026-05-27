@@ -36,6 +36,7 @@ type
         sleepSettings*: SleepSettings
         guardrails*: Guardrails
         killDate*: int64
+        selfDelete*: bool
         sessionKey*: Key
         agentPublicKey*: Key
         profile*: Profile

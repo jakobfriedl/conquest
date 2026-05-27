@@ -102,6 +102,8 @@ All text-based guardrail patterns support wildcards (`*` to match any sequence o
 | IP Address | Text input | Restrict execution to hosts whose IP address matches one of the comma-separated patterns provided. |
 | Hostname | Text input | Restrict execution to hosts whose hostname matches one of the comma-separated patterns provided. |
 | Kill date | Date & Time | Terminate the agent when the configured UTC date and time is reached. |
+| Self-delete | Boolean | Delete the agent from disk when a guardrail condition is met or the kill date is reached. |
+
 
 ![Guardrail Settings](../assets/agent-9.png)
 
@@ -139,9 +141,10 @@ The JSON files have the following layout and keys:
 | `jitter` | Jitter percentage (0–100). |
 | `sleepMask` | Sleep obfuscation technique (e.g. `EKKO`). |
 | `spoofStack` | `true` or `false`. |
+| `workingHours` | Object containing `startHour`, `startMinute`, `endHour`, `endMinute`, or empty if not set. |
 | `guardrails` | Object containing optional `domain`, `ip`, and `hostname` pattern strings. |
 | `killDate` | Unix timestamp (UTC) of the kill date, or `0` if not set. |
-| `workingHours` | Object containing `startHour`, `startMinute`, `endHour`, `endMinute`, or empty if not set. |
+| `selfDelete` | `true` or `false` |
 | `modules` | Array of module name strings selected for the build. |
 
 Example: 
@@ -156,12 +159,13 @@ Example:
   "jitter": 15,
   "sleepMask": "EKKO",
   "spoofStack": true,
+  "workingHours": {},
   "guardrails": {
     "ip": "10.0.5.*",
     "hostname": "!DC01"
   },
   "killDate": 1780531200,
-  "workingHours": {},
+  "selfDelete": false,
   "modules": [
     "bof",
     "dll",

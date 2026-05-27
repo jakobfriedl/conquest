@@ -102,6 +102,7 @@ type
         hostGuardrail*: array[MAX_INPUT_LENGTH, char]
         killDateEnabled*: bool 
         killDate*: int64
+        selfDelete*: bool
         workingHoursEnabled*: bool
         workingHours*: WorkingHours
         verbose*: bool

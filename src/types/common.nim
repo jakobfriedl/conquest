@@ -154,6 +154,7 @@ when defined(client) or defined(server):
             verbose*: bool
             sleepSettings*: SleepSettings
             guardrails*: Guardrails
+            selfDelete*: bool
             killDate*: int64
             modules*: uint32
 

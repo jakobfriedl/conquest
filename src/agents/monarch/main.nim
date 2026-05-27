@@ -20,7 +20,7 @@ proc agentMain() =
     if not checkGuardrails(ctx.guardrails, metadata):
         print protect("[*] Execution guardrails prevented agent from registering.")
         print protect("[*] Exiting.")
-        exit()
+        exit(EXIT_PROCESS, ctx.selfDelete)
 
     #[
         Agent routine: 
@@ -42,7 +42,7 @@ proc agentMain() =
             if ctx.killDate != 0 and now().toTime().toUnix().int64 >= ctx.killDate: 
                 print protect("[*] Reached kill date: "), ctx.killDate.fromUnix().utc().format("dd-MM-yyyy HH:mm:ss"), protect(" (UTC).")
                 print protect("[*] Exiting.") 
-                exit()
+                exit(EXIT_PROCESS, ctx.selfDelete)
             
             # Register
             if not ctx.registered: 

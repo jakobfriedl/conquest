@@ -47,6 +47,9 @@ proc serializeConfiguration(cq: Conquest, agentBuildInformation: AgentBuildInfor
     # Kill date
     packer.add(uint64(agentBuildInformation.killDate))
 
+    # Self-delete 
+    packer.add(uint8(agentBuildInformation.selfDelete))
+
     # Public key for key exchange
     packer.addData(cq.keyPair.publicKey)
 
