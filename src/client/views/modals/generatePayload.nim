@@ -1,4 +1,4 @@
-import strutils, strformat, sequtils, tables, times, algorithm, regex, json
+import strutils, strformat, sequtils, tables, times, algorithm, regex, json, std/enumutils
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/[dualListSelection, textarea]
 import ./[configureKillDate, configureWorkingHours]
@@ -149,13 +149,13 @@ proc validateKillDate(input: int): string =
 proc serializeConfig(component: PayloadModalComponent): string =
     var config = newJObject()
 
-    config["agentType"] = %component.agentTypes[component.agentType]
-    config["arch"] = %component.architectures[component.arch]
-    config["payloadType"] = %component.payloadTypes[component.payloadType]
+    config["agentType"] = %symbolName(AgentType(component.agentType))
+    config["arch"] = %symbolName(Architecture(component.arch))
+    config["payloadType"] = %symbolName(PayloadType(component.payloadType))
     config["verbose"] = %component.verbose
     config["sleepDelay"] = %component.sleepDelay.int
     config["jitter"] = %component.jitter.int
-    config["sleepMask"] = %component.sleepMaskTechniques[component.sleepMask]
+    config["sleepMask"] = %symbolName(SleepObfuscationTechnique(component.sleepMask))
     config["spoofStack"] = %component.spoofStack
 
     config["workingHours"] = newJObject()
@@ -180,18 +180,24 @@ proc saveBuildConfig(component: PayloadModalComponent, configPath: string) =
         return
     writeFile(configPath, component.serializeConfig())
 
+proc parseEnumBySymbol[T: enum](s: string): T =
+    for e in low(T)..high(T):
+        if symbolName(e) == s:
+            return e
+    raise newException(ValueError, "Invalid enum symbol: " & s)
+
 proc loadBuildConfig(component: PayloadModalComponent, configPath: string) =
     if configPath.len == 0: 
         return
     let configJson = parseJson(readFile(configPath))
 
-    component.agentType = int32(parseEnum[AgentType](configJson["agentType"].getStr()))
-    component.arch = int32(parseEnum[Architecture](configJson["arch"].getStr()))
-    component.payloadType = int32(parseEnum[PayloadType](configJson["payloadType"].getStr()))
+    component.agentType = int32(parseEnumBySymbol[AgentType](configJson["agentType"].getStr()))
+    component.arch = int32(parseEnumBySymbol[Architecture](configJson["arch"].getStr()))
+    component.payloadType = int32(parseEnumBySymbol[PayloadType](configJson["payloadType"].getStr()))
     component.verbose = configJson["verbose"].getBool()
     component.sleepDelay = configJson["sleepDelay"].getInt().uint32
     component.jitter = configJson["jitter"].getInt().int32
-    component.sleepMask = int32(parseEnum[SleepObfuscationTechnique](configJson["sleepMask"].getStr()))
+    component.sleepMask = int32(parseEnumBySymbol[SleepObfuscationTechnique](configJson["sleepMask"].getStr()))
     component.spoofStack = configJson["spoofStack"].getBool()
 
     # Guardrails

@@ -133,13 +133,13 @@ The JSON files have the following layout and keys:
 
 | Key | Description |
 | --- | --- |
-| `agentType` | Agent type. |
-| `arch` | Target architecture. |
-| `payloadType` | Payload type string. |
+| `agentType` | Agent type enum symbol (e.g. `AGENT_MONARCH`). |
+| `arch` | Target architecture enum symbol (e.g. `ARCH_X64`). |
+| `payloadType` | Payload type enum symbol (e.g. `PAYLOAD_EXE`, `PAYLOAD_SVC`, `PAYLOAD_DLL`). |
 | `verbose` | `true` or `false`. |
 | `sleepDelay` | Sleep delay in seconds. |
 | `jitter` | Jitter percentage (0–100). |
-| `sleepMask` | Sleep obfuscation technique (e.g. `EKKO`). |
+| `sleepMask` | Sleep obfuscation technique symbol (e.g. `NONE`, `EKKO`, `ZILEAN`, `FOLIAGE`). |
 | `spoofStack` | `true` or `false`. |
 | `workingHours` | Object containing `startHour`, `startMinute`, `endHour`, `endMinute`, or empty if not set. |
 | `guardrails` | Object containing optional `domain`, `ip`, and `hostname` pattern strings. |
@@ -151,20 +151,25 @@ Example:
 
 ```json
 {
-  "agentType": "Monarch",
-  "arch": "x64",
-  "payloadType": "Windows Executable (.exe)",
+  "agentType": "AGENT_MONARCH",
+  "arch": "ARCH_X64",
+  "payloadType": "PAYLOAD_EXE",
   "verbose": true,
-  "sleepDelay": 6,
+  "sleepDelay": 5,
   "jitter": 15,
   "sleepMask": "EKKO",
   "spoofStack": true,
-  "workingHours": {},
+  "workingHours": {
+    "startHour": 9,
+    "startMinute": 0,
+    "endHour": 17,
+    "endMinute": 0
+  },
   "guardrails": {
-    "ip": "10.0.5.*",
+    "domain": "",
     "hostname": "!DC01"
   },
-  "killDate": 1780531200,
+  "killDate": 1780617600,
   "selfDelete": false,
   "modules": [
     "bof",
