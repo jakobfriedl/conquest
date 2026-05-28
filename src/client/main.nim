@@ -30,6 +30,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         showFiles = false
         showScriptManager = false
         showChat = false
+        modifierActive = false
 
     var 
         dockTop: ImGuiID = 0
@@ -37,16 +38,16 @@ proc main(ip: string = "localhost", port: int = 37573) =
         dockTopLeft: ImGuiID = 0
         dockTopRight: ImGuiID = 0
 
-    views["Sessions"] = (shortcut: "Alt+A", show: addr showSessionsTable)
-    views["Listeners"] = (shortcut: "Alt+L", show: addr showListeners)
-    views["Eventlog"] = (shortcut: "Alt+E", show: addr showEventlog)
-    views["Chat"] = (shortcut: "Alt+T", show: addr showChat)
-    views["Loot:Downloads"] = (shortcut: "Alt+D", show: addr showDownloads)
-    views["Loot:Screenshots"] = (shortcut: "Alt+S", show: addr showScreenshots)
-    views["Loot:Credentials"] = (shortcut: "Alt+C", show: addr showCredentials)
-    views["Process Browser"] = (shortcut: "Alt+P", show: addr showProcesses)
-    views["Filesystem Browser"] = (shortcut: "Alt+F", show: addr showFiles)
-    views["Script Manager"] = (shortcut: "Alt+M", show: addr showScriptManager)
+    views["Sessions"] = (shortcut: "Ctrl+A, A", show: addr showSessionsTable)
+    views["Listeners"] = (shortcut: "Ctrl+A, L", show: addr showListeners)
+    views["Eventlog"] = (shortcut: "Ctrl+A, E", show: addr showEventlog)
+    views["Chat"] = (shortcut: "Ctrl+A, T", show: addr showChat)
+    views["Loot:Downloads"] = (shortcut: "Ctrl+A, D", show: addr showDownloads)
+    views["Loot:Screenshots"] = (shortcut: "Ctrl+A, S", show: addr showScreenshots)
+    views["Loot:Credentials"] = (shortcut: "Ctrl+A, C", show: addr showCredentials)
+    views["Process Browser"] = (shortcut: "Ctrl+A, P", show: addr showProcesses)
+    views["Filesystem Browser"] = (shortcut: "Ctrl+A, F", show: addr showFiles)
+    views["Script Manager"] = (shortcut: "Ctrl+A, M", show: addr showScriptManager)
 
     # Initialize database 
     dbInit()
@@ -56,7 +57,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
     cq.scriptManager = ScriptManager(WIDGET_SCRIPT_MANAGER, addr showScriptManager)
 
     # Modules need to be loaded before other components are created
-    loadScript(CONQUEST_ROOT & "/data/modules/default.py")
+    # The script default.py contains the core modules and commands that are implemented directly in the agent 
+    loadScript(CONQUEST_ROOT & "/data/default.py")
     for path in dbGetScriptPaths(): 
         loadScript(path)
 
@@ -92,27 +94,35 @@ proc main(ip: string = "localhost", port: int = 37573) =
         template openAndFocus(show: var bool, widget: string) =
             show = true
             igSetWindowFocus_Str(widget.cstring)
+            modifierActive = false
 
-        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_A, false):
-            openAndFocus(showSessionsTable, WIDGET_SESSIONS)
-        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_L, false):
-            openAndFocus(showListeners, WIDGET_LISTENERS)
-        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_E, false):
-            openAndFocus(showEventlog, WIDGET_EVENTLOG)
-        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_T, false):
-            openAndFocus(showChat, WIDGET_CHAT)
-        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_P, false):
-            openAndFocus(showProcesses, WIDGET_PROCESS_BROWSER)
-        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_F, false):
-            openAndFocus(showFiles, WIDGET_FILE_BROWSER)
-        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_S, false):
-            openAndFocus(showScreenshots, WIDGET_SCREENSHOTS)
-        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_D, false):
-            openAndFocus(showDownloads, WIDGET_DOWNLOADS)
-        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_C, false):
-            openAndFocus(showCredentials, WIDGET_CREDENTIALS)
-        if io.KeyAlt and igIsKeyPressed_Bool(ImGui_Key_M, false):
-            openAndFocus(showScriptManager, WIDGET_SCRIPT_MANAGER)
+        # CTRL+A is used as the modifier key 
+        if io.KeyCtrl and igIsKeyPressed_Bool(ImGui_Key_A, false):
+            modifierActive = true
+
+        if modifierActive and not io.KeyCtrl:
+            if igIsKeyPressed_Bool(ImGui_Key_A, false):
+                openAndFocus(showSessionsTable, WIDGET_SESSIONS)
+            elif igIsKeyPressed_Bool(ImGui_Key_L, false):
+                openAndFocus(showListeners, WIDGET_LISTENERS)
+            elif igIsKeyPressed_Bool(ImGui_Key_E, false):
+                openAndFocus(showEventlog, WIDGET_EVENTLOG)
+            elif igIsKeyPressed_Bool(ImGui_Key_T, false):
+                openAndFocus(showChat, WIDGET_CHAT)
+            elif igIsKeyPressed_Bool(ImGui_Key_P, false):
+                openAndFocus(showProcesses, WIDGET_PROCESS_BROWSER)
+            elif igIsKeyPressed_Bool(ImGui_Key_F, false):
+                openAndFocus(showFiles, WIDGET_FILE_BROWSER)
+            elif igIsKeyPressed_Bool(ImGui_Key_S, false):
+                openAndFocus(showScreenshots, WIDGET_SCREENSHOTS)
+            elif igIsKeyPressed_Bool(ImGui_Key_D, false):
+                openAndFocus(showDownloads, WIDGET_DOWNLOADS)
+            elif igIsKeyPressed_Bool(ImGui_Key_C, false):
+                openAndFocus(showCredentials, WIDGET_CREDENTIALS)
+            elif igIsKeyPressed_Bool(ImGui_Key_M, false):
+                openAndFocus(showScriptManager, WIDGET_SCRIPT_MANAGER)
+            elif igIsKeyPressed_Bool(ImGui_Key_Escape, false):
+                modifierActive = false
 
         # Initialize dockspace and docking layout 
         dockspace.draw(addr showConquest, views, addr dockTop, addr dockBottom, addr dockTopLeft, addr dockTopRight)

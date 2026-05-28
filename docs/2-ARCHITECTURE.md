@@ -326,6 +326,7 @@ CONQUEST
 ├── bin/                        : Compiled binaries
 │
 ├── data/                       
+│   ├── default.py              : Core command definitions
 │   ├── conquest.db             : Team server database
 │   ├── client.db               : Client database
 │   ├── keys/                   : Private key(s)
@@ -334,7 +335,7 @@ CONQUEST
 │   │   ├── teamserver.log      : Team server log (connections, events)
 │   ├── loot/
 │   │   ├── <AGENT-UUID>/       : Agent loot (screenshots, downloads)
-│   ├── modules/                : Python modules for extending aegnt functionality
+│   ├── modules/                : Python modules for extending agent functionality
 │   ├── resources/              : Post-exploitation DLLs and other standalone capabilities
 │   └── profiles/               
 │       └── profiles.toml       : Default profile
