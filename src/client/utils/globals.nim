@@ -5,7 +5,8 @@ import ../../types/client
 const CONQUEST_ROOT* {.strdefine.} = ""
 
 # Labels
-const WIDGET_SESSIONS* =  " " & ICON_FA_LIST & " " & "Sessions"
+const WIDGET_SESSIONS_TABLE* =  " " & ICON_FA_LIST & " " & "Sessions (Table)"
+const WIDGET_SESSIONS_GRAPH* = " " & ICON_FA_DIAGRAM_PROJECT & " " & "Sessions (Graph)"
 const WIDGET_LISTENERS* = " " & ICON_FA_SATELLITE_DISH & " " & "Listeners"
 const WIDGET_EVENTLOG* = " " & ICON_FA_CLIPBOARD_LIST & " " & "Eventlog"
 const WIDGET_DOWNLOADS* = " " & ICON_FA_DOWNLOAD & " " & "Downloads"

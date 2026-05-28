@@ -38,11 +38,55 @@ type
         name*: string 
         description*: string
         commands*: seq[Command]
-
-# UI Components
+    
+# UI components
 const MAX_INPUT_LENGTH* = 16384 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets, certficates, ...)
 
 type 
+    # Widgets
+    EdgeType* = enum
+        EDGE_HTTP
+        EDGE_SMB
+
+    GraphNode* = ref object
+        pos*: tuple[x, y: float32]
+        label*: string
+        elevated*: bool
+        selected*: bool
+
+    GraphEdge* = object
+        srcId*: string
+        dstId*: string
+        edgeType*: EdgeType
+
+    GraphWidget* = ref object
+        nodes*: Table[string, GraphNode]
+        edges*: seq[GraphEdge]
+        scrollOffset*: tuple[x, y: float32]
+        zoom*: float32
+        draggingNodeId*: string
+
+        # Settings
+        showGrid*: bool
+        showId*: bool
+        showProcess*: bool
+        showUser*: bool
+        showHostname*: bool
+
+    TextareaWidget* = ref object of RootObj
+        content*: ConsoleItems
+        textSelect*: ptr TextSelect
+        showTimestamps*: bool
+        autoScroll*: bool
+        
+    DualListSelectionWidget*[T] = ref object of RootObj
+        items*: array[2, seq[T]]
+        selection*: array[2, ptr ImGuiSelectionBasicStorage]
+        display*: proc(item: T): string
+        compare*: proc(x, y: T): int
+        tooltip*: proc(item: T): string
+
+    # Modals
     ConnectionModalComponent* = ref object of RootObj
         host*: array[256, char]
         defaultHost*: string 
@@ -63,13 +107,6 @@ type
         killDateHour*: int32
         killDateMinute*: int32
         killDateSecond*: int32
-
-    DualListSelectionWidget*[T] = ref object of RootObj
-        items*: array[2, seq[T]]
-        selection*: array[2, ptr ImGuiSelectionBasicStorage]
-        display*: proc(item: T): string
-        compare*: proc(x, y: T): int
-        tooltip*: proc(item: T): string
 
     ListenerModalComponent* = ref object of RootObj
         callbackHosts*: array[256 * 32, char]
@@ -133,6 +170,7 @@ type
         note*: array[MAX_INPUT_LENGTH, char]
         editingItem*: LootItem
 
+    # Windows/Views
     ChatComponent* = ref object of RootObj 
         title*: string 
         showComponent*: ptr bool 
@@ -167,14 +205,18 @@ type
         agent*: int32
         selection*: string
 
-    SessionsTableComponent* = ref object of RootObj
-        title*: string 
-        showComponent*: ptr bool
-        agents*: Table[string, UIAgent]
-        selection*: ptr ImGuiSelectionBasicStorage
-        focusedConsole*: string 
-        interact*: bool
-    
+    SessionsComponent* = ref object of RootObj
+        agents*:         Table[string, UIAgent]
+        selection*:      ptr ImGuiSelectionBasicStorage
+        focusedConsole*: string
+        interact*:       bool
+        tableTitle*:     string
+        showTable*:      ptr bool
+        graphTitle*:     string
+        showGraph*:      ptr bool
+        graph*:          GraphWidget
+
+    # Loot 
     DownloadsComponent* = ref object of RootObj
         title*: string
         showComponent*: ptr bool
@@ -203,6 +245,7 @@ type
         selection*: ptr ImGuiSelectionBasicStorage
         credentialModal*: CredentialModalComponent
 
+    # Console 
     ConsoleItem* = ref object
         itemType*: LogType
         timestamp*: string
@@ -212,12 +255,6 @@ type
 
     ConsoleItems* = ref object
         items*: seq[ConsoleItem]
-    
-    TextareaWidget* = ref object of RootObj
-        content*: ConsoleItems
-        textSelect*: ptr TextSelect
-        showTimestamps*: bool
-        autoScroll*: bool
 
     ConsoleComponent* = ref object of RootObj
         agentId*: string
@@ -239,6 +276,7 @@ type
         currentMatch*: int
         scrollToCurrentMatch*: bool
 
+    # Other
     ProcessInfo* = object
         pid*: uint32
         ppid*: uint32 
@@ -302,8 +340,8 @@ type
 
 # Client context
 type 
-    Conquest* = ref object 
-        sessions*: SessionsTableComponent
+    Conquest* = ref object
+        sessions*: SessionsComponent
         listeners*: ListenersTableComponent
         chat*: ChatComponent
         eventlog*: EventlogComponent

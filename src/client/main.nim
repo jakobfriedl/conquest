@@ -21,6 +21,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         views: OrderedTable[string, tuple[shortcut: string, show: ptr bool]]
         showConquest = true
         showSessionsTable = true
+        showSessionsGraph = false
         showListeners = true
         showEventlog = true
         showDownloads = false
@@ -38,10 +39,11 @@ proc main(ip: string = "localhost", port: int = 37573) =
         dockTopLeft: ImGuiID = 0
         dockTopRight: ImGuiID = 0
 
-    views["Sessions"] = (shortcut: "Ctrl+A, A", show: addr showSessionsTable)
+    views["Sessions (Table)"] = (shortcut: "Ctrl+A, T", show: addr showSessionsTable)
+    views["Sessions (Graph)"] = (shortcut: "Ctrl+A, G", show: addr showSessionsGraph)
     views["Listeners"] = (shortcut: "Ctrl+A, L", show: addr showListeners)
     views["Eventlog"] = (shortcut: "Ctrl+A, E", show: addr showEventlog)
-    views["Chat"] = (shortcut: "Ctrl+A, T", show: addr showChat)
+    views["Chat"] = (shortcut: "Ctrl+A, O", show: addr showChat)
     views["Loot:Downloads"] = (shortcut: "Ctrl+A, D", show: addr showDownloads)
     views["Loot:Screenshots"] = (shortcut: "Ctrl+A, S", show: addr showScreenshots)
     views["Loot:Credentials"] = (shortcut: "Ctrl+A, C", show: addr showCredentials)
@@ -62,7 +64,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
     for path in dbGetScriptPaths(): 
         loadScript(path)
 
-    cq.sessions = SessionsTable(WIDGET_SESSIONS, addr showSessionsTable) 
+    cq.sessions = Sessions(WIDGET_SESSIONS_TABLE, addr showSessionsTable, WIDGET_SESSIONS_GRAPH, addr showSessionsGraph)
     cq.chat = Chat(WIDGET_CHAT, addr showChat)
     cq.listeners = ListenersTable(WIDGET_LISTENERS, addr showListeners)
     cq.eventlog = Eventlog(WIDGET_EVENTLOG, addr showEventlog)
@@ -102,7 +104,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
 
         if modifierActive and not io.KeyCtrl:
             if igIsKeyPressed_Bool(ImGui_Key_A, false):
-                openAndFocus(showSessionsTable, WIDGET_SESSIONS)
+                openAndFocus(showSessionsTable, WIDGET_SESSIONS_TABLE)
             elif igIsKeyPressed_Bool(ImGui_Key_L, false):
                 openAndFocus(showListeners, WIDGET_LISTENERS)
             elif igIsKeyPressed_Bool(ImGui_Key_E, false):
@@ -121,6 +123,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
                 openAndFocus(showCredentials, WIDGET_CREDENTIALS)
             elif igIsKeyPressed_Bool(ImGui_Key_M, false):
                 openAndFocus(showScriptManager, WIDGET_SCRIPT_MANAGER)
+            elif igIsKeyPressed_Bool(ImGui_Key_G, false):
+                openAndFocus(showSessionsGraph, WIDGET_SESSIONS_GRAPH)
             elif igIsKeyPressed_Bool(ImGui_Key_Escape, false):
                 modifierActive = false
 
@@ -134,7 +138,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     
         if cq.connection != nil:
             # Draw UI components
-            if showSessionsTable: cq.sessions.draw() 
+            cq.sessions.draw()
             if showListeners: cq.listeners.draw()
             if showEventlog: cq.eventlog.draw()
             if showDownloads: cq.downloads.draw()
@@ -217,14 +221,14 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             workingDirectory: none(string),
                         )
                     
-                        agent.consoleTitle = fmt" {ICON_FA_TERMINAL} [{agent.agentId}] {agent.username}@{agent.hostname}"
+                        agent.consoleTitle = fmt" {ICON_FA_TERMINAL} [{agent.agentId}] {agent.username} @ {agent.hostname}"
                         agent.console = Console(agent.agentId)
                         agent.console.textarea.addItem(LOG_OUTPUT, @[
                             ("[" & agent.firstCheckin.fromUnix().local().format("dd-MM-yyyy HH:mm:ss") & "]", CONSOLE_GRAY),
                             (" Agent ", CONSOLE_DEFAULT),
                             (agent.agentId, CONSOLE_INFO),
                             (" connected from ", CONSOLE_DEFAULT),
-                            (agent.username & "@" & agent.hostname, CONSOLE_INFO),
+                            (agent.username & " @ " & agent.hostname, CONSOLE_INFO),
                             (" <> ", CONSOLE_ERROR),
                             ("[OS: ", CONSOLE_DEFAULT),
                             (agent.os, CONSOLE_INFO),
