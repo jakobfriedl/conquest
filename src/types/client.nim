@@ -45,8 +45,8 @@ const MAX_INPUT_LENGTH* = 16384 # Input needs to allow enough characters for lon
 type 
     # Widgets
     EdgeType* = enum
-        EDGE_HTTP
-        EDGE_SMB
+        EDGE_HTTP = "http"
+        EDGE_SMB = "smb"
 
     GraphNode* = ref object
         pos*: tuple[x, y: float32]
@@ -322,6 +322,7 @@ type
         console*: ConsoleComponent 
         consoleTitle*: string
         hidden*: bool
+        parentId*: string
 
     UIListener* = ref object
         listenerId*: string

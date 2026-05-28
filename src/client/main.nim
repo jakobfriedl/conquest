@@ -216,6 +216,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             modules: cast[uint32](event.data["modules"].getInt()),
                             firstCheckin: event.data["firstCheckin"].getInt(),
                             latestCheckin: event.data["latestCheckin"].getInt(),
+                            parentId: event.data["parentId"].getStr(),
                             processes: none(Processes),
                             filesystem: none(OrderedTable[string, DirectoryEntry]),
                             workingDirectory: none(string),

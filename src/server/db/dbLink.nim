@@ -27,6 +27,16 @@ proc dbGetLinkedAgents*(cq: Conquest, agentId: string): seq[string] =
     except: 
         cq.error(getCurrentExceptionMsg())
 
+proc dbGetParentAgent*(cq: Conquest, childId: string): string =
+    try:
+        let rows = cq.db.all("SELECT parentId FROM links WHERE childId = ?;", childId)
+        if rows.len > 0:
+            let (parentId,) = rows[0].unpack((string,))
+            return parentId
+    except:
+        cq.error(getCurrentExceptionMsg())
+    return ""
+
 proc dbDeleteLink*(cq: Conquest, parent, child: string): bool = 
     try: 
         cq.db.exec("DELETE FROM links WHERE parentId = ? AND childId = ?", parent, child)

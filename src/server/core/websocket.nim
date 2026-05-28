@@ -1,6 +1,7 @@
 import times, json, base64, strformat, tables
 import stb_image/write as stbiw
 import ./logger
+import ../db/dbLink
 import ../../common/[utils, event]
 import ../../types/[common, server, event]
 export recvEvent
@@ -120,11 +121,14 @@ proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: 
         if not silent: 
             cq.broadcast(event, clientId)
 
-proc sendAgent*(cq: Conquest, agent: Agent, clientId: string = "") = 
+proc sendAgent*(cq: Conquest, agent: Agent, clientId: string = "") =
+    let data = %agent
+    data["parentId"] = %cq.dbGetParentAgent(agent.agentId) # Retrieve parent agent for session graph
+    
     let event = Event(
-        eventType: CLIENT_AGENT_ADD, 
+        eventType: CLIENT_AGENT_ADD,
         timestamp: now().toTime().toUnix(),
-        data: %agent
+        data: data
     )
     cq.broadcast(event, clientId)
 
