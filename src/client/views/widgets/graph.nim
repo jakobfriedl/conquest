@@ -231,6 +231,7 @@ proc drawNode(dl: ptr ImDrawList, nodeId: string, node: GraphNode, origin: ImVec
 proc draw*(w: GraphWidget): string =
     let
         canvasPos = igGetCursorScreenPos()
+        canvasLocalPos = igGetCursorPos()
         canvasSize = igGetContentRegionAvail()
     if canvasSize.x < 50.0f or canvasSize.y < 50.0f:
         return ""
@@ -274,14 +275,16 @@ proc draw*(w: GraphWidget): string =
                     node.selected = true
                 break
 
-    # Right-click: select node + open context menu, or open config on empty canvas
+    # Right-click: select node + open context menu
     if canvasHovered and igIsMouseClicked_Bool(ImGui_MouseButton_Right.int32, false):
         var hitNode = false
         for nodeId, node in w.nodes:
             if nodeId == SERVER_NODE_ID: continue
-            let sc = graphToScreen(node.pos.x, node.pos.y, canvasPos, w)
-            let hw = NODE_W * 0.5f * w.zoom
-            let hh = NODE_H * 0.5f * w.zoom
+            let 
+                sc = graphToScreen(node.pos.x, node.pos.y, canvasPos, w)
+                hw = NODE_W * 0.5f * w.zoom
+                hh = NODE_H * 0.5f * w.zoom
+            
             if io.MousePos.x >= sc.x - hw and io.MousePos.x <= sc.x + hw and
                io.MousePos.y >= sc.y - hh and io.MousePos.y <= sc.y + hh:
                 for _, n in w.nodes: n.selected = false
@@ -289,6 +292,7 @@ proc draw*(w: GraphWidget): string =
                 igOpenPopup_str("GraphContextMenu", 0)
                 hitNode = true
                 break
+    
     # Drag node
     if w.draggingNodeId != "" and igIsMouseDragging(ImGui_MouseButton_Left.int32, 1.0f):
         w.nodes[w.draggingNodeId].pos.x += io.MouseDelta.x / w.zoom
@@ -315,11 +319,11 @@ proc draw*(w: GraphWidget): string =
 
     dl.ImDrawList_PopClipRect()
 
-    let overlayPos = ImVec2(x: canvasPos.x + canvasSize.x - 8.0f, y: canvasPos.y + 8.0f)
-    igSetNextWindowPos(overlayPos, ImGuiCond_Always.int32, ImVec2(x: 1.0f, y: 0.0f))
-    igSetNextWindowBgAlpha(0.7f)
-    let overlayFlags = ImGuiWindowFlags_NoMove.int32 or ImGuiWindowFlags_NoResize.int32 or ImGuiWindowFlags_NoTitleBar.int32 or ImGuiWindowFlags_AlwaysAutoResize.int32 or ImGuiWindowFlags_NoSavedSettings.int32 or ImGuiWindowFlags_NoFocusOnAppearing.int32 or ImGuiWindowFlags_NoDocking.int32
-    if igBegin("##GraphSettings", nil, overlayFlags):
+    let settingsWidth = 160.0f
+    let settingsHeight = 190.0f
+    igSetCursorPos(ImVec2(x: canvasLocalPos.x + canvasSize.x - settingsWidth - 8.0f, y: canvasLocalPos.y + 8.0f))
+    igPushStyleColor_Vec4(ImGui_Col_ChildBg.cint, igGetStyleColorVec4(ImGuiCol(ImGui_Col_PopupBg.int32))[])
+    if igBeginChild("##GraphSettings", ImVec2(x: settingsWidth, y: settingsHeight), true, 0):
         igText("Graph Settings:")
         discard igCheckbox("Grid", addr w.showGrid)
         igSeparator()
@@ -327,7 +331,8 @@ proc draw*(w: GraphWidget): string =
         discard igCheckbox("Process", addr w.showProcess)
         discard igCheckbox("Username", addr w.showUser)
         discard igCheckbox("Hostname", addr w.showHostname)
-    igEnd()
+    igEndChild()
+    igPopStyleColor(1)
 
     for nodeId, node in w.nodes:
         if node.selected: return nodeId
