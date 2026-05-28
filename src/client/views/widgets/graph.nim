@@ -1,10 +1,11 @@
 import math, tables, strutils
 import imguin/[cimgui, glfw_opengl, simple]
+import nimgl/opengl
 import ../../../types/[common, client]
+import ../../utils/[loadImage, globals]
 
 const
-    NODE_W* = 160.0f
-    NODE_H* = 64.0f
+    NODE_ICON_SIZE = 48.0f
     ZOOM_MIN* = 0.15f
     ZOOM_MAX* = 4.0f
     GRID_SIZE = 64.0f
@@ -12,13 +13,6 @@ const
     ARROW_WIDTH = 7.0f
     SERVER_NODE_ID = "teamserver"
 
-    COL_NODE_BG_NORMAL = 0xE0282828'u32
-    COL_NODE_BG_ELEVATED = 0xE0101050'u32
-    COL_NODE_BG_SERVER = 0xE0103010'u32
-    COL_NODE_BORDER = 0xFF505050'u32
-    COL_NODE_BORDER_ELEV = 0xFF2030E0'u32
-    COL_NODE_BORDER_SRV = 0xFF30C030'u32
-    COL_NODE_SEL_BORDER = 0xFFFFE040'u32
     COL_TEXT = 0xFFFFFFFF'u32
     COL_EDGE_HTTP = 0xFF4488FF'u32
     COL_EDGE_SMB = 0xFF60C0FF'u32
@@ -32,9 +26,9 @@ proc Graph*(): GraphWidget =
         scrollOffset: (x: 80.0f, y: 200.0f),
         zoom: 1.0f,
         draggingNodeId: "",
-        showGrid: true,
+        showGrid: false,
         showId: true,
-        showProcess: true,
+        showProcess: false,
         showUser: true,
         showHostname: true
     )
@@ -77,13 +71,8 @@ proc graphToScreen(wx, wy: float32, origin: ImVec2, graph: GraphWidget): ImVec2 
 proc screenToGraph(sx, sy: float32, origin: ImVec2, graph: GraphWidget): tuple[x, y: float32] =
     (x: (sx - origin.x - graph.scrollOffset.x) / graph.zoom, y: (sy - origin.y - graph.scrollOffset.y) / graph.zoom)
 
-proc nodeAttach(cx, cy, dx, dy, halfW, halfH: float32): ImVec2 =
-    var tx = 1e9f
-    var ty = 1e9f
-    if abs(dx) > 0.0001f: tx = halfW / abs(dx)
-    if abs(dy) > 0.0001f: ty = halfH / abs(dy)
-    let t = min(tx, ty)
-    ImVec2(x: cx + dx * t, y: cy + dy * t)
+proc nodeAttach(cx, cy, dx, dy, r: float32): ImVec2 =
+    ImVec2(x: cx + dx * r, y: cy + dy * r)
 
 #[
     Drawing
@@ -134,11 +123,9 @@ proc drawEdge(dl: ptr ImDrawList, edge: GraphEdge, origin: ImVec2, graph: GraphW
     let dx = ex / len
     let dy = ey / len
 
-    let hw = NODE_W * 0.5f * graph.zoom
-    let hh = NODE_H * 0.5f * graph.zoom
-
-    let p1 = nodeAttach(sc.x, sc.y, dx, dy, hw, hh)
-    let p2 = nodeAttach(dc.x, dc.y, -dx, -dy, hw, hh)
+    let r = NODE_ICON_SIZE * 0.5f * graph.zoom
+    let p1 = nodeAttach(sc.x, sc.y, dx, dy, r)
+    let p2 = nodeAttach(dc.x, dc.y, -dx, -dy, r)
 
     let color = if edge.edgeType == EDGE_HTTP: COL_EDGE_HTTP else: COL_EDGE_SMB
 
@@ -183,65 +170,37 @@ proc drawEdge(dl: ptr ImDrawList, edge: GraphEdge, origin: ImVec2, graph: GraphW
         dl.ImDrawList_AddText_Vec2(ImVec2(x: mx - sz.x * 0.5f, y: my - sz.y * 0.5f), color, label.cstring, nil)
 
 proc drawNode(dl: ptr ImDrawList, nodeId: string, node: GraphNode, origin: ImVec2, graph: GraphWidget) =
-    let isServer = nodeId == SERVER_NODE_ID
-    let
-        sc = graphToScreen(node.pos.x, node.pos.y, origin, graph)
-        hw = NODE_W * 0.5f * graph.zoom
-        hh = NODE_H * 0.5f * graph.zoom
-        p0 = ImVec2(x: sc.x - hw, y: sc.y - hh)
-        p1 = ImVec2(x: sc.x + hw, y: sc.y + hh)
-        rad = 6.0f * graph.zoom
+    let sc = graphToScreen(node.pos.x, node.pos.y, origin, graph)
+    let half = NODE_ICON_SIZE * 0.5f * graph.zoom
 
-    let bgColor =
-        if isServer: COL_NODE_BG_SERVER
-        elif node.elevated: COL_NODE_BG_ELEVATED
-        else: COL_NODE_BG_NORMAL
-
-    let borderColor =
-        if isServer: COL_NODE_BORDER_SRV
-        elif node.elevated: COL_NODE_BORDER_ELEV
-        else: COL_NODE_BORDER
-
-    dl.ImDrawList_AddRectFilled(p0, p1, bgColor, rad, 0)
-
-    if node.selected:
-        dl.ImDrawList_AddRect(ImVec2(x: p0.x - 2.0f, y: p0.y - 2.0f), ImVec2(x: p1.x + 2.0f, y: p1.y + 2.0f), COL_NODE_SEL_BORDER, rad + 2.0f, 0, 2.5f)
-    dl.ImDrawList_AddRect(p0, p1, borderColor, rad, 0, 1.5f)
+    let p0 = ImVec2(x: sc.x - half, y: sc.y - half)
+    let p1 = ImVec2(x: sc.x + half, y: sc.y + half)
+    if graph.texture != 0:
+        let texRef = ImTextureRef_c(internal_TexData: nil, internal_TexID: ImTextureID(graph.texture))
+        dl.ImDrawList_AddImage(texRef, p0, p1, ImVec2(x: 0.0f, y: 0.0f), ImVec2(x: 1.0f, y: 1.0f), 0xFFFFFFFF'u32)
 
     if graph.zoom > 0.35f:
         let parts = node.label.split('\t')
         if parts.len == 4:
             var line1Parts: seq[string]
             var line2Parts: seq[string]
-            
             if graph.showId: line1Parts.add(parts[0])
             if graph.showProcess: line1Parts.add(parts[1])
             if graph.showUser: line2Parts.add(parts[2])
             if graph.showHostname: line2Parts.add(parts[3])
-            
-            let 
-                line1 = line1Parts.join(" | ")
-                line2 = if line2Parts.len > 0: line2Parts.join(" @ ") else: ""
-                fontSize = igGetFontSize()
-            
-            if line1.len > 0 and line2.len > 0:
-                let 
-                    totalH = fontSize * 2.0f + 3.0f
-                    ly1 = sc.y - totalH * 0.5f
-                    ly2 = ly1 + fontSize + 3.0f
-                    sz1 = igCalcTextSize(line1.cstring, nil, false, -1.0f)
-                    sz2 = igCalcTextSize(line2.cstring, nil, false, -1.0f)
-                dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz1.x * 0.5f, y: ly1), COL_TEXT, line1.cstring, nil)
-                dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz2.x * 0.5f, y: ly2), COL_TEXT, line2.cstring, nil)
-            elif line1.len > 0:
+            let line1 = line1Parts.join(" | ")
+            let line2 = if line2Parts.len > 0: line2Parts.join(" @ ") else: ""
+            let baseY = sc.y + half + 4.0f
+            let fontSize = igGetFontSize()
+            if line1.len > 0:
                 let sz = igCalcTextSize(line1.cstring, nil, false, -1.0f)
-                dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz.x * 0.5f, y: sc.y - sz.y * 0.5f), COL_TEXT, line1.cstring, nil)
-            elif line2.len > 0:
+                dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz.x * 0.5f, y: baseY), COL_TEXT, line1.cstring, nil)
+            if line2.len > 0:
                 let sz = igCalcTextSize(line2.cstring, nil, false, -1.0f)
-                dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz.x * 0.5f, y: sc.y - sz.y * 0.5f), COL_TEXT, line2.cstring, nil)
+                dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz.x * 0.5f, y: baseY + fontSize + 2.0f), COL_TEXT, line2.cstring, nil)
         else:
-            let labelSz = igCalcTextSize(node.label.cstring, nil, false, -1.0f)
-            dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - labelSz.x * 0.5f, y: sc.y - labelSz.y * 0.5f), COL_TEXT, node.label.cstring, nil)
+            let sz = igCalcTextSize(node.label.cstring, nil, false, -1.0f)
+            dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz.x * 0.5f, y: sc.y + half + 4.0f), COL_TEXT, node.label.cstring, nil)
 
 proc applyLayout(graph: GraphWidget) =
     # Find server root
@@ -286,7 +245,7 @@ proc applyLayout(graph: GraphWidget) =
         levels.mgetOrPut(l, @[]).add(nodeId)
 
     const LAYER_SPACING = 280.0f
-    const NODE_SPACING = 110.0f
+    const NODE_SPACING = 120.0f
 
     for l, ids in levels:
         let n = ids.len
@@ -337,6 +296,12 @@ proc update(graph: GraphWidget, agents: Table[string, UIAgent], listeners: Table
 
 proc draw*(graph: GraphWidget, agents: Table[string, UIAgent], listeners: Table[string, UIListener]): string =
     graph.update(agents, listeners)
+
+    if not graph.loaded:
+        graph.loaded = true
+        var w, h: int
+        discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icon.png", graph.texture, w, h)
+
     let
         canvasPos = igGetCursorScreenPos()
         canvasLocalPos = igGetCursorPos()
@@ -369,13 +334,12 @@ proc draw*(graph: GraphWidget, agents: Table[string, UIAgent], listeners: Table[
         graph.draggingNodeId = ""
         for nodeId, node in graph.nodes:
             node.selected = false
+        let r = NODE_ICON_SIZE * 0.5f * graph.zoom
         for nodeId, node in graph.nodes:
-            let
-                sc = graphToScreen(node.pos.x, node.pos.y, canvasPos, graph)
-                hw = NODE_W * 0.5f * graph.zoom
-                hh = NODE_H * 0.5f * graph.zoom
-            if io.MousePos.x >= sc.x - hw and io.MousePos.x <= sc.x + hw and
-               io.MousePos.y >= sc.y - hh and io.MousePos.y <= sc.y + hh:
+            let sc = graphToScreen(node.pos.x, node.pos.y, canvasPos, graph)
+            let mdx = io.MousePos.x - sc.x
+            let mdy = io.MousePos.y - sc.y
+            if sqrt(mdx * mdx + mdy * mdy) < r:
                 graph.draggingNodeId = nodeId
                 if nodeId != SERVER_NODE_ID:
                     node.selected = true
@@ -383,14 +347,13 @@ proc draw*(graph: GraphWidget, agents: Table[string, UIAgent], listeners: Table[
 
     # Right-click on node to open context menu
     if canvasHovered and igIsMouseClicked_Bool(ImGui_MouseButton_Right.int32, false):
+        let r = NODE_ICON_SIZE * 0.5f * graph.zoom
         for nodeId, node in graph.nodes:
             if nodeId == SERVER_NODE_ID: continue
-            let
-                sc = graphToScreen(node.pos.x, node.pos.y, canvasPos, graph)
-                hw = NODE_W * 0.5f * graph.zoom
-                hh = NODE_H * 0.5f * graph.zoom
-            if io.MousePos.x >= sc.x - hw and io.MousePos.x <= sc.x + hw and
-               io.MousePos.y >= sc.y - hh and io.MousePos.y <= sc.y + hh:
+            let sc = graphToScreen(node.pos.x, node.pos.y, canvasPos, graph)
+            let mdx = io.MousePos.x - sc.x
+            let mdy = io.MousePos.y - sc.y
+            if sqrt(mdx * mdx + mdy * mdy) < r:
                 for _, n in graph.nodes: n.selected = false
                 node.selected = true
                 igOpenPopup_str("GraphContextMenu", 0)

@@ -65,6 +65,8 @@ type
         scrollOffset*: tuple[x, y: float32]
         zoom*: float32
         draggingNodeId*: string
+        texture*: GLuint
+        loaded*: bool
 
         # Settings
         showGrid*: bool
