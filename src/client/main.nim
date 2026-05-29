@@ -522,6 +522,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         else: 
                             cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, "No linked agents.")
 
+                    of CLINET_UPDATE_PARENT: 
+                        cq.sessions.agents[event.data["agentId"].getStr()].parentId = event.data["parentId"].getStr()
+
                     else: discard 
             
             except CatchableError as err:

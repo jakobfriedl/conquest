@@ -249,7 +249,7 @@ proc handleResult*(resultData: seq[byte]) =
                     cq.agents[agentId].links.add(agent.agentId)
                     if not cq.dbStoreLink(agentId, agent.agentId):
                         raise newException(CatchableError, "Failed to store link in database.")
-                    
+                    cq.updateParent(agent.agentId, agentId)
                     discard register(registrationBytes, cq.agents[agentId].ipExternal)
 
                 of CMD_UNLINK: 
@@ -258,6 +258,7 @@ proc handleResult*(resultData: seq[byte]) =
                     cq.agents[agentId].links.keepItIf(it != linkedAgentId)
                     if not cq.dbDeleteLink(agentId, linkedAgentId):
                         raise newException(CatchableError, "Failed to delete link from database.")
+                    cq.updateParent(linkedAgentId, "")
 
                 of CMD_PS:
                     # Send process list to the client

@@ -297,3 +297,14 @@ proc sendLinks*(cq: Conquest, agentId, linkData: string, silent: bool = false, c
         }
     )
     cq.broadcast(event, clientId)
+
+proc updateParent*(cq: Conquest, agentId, parentId: string, clientId: string = "") = 
+    let event = Event(
+        eventType: CLINET_UPDATE_PARENT, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "parentId": parentId
+        }
+    )
+    cq.broadcast(event, clientId)
