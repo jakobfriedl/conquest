@@ -498,6 +498,30 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         else: 
                             cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, "No running jobs.")
 
+                    of CLIENT_LINKS: 
+                        let 
+                            agentId = event.data["agentId"].getStr()
+                            data = event.data["links"].getStr()
+                            silent = event.data["silent"].getBool()
+
+                        var unpacker = Unpacker.init(data)
+                        let count = unpacker.getUint32() 
+                        if count > 0: 
+                            let console = cq.sessions.agents[agentId].console
+
+                            let headers = @["Agent ID", "Hostname", "Named Pipe"]
+                            console.textarea.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(15) & headers[2])
+                            console.textarea.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(15) & "-".repeat(len(headers[2])))
+
+                            for i in 0 ..< count:
+                                let linkedAgent = cq.sessions.agents[Uuid.toString(unpacker.getUint32())]
+                                let pipe = cq.listeners.listeners[linkedAgent.listenerId].pipe
+
+                                console.textarea.addItem(LOG_OUTPUT, linkedAgent.agentId.alignLeft(10) & linkedAgent.hostname.alignLeft(15) & pipe)
+
+                        else: 
+                            cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, "No linked agents.")
+
                     else: discard 
             
             except CatchableError as err:

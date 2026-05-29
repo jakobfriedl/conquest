@@ -271,6 +271,10 @@ proc handleResult*(resultData: seq[byte]) =
                     # Send list of pending job to the client 
                     cq.sendJobs(agentId, Bytes.toString(taskResult.data), silent = silent)
 
+                of CMD_LINKS: 
+                    # Send list of linked agents
+                    cq.sendLinks(agentId, Bytes.toString(taskResult.data), silent = silent)
+
                 else: discard 
                 
                 # Output RESULT_STRING packets to the agent console

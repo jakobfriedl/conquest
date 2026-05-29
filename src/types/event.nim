@@ -40,6 +40,7 @@ type
         CLIENT_CHAT = 116'u8                # Send and display chat message
         CLIENT_SYNC = 117'u8                # Instruct team server to sync data after authentication
         CLIENT_JOBS = 118'u8                # Send running jobs
+        CLIENT_LINKS = 119'u8               # Send linked agents
 
     Event* = object 
         eventType*: EventType               

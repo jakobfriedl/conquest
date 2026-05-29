@@ -222,7 +222,7 @@ proc sendRevertToken*(cq: Conquest, agentId: string, clientId: string = "") =
     )
     cq.broadcast(event, clientId)
 
-proc sendProcessList*(cq: Conquest, agentId, procData: string, silent: bool, clientId: string = "") = 
+proc sendProcessList*(cq: Conquest, agentId, procData: string, silent: bool = false, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_PROCESSES, 
         timestamp: now().toTime().toUnix(),
@@ -234,7 +234,7 @@ proc sendProcessList*(cq: Conquest, agentId, procData: string, silent: bool, cli
     )
     cq.broadcast(event, clientId)
 
-proc sendDirectoryListing*(cq: Conquest, agentId, data: string, silent: bool, clientId: string = "") = 
+proc sendDirectoryListing*(cq: Conquest, agentId, data: string, silent: bool = false, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_DIRECTORY_LISTING, 
         timestamp: now().toTime().toUnix(),
@@ -268,8 +268,7 @@ proc sendChatMessage*(cq: Conquest, user, message: string, clientId: string = ""
     )
     cq.broadcast(event, clientId)
 
-proc sendJobs*(cq: Conquest, agentId, jobData: string, silent: bool, clientId: string = "") = 
-    
+proc sendJobs*(cq: Conquest, agentId, jobData: string, silent: bool = false, clientId: string = "") = 
     # Include table with the display names of the jobs in the request, so the client can label running jobs correctly
     var commands = newJObject()
     for taskId, cmd in cq.agents[agentId].taskCommands:
@@ -282,6 +281,18 @@ proc sendJobs*(cq: Conquest, agentId, jobData: string, silent: bool, clientId: s
             "agentId": agentId,
             "jobs": jobData,
             "commands": commands,
+            "silent": silent
+        }
+    )
+    cq.broadcast(event, clientId)
+
+proc sendLinks*(cq: Conquest, agentId, linkData: string, silent: bool = false, clientId: string = "") =
+    let event = Event(
+        eventType: CLIENT_LINKS, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "links": linkData,
             "silent": silent
         }
     )

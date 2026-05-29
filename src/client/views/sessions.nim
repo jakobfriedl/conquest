@@ -54,12 +54,13 @@ proc agentContextMenu(component: SessionsComponent, selected: seq[UIAgent], agen
         igEndMenu()
     
     if igBeginMenu("Copy", true):
-        for label in ["AgentID", "ListenerID", "Username", "Impersonation Token", "Hostname", "Domain", "IP (Internal)", "IP (External)", "Operating System", "Process", "PID"]:
+        for label in ["AgentID", "ParentID", "ListenerID", "Username", "Impersonation Token", "Hostname", "Domain", "IP (Internal)", "IP (External)", "Operating System", "Process", "PID"]:
             if igMenuItem(label.cstring, nil, false, true):
                 var toCopy = ""
                 for agent in selected:
                     toCopy &= (case label:
                         of "AgentID": agent.agentId
+                        of "ParentID": agent.parentId
                         of "ListenerID": agent.listenerId
                         of "Username": agent.username
                         of "Impersonation Token": agent.impersonationToken
@@ -125,10 +126,11 @@ proc draw*(component: SessionsComponent) =
             ImGui_TableFlags_SizingStretchSame.int32
         )
 
-        let cols: int32 = 12
+        let cols: int32 = 13
         if igBeginTable("Sessions", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
             igTableSetupColumn("AgentID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
+            igTableSetupColumn("ParentID", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
             igTableSetupColumn("ListenerID", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
             igTableSetupColumn("IP (Internal)", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("IP (External)", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
@@ -173,29 +175,31 @@ proc draw*(component: SessionsComponent) =
                         component.interact = true
 
                 if igTableSetColumnIndex(1):
-                    igTextWithTooltip(agent.listenerId)
+                    igTextWithTooltip(agent.parentId)
                 if igTableSetColumnIndex(2):
-                    igTextWithTooltip(agent.ipInternal)
+                    igTextWithTooltip(agent.listenerId)
                 if igTableSetColumnIndex(3):
-                    igTextWithTooltip(agent.ipExternal)
+                    igTextWithTooltip(agent.ipInternal)
                 if igTableSetColumnIndex(4):
+                    igTextWithTooltip(agent.ipExternal)
+                if igTableSetColumnIndex(5):
 
                     igTextWithTooltip(agent.username)
                     if agent.impersonationToken != "":
                         igSameLine(0.0f, textSpacing)
                         igText(fmt"[{component.agents[agent.agentId].impersonationToken}]".cstring)
 
-                if igTableSetColumnIndex(5):
-                    igTextWithTooltip(agent.hostname)
                 if igTableSetColumnIndex(6):
-                    igTextWithTooltip(agent.domain)
+                    igTextWithTooltip(agent.hostname)
                 if igTableSetColumnIndex(7):
-                    igTextWithTooltip(agent.os)
+                    igTextWithTooltip(agent.domain)
                 if igTableSetColumnIndex(8):
-                    igTextWithTooltip(agent.process)
+                    igTextWithTooltip(agent.os)
                 if igTableSetColumnIndex(9):
-                    igTextWithTooltip($agent.pid)
+                    igTextWithTooltip(agent.process)
                 if igTableSetColumnIndex(10):
+                    igTextWithTooltip($agent.pid)
+                if igTableSetColumnIndex(11):
                     let duration = now() - agent.firstCheckin.fromUnix().local()
                     let totalSeconds = duration.inSeconds
 
@@ -205,7 +209,7 @@ proc draw*(component: SessionsComponent) =
 
                     igText(fmt"{hours:02d}:{minutes:02d}:{seconds:02d} ago".cstring)
 
-                if igTableSetColumnIndex(11):
+                if igTableSetColumnIndex(12):
                     let duration = now() - component.agents[agent.agentId].latestCheckin.fromUnix().local()
                     let totalSeconds = duration.inSeconds
 

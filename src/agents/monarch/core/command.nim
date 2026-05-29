@@ -121,6 +121,20 @@ commands[CMD_UNLINK] = proc(ctx: AgentCtx, task: Task): TaskResult =
     except CatchableError as err:
         return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
+commands[CMD_LINKS] = proc(ctx: AgentCtx, task: Task): TaskResult =
+    try:
+        print "   [>] Listing linked agents."
+        
+        var packer = Packer.init()
+        packer.add(cast[uint32](ctx.links.len()))
+        for linkedAgentId, hPipe in ctx.links:
+            packer.add(linkedAgentId)
+
+        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, packer.pack())
+
+    except CatchableError as err:
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
+
 commands[CMD_JOBS] = proc(ctx: AgentCtx, task: Task): TaskResult =
     try:
         print "   [>] Listing jobs."

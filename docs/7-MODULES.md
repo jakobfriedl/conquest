@@ -11,6 +11,7 @@
   - [sleepmask](#sleepmask)
   - [link](#link)
   - [unlink](#unlink)
+  - [links](#links)
   - [jobs](#jobs)
   - [cancel](#cancel)
 - [SHELL](#shell)
@@ -168,6 +169,14 @@ Example: unlink C804A284
 
 Required arguments:
   agent                     STRING     ID of the agent to unlink.
+```
+
+### links
+List linked agents.
+
+```
+Usage: links 
+Example: links
 ```
 
 ### jobs

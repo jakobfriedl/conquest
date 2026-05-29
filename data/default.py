@@ -67,6 +67,11 @@ cmd_unlink = (
             .registerToGroup("core")
 )
 
+cmd_links = (
+    conquest.createCommand(name="links", description="List linked agents.", example="links", message="Tasked agent to list linked agents.")
+            .registerToGroup("core")
+)
+
 cmd_jobs = (
     conquest.createCommand(name="jobs", description="List running jobs.", example="jobs", message="Tasked agent to list jobs.")
             .registerToGroup("core")

