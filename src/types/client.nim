@@ -51,7 +51,6 @@ type
     GraphNode* = ref object
         pos*: tuple[x, y: float32]
         label*: string
-        elevated*: bool
         selected*: bool
 
     GraphEdge* = object
@@ -65,7 +64,7 @@ type
         scrollOffset*: tuple[x, y: float32]
         zoom*: float32
         draggingNodeId*: string
-        texture*: GLuint
+        textures*: array[5, GLuint]
         loaded*: bool
 
         # Settings

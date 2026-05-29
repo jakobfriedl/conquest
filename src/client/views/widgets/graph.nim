@@ -1,5 +1,6 @@
-import math, tables, strutils
+import math, tables, strutils, times
 import imguin/[cimgui, glfw_opengl, simple]
+import nimgl/opengl
 import ../../../types/[common, client]
 import ../../utils/[loadImage, globals]
 
@@ -9,8 +10,14 @@ const
     ZOOM_MAX* = 4.0f
     GRID_SIZE = 64.0f
     ARROW_LEN = 12.0f
-    ARROW_WIDTH = 7.0f
+    ARROW_WIDTH = 4.0f
+
     SERVER_NODE_ID = "teamserver"
+    TEXTURE_TEAMSERVER = 0
+    TEXTURE_WINDOWS_DEAD = 1
+    TEXTURE_WINDOWS_ROOT = 2
+    TEXTURE_WINDOWS_USER = 3
+    TEXTURE_UNKNOWN = 4
 
     COL_TEXT = 0xFFFFFFFF'u32
     COL_EDGE_HTTP = 0xFF4488FF'u32
@@ -38,25 +45,22 @@ proc Graph*(): GraphWidget =
 proc hasNode(component: GraphWidget, id: string): bool =
     component.nodes.hasKey(id)
 
-proc addNode(component: GraphWidget, id, label: string, elevated: bool = false) =
+proc addNode(component: GraphWidget, id: string, label: string = "") =
     if component.nodes.hasKey(id):
         return
     component.nodes[id] = GraphNode(
         pos: (x: 0.0f, y: 0.0f),
         label: label,
-        elevated: elevated,
         selected: false
     )
 
 proc removeNode(component: GraphWidget, id: string) =
     component.nodes.del(id)
 
-proc updateNode(component: GraphWidget, id, label: string, elevated: bool) =
+proc updateNode(component: GraphWidget, id, label: string) =
     if not component.nodes.hasKey(id):
         return
-    let n = component.nodes[id]
-    n.label = label
-    n.elevated = elevated
+    component.nodes[id].label = label
 
 proc clearEdges(component: GraphWidget) =
     component.edges.setLen(0)
@@ -168,14 +172,14 @@ proc drawEdge(dl: ptr ImDrawList, edge: GraphEdge, origin: ImVec2, component: Gr
     if showLabel:
         dl.ImDrawList_AddText_Vec2(ImVec2(x: mx - sz.x * 0.5f, y: my - sz.y * 0.5f), color, label.cstring, nil)
 
-proc drawNode(dl: ptr ImDrawList, nodeId: string, node: GraphNode, origin: ImVec2, component: GraphWidget) =
+proc drawNode(dl: ptr ImDrawList, nodeId: string, node: GraphNode, origin: ImVec2, component: GraphWidget, texture: GLuint) =
     let sc = graphToScreen(node.pos.x, node.pos.y, origin, component)
     let half = NODE_ICON_SIZE * 0.5f * component.zoom
 
     let p0 = ImVec2(x: sc.x - half, y: sc.y - half)
     let p1 = ImVec2(x: sc.x + half, y: sc.y + half)
-    if component.texture != 0:
-        let texRef = ImTextureRef_c(internal_TexData: nil, internal_TexID: ImTextureID(component.texture))
+    if texture != 0:
+        let texRef = ImTextureRef_c(internal_TexData: nil, internal_TexID: ImTextureID(texture))
         dl.ImDrawList_AddImage(texRef, p0, p1, ImVec2(x: 0.0f, y: 0.0f), ImVec2(x: 1.0f, y: 1.0f), 0xFFFFFFFF'u32)
 
     if component.zoom > 0.35f:
@@ -203,70 +207,58 @@ proc drawNode(dl: ptr ImDrawList, nodeId: string, node: GraphNode, origin: ImVec
             dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz.x * 0.5f, y: sc.y + half + 4.0f), COL_TEXT, node.label.cstring, nil)
 
 proc applyLayout(component: GraphWidget) =
-    # Find server root node
-    var root = ""
-    for nodeId in component.nodes.keys:
-        if nodeId == SERVER_NODE_ID:
-            root = nodeId
-            break
-    if root == "": return
+    if not component.hasNode(SERVER_NODE_ID): return
 
-    # Build undirected adjacency from edges
-    var adj = initTable[string, seq[string]]()
+    const LAYER_SPACING = 200.0f
+    const NODE_SPACING = 100.0f
+
+    # Build parent→child map
+    var children = initTable[string, seq[string]]()
     for nodeId in component.nodes.keys:
-        adj[nodeId] = @[]
+        children[nodeId] = @[]
     for edge in component.edges:
-        if adj.hasKey(edge.srcId): adj[edge.srcId].add(edge.dstId)
-        if adj.hasKey(edge.dstId): adj[edge.dstId].add(edge.srcId)
+        if edge.dstId == SERVER_NODE_ID:
+            children[SERVER_NODE_ID].add(edge.srcId)
+        elif children.hasKey(edge.srcId):
+            children[edge.srcId].add(edge.dstId)
 
-    # BFS to assign depth levels from root
-    var level = initTable[string, int]()
-    var queue: seq[string] = @[root]
-    level[root] = 0
-    while queue.len > 0:
-        let curr = queue[0]
-        queue.delete(0)
-        for nb in adj.getOrDefault(curr, @[]):
-            if not level.hasKey(nb):
-                level[nb] = level[curr] + 1
-                queue.add(nb)
+    var ySlot = 0.0f
+    var placed: seq[string] = @[]
 
-    # Unreachable nodes go one level past the deepest reachable
-    var maxLevel = 0
-    for _, l in level: maxLevel = max(maxLevel, l)
+    proc place(id: string, depth: int) =
+        placed.add(id)
+        component.nodes[id].pos.x = float32(depth) * LAYER_SPACING
+        let kids = children.getOrDefault(id, @[])
+        if kids.len == 0:
+            component.nodes[id].pos.y = ySlot * NODE_SPACING
+            ySlot += 1.0f
+        else:
+            for kid in kids:
+                place(kid, depth + 1)
+            component.nodes[id].pos.y =
+                (component.nodes[kids[0]].pos.y + component.nodes[kids[^1]].pos.y) * 0.5f
+
+    place(SERVER_NODE_ID, 0)
+
+    # Disconnected nodes (unlinked SMB agents) stacked below main tree
     for nodeId in component.nodes.keys:
-        if not level.hasKey(nodeId):
-            inc maxLevel
-            level[nodeId] = maxLevel
-
-    # Group nodes by level
-    var levels = initTable[int, seq[string]]()
-    for nodeId, l in level:
-        levels.mgetOrPut(l, @[]).add(nodeId)
-
-    const LAYER_SPACING = 280.0f
-    const NODE_SPACING = 120.0f
-
-    for l, ids in levels:
-        let n = ids.len
-        for i, nodeId in ids:
-            component.nodes[nodeId].pos = (
-                x: float32(l) * LAYER_SPACING,
-                y: (float32(i) - float32(n - 1) * 0.5f) * NODE_SPACING)
+        if nodeId notin placed:
+            component.nodes[nodeId].pos = (x: 0.0f, y: ySlot * NODE_SPACING)
+            ySlot += 1.0f
 
 proc update(component: GraphWidget, agents: Table[string, UIAgent], listeners: Table[string, UIListener]) =
     var layoutChanged = false
 
     if not component.hasNode(SERVER_NODE_ID):
-        component.addNode(SERVER_NODE_ID, "Team Server")
+        component.addNode(SERVER_NODE_ID)
         layoutChanged = true
 
     for agentId, agent in agents:
         let label = agent.agentId & "\t" & $agent.pid & "/" & agent.process & "\t" & agent.username & "\t" & agent.hostname
         if component.hasNode(agentId):
-            component.updateNode(agentId, label, agent.elevated)
+            component.updateNode(agentId, label)
         else:
-            component.addNode(agentId, label, elevated = agent.elevated)
+            component.addNode(agentId, label)
             layoutChanged = true
 
     var toRemove: seq[string]
@@ -288,19 +280,24 @@ proc update(component: GraphWidget, agents: Table[string, UIAgent], listeners: T
                 else: 
                     EDGE_HTTP
             component.addEdge(agent.parentId, agentId, edgeType)
-        else:
+        elif not (listeners.hasKey(agent.listenerId) and listeners[agent.listenerId].listenerType == LISTENER_SMB):
             component.addEdge(agentId, SERVER_NODE_ID, EDGE_HTTP)
 
     if layoutChanged:
         component.applyLayout()
 
 proc draw*(component: GraphWidget, agents: Table[string, UIAgent], listeners: Table[string, UIListener]): tuple[selectedId: string, openConsoleId: string] =
-    component.update(agents, listeners)
-
+    # Lazy load textures    
     if not component.loaded:
         component.loaded = true
         var w, h: int
-        discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icon.png", component.texture, w, h)
+        discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icons/firewall.png", component.textures[TEXTURE_TEAMSERVER], w, h)
+        discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icons/windows-dead.png", component.textures[TEXTURE_WINDOWS_DEAD], w, h)
+        discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icons/windows-root.png", component.textures[TEXTURE_WINDOWS_ROOT], w, h)
+        discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icons/windows-user.png", component.textures[TEXTURE_WINDOWS_USER], w, h)
+        discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icons/unknown.png", component.textures[TEXTURE_UNKNOWN], w, h)
+
+    component.update(agents, listeners)
 
     let
         canvasPos = igGetCursorScreenPos()
@@ -329,8 +326,8 @@ proc draw*(component: GraphWidget, agents: Table[string, UIAgent], listeners: Ta
         component.scrollOffset.y = my - canvasPos.y - wb.y * newZoom
         component.zoom = newZoom
 
-    # Deselect when clicking outside the canvas
-    if not canvasActive and igIsMouseClicked_Bool(ImGui_MouseButton_Left.int32, false):
+    # Deselect when clicking outside the canvas when the context menu is not open
+    if not canvasActive and igIsMouseClicked_Bool(ImGui_MouseButton_Left.int32, false) and not igIsPopupOpen_Str("GraphContextMenu", 0):
         for nodeId, node in component.nodes:
             node.selected = false
 
@@ -385,8 +382,34 @@ proc draw*(component: GraphWidget, agents: Table[string, UIAgent], listeners: Ta
         drawGrid(dl, canvasPos, canvasSize, component)
     for edge in component.edges:
         drawEdge(dl, edge, canvasPos, component)
-    for nodeId, node in component.nodes:
-        drawNode(dl, nodeId, node, canvasPos, component)
+    
+    # Display correct icon/texture for node
+    for nodeId, node in component.nodes:    
+        let texture =
+
+            # Team server
+            if nodeId == SERVER_NODE_ID:
+                component.textures[TEXTURE_TEAMSERVER]
+
+            elif agents.hasKey(nodeId):
+                let agent = agents[nodeId]
+                
+                # Windows agents
+                if agent.os.startsWith("Windows"):
+                    if now().toTime().toUnix() - agent.latestCheckin > agent.sleep.int64:
+                        component.textures[TEXTURE_WINDOWS_DEAD]
+                    elif agent.elevated:
+                        component.textures[TEXTURE_WINDOWS_ROOT]
+                    else: 
+                        component.textures[TEXTURE_WINDOWS_USER]
+                
+                else:
+                    component.textures[TEXTURE_UNKNOWN]
+            
+            else:
+                component.textures[TEXTURE_UNKNOWN]
+
+        drawNode(dl, nodeId, node, canvasPos, component, texture)
 
     dl.ImDrawList_PopClipRect()
 
