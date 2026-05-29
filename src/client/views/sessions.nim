@@ -244,14 +244,13 @@ proc draw*(component: SessionsComponent) =
         igBegin(component.graphTitle.cstring, component.showGraph, 0)
         defer: igEnd()
 
-        let selection = component.graph.draw(component.agents, cq.listeners.listeners)
+        let (selection, openConsole) = component.graph.draw(component.agents, cq.listeners.listeners)
+        if openConsole != "" and component.agents.hasKey(openConsole):
+            component.agents[openConsole].console.showConsole = true
+            component.focusedConsole = component.agents[openConsole].consoleTitle
+
         if selection != "" and component.agents.hasKey(selection):
             let sortedAgents = cq.sessions.agents.values().toSeq().sortedByIt(it.firstCheckin).filterIt(not it.hidden)
-            
-            if igIsMouseDoubleClicked_Nil(ImGui_MouseButton_Left.int32):
-                component.agents[selection].console.showConsole = true
-                component.focusedConsole = component.agents[selection].consoleTitle
-            
             if igBeginPopup("GraphContextMenu", 0):
                 component.agentContextMenu(@[component.agents[selection]], sortedAgents)
                 igEndPopup()

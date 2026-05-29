@@ -1,6 +1,5 @@
 import math, tables, strutils
 import imguin/[cimgui, glfw_opengl, simple]
-import nimgl/opengl
 import ../../../types/[common, client]
 import ../../utils/[loadImage, globals]
 
@@ -36,40 +35,40 @@ proc Graph*(): GraphWidget =
 #[
     Nodes & Edges
 ]#
-proc hasNode(graph: GraphWidget, id: string): bool =
-    graph.nodes.hasKey(id)
+proc hasNode(component: GraphWidget, id: string): bool =
+    component.nodes.hasKey(id)
 
-proc addNode(graph: GraphWidget, id, label: string, elevated: bool = false) =
-    if graph.nodes.hasKey(id):
+proc addNode(component: GraphWidget, id, label: string, elevated: bool = false) =
+    if component.nodes.hasKey(id):
         return
-    graph.nodes[id] = GraphNode(
+    component.nodes[id] = GraphNode(
         pos: (x: 0.0f, y: 0.0f),
         label: label,
         elevated: elevated,
         selected: false
     )
 
-proc removeNode(graph: GraphWidget, id: string) =
-    graph.nodes.del(id)
+proc removeNode(component: GraphWidget, id: string) =
+    component.nodes.del(id)
 
-proc updateNode(graph: GraphWidget, id, label: string, elevated: bool) =
-    if not graph.nodes.hasKey(id):
+proc updateNode(component: GraphWidget, id, label: string, elevated: bool) =
+    if not component.nodes.hasKey(id):
         return
-    let n = graph.nodes[id]
+    let n = component.nodes[id]
     n.label = label
     n.elevated = elevated
 
-proc clearEdges(graph: GraphWidget) =
-    graph.edges.setLen(0)
+proc clearEdges(component: GraphWidget) =
+    component.edges.setLen(0)
 
-proc addEdge(graph: GraphWidget, srcId, dstId: string, edgeType: EdgeType) =
-    graph.edges.add(GraphEdge(srcId: srcId, dstId: dstId, edgeType: edgeType))
+proc addEdge(component: GraphWidget, srcId, dstId: string, edgeType: EdgeType) =
+    component.edges.add(GraphEdge(srcId: srcId, dstId: dstId, edgeType: edgeType))
 
-proc graphToScreen(wx, wy: float32, origin: ImVec2, graph: GraphWidget): ImVec2 =
-    ImVec2(x: origin.x + graph.scrollOffset.x + wx * graph.zoom, y: origin.y + graph.scrollOffset.y + wy * graph.zoom)
+proc graphToScreen(wx, wy: float32, origin: ImVec2, component: GraphWidget): ImVec2 =
+    ImVec2(x: origin.x + component.scrollOffset.x + wx * component.zoom, y: origin.y + component.scrollOffset.y + wy * component.zoom)
 
-proc screenToGraph(sx, sy: float32, origin: ImVec2, graph: GraphWidget): tuple[x, y: float32] =
-    (x: (sx - origin.x - graph.scrollOffset.x) / graph.zoom, y: (sy - origin.y - graph.scrollOffset.y) / graph.zoom)
+proc screenToGraph(sx, sy: float32, origin: ImVec2, component: GraphWidget): tuple[x, y: float32] =
+    (x: (sx - origin.x - component.scrollOffset.x) / component.zoom, y: (sy - origin.y - component.scrollOffset.y) / component.zoom)
 
 proc nodeAttach(cx, cy, dx, dy, r: float32): ImVec2 =
     ImVec2(x: cx + dx * r, y: cy + dy * r)
@@ -77,10 +76,10 @@ proc nodeAttach(cx, cy, dx, dy, r: float32): ImVec2 =
 #[
     Drawing
 ]#
-proc drawGrid(dl: ptr ImDrawList, origin, size: ImVec2, graph: GraphWidget) =
-    let step = GRID_SIZE * graph.zoom
-    let offX = graph.scrollOffset.x mod step
-    let offY = graph.scrollOffset.y mod step
+proc drawGrid(dl: ptr ImDrawList, origin, size: ImVec2, component: GraphWidget) =
+    let step = GRID_SIZE * component.zoom
+    let offX = component.scrollOffset.x mod step
+    let offY = component.scrollOffset.y mod step
 
     var x = offX
     while x < size.x:
@@ -105,15 +104,15 @@ proc drawArrow(dl: ptr ImDrawList, tip: ImVec2, dx, dy: float32, color: uint32) 
         ImVec2(x: bx - px * ARROW_WIDTH, y: by - py * ARROW_WIDTH),
         color)
 
-proc drawEdge(dl: ptr ImDrawList, edge: GraphEdge, origin: ImVec2, graph: GraphWidget) =
-    if not (graph.nodes.hasKey(edge.srcId) and graph.nodes.hasKey(edge.dstId)):
+proc drawEdge(dl: ptr ImDrawList, edge: GraphEdge, origin: ImVec2, component: GraphWidget) =
+    if not (component.nodes.hasKey(edge.srcId) and component.nodes.hasKey(edge.dstId)):
         return
 
-    let src = graph.nodes[edge.srcId]
-    let dst = graph.nodes[edge.dstId]
+    let src = component.nodes[edge.srcId]
+    let dst = component.nodes[edge.dstId]
 
-    let sc = graphToScreen(src.pos.x, src.pos.y, origin, graph)
-    let dc = graphToScreen(dst.pos.x, dst.pos.y, origin, graph)
+    let sc = graphToScreen(src.pos.x, src.pos.y, origin, component)
+    let dc = graphToScreen(dst.pos.x, dst.pos.y, origin, component)
 
     let ex = dc.x - sc.x
     let ey = dc.y - sc.y
@@ -123,7 +122,7 @@ proc drawEdge(dl: ptr ImDrawList, edge: GraphEdge, origin: ImVec2, graph: GraphW
     let dx = ex / len
     let dy = ey / len
 
-    let r = NODE_ICON_SIZE * 0.5f * graph.zoom
+    let r = NODE_ICON_SIZE * 0.5f * component.zoom
     let p1 = nodeAttach(sc.x, sc.y, dx, dy, r)
     let p2 = nodeAttach(dc.x, dc.y, -dx, -dy, r)
 
@@ -131,7 +130,7 @@ proc drawEdge(dl: ptr ImDrawList, edge: GraphEdge, origin: ImVec2, graph: GraphW
 
     let 
         label = $edge.edgeType
-        showLabel = graph.zoom > 0.5f
+        showLabel = component.zoom > 0.5f
         sz = if showLabel: igCalcTextSize(label.cstring, nil, false, -1.0f) else: ImVec2(x: 0.0f, y: 0.0f)
         edgePLen = sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y))
         halfGap = min(if showLabel: sz.x * 0.5f + 4.0f else: 0.0f, edgePLen * 0.4f)
@@ -169,25 +168,25 @@ proc drawEdge(dl: ptr ImDrawList, edge: GraphEdge, origin: ImVec2, graph: GraphW
     if showLabel:
         dl.ImDrawList_AddText_Vec2(ImVec2(x: mx - sz.x * 0.5f, y: my - sz.y * 0.5f), color, label.cstring, nil)
 
-proc drawNode(dl: ptr ImDrawList, nodeId: string, node: GraphNode, origin: ImVec2, graph: GraphWidget) =
-    let sc = graphToScreen(node.pos.x, node.pos.y, origin, graph)
-    let half = NODE_ICON_SIZE * 0.5f * graph.zoom
+proc drawNode(dl: ptr ImDrawList, nodeId: string, node: GraphNode, origin: ImVec2, component: GraphWidget) =
+    let sc = graphToScreen(node.pos.x, node.pos.y, origin, component)
+    let half = NODE_ICON_SIZE * 0.5f * component.zoom
 
     let p0 = ImVec2(x: sc.x - half, y: sc.y - half)
     let p1 = ImVec2(x: sc.x + half, y: sc.y + half)
-    if graph.texture != 0:
-        let texRef = ImTextureRef_c(internal_TexData: nil, internal_TexID: ImTextureID(graph.texture))
+    if component.texture != 0:
+        let texRef = ImTextureRef_c(internal_TexData: nil, internal_TexID: ImTextureID(component.texture))
         dl.ImDrawList_AddImage(texRef, p0, p1, ImVec2(x: 0.0f, y: 0.0f), ImVec2(x: 1.0f, y: 1.0f), 0xFFFFFFFF'u32)
 
-    if graph.zoom > 0.35f:
+    if component.zoom > 0.35f:
         let parts = node.label.split('\t')
         if parts.len == 4:
             var line1Parts: seq[string]
             var line2Parts: seq[string]
-            if graph.showId: line1Parts.add(parts[0])
-            if graph.showProcess: line1Parts.add(parts[1])
-            if graph.showUser: line2Parts.add(parts[2])
-            if graph.showHostname: line2Parts.add(parts[3])
+            if component.showId: line1Parts.add(parts[0])
+            if component.showProcess: line1Parts.add(parts[1])
+            if component.showUser: line2Parts.add(parts[2])
+            if component.showHostname: line2Parts.add(parts[3])
             let line1 = line1Parts.join(" | ")
             let line2 = if line2Parts.len > 0: line2Parts.join(" @ ") else: ""
             let baseY = sc.y + half + 4.0f
@@ -196,16 +195,17 @@ proc drawNode(dl: ptr ImDrawList, nodeId: string, node: GraphNode, origin: ImVec
                 let sz = igCalcTextSize(line1.cstring, nil, false, -1.0f)
                 dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz.x * 0.5f, y: baseY), COL_TEXT, line1.cstring, nil)
             if line2.len > 0:
+                let line2Y = if line1.len > 0: baseY + fontSize + 2.0f else: baseY
                 let sz = igCalcTextSize(line2.cstring, nil, false, -1.0f)
-                dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz.x * 0.5f, y: baseY + fontSize + 2.0f), COL_TEXT, line2.cstring, nil)
+                dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz.x * 0.5f, y: line2Y), COL_TEXT, line2.cstring, nil)
         else:
             let sz = igCalcTextSize(node.label.cstring, nil, false, -1.0f)
             dl.ImDrawList_AddText_Vec2(ImVec2(x: sc.x - sz.x * 0.5f, y: sc.y + half + 4.0f), COL_TEXT, node.label.cstring, nil)
 
-proc applyLayout(graph: GraphWidget) =
-    # Find server root
+proc applyLayout(component: GraphWidget) =
+    # Find server root node
     var root = ""
-    for nodeId in graph.nodes.keys:
+    for nodeId in component.nodes.keys:
         if nodeId == SERVER_NODE_ID:
             root = nodeId
             break
@@ -213,9 +213,9 @@ proc applyLayout(graph: GraphWidget) =
 
     # Build undirected adjacency from edges
     var adj = initTable[string, seq[string]]()
-    for nodeId in graph.nodes.keys:
+    for nodeId in component.nodes.keys:
         adj[nodeId] = @[]
-    for edge in graph.edges:
+    for edge in component.edges:
         if adj.hasKey(edge.srcId): adj[edge.srcId].add(edge.dstId)
         if adj.hasKey(edge.dstId): adj[edge.dstId].add(edge.srcId)
 
@@ -234,7 +234,7 @@ proc applyLayout(graph: GraphWidget) =
     # Unreachable nodes go one level past the deepest reachable
     var maxLevel = 0
     for _, l in level: maxLevel = max(maxLevel, l)
-    for nodeId in graph.nodes.keys:
+    for nodeId in component.nodes.keys:
         if not level.hasKey(nodeId):
             inc maxLevel
             level[nodeId] = maxLevel
@@ -250,34 +250,34 @@ proc applyLayout(graph: GraphWidget) =
     for l, ids in levels:
         let n = ids.len
         for i, nodeId in ids:
-            graph.nodes[nodeId].pos = (
+            component.nodes[nodeId].pos = (
                 x: float32(l) * LAYER_SPACING,
                 y: (float32(i) - float32(n - 1) * 0.5f) * NODE_SPACING)
 
-proc update(graph: GraphWidget, agents: Table[string, UIAgent], listeners: Table[string, UIListener]) =
+proc update(component: GraphWidget, agents: Table[string, UIAgent], listeners: Table[string, UIListener]) =
     var layoutChanged = false
 
-    if not graph.hasNode(SERVER_NODE_ID):
-        graph.addNode(SERVER_NODE_ID, "Team Server")
+    if not component.hasNode(SERVER_NODE_ID):
+        component.addNode(SERVER_NODE_ID, "Team Server")
         layoutChanged = true
 
     for agentId, agent in agents:
         let label = agent.agentId & "\t" & $agent.pid & "/" & agent.process & "\t" & agent.username & "\t" & agent.hostname
-        if graph.hasNode(agentId):
-            graph.updateNode(agentId, label, agent.elevated)
+        if component.hasNode(agentId):
+            component.updateNode(agentId, label, agent.elevated)
         else:
-            graph.addNode(agentId, label, elevated = agent.elevated)
+            component.addNode(agentId, label, elevated = agent.elevated)
             layoutChanged = true
 
     var toRemove: seq[string]
-    for nodeId in graph.nodes.keys:
+    for nodeId in component.nodes.keys:
         if nodeId != SERVER_NODE_ID and not agents.hasKey(nodeId):
             toRemove.add(nodeId)
     for id in toRemove:
-        graph.removeNode(id)
+        component.removeNode(id)
         layoutChanged = true
 
-    graph.clearEdges()
+    component.clearEdges()
     for agentId, agent in agents:
         if agent.parentId != "" and agents.hasKey(agent.parentId):
             let edgeType = 
@@ -287,27 +287,27 @@ proc update(graph: GraphWidget, agents: Table[string, UIAgent], listeners: Table
                     of LISTENER_SMB: EDGE_SMB
                 else: 
                     EDGE_HTTP
-            graph.addEdge(agent.parentId, agentId, edgeType)
+            component.addEdge(agent.parentId, agentId, edgeType)
         else:
-            graph.addEdge(agentId, SERVER_NODE_ID, EDGE_HTTP)
+            component.addEdge(agentId, SERVER_NODE_ID, EDGE_HTTP)
 
     if layoutChanged:
-        graph.applyLayout()
+        component.applyLayout()
 
-proc draw*(graph: GraphWidget, agents: Table[string, UIAgent], listeners: Table[string, UIListener]): string =
-    graph.update(agents, listeners)
+proc draw*(component: GraphWidget, agents: Table[string, UIAgent], listeners: Table[string, UIListener]): tuple[selectedId: string, openConsoleId: string] =
+    component.update(agents, listeners)
 
-    if not graph.loaded:
-        graph.loaded = true
+    if not component.loaded:
+        component.loaded = true
         var w, h: int
-        discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icon.png", graph.texture, w, h)
+        discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icon.png", component.texture, w, h)
 
     let
         canvasPos = igGetCursorScreenPos()
         canvasLocalPos = igGetCursorPos()
         canvasSize = igGetContentRegionAvail()
     if canvasSize.x < 50.0f or canvasSize.y < 50.0f:
-        return ""
+        return ("", "")
 
     let dl = igGetWindowDrawList()
     dl.ImDrawList_AddRectFilled(canvasPos, ImVec2(x: canvasPos.x + canvasSize.x, y: canvasPos.y + canvasSize.y), COL_CANVAS_BG, 0, 0)
@@ -323,83 +323,103 @@ proc draw*(graph: GraphWidget, agents: Table[string, UIAgent], listeners: Table[
         let
             mx = io.MousePos.x
             my = io.MousePos.y
-            wb = screenToGraph(mx, my, canvasPos, graph)
-            newZoom = clamp(graph.zoom * (1.0f + io.MouseWheel * 0.12f), ZOOM_MIN, ZOOM_MAX)
-        graph.scrollOffset.x = mx - canvasPos.x - wb.x * newZoom
-        graph.scrollOffset.y = my - canvasPos.y - wb.y * newZoom
-        graph.zoom = newZoom
+            wb = screenToGraph(mx, my, canvasPos, component)
+            newZoom = clamp(component.zoom * (1.0f + io.MouseWheel * 0.12f), ZOOM_MIN, ZOOM_MAX)
+        component.scrollOffset.x = mx - canvasPos.x - wb.x * newZoom
+        component.scrollOffset.y = my - canvasPos.y - wb.y * newZoom
+        component.zoom = newZoom
+
+    # Deselect when clicking outside the canvas
+    if not canvasActive and igIsMouseClicked_Bool(ImGui_MouseButton_Left.int32, false):
+        for nodeId, node in component.nodes:
+            node.selected = false
 
     # Left-click on node to select
     if canvasActive and igIsMouseClicked_Bool(ImGui_MouseButton_Left.int32, false):
-        graph.draggingNodeId = ""
-        for nodeId, node in graph.nodes:
+        component.draggingNodeId = ""
+        for nodeId, node in component.nodes:
             node.selected = false
-        let r = NODE_ICON_SIZE * 0.5f * graph.zoom
-        for nodeId, node in graph.nodes:
-            let sc = graphToScreen(node.pos.x, node.pos.y, canvasPos, graph)
+        let r = NODE_ICON_SIZE * 0.5f * component.zoom
+        for nodeId, node in component.nodes:
+            let sc = graphToScreen(node.pos.x, node.pos.y, canvasPos, component)
             let mdx = io.MousePos.x - sc.x
             let mdy = io.MousePos.y - sc.y
             if sqrt(mdx * mdx + mdy * mdy) < r:
-                graph.draggingNodeId = nodeId
+                component.draggingNodeId = nodeId
                 if nodeId != SERVER_NODE_ID:
                     node.selected = true
                 break
 
     # Right-click on node to open context menu
     if canvasHovered and igIsMouseClicked_Bool(ImGui_MouseButton_Right.int32, false):
-        let r = NODE_ICON_SIZE * 0.5f * graph.zoom
-        for nodeId, node in graph.nodes:
+        let r = NODE_ICON_SIZE * 0.5f * component.zoom
+        for nodeId, node in component.nodes:
             if nodeId == SERVER_NODE_ID: continue
-            let sc = graphToScreen(node.pos.x, node.pos.y, canvasPos, graph)
+            let sc = graphToScreen(node.pos.x, node.pos.y, canvasPos, component)
             let mdx = io.MousePos.x - sc.x
             let mdy = io.MousePos.y - sc.y
             if sqrt(mdx * mdx + mdy * mdy) < r:
-                for _, n in graph.nodes: n.selected = false
+                for _, n in component.nodes: n.selected = false
                 node.selected = true
                 igOpenPopup_str("GraphContextMenu", 0)
                 break
 
     # Drag node
-    if graph.draggingNodeId != "" and igIsMouseDragging(ImGui_MouseButton_Left.int32, 1.0f):
-        graph.nodes[graph.draggingNodeId].pos.x += io.MouseDelta.x / graph.zoom
-        graph.nodes[graph.draggingNodeId].pos.y += io.MouseDelta.y / graph.zoom
+    if component.draggingNodeId != "" and igIsMouseDragging(ImGui_MouseButton_Left.int32, 1.0f):
+        component.nodes[component.draggingNodeId].pos.x += io.MouseDelta.x / component.zoom
+        component.nodes[component.draggingNodeId].pos.y += io.MouseDelta.y / component.zoom
 
     # Release
     if not igIsMouseDown_Nil(ImGui_MouseButton_Left.int32):
-        graph.draggingNodeId = ""
+        component.draggingNodeId = ""
 
     # Drag on empty canvas to pan view
-    if canvasActive and graph.draggingNodeId == "" and igIsMouseDragging(ImGui_MouseButton_Left.int32, 1.0f):
-        graph.scrollOffset.x += io.MouseDelta.x
-        graph.scrollOffset.y += io.MouseDelta.y
+    if canvasActive and component.draggingNodeId == "" and igIsMouseDragging(ImGui_MouseButton_Left.int32, 1.0f):
+        component.scrollOffset.x += io.MouseDelta.x
+        component.scrollOffset.y += io.MouseDelta.y
 
     # Render
     dl.ImDrawList_PushClipRect(canvasPos, ImVec2(x: canvasPos.x + canvasSize.x, y: canvasPos.y + canvasSize.y), false)
 
-    if graph.showGrid:
-        drawGrid(dl, canvasPos, canvasSize, graph)
-    for edge in graph.edges:
-        drawEdge(dl, edge, canvasPos, graph)
-    for nodeId, node in graph.nodes:
-        drawNode(dl, nodeId, node, canvasPos, graph)
+    if component.showGrid:
+        drawGrid(dl, canvasPos, canvasSize, component)
+    for edge in component.edges:
+        drawEdge(dl, edge, canvasPos, component)
+    for nodeId, node in component.nodes:
+        drawNode(dl, nodeId, node, canvasPos, component)
 
     dl.ImDrawList_PopClipRect()
 
-    let settingsWidth = 160.0f
-    let settingsHeight = 190.0f
+    let settingsWidth = 180.0f
     igSetCursorPos(ImVec2(x: canvasLocalPos.x + canvasSize.x - settingsWidth - 8.0f, y: canvasLocalPos.y + 8.0f))
     igPushStyleColor_Vec4(ImGui_Col_ChildBg.cint, igGetStyleColorVec4(ImGuiCol(ImGui_Col_PopupBg.int32))[])
-    if igBeginChild("##GraphSettings", ImVec2(x: settingsWidth, y: settingsHeight), true, 0):
-        igText("Graph Settings:")
-        discard igCheckbox("Grid", addr graph.showGrid)
-        igSeparator()
-        discard igCheckbox("Agent ID", addr graph.showId)
-        discard igCheckbox("Process", addr graph.showProcess)
-        discard igCheckbox("Username", addr graph.showUser)
-        discard igCheckbox("Hostname", addr graph.showHostname)
+    if igBeginChild_Str("##GraphSettings", ImVec2(x: settingsWidth, y: 0.0f), ImGui_ChildFlags_Borders.int32 or ImGui_ChildFlags_AutoResizeY.int32, 0):
+        if igTreeNodeEx_Str("Graph Settings", ImGuiTreeNodeFlags_DefaultOpen.int32):
+            discard igCheckbox("Grid", addr component.showGrid)
+            igSeparator()
+            discard igCheckbox("Agent ID", addr component.showId)
+            discard igCheckbox("Process", addr component.showProcess)
+            discard igCheckbox("Username", addr component.showUser)
+            discard igCheckbox("Hostname", addr component.showHostname)
+            igTreePop()
     igEndChild()
     igPopStyleColor(1)
 
-    for nodeId, node in graph.nodes:
-        if node.selected: return nodeId
-    return ""
+    var openConsoleId = ""
+    if canvasActive and igIsMouseDoubleClicked_Nil(ImGui_MouseButton_Left.int32):
+        let r = NODE_ICON_SIZE * 0.5f * component.zoom
+        for nodeId, node in component.nodes:
+            if nodeId == SERVER_NODE_ID: continue
+            let sc = graphToScreen(node.pos.x, node.pos.y, canvasPos, component)
+            let mdx = io.MousePos.x - sc.x
+            let mdy = io.MousePos.y - sc.y
+            if sqrt(mdx * mdx + mdy * mdy) < r:
+                openConsoleId = nodeId
+                break
+
+    var selectedId = ""
+    for nodeId, node in component.nodes:
+        if node.selected:
+            selectedId = nodeId
+            break
+    return (selectedId: selectedId, openConsoleId: openConsoleId)
