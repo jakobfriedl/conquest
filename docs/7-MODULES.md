@@ -486,11 +486,11 @@ Required arguments:
 Remove an access token from the vault.
 
 ```
-Usage  : remove-token [token] [--all]
-Example: remove-token 1
+Usage: remove-token [--token token] [--all]
+Example: remove-token --all
 
 Optional arguments:
-  token                     INT        ID of the token to remove.
+  --token token             INT        ID of the token to remove.
   --all                     BOOL       Remove all tokens from the vault.
 ```
 
@@ -503,7 +503,7 @@ Example: rev2self
 ```
 
 ### token-vault
-List access tokens stored in the vault. Token IDs start at 1. 
+List access tokens stored in the vault.
 
 ```
 Usage  : token-vault

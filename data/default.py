@@ -259,12 +259,12 @@ cmd_usetoken = (
 cmd_removetoken = (
     conquest.createCommand(name="remove-token", description="Remove access token from the vault.", example="remove-token --all",
                            message="Tasked agent to use a token from the vault.", mitre=["T1134"])
-            .addArgInt("token", "ID of the token to remove.")
+            .addFlagInt("--token", "token", "ID of the token to remove.", False, -1)
             .addFlagBool("--all", "all", "Remove all tokens from the vault.")
             .setHandler(lambda agentId, cmdline, args: (
                 token := conquest.get_int(args, 0),
                 remove_all := conquest.get_bool(args, 1),
-                conquest.error(agentId, "Specify either a token ID or --all.", cmdline) if not remove_all and token == 0
+                conquest.error(agentId, "Specify either a valid token ID via --token or --all.", cmdline) if not remove_all and token < 0
                 else conquest.execute_command(agentId, cmdline)
             ))
             .registerToGroup("user impersonation")

