@@ -3,9 +3,12 @@
 ## Contents  <!-- omit from toc -->
 
 - [General](#general)
+  - [Keyboard Shortcuts](#keyboard-shortcuts)
 - [User Authentication](#user-authentication)
 - [Listeners](#listeners)
 - [Sessions](#sessions)
+  - [Table View](#table-view)
+  - [Graph View](#graph-view)
 - [Agent Console](#agent-console)
 - [Loot](#loot)
   - [Downloads](#downloads)
@@ -20,6 +23,25 @@
 ## General
 
 Conquest's operator client is developed using a wrapper for the **Dear ImGui** library in Nim. It communicates via WebSocket with the team server to instruct it to perform various actions, such as starting listeners, generating payloads or tasking agents to execute commands. At the same time, it receives data from the team server, such as new agents, command output or files and updates the user interface in real-time. Dear ImGui makes it easy to reorder windows and components for a customizable and flexible user experience.  
+
+### Keyboard Shortcuts 
+
+Keyboard shortcuts can be used to open and focus UI components. `CTRL + B` is used as a modifier key. Pressing ESC deactivates the modifier key.
+
+| Action | Shortcut |
+| --- | --- |
+| **Modifier key** | `CTRL + B` |
+| Sessions Table | `MOD + A` |
+| Sessions Graph | `MOD + G` |
+| Listeners | `MOD + L` |
+| Eventlog | `MOD + E` |
+| Operator Chat | `MOD + T` |
+| Downloads | `MOD + D` |
+| Screenshots | `MOD + S` |
+| Credentials | `MOD + C` |
+| Process Browser | `MOD + P` |
+| Filesystem Browser | `MOD + F` |
+| Script Manager | `MOD + M` |
 
 ## User Authentication
 
@@ -38,11 +60,19 @@ The **Listeners** view shows a table with all currently active listeners and pro
 
 ## Sessions 
 
+### Table View
+
 The **Sessions Table** view, located by default in the top left shows information about agents and the target system they are running on, such as the username, hostname, domain, internal and external IP address, process information and the time since the last heartbeat. By right-clicking the header row, columns can be hidden and shown, as well as reordered and resized.  
 
-![Sessions View](../assets/client-1.png)
+![Sessions Table View](../assets/client-1.png)
 
-To interact with an agent, one can either double-click it, or right-click the row and select `Interact`. The right-click context menu supports additional features:
+### Graph View
+
+The **Sessions Graph** view is a visual alternative to the table view. It shows connected agents and how they are linked to each other. There are three types of nodes: Gray icons indicate that an agent has not called back in the expected sleep interval, blue icons indicate regular user access and the red color shows that the agent is running in an elevated context. Nodes can be rearranged by dragging. The settings overlay on the right can be used to show additional fields or toggle a background grid.
+
+![Sessions Graph View](../assets/client-19.png)
+
+To interact with an agent, one can either double-click it in the table or graph view, or right-click the agent and select `Interact`. The right-click context menu supports additional features:
 
 - Open file/process browser with the current agent selected.
 - Copy any field of the session metadata (AgentID, username, hostname, ...). 

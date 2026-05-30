@@ -98,8 +98,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
             igSetWindowFocus_Str(widget.cstring)
             modifierActive = false
 
-        # CTRL+A is used as the modifier key 
-        if io.KeyCtrl and igIsKeyPressed_Bool(ImGui_Key_A, false):
+        # CTRL+B is used as the modifier key 
+        if io.KeyCtrl and igIsKeyPressed_Bool(ImGui_Key_B, false):
             modifierActive = true
 
         if modifierActive and not io.KeyCtrl:
@@ -251,8 +251,10 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
                         agent.console.draw()
 
-                    of CLIENT_AGENT_CHECKIN: 
-                        cq.sessions.agents[event.data["agentId"].getStr()].latestCheckin = event.timestamp
+                    of CLIENT_AGENT_CHECKIN:
+                        let agentId = event.data["agentId"].getStr()
+                        if cq.sessions.agents.hasKey(agentId):
+                            cq.sessions.agents[agentId].latestCheckin = event.timestamp
 
                     of CLIENT_AGENT_PAYLOAD: 
                         let name = event.data["name"].getStr()
@@ -513,19 +515,24 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             console.textarea.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(15) & "-".repeat(len(headers[2])))
 
                             for i in 0 ..< count:
-                                let linkedAgent = cq.sessions.agents[Uuid.toString(unpacker.getUint32())]
-                                let pipe = cq.listeners.listeners[linkedAgent.listenerId].pipe
-
-                                console.textarea.addItem(LOG_OUTPUT, linkedAgent.agentId.alignLeft(10) & linkedAgent.hostname.alignLeft(15) & pipe)
+                                let linkedAgentId = Uuid.toString(unpacker.getUint32())
+                                if cq.sessions.agents.hasKey(linkedAgentId):
+                                    let linkedAgent = cq.sessions.agents[linkedAgentId]
+                                    let pipe = if cq.listeners.listeners.hasKey(linkedAgent.listenerId): cq.listeners.listeners[linkedAgent.listenerId].pipe else: "unknown"
+                                    console.textarea.addItem(LOG_OUTPUT, linkedAgent.agentId.alignLeft(10) & linkedAgent.hostname.alignLeft(15) & pipe)
 
                         else: 
                             cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, "No linked agents.")
 
-                    of CLIENT_UPDATE_PARENT: 
-                        cq.sessions.agents[event.data["agentId"].getStr()].parentId = event.data["parentId"].getStr()
+                    of CLIENT_UPDATE_PARENT:
+                        let agentId = event.data["agentId"].getStr()
+                        if cq.sessions.agents.hasKey(agentId):
+                            cq.sessions.agents[agentId].parentId = event.data["parentId"].getStr()
 
-                    of CLIENT_UPDATE_SLEEP: 
-                        cq.sessions.agents[event.data["agentId"].getStr()].sleep = event.data["delay"].getInt()
+                    of CLIENT_UPDATE_SLEEP:
+                        let agentId = event.data["agentId"].getStr()
+                        if cq.sessions.agents.hasKey(agentId):
+                            cq.sessions.agents[agentId].sleep = event.data["delay"].getInt()
 
                     else: discard 
             

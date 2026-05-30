@@ -1,8 +1,8 @@
 ![Banner](assets/banner.png) 
 
-**Conquest** is a feature-rich, extensible and malleable command & control/post-exploitation framework developed for penetration testing and adversary simulation. Conquest's team server, operator client and agent have all been developed using the Nim programming language and are designed with modularity and flexibility in mind. It features an advanced malleable profile system for customizing network traffic, a multi-user client GUI developed using Dear ImGui and the `Monarch` agent, an extensible C2 implant aimed at Windows targets.
+**Conquest** is a feature-rich, extensible and malleable command & control/post-exploitation framework developed for penetration testing and adversary simulation. Conquest's team server, operator client and agent have all been developed using the Nim programming language and are designed with modularity and flexibility in mind. It features an advanced malleable profile system for customizing network traffic, a multi-user client GUI developed using Dear ImGui, a powerful Python Scripting API and the `Monarch` agent, an extensible C2 implant aimed at Windows targets.
 
-![Conquest Client](assets/readme-1.png)
+![Conquest](./assets/readme.png)
 
 > [!CAUTION]
 > Conquest is designed to be only used for educational purposes, research and authorized security testing of systems that you own or have an explicit permission to attack. The author provides no warranty and accepts no liability for misuse.
@@ -31,6 +31,7 @@ For more information about architecture, usage and features, check out the [docu
 - Websocket-based GUI developed using Dear ImGui
 - Multi-client support and password-based user authentication
 - Flexible payload generation with module selection
+- Graph view for agent sessions
 - File and process browser components
 - Console history and auto-complete for agent commands
 - Powerful console search functionality with Regex support
@@ -46,13 +47,16 @@ For more information about architecture, usage and features, check out the [docu
   - Support for Async BOFs
 - In-memory execution of .NET assemblies
 - In-memory execution of DLLs
-- Token manipulation 
+- Token manipulation & token vault
 - AMSI/ETW patching via hardware breakpoints
 - Compile-time string obfuscation 
 - Self-destruct functionality
+- Execution guardrails
 - Agent kill date & working hours
 
 ## Screenshots
+
+![Conquest Client](assets/readme-1.png)
 
 ![Payload generation](assets/readme-2.png)
 

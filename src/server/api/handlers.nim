@@ -18,11 +18,9 @@ proc register*(registrationData: seq[byte], remoteAddress: string): bool {.disca
             if not cq.dbListenerExists(agent.listenerId.toUpperAscii): 
                 raise newException(CatchableError, fmt"{agent.ipInternal} attempted to register to non-existent listener: {agent.listenerId}.")
 
-            if cq.dbAgentExists(agent.agentId):
-                raise newException(CatchableError, fmt"Agent {agent.agentId} attempted to register but already exists.")
-
-            if not cq.dbStoreAgent(agent):
-                raise newException(CatchableError, fmt"Failed to insert agent {agent.agentId} into database.")
+            if not cq.dbAgentExists(agent.agentId):
+                if not cq.dbStoreAgent(agent):
+                    raise newException(CatchableError, fmt"Failed to insert agent {agent.agentId} into database.")
 
             if not cq.makeAgentLogDirectory(agent.agentId):
                 cq.error("Failed to create log directory.\n")
@@ -76,6 +74,7 @@ proc getTasks*(heartbeat: seq[byte]): Table[string, seq[seq[byte]]] =
 
             # Recursively collect tasks for linked agents
             for linkedAgentId in cq.agents[agentId].links:
+                if cq.agents.hasKey(linkedAgentId): continue
                 cq.sendAgentCheckin(linkedAgentId)
                 collectTasks(linkedAgentId)
 
@@ -264,8 +263,8 @@ proc handleResult*(resultData: seq[byte]) =
                     cq.agents[agentId].links.add(agent.agentId)
                     if not cq.dbStoreLink(agentId, agent.agentId):
                         raise newException(CatchableError, "Failed to store link in database.")
-                    cq.sendUpdateParent(agent.agentId, agentId)
                     discard register(registrationBytes, cq.agents[agentId].ipExternal)
+                    cq.sendUpdateParent(agent.agentId, agentId)
 
                 of CMD_UNLINK: 
                     # Remove the link between two agents
