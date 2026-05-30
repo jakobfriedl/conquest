@@ -212,7 +212,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             pid: event.data["pid"].getInt(),
                             elevated: event.data["elevated"].getBool(),
                             sleep: event.data["sleep"].getInt(),
-                            jitter: event.data["jitter"].getInt(),
                             modules: cast[uint32](event.data["modules"].getInt()),
                             firstCheckin: event.data["firstCheckin"].getInt(),
                             latestCheckin: event.data["latestCheckin"].getInt(),
@@ -522,8 +521,11 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         else: 
                             cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, "No linked agents.")
 
-                    of CLINET_UPDATE_PARENT: 
+                    of CLIENT_UPDATE_PARENT: 
                         cq.sessions.agents[event.data["agentId"].getStr()].parentId = event.data["parentId"].getStr()
+
+                    of CLIENT_UPDATE_SLEEP: 
+                        cq.sessions.agents[event.data["agentId"].getStr()].sleep = event.data["delay"].getInt()
 
                     else: discard 
             

@@ -38,7 +38,6 @@ proc dbInit*(cq: Conquest, dbPath: string) =
             os                  TEXT    NOT NULL,
             elevated            BOOLEAN NOT NULL,
             sleep               INTEGER NOT NULL,
-            jitter              INTEGER NOT NULL,
             modules             INTEGER NOT NULL,
             firstCheckin        INTEGER NOT NULL,
             latestCheckin       INTEGER NOT NULL,

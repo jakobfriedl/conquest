@@ -41,7 +41,8 @@ type
         CLIENT_SYNC = 117'u8                # Instruct team server to sync data after authentication
         CLIENT_JOBS = 118'u8                # Send running jobs
         CLIENT_LINKS = 119'u8               # Send linked agents
-        CLINET_UPDATE_PARENT = 120'u8       # Update the parent agent of a linked agent
+        CLIENT_UPDATE_PARENT = 120'u8       # Update the parent agent of a linked agent
+        CLIENT_UPDATE_SLEEP = 121'u8        # Update sleep delay
 
     Event* = object 
         eventType*: EventType               

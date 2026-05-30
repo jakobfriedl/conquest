@@ -16,7 +16,6 @@ type
         pid*: int
         elevated*: bool 
         sleep*: int 
-        jitter*: int
         tasks*: seq[Task]
         taskCommands*: Table[Uuid, string]
         modules*: uint32

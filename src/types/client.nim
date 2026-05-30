@@ -313,7 +313,6 @@ type
         pid*: int
         elevated*: bool 
         sleep*: int 
-        jitter*: int
         modules*: uint32
         firstCheckin*: int64
         latestCheckin*: int64

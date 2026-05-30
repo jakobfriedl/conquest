@@ -357,7 +357,7 @@ proc get_string*(args: seq[TaskArg], i: int = 0): string {.exportpy.} =
 proc get_int*(args: seq[TaskArg], i: int = 0): int {.exportpy.} = 
     if i >= args.len(): 
         return 0
-    return int(Bytes.toUint32(args[i].data))
+    return int(cast[int32](Bytes.toUint32(args[i].data)))
 
 proc get_bool*(args: seq[TaskArg], i: int = 0): bool {.exportpy.} = 
     if i >= args.len(): 

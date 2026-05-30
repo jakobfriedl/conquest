@@ -11,9 +11,9 @@ proc dbStoreAgent*(cq: Conquest, agent: Agent): bool =
     try: 
         let sessionKeyBlob = agent.sessionKey.toSeq()
         cq.db.exec("""
-        INSERT INTO agents (agentId, listenerId, process, pid, username, impersonationToken, hostname, domain, ipInternal, ipExternal, os, elevated, sleep, jitter, modules, firstCheckin, latestCheckin, sessionKey)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-        """, agent.agentId, agent.listenerId, agent.process, agent.pid, agent.username, agent.impersonationToken, agent.hostname, agent.domain, agent.ipInternal, agent.ipExternal, agent.os, agent.elevated, agent.sleep, agent.jitter, agent.modules, agent.firstCheckin, agent.latestCheckin, sessionKeyBlob)
+        INSERT INTO agents (agentId, listenerId, process, pid, username, impersonationToken, hostname, domain, ipInternal, ipExternal, os, elevated, sleep, modules, firstCheckin, latestCheckin, sessionKey)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """, agent.agentId, agent.listenerId, agent.process, agent.pid, agent.username, agent.impersonationToken, agent.hostname, agent.domain, agent.ipInternal, agent.ipExternal, agent.os, agent.elevated, agent.sleep, agent.modules, agent.firstCheckin, agent.latestCheckin, sessionKeyBlob)
     except: 
         cq.error(getCurrentExceptionMsg())
         return false
@@ -21,9 +21,9 @@ proc dbStoreAgent*(cq: Conquest, agent: Agent): bool =
 
 proc dbGetAllAgents*(cq: Conquest) = 
     try: 
-        let rows = cq.db.all("SELECT agentId, listenerId, sleep, jitter, process, pid, username, impersonationToken, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKey FROM agents;")
+        let rows = cq.db.all("SELECT agentId, listenerId, sleep, process, pid, username, impersonationToken, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKey FROM agents;")
         for row in rows:
-            let (agentId, listenerId, sleep, jitter, process, pid, username, impersonationToken, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKeyBlob) = row.unpack((string, string, int, int, string, int, string, string, string, string, string, string, string, bool, uint32, int64, int64, seq[byte]))
+            let (agentId, listenerId, sleep, process, pid, username, impersonationToken, hostname, domain, ipInternal, ipExternal, os, elevated, modules, firstCheckin, latestCheckin, sessionKeyBlob) = row.unpack((string, string, int, string, int, string, string, string, string, string, string, string, bool, uint32, int64, int64, seq[byte]))
             
             var sessionKey: Key
             if sessionKeyBlob.len == 32:
@@ -35,7 +35,6 @@ proc dbGetAllAgents*(cq: Conquest) =
                 agentId: agentId,
                 listenerId: listenerId,
                 sleep: sleep,
-                jitter: jitter,
                 pid: pid,
                 username: username,
                 impersonationToken: impersonationToken,
@@ -67,6 +66,14 @@ proc dbDeleteAgentById*(cq: Conquest, agentId: string) =
 proc dbAgentExists*(cq: Conquest, agentId: string): bool =
     let res = cq.db.one("SELECT 1 FROM agents WHERE agentId = ? LIMIT 1", agentId)
     return res.isSome
+
+proc dbUpdateSleep*(cq: Conquest, agentId: string, sleep: int): bool =
+    try:
+        cq.db.exec("UPDATE agents SET sleep = ? WHERE agentId = ?", sleep, agentId)
+        return true
+    except:
+        cq.error(getCurrentExceptionMsg())
+        return false
 
 proc dbUpdateTokenImpersonation*(cq: Conquest, agentId: string, impersonationToken: string): bool =
     try:

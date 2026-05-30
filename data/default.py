@@ -12,6 +12,46 @@ conquest.createModule("screenshot", "Take and retrieve a screenshot of the targe
 conquest.createModule("token", "Manipulate Windows access tokens.")
 
 # Built-in modules (always enabled)
+SLEEPMASK_TECHNIQUES = {
+    "NONE": 0,
+    "EKKO": 1,
+    "ZILEAN": 2,
+    "FOLIAGE": 3
+}
+def _config(agentId, cmdline, args):
+    sleep = conquest.get_int(args, 0)
+    jitter = conquest.get_int(args, 1)
+    sleepmask = conquest.get_string(args, 2)
+    spoof = conquest.get_bool(args, 3)
+    no_spoof = conquest.get_bool(args, 4)
+
+    if spoof and no_spoof:
+        return conquest.error(agentId, "The flags --spoof and --no-spoof cannot be used together.", cmdline)
+    if sleepmask and sleepmask.upper() not in SLEEPMASK_TECHNIQUES:
+        return conquest.error(agentId, f"Invalid sleepmask technique '{sleepmask}'.", cmdline)
+    if jitter != -1 and not (0 <= jitter <= 100):
+        return conquest.error(agentId, "Jitter must be between 0 and 100.", cmdline)
+    if sleep != -1 and sleep < 0:
+        return conquest.error(agentId, "Sleep delay cannot be negative.", cmdline)
+
+    conquest.execute_command(agentId, cmdline)
+
+cmd_config = (
+    conquest.createCommand(name="config", description="Retrieve and update agent settings.", example="config --sleep 10 --jitter 15 --sleepmask ekko",
+                           message="Tasked agent to retrieve and update agent settings.", mitre=["T1029"])
+            .addFlagInt("--sleep", "delay", "Sleep delay in seconds.", False, -1)
+            .addFlagInt("--jitter", "jitter", "Jitter in % (0 - 100).", False, -1)
+            .addFlagString("--sleepmask", "technique", """Sleep obfuscation technique.
+Available options:
+  - NONE
+  - EKKO
+  - ZILEAN
+  - FOLIAGE""")
+            .addFlagBool("--spoof", "spoof", "Enable stack spoofing to obfuscate the call stack (only available for EKKO and ZILEAN sleepmask techniques).")
+            .addFlagBool("--no-spoof", "spoof", "Disable stack spoofing to obfuscate the call stack.")
+            .setHandler(_config)
+).registerToGroup("core")
+
 cmd_exit = (
     conquest.createCommand(name="exit", description="Exit the agent.", example="exit process", message="Tasked agent to exit.")
             .addArgString("type", """Available options: 
@@ -23,33 +63,6 @@ cmd_exit = (
 cmd_selfdestruct = (
     conquest.createCommand(name="self-destruct", description="Exit the agent and delete the executable from disk.", example="self-destruct", 
                            message="Tasked agent to self-destruct.", mitre=["T1070.004"])
-            .registerToGroup("core")
-)
-
-cmd_sleep = (
-    conquest.createCommand(name="sleep", description="Update sleep delay settings.", example="sleep 5", 
-                           message="Tasked agent to update sleep delay.", mitre=["T1029"])
-            .addArgInt("delay", "Delay in seconds.", True)
-            .registerToGroup("core")
-)
-
-cmd_jitter = (
-    conquest.createCommand(name="jitter", description="Update jitter settings.", example="jitter 15", 
-                           message="Tasked agent to update jitter.", mitre=["T1029"])
-            .addArgInt("jitter", "Jitter in % (0-100).", True)
-            .registerToGroup("core")
-)
-
-cmd_sleepmask = (
-    conquest.createCommand(name="sleepmask", description="Retrieve or update sleepmask settings. Executing without arguments retrieves the current sleepmask settings.", example="sleepmask --technique ekko --spoof", 
-                           message="Tasked agent to update sleepmask settings.", mitre=["T1027"])
-            .addFlagString("--technique", "technique", """Sleep obfuscation technique.
-Available options:
-  - NONE
-  - EKKO
-  - ZILEAN
-  - FOLIAGE""")
-            .addFlagBool("--spoof", "spoof", "Enable stack spoofing to obfuscate the call stack.")
             .registerToGroup("core")
 )
 

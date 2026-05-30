@@ -161,6 +161,21 @@ proc handleResult*(resultData: seq[byte]) =
 
                 # Handle command specific actions on task completion (e.g. triggering UI changes, writing files, ...) 
                 case cast[CommandType](taskResult.command):
+                of CMD_CONFIG:
+                    var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
+                    let 
+                        newDelay = int(unpacker.getUint32())
+                        config = unpacker.getDataWithLengthPrefix() 
+                    
+                    # Update stored sleep delay if it has changed
+                    if newDelay != cq.agents[agentId].sleep: 
+                        cq.agents[agentId].sleep = newDelay
+                        discard cq.dbUpdateSleep(agentId, newDelay)
+                        cq.sendUpdateSleep(agentId, newDelay)
+
+                    cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent = silent) 
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, config, command = command, silent = silent)
+
                 of CMD_DOWNLOAD:
                     # Complete download job
                     if cq.downloads.hasKey(taskId):
@@ -249,7 +264,7 @@ proc handleResult*(resultData: seq[byte]) =
                     cq.agents[agentId].links.add(agent.agentId)
                     if not cq.dbStoreLink(agentId, agent.agentId):
                         raise newException(CatchableError, "Failed to store link in database.")
-                    cq.updateParent(agent.agentId, agentId)
+                    cq.sendUpdateParent(agent.agentId, agentId)
                     discard register(registrationBytes, cq.agents[agentId].ipExternal)
 
                 of CMD_UNLINK: 
@@ -258,7 +273,7 @@ proc handleResult*(resultData: seq[byte]) =
                     cq.agents[agentId].links.keepItIf(it != linkedAgentId)
                     if not cq.dbDeleteLink(agentId, linkedAgentId):
                         raise newException(CatchableError, "Failed to delete link from database.")
-                    cq.updateParent(linkedAgentId, "")
+                    cq.sendUpdateParent(linkedAgentId, "")
 
                 of CMD_PS:
                     # Send process list to the client

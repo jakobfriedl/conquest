@@ -17,11 +17,9 @@ type
 
 type 
     CommandType* {.size: sizeof(uint16).} = enum 
+        CMD_CONFIG = "config"
         CMD_EXIT = "exit"
         CMD_SELF_DESTRUCT = "self-destruct"
-        CMD_SLEEP = "sleep"
-        CMD_JITTER = "jitter"
-        CMD_SLEEPMASK = "sleepmask"
         CMD_LINK = "link"
         CMD_UNLINK = "unlink"
         CMD_LINKS = "links"

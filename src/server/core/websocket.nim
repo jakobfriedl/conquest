@@ -21,7 +21,6 @@ proc `%`*(agent: Agent): JsonNode =
     result["pid"] = %agent.pid
     result["elevated"] = %agent.elevated
     result["sleep"] = %agent.sleep
-    result["jitter"] = %agent.jitter
     result["modules"] = %agent.modules
     result["firstCheckin"] = %agent.firstCheckin
     result["latestCheckin"] = %agent.latestCheckin
@@ -298,13 +297,24 @@ proc sendLinks*(cq: Conquest, agentId, linkData: string, silent: bool = false, c
     )
     cq.broadcast(event, clientId)
 
-proc updateParent*(cq: Conquest, agentId, parentId: string, clientId: string = "") = 
+proc sendUpdateParent*(cq: Conquest, agentId, parentId: string, clientId: string = "") = 
     let event = Event(
-        eventType: CLINET_UPDATE_PARENT, 
+        eventType: CLIENT_UPDATE_PARENT, 
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
             "parentId": parentId
+        }
+    )
+    cq.broadcast(event, clientId)
+
+proc sendUpdateSleep*(cq: Conquest, agentId: string, delay: int, clientId: string = "") = 
+    let event = Event(
+        eventType: CLIENT_UPDATE_SLEEP, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "delay": delay
         }
     )
     cq.broadcast(event, clientId)

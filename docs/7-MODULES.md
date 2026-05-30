@@ -4,11 +4,9 @@
 
 - [Overview](#overview)
 - [CORE](#core)
+  - [config](#config)
   - [exit](#exit)
   - [self-destruct](#self-destruct)
-  - [sleep](#sleep)
-  - [jitter](#jitter)
-  - [sleepmask](#sleepmask)
   - [link](#link)
   - [unlink](#unlink)
   - [links](#links)
@@ -53,11 +51,9 @@
 Modules are bundles of agent commands that can be embedded into the executable when configuring and building the `Monarch` agent. The core modules listed on this page are directly implemnted in Nim and thus change the agent size. Currently, the following commands are available when all modules are enabled.
 
 ```
+ * config                   Retrieve and update agent settings.
  * exit                     Exit the agent.
  * self-destruct            Exit the agent and delete the executable from disk.
- * sleep                    Update sleep delay settings.
- * jitter                   Update jitter settings.
- * sleepmask                Retrieve or update sleepmask settings.
  * link                     Create a link to a SMB agent.
  * unlink                   Remove a link to a SMB agent.
  * shell                    Execute a shell command and retrieve the output.
@@ -89,6 +85,28 @@ Modules are bundles of agent commands that can be embedded into the executable w
 
 The core module exposes commands that are built into the agent by default and are always available regardless of the selected modules.
 
+### config 
+Retrieve and update agent settings. Settings that are not specified remain unchanged. Execute this command without arguments to retrieve the current configuration.
+
+```
+Usage: config [--sleep delay] [--jitter jitter] [--sleepmask technique] [--spoof] [--no-spoof]
+Example: config --sleep 10 --jitter 15 --sleepmask ekko
+
+Optional arguments:
+  --sleep delay             INT        Sleep delay in seconds.
+  --jitter jitter           INT        Jitter in % (0 - 100).
+  --sleepmask technique     STRING     Sleep obfuscation technique.
+                                       Available options:
+                                         - NONE
+                                         - EKKO
+                                         - ZILEAN
+                                         - FOLIAGE
+  --spoof                   BOOL       Enable stack spoofing to obfuscate the call stack (only available for EKKO and ZILEAN sleepmask techniques).
+  --no-spoof                BOOL       Disable stack spoofing to obfuscate the call stack.
+```
+
+![Config](../assets/modules-1.png)
+
 ### exit
 Terminate the agent process or thread. This command is also invoked when the agent is exited from the UI.
 
@@ -107,46 +125,6 @@ Terminate the agent process and delete the agent executable from disk.
 Usage  : self-destruct
 Example: self-destruct
 ```
-
-### sleep
-Update the agent sleep delay.
-
-```
-Usage  : sleep <delay>
-Example: sleep 5
-
-Required arguments:
-  delay                     INT        Delay in seconds.
-```
-
-### jitter
-Update the jitter percentage applied to the sleep delay.
-
-```
-Usage  : jitter <jitter>
-Example: jitter 15
-
-Required arguments:
-  jitter                    INT        Jitter in % (0-100).
-```
-
-### sleepmask
-Retrieve or update sleep obfuscation settings. Executing without arguments retrieves the current settings.
-
-```
-Usage  : sleepmask [--technique <technique>] [--spoof]
-Example: sleepmask --technique ekko --spoof
-
-Optional arguments:
-  --technique technique     STRING     Sleep obfuscation technique.
-                                         - NONE
-                                         - EKKO
-                                         - ZILEAN
-                                         - FOLIAGE
-  --spoof                   BOOL       Enable call stack spoofing.
-```
-
-![Sleepmask command](../assets/modules-1.png)
 
 ### link
 Create a link to an SMB agent by connecting to its named pipe.
