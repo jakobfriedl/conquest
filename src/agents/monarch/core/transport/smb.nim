@@ -58,14 +58,13 @@ proc smbRead*(ctx: AgentCtx, hPipe: HANDLE): string =
                 ctx.transport.hPipe = 0
         return ""
 
+    if dwSize == 0:
+        return ""
+
     when defined(TRANSPORT_SMB):
-        # Poll own transport pipe
         if hPipe == ctx.transport.hPipe:
             return Bytes.toString(hPipe.pipeRead())
 
-    # Parent agent polling linked child pipe regardless of transport type
-    if dwSize == 0:
-        return ""
     return Bytes.toString(hPipe.pipeRead())
 
 # Agent linking
