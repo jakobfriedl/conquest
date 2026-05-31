@@ -74,9 +74,9 @@ proc getTasks*(heartbeat: seq[byte]): Table[string, seq[seq[byte]]] =
 
             # Recursively collect tasks for linked agents
             for linkedAgentId in cq.agents[agentId].links:
-                if cq.agents.hasKey(linkedAgentId): continue
-                cq.sendAgentCheckin(linkedAgentId)
-                collectTasks(linkedAgentId)
+                if cq.agents.hasKey(linkedAgentId): 
+                    cq.sendAgentCheckin(linkedAgentId)
+                    collectTasks(linkedAgentId)
 
             # Clear task queue
             cq.agents[agentId].tasks = @[]
