@@ -289,13 +289,13 @@ proc update(component: GraphWidget, agents: Table[string, UIAgent], listeners: T
 proc draw*(component: GraphWidget, agents: Table[string, UIAgent], listeners: Table[string, UIListener]): tuple[selectedId: string, openConsoleId: string] =
     # Lazy load textures    
     if not component.loaded:
-        component.loaded = true
         var w, h: int
         discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icons/firewall.png", component.textures[TEXTURE_TEAMSERVER], w, h)
         discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icons/windows-dead.png", component.textures[TEXTURE_WINDOWS_DEAD], w, h)
         discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icons/windows-root.png", component.textures[TEXTURE_WINDOWS_ROOT], w, h)
         discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icons/windows-user.png", component.textures[TEXTURE_WINDOWS_USER], w, h)
         discard loadTextureFromFile(CONQUEST_ROOT & "/src/client/resources/icons/unknown.png", component.textures[TEXTURE_UNKNOWN], w, h)
+        component.loaded = true
 
     component.update(agents, listeners)
 

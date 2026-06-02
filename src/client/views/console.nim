@@ -16,6 +16,10 @@ proc Console*(agentId: string): ConsoleComponent =
     result.historyPosition = -1
     result.currentInput = ""
 
+    # Auto-complete
+    result.autocompleteMatches = @[]
+    result.autocompleteIndex = 0
+
     # Search functionality
     result.searchActive = false
     zeroMem(addr result.searchBuffer[0], 256)
@@ -73,62 +77,40 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
 
         return 0
 
-    of ImGui_InputTextFlags_CallbackCompletion.int32: 
-        # Handle Tab-autocompletion for agent commands
+    of ImGui_InputTextFlags_CallbackCompletion.int32:
         let commands = cq.scriptManager.getCommands().keys().toSeq() & @["help "]
 
-        # Get the word to complete
         let inputEndPos = data.CursorPos
         var inputStartPos = inputEndPos
-
         while inputStartPos > 0:
             let c = cast[ptr UncheckedArray[char]](data.Buf)[inputStartPos - 1]
             if c in [' ', '\t', ',', ';']:
                 break
             dec inputStartPos
-        
+
         let inputLen = inputEndPos - inputStartPos
         var currentWord = newString(inputLen)
         for i in 0..<inputLen:
             currentWord[i] = cast[ptr UncheckedArray[char]](data.Buf)[inputStartPos + i]
-        
-        # Check for matches
-        var matches: seq[string] = @[]
-        for cmd in commands: 
-            if cmd.toLowerAscii().startsWith(currentWord.toLowerAscii()): 
-                matches.add(cmd)
 
-        # No matching commands found
-        if matches.len() == 0: 
-            return 0
-        
-        elif matches.len() == 1:
-            data.ImGuiInputTextCallbackData_DeleteChars(inputStartPos.cint, inputLen.cint)
-            data.ImGuiInputTextCallbackData_InsertChars(data.CursorPos, matches[0].cstring, nil)
-        
-        # More than 1 matching command -> complete common prefix
+        # Cycle through matches
+        if component.autocompleteMatches.len > 0 and currentWord == component.autocompleteMatches[component.autocompleteIndex]:
+            component.autocompleteIndex = (component.autocompleteIndex + 1) mod component.autocompleteMatches.len
         else:
-            var prefixLen = inputLen 
+            # Check for matching commands
+            component.autocompleteMatches = @[]
+            for cmd in commands:
+                if cmd.toLowerAscii().startsWith(currentWord.toLowerAscii()):
+                    component.autocompleteMatches.add(cmd)
+            component.autocompleteIndex = 0
 
-            while prefixLen < matches[0].len(): 
-                let c = matches[0][prefixLen]
-                var allMatch = true
-                
-                for i in 1 ..< matches.len(): 
-                    if prefixLen >= matches[i].len() or matches[i][prefixLen] != c: 
-                        allMatch = false
-                        break
-
-                if not allMatch:
-                    break
-
-                inc prefixLen
-        
-            if prefixLen > inputLen:
-                data.ImGuiInputTextCallbackData_DeleteChars(inputStartPos.cint, inputLen.cint)
-                data.ImGuiInputTextCallbackData_InsertChars(data.CursorPos, matches[0][0..<prefixLen].cstring, nil)
-
+        if component.autocompleteMatches.len == 0:
             return 0
+
+        let completion = component.autocompleteMatches[component.autocompleteIndex]
+        data.ImGuiInputTextCallbackData_DeleteChars(inputStartPos.cint, inputLen.cint)
+        data.ImGuiInputTextCallbackData_InsertChars(data.CursorPos, completion.cstring, nil)
+        return 0
 
     else: discard
 

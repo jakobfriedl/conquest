@@ -266,6 +266,10 @@ type
         historyPosition*: int
         currentInput*: string
 
+        # Tab auto-completion
+        autocompleteMatches*: seq[string]
+        autocompleteIndex*: int
+
         # Search functionality
         searchBuffer*: array[256, char]
         searchActive*: bool
