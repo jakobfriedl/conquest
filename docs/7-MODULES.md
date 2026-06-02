@@ -464,7 +464,7 @@ Required arguments:
   pid                       INT        Process ID of the target process.
 
 Optional arguments:
-  --store                   BOOL       Store access token in vault.
+  --store                   BOOL       Store access token in vault. Impersonate it using the 'use-token' command.
 ```
 
 In the screenshot below, the target PID belongs to `winlogon.exe`, which runs as `NT AUTHORITY\SYSTEM`.

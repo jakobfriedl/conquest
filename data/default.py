@@ -234,7 +234,7 @@ cmd_maketoken = (
   - 8: LOGON_NETWORK_CLEARTEXT 
   - 9: LOGON_NEW_CREDENTIALS (default)                        
 """, False, 9)
-            .addFlagBool("--store", "store", "Store access token in vault.")
+            .addFlagBool("--store", "store", "Store access token in vault. Impersonate it using the 'use-token' command.")
             .registerToGroup("user impersonation")
             .registerToModule("token")
 )
@@ -243,7 +243,7 @@ cmd_stealtoken = (
     conquest.createCommand(name="steal-token", description="Steal the primary access token of a remote process.", example="steal-token 1234", 
                            message="Tasked agent to steal an access token.", mitre=["T1134.001"])
             .addArgInt("pid", "Process ID of the target process.", True)
-            .addFlagBool("--store", "store", "Store access token in vault.")
+            .addFlagBool("--store", "store", "Store access token in vault. Impersonate it using the 'use-token' command.")
             .registerToGroup("user impersonation")
             .registerToModule("token")
 )

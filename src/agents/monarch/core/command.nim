@@ -428,10 +428,11 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
                 
             if store:
                 ctx.tokenVault.add(hToken)
+                return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Stored {tokenUsername}."))
             else:
+                impersonate(hToken)
                 CloseHandle(hToken)
-
-            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {tokenUsername}."))
+                return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {tokenUsername}."))
 
         except CatchableError as err:
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
@@ -449,10 +450,11 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
 
             if store:
                 ctx.tokenVault.add(hToken)
+                return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Stored {tokenUsername}."))
             else:
+                impersonate(hToken)
                 CloseHandle(hToken)
-
-            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {tokenUsername}."))
+                return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(fmt"Impersonated {tokenUsername}."))
 
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

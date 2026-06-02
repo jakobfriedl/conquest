@@ -172,9 +172,14 @@ proc draw*(component: TextareaWidget, size: ImVec2, matches: seq[tuple[line: int
 
                 component.print(item, spans, if i == currentMatchLine: currentSpan else: (a: -1, b: -1))
 
-            if component.autoScroll and not scrolledToMatch:
-                if igGetScrollY() >= igGetScrollMaxY():
+            if not scrolledToMatch:
+                if component.autoScroll:
                     igSetScrollHereY(1.0f)
+                elif igGetScrollY() >= igGetScrollMaxY():
+                    component.autoScroll = true
+
+            if igIsWindowHovered(ImGuiHoveredFlags_None.int32) and igGetIO().MouseWheel > 0.0f:
+                component.autoScroll = false
 
             # Fix text-selection for imguin >= 1.92.7.0: textselect_update() adds DC.Indent.x to cursorPosStart.x, but GetCursorStartPos() already includes it
             igUnindent(igGetStyle().FramePadding.x)
