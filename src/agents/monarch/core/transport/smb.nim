@@ -22,7 +22,6 @@ proc pipeWrite*(hPipe: HANDLE, data: seq[byte]): bool {.discardable.} =
             return false
         dwTotal += dwBytesWritten
 
-    FlushFileBuffers(hPipe)
     return true
 
 proc pipeRead*(hPipe: HANDLE): seq[byte] = 
