@@ -93,17 +93,12 @@ proc agentContextMenu(component: SessionsComponent, selected: seq[UIAgent], agen
     
     igSeparator()
     
-    if igMenuItem("Hide", nil, false, true):
-        for agent in selected: component.agents[agent.agentId].hidden = true
-        ImGuiSelectionBasicStorage_Clear(component.selection)
-        igCloseCurrentPopup()
-        
     if igMenuItem("Remove", nil, false, true):
         for agent in selected:
             component.agents.del(agent.agentId)
             cq.connection.sendAgentRemove(agent.agentId)
         ImGuiSelectionBasicStorage_Clear(component.selection)
-        igCloseCurrentPopup()
+        igCloseCurrentPopup()        
 
 proc draw*(component: SessionsComponent) =
     if component.showTable[]:
@@ -145,6 +140,7 @@ proc draw*(component: SessionsComponent) =
 
             igTableSetupScrollFreeze(0, 1)
             igTableHeadersRow()
+            let tableBodyStartPos = igGetCursorScreenPos().y
 
             var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.agents.len()))
             ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
@@ -224,10 +220,39 @@ proc draw*(component: SessionsComponent) =
                         igText(timeText.cstring)
 
             # Handle right-click context menu
-            # Right-clicking the table header to hide/show columns or reset the layout is only possible when no sessions are selected
-            if component.selection[].Size > 0 and igBeginPopupContextWindow("TableContextMenu", ImGui_PopupFlags_MouseButtonRight.int32):
-                let selectedAgents = agents.filterIt(ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](agents.find(it))))
-                component.agentContextMenu(selectedAgents, agents)
+            # Right-clicking the table row opens a separate context menu that can be used to hide/show/rearrange columns 
+            let showContextMenu = 
+                (component.selection[].Size > 0 or cq.sessions.agents.values.toSeq.anyIt(it.hidden)) and        # Prevent empty context menu
+                igGetMousePos().y >= tableBodyStartPos and                                                      # Prevent custom right-click context menu on header row
+                igBeginPopupContextWindow("TableContextMenu", ImGui_PopupFlags_MouseButtonRight.int32)
+
+            if showContextMenu:
+                if component.selection[].Size > 0:
+                    let selectedAgents = agents.filterIt(ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](agents.find(it))))
+                    component.agentContextMenu(selectedAgents, agents)
+                    
+                    # Hide agents
+                    if igMenuItem("Hide", nil, false, true):
+                        for agent in selectedAgents: 
+                            component.agents[agent.agentId].hidden = true
+                        ImGuiSelectionBasicStorage_Clear(component.selection)
+                        igCloseCurrentPopup()
+
+                # Unhide agents
+                if cq.sessions.agents.values.toSeq.anyIt(it.hidden):
+                    if igBeginMenu("Unhide", true):
+                        if igMenuItem("All", nil, false, true):
+                            for agent in cq.sessions.agents.mvalues(): 
+                                agent.hidden = false
+                            igCloseCurrentPopup()
+                        igSeparator()
+                        for agentId, agent in cq.sessions.agents:
+                            if agent.hidden:
+                                let label = fmt"{agentId} | {agent.username} @ {agent.hostname} | {$agent.pid}/{agent.process}"
+                                if igMenuItem(label.cstring, nil, false, true):
+                                    cq.sessions.agents[agentId].hidden = false
+                                    igCloseCurrentPopup()
+                        igEndMenu()
                 igEndPopup()
 
             multiSelectIO = igEndMultiSelect()
