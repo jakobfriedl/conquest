@@ -1,5 +1,4 @@
 import winim/lean
-import strformat
 import ./io
 import ../../../common/utils
 

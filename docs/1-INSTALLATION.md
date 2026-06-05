@@ -8,7 +8,7 @@ cd conquest
 ```
 
 ## 2. Install Nim
-Conquest requires Nim 2.2.6. Install it via choosenim:
+Conquest requires Nim 2.2.10. Install it via choosenim:
 ```bash
 curl https://nim-lang.org/choosenim/init.sh -sSf | sh
 ```
@@ -38,6 +38,8 @@ To install the framework files to a custom location (e.g. `/usr/share/conquest`)
 CONQUEST_ROOT="/usr/share/conquest" nimble server
 CONQUEST_ROOT="/usr/share/conquest" nimble client
 ```
+
+Building the client also builds all external post-exploitation DLLs under `/data/resources` if they don't already exist.
 
 ## 5. Start the Team Server
 The default C2 profile is located at `data/profiles/profile.toml`.

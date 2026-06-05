@@ -1,6 +1,5 @@
 import winim/lean
 import ptr_math
-import strformat
 import ../../../common/utils 
 
 #[

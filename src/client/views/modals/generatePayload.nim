@@ -242,7 +242,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
     igSetNextWindowPos(center, ImGuiCond_Appearing.int32, vec2(0.5f, 0.5f))
 
     let modalWidth = max(500.0f, vp.Size.x * 0.25)
-    let modalHeight= max(350.0f, vp.Size.y * 0.25)
+    let modalHeight= max(360.0f, vp.Size.y * 0.25)
     igSetNextWindowSize(vec2(modalWidth, modalHeight), ImGuiCond_Always.int32)
     
     var show = component.show

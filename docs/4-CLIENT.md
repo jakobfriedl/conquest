@@ -81,6 +81,7 @@ To interact with an agent, one can either double-click it in the table or graph 
   - Exit agent thread
   - Self-destruct
 - Hide agent from the sessions table without deleting it from the team server database.
+- Show hidden agents.
 
 ![Session View Context Menu](../assets/client-2.png)
 
@@ -91,7 +92,8 @@ It is also possible to select multiple rows by dragging or holding CTRL/SHIFT an
 An **Agent Console** is opened in the bottom panel when an agent is interacted with. It features an input field at the bottom where the command can be entered, a large textarea, where output can by selected and copied, as well as a search field for filtering the output. The console input field features tab-autocompletion for commands and supports searching through the command history using the up and down arrow keys. 
 
 ![Console View](../assets/client-3.png)
-![Console Filter](../assets/client-5.png)
+
+![Console Search](../assets/client-5.png)
 
 Available keyboard shortcuts: 
 

@@ -236,8 +236,6 @@ proc impersonate*(hToken: HANDLE, apis: Apis = initApis()) =
         qos: SECURITY_QUALITY_OF_SERVICE
         oa: OBJECT_ATTRIBUTES 
         impersonationToken: HANDLE = 0
-        returnLength: ULONG = 0
-        duplicated: bool = false 
 
     if getTokenStatistics(hToken, apis).tokenType == protect("Primary"): 
         # Create a duplicate impersonation token
@@ -294,9 +292,7 @@ proc rev2self*() =
     Using other logon types (https://learn.microsoft.com/en-us/windows-server/identity/securing-privileged-access/reference-tools-logon-types) 
     changes the output of the getTokenOwner function. The credentials are then validated by the LogonUserA function. 
 ]#
-proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS): HANDLE = 
-    let apis = initApis()
-    
+proc makeToken*(username, password, domain: string, logonType: DWORD = LOGON32_LOGON_NEW_CREDENTIALS): HANDLE =     
     if username == "" or password == "" or domain == "": 
         raise newException(CatchableError, protect("Invalid format."))
 

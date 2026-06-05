@@ -11,7 +11,7 @@ import ../types/[common, event, protocol, server]
 proc header() = 
     echo ""
     echo "┏┏┓┏┓┏┓┓┏┏┓┏╋"
-    echo "┗┗┛┛┗┗┫┗┻┗ ┛┗ V0.3"
+    echo "┗┗┛┛┗┗┫┗┻┗ ┛┗ V0.4"
     echo "      ┗  @jakobfriedl"  
     echo "─".repeat(21) 
     echo ""
