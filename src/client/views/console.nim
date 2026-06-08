@@ -118,9 +118,10 @@ proc callback(data: ptr ImGuiInputTextCallbackData): cint {.cdecl.} =
     Handling console commands
 ]#
 proc displayHelp(component: ConsoleComponent) =
-   for group, commands in cq.scriptManager.groups:
+    # Sort help output with the core commands at the top
+    for group in cq.scriptManager.groups.keys.toSeq.sortedByIt(if it == "core": 0 else: 1):
         component.textarea.addItem(LOG_OUTPUT, group.toUpperAscii())
-        for cmd in commands.values():
+        for cmd in cq.scriptManager.groups[group].values():
             component.textarea.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
         component.textarea.addItem(LOG_OUTPUT, "")
 

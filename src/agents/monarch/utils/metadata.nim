@@ -154,8 +154,7 @@ proc getIPv4Address*(): string =
     defer: discard pClosesocket(sock)
 
     var dest = SockAddrIn(sin_family: uint16(AF_INET), sin_port: REMOTE_PORT, sin_addr: REMOTE_ADDR)
-    if pConnect(sock, addr dest, sizeof(SockAddrIn).int32) != 0: 
-        return ""
+    discard pConnect(sock, addr dest, sizeof(SockAddrIn).int32)
 
     var local = SockAddrIn()
     var localLen = sizeof(SockAddrIn).int32
