@@ -31,7 +31,7 @@ proc draw*(component: ProcessBrowserComponent) =
 
     let agent = agents[component.agent - 1]
     if igButton(ICON_FA_ROTATE_RIGHT, vec2(0.0f, 0.0f)):
-        sendTask(agent.agentId, "ps", silent = true)
+        sendTask(agent.agentId, "ps")
 
     var latestUpdate: string = "Never"
     if cq.sessions.agents[agent.agentId].processes.isSome():
@@ -110,7 +110,7 @@ proc draw*(component: ProcessBrowserComponent) =
                     # Handle right-click context menu 
                     if igBeginPopupContextItem(fmt"##ContextMenu".cstring, ImGuiPopupFlags_MouseButtonRight.int32):
                         if igMenuItem_Bool(fmt"Steal token".cstring, nil, false, true):
-                            sendTask(agent.agentId, fmt"steal-token {pid}", silent = true)
+                            sendTask(agent.agentId, fmt"steal-token {pid}")
                             igCloseCurrentPopup()                        
                         igEndPopup()
                     

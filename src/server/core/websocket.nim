@@ -97,7 +97,7 @@ proc sendEventlogItem*(cq: Conquest, logType: LogType, message: string, clientId
     if cq.clients.len > 0 or clientId != "":
         cq.broadcast(event, clientId)
 
-proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: string, command: string = "", silent: bool = false, clientId: string = "") = 
+proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: string, command: string = "", taskId: string = "", clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_CONSOLE_ITEM,
         timestamp: now().toTime().toUnix(),
@@ -105,6 +105,7 @@ proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: 
             "agentId": agentId,
             "logType": cast[uint8](logType),
             "command": command,
+            "taskId": taskId,
             "message": message
         }
     )
@@ -117,8 +118,7 @@ proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: 
         log(message, agentId)
 
     if cq.clients.len > 0 or clientId != "":
-        if not silent: 
-            cq.broadcast(event, clientId)
+        cq.broadcast(event, clientId)
 
 proc sendAgent*(cq: Conquest, agent: Agent, clientId: string = "") =
     let data = %agent
@@ -221,26 +221,24 @@ proc sendRevertToken*(cq: Conquest, agentId: string, clientId: string = "") =
     )
     cq.broadcast(event, clientId)
 
-proc sendProcessList*(cq: Conquest, agentId, procData: string, silent: bool = false, clientId: string = "") = 
+proc sendProcessList*(cq: Conquest, agentId, procData: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_PROCESSES, 
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
             "processes": procData,
-            "silent": silent
         }
     )
     cq.broadcast(event, clientId)
 
-proc sendDirectoryListing*(cq: Conquest, agentId, data: string, silent: bool = false, clientId: string = "") = 
+proc sendDirectoryListing*(cq: Conquest, agentId, data: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_DIRECTORY_LISTING, 
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
             "data": data,
-            "silent": silent
         }
     )
     cq.broadcast(event, clientId)
@@ -267,7 +265,7 @@ proc sendChatMessage*(cq: Conquest, user, message: string, clientId: string = ""
     )
     cq.broadcast(event, clientId)
 
-proc sendJobs*(cq: Conquest, agentId, jobData: string, silent: bool = false, clientId: string = "") = 
+proc sendJobs*(cq: Conquest, agentId, jobData: string, clientId: string = "") = 
     # Include table with the display names of the jobs in the request, so the client can label running jobs correctly
     var commands = newJObject()
     for taskId, cmd in cq.agents[agentId].taskCommands:
@@ -280,19 +278,17 @@ proc sendJobs*(cq: Conquest, agentId, jobData: string, silent: bool = false, cli
             "agentId": agentId,
             "jobs": jobData,
             "commands": commands,
-            "silent": silent
         }
     )
     cq.broadcast(event, clientId)
 
-proc sendLinks*(cq: Conquest, agentId, linkData: string, silent: bool = false, clientId: string = "") =
+proc sendLinks*(cq: Conquest, agentId, linkData: string, clientId: string = "") =
     let event = Event(
         eventType: CLIENT_LINKS, 
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
             "links": linkData,
-            "silent": silent
         }
     )
     cq.broadcast(event, clientId)

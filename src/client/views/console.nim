@@ -236,9 +236,7 @@ proc handleAgentCommand*(component: ConsoleComponent, input: string) =
 
 proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], processTable: OrderedTable[uint32, ProcessInfo]) = 
     var output = ""
-    
-    output.add(component.textarea.addItem(LOG_INFO, "Output: "))
-    
+        
     # Header row
     let headers = @["PID", "PPID", "Process name", "Session", "User context"]
     output.add(component.textarea.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(80) & headers[3].alignLeft(10) & headers[4]))
@@ -270,7 +268,6 @@ proc listDirectoryContents*(component: ConsoleComponent, path: string, entries: 
         totalDirs = 0
         output = ""
     
-    output.add(component.textarea.addItem(LOG_INFO, "Output: "))
     output.add(component.textarea.addItem(LOG_OUTPUT, "Directory: " & path))
     output.add(component.textarea.addItem(LOG_OUTPUT, ""))
     

@@ -273,6 +273,11 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         let 
                             agentId = event.data["agentId"].getStr() 
                             message = event.data["message"].getStr()
+                            taskId = event.data["taskId"].getStr()
+                            timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
+
+                        if taskId != "": 
+                            cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, @[(fmt"[{timestamp}]", CONSOLE_GRAY), (fmt"[{taskId}] ", CONSOLE_INFO), ("Output:", CONSOLE_DEFAULT)])
 
                         try: 
                             let command = cq.scriptManager.getCommand(event.data["command"].getStr())
@@ -284,10 +289,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         
                         except CatchableError: 
                             if cq.sessions.agents.hasKey(agentId):
-                                cq.sessions.agents[agentId].console.textarea.addItem(
-                                    cast[LogType](event.data["logType"].getInt()), 
-                                    message, 
-                                    event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))
+                                cq.sessions.agents[agentId].console.textarea.addItem(cast[LogType](event.data["logType"].getInt()), message, timestamp)
                     
                     of CLIENT_EVENTLOG_ITEM: 
                         cq.eventlog.textarea.addItem(
@@ -344,7 +346,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         let
                             agentId = event.data["agentId"].getStr()
                             procData = event.data["processes"].getStr()
-                            silent = event.data["silent"].getBool()
 
                         # Display processes in agent console    
                         var unpacker = Unpacker.init(procData)
@@ -371,9 +372,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
                                 rootProcesses.add(pid)
 
                         # Display processes in agent console
-                        if not silent: 
-                            if cq.sessions.agents.hasKey(agentId):
-                                cq.sessions.agents[agentId].console.listProcesses(rootProcesses, processTable) 
+                        if cq.sessions.agents.hasKey(agentId):
+                            cq.sessions.agents[agentId].console.listProcesses(rootProcesses, processTable) 
 
                         # Add process information to the process browser
                         cq.sessions.agents[agentId].processes = some(Processes(
@@ -386,7 +386,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         let
                             agentId = event.data["agentId"].getStr()
                             data = event.data["data"].getStr()
-                            silent = event.data["silent"].getBool()
                         
                         var unpacker = Unpacker.init(data)
                         var entries: seq[DirectoryEntry] = @[]
@@ -413,9 +412,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             ))
 
                         # Display processes in agent console
-                        if not silent:
-                            if cq.sessions.agents.hasKey(agentId):
-                                cq.sessions.agents[agentId].console.listDirectoryContents(path, entries) 
+                        if cq.sessions.agents.hasKey(agentId):
+                            cq.sessions.agents[agentId].console.listDirectoryContents(path, entries) 
 
                         # Add information to the file browser
                         # Initialize filesystem storage
@@ -477,7 +475,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             agentId = event.data["agentId"].getStr()
                             data = event.data["jobs"].getStr()
                             commands = event.data["commands"]
-                            silent = event.data["silent"].getBool()
                         
                         var unpacker = Unpacker.init(data)
                         let count = unpacker.getUint32() 
@@ -503,7 +500,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         let 
                             agentId = event.data["agentId"].getStr()
                             data = event.data["links"].getStr()
-                            silent = event.data["silent"].getBool()
 
                         var unpacker = Unpacker.init(data)
                         let count = unpacker.getUint32() 
