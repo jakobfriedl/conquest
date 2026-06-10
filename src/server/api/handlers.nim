@@ -145,7 +145,7 @@ proc handleResult*(resultData: seq[byte]) =
                 
                 else:
                     if int(taskResult.length) > 0:        
-                        cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent = silent)
+                        cq.sendConsoleItem(agentId, LOG_INFO, fmt"[{taskId}] Output:", silent = silent)
                         cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command = command, silent = silent)
 
                 return
@@ -172,7 +172,7 @@ proc handleResult*(resultData: seq[byte]) =
                         discard cq.dbUpdateSleep(agentId, newDelay)
                         cq.sendUpdateSleep(agentId, newDelay)
 
-                    cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent = silent) 
+                    cq.sendConsoleItem(agentId, LOG_INFO, fmt"[{taskId}] Output:", silent = silent) 
                     cq.sendConsoleItem(agentId, LOG_OUTPUT, config, command = command, silent = silent)
 
                 of CMD_DOWNLOAD:
@@ -296,7 +296,7 @@ proc handleResult*(resultData: seq[byte]) =
                 
                 # Output RESULT_STRING packets to the agent console
                 if cast[ResultType](taskResult.resultType) == RESULT_STRING and int(taskResult.length) > 0:
-                    cq.sendConsoleItem(agentId, LOG_INFO, "Output:", silent = silent) 
+                    cq.sendConsoleItem(agentId, LOG_INFO, fmt"[{taskId}] Output:", silent = silent) 
                     cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command = command, silent = silent)
 
             of STATUS_FAILED: 
