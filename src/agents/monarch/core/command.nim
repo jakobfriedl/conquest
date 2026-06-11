@@ -210,6 +210,7 @@ when MODULE_BOF.isEnabled():
             let 
                 objectFile: seq[byte] = task.args[0].data
                 arguments: seq[byte] = Bytes.fromHex(task.args[1].data)
+                entry = Bytes.toString(task.args[2].data) 
 
             # Unpacking object file, since it contains the file name too.
             var unpacker = Unpacker.init(Bytes.toString(objectFile))
@@ -218,7 +219,7 @@ when MODULE_BOF.isEnabled():
                 objectFileContents = unpacker.getDataWithLengthPrefix()
 
             print fmt"   [>] Executing object file {fileName}." 
-            let output = inlineExecuteGetOutput(string.toBytes(objectFileContents), arguments)
+            let output = inlineExecuteGetOutput(string.toBytes(objectFileContents), arguments, entry)
 
             if output != "":
                 return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, string.toBytes(output))

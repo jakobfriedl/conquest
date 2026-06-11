@@ -111,6 +111,7 @@ cmd_bof = (
                            message="Tasked agent to execute an object-file in memory and retrieve the output.", mitre=["T1055", "T1620"])
             .addArgFile("object-file", "Path to the object file to execute.", True)
             .addArgString("arguments", "Arguments to be passed to the object file, packed as a HEX string according to beacon_generate.py.")
+            .addFlagString("--entry", "function", "Entry point of the object file (default: go).", False, "go")
             .registerToGroup("execution")
             .registerToModule("bof")
 )

@@ -214,6 +214,7 @@ Required arguments:
 
 Optional arguments:
   arguments                 STRING     Arguments packed as a HEX string according to beacon_generate.py.
+  --entry entry             STRING     Entry point of the object file (default: go).
 ```
 
 ![Bof whoami](../assets/modules-2.png)
