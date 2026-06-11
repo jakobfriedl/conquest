@@ -37,7 +37,7 @@ The Python Module API enables users of the Conquest framework to add their own c
     - [`conquest.get_file(args, i=0) -> tuple[str, list[byte]]`](#conquestget_fileargs-i0---tuplestr-listbyte)
   - [Argument Packing](#argument-packing)
     - [`conquest.bof_pack(types, args) -> str`](#conquestbof_packtypes-args---str)
-    - [`conquest.async_bof_pack(bof, params) -> str`](#conquestasync_bof_packbof-params---str)
+    - [`conquest.async_bof_pack(bof, params, entryFunc) -> str`](#conquestasync_bof_packbof-params-entryfunc---str)
     - [`conquest.pack(types, args) -> list[byte]`](#conquestpacktypes-args---listbyte)
   - [Console Output](#console-output)
     - [`conquest.error(agentId, message, cmdline)`](#conquesterroragentid-message-cmdline)
@@ -438,18 +438,19 @@ The `bof_pack` function is based on the Cobalt Strike's Agressor Script function
 
 ---
 
-#### `conquest.async_bof_pack(bof, params) -> str`
+#### `conquest.async_bof_pack(bof, params, entryFunc) -> str`
 Pack a BOF object file and its pre-packed arguments into a HEX-encoded string for use with the `async_bof` command. The output format is `[objLen][objBytes][argsLen][argsBytes]`, which matches the input format expected by the async BOF loader.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `bof` | `str` | Absolute path to the BOF object file (`.x64.o`). |
 | `params` | `str` | HEX-encoded packed arguments produced by `bof_pack`. Pass an empty string if the BOF takes no arguments. |
+| `entryFunc` | `str` | Entry point of the object file (default: "go"). |
 
 ```python
 bof = conquest.modules_root() + "/path/to/objectfile.x64.o"
 params = conquest.bof_pack("zz", [arg1, arg2])
-packed = conquest.async_bof_pack(bof, params)
+packed = conquest.async_bof_pack(bof, params, "go")
 
 conquest.execute_alias(agentId, cmdline, f"dll /path/to/async-bof.dll Run {packed}")
 ```

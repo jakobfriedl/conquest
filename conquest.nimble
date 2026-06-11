@@ -30,14 +30,14 @@ proc build(file: string, debug = false) =
     let flags = if debug: "-d:debug --stackTrace:on --lineTrace:on" else: "-d:release"
     exec fmt"nim c {flags} -d:CONQUEST_ROOT={cqRoot} {file}"
 
-proc buildResources() =
+proc buildResources(buildAlways: bool = false) =
     # Build post-exploitation resources/DLLs when they don't exist
     for kind, dir in walkDir("data/resources"):
         if kind != pcDir: continue
         let dist = dir / "dist"
         if not dirExists(dist):
             mkDir(dist)
-        if listFiles(dist).len == 0:
+        if buildAlways or listFiles(dist).len == 0:
             withDir(dir): exec "nimble dll"
 
 task server, "Build server": 
@@ -55,4 +55,4 @@ task client_debug, "Build client (debug)":
     build("src/client/main.nim", true)
 
 task resources, "Build resources":
-    buildResources()
+    buildResources(buildAlways = true)

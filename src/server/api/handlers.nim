@@ -143,7 +143,7 @@ proc handleResult*(resultData: seq[byte]) =
                 
                 else:
                     if int(taskResult.length) > 0:        
-                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command = command, taskId = taskId)
+                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command, taskId)
 
                 return
 
@@ -169,7 +169,7 @@ proc handleResult*(resultData: seq[byte]) =
                         discard cq.dbUpdateSleep(agentId, newDelay)
                         cq.sendUpdateSleep(agentId, newDelay)
 
-                    cq.sendConsoleItem(agentId, LOG_OUTPUT, config, command = command, taskId = taskId)
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, config, command, taskId)
 
                 of CMD_DOWNLOAD:
                     # Complete download job
@@ -292,7 +292,7 @@ proc handleResult*(resultData: seq[byte]) =
                 
                 # Output RESULT_STRING packets to the agent console
                 if cast[ResultType](taskResult.resultType) == RESULT_STRING and int(taskResult.length) > 0:
-                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command = command, taskId = taskId)
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command, taskId)
 
             of STATUS_FAILED: 
                 cq.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.")

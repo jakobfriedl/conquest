@@ -209,11 +209,12 @@ proc bof_pack*(types: string, args: seq[PyObject]): string {.exportpy.} =
     return Bytes.toHex(uint32.toBytes(uint32(data.len())) & data)
 
 # Pack object file and params for asynchronous BOF execution using the async-bof post-ex DLL
-# Format: [objLen][objBytes][argsLen][argsBytes] 
-proc async_bof_pack*(bof, params: string): string {.exportpy.} =
+# Format: [objLen][objBytes][argsLen][argsBytes][entryFuncLen][entryFunc]
+proc async_bof_pack*(bof, params: string, entryFunc: string = "go"): string {.exportpy.} =
     var packer = Packer.init() 
     packer.addDataWithLengthPrefix(string.toBytes(readFile(bof)))
     packer.addDataWithLengthPrefix(if params.len > 0: Bytes.fromHex(string.toBytes(params)) else: @[])
+    packer.addDataWithLengthPrefix(string.toBytes(entryFunc))
     return Bytes.toHex(packer.pack() )
  
 # Pack arguments into bytes
