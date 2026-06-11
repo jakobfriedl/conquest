@@ -20,7 +20,7 @@ The Python Module API enables users of the Conquest framework to add their own c
     - [`.addFlagString(flag, name, description, required=False, default="", nargs=1) -> Command`](#addflagstringflag-name-description-requiredfalse-default-nargs1---command)
     - [`.addArgInt(name, description, required=False, default=0) -> Command`](#addargintname-description-requiredfalse-default0---command)
     - [`.addFlagInt(flag, name, description, required=False, default=0) -> Command`](#addflagintflag-name-description-requiredfalse-default0---command)
-    - [`.addFlagBool(flag, name, description, default=False) -> Command`](#addflagboolflag-name-description-defaultfalse---command)
+    - [`.addFlagBool(flag, description, default=False) -> Command`](#addflagboolflag-description-defaultfalse---command)
     - [`.addArgFile(name, description, required=False, default="") -> Command`](#addargfilename-description-requiredfalse-default---command)
     - [`.addFlagFile(flag, name, description, required=False, default="") -> Command`](#addflagfileflag-name-description-requiredfalse-default---command)
     - [`.setHandler(handler) -> Command`](#sethandlerhandler---command)
@@ -191,13 +191,12 @@ Add a named integer flag.
 
 ---
 
-#### `.addFlagBool(flag, name, description, default=False) -> Command`
+#### `.addFlagBool(flag, description, default=False) -> Command`
 Add a boolean flag. Boolean flags take no value — their presence sets the value to `True`.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `flag` | `str` | Flag name including prefix (e.g. `--verbose`). |
-| `name` | `str` | Internal argument name. |
 | `description` | `str` | Argument description. |
 | `default` | `bool` | Default value. Default: `False`. |
 
@@ -672,9 +671,9 @@ cmd_shutdown = (
             .addArgString("target", "Target system (default: local computer).")
             .addFlagString("--message", "message", "Message to display before shutdown (default: none).")
             .addFlagInt("--in", "seconds", "Number of seconds before shutdown/reboot (default: 0).")
-            .addFlagBool("--close-apps", "close-apps", "Close all running applications without saving.")
-            .addFlagBool("--reboot", "reboot", "Reboot system after shutdown.")
-            .addFlagBool("--confirm", "confirm", "Confirm shutdown. This flag acts as a safety net to prevent unwanted shutdowns/reboots")
+            .addFlagBool("--close-apps", "Close all running applications without saving.")
+            .addFlagBool("--reboot", "Reboot system after shutdown.")
+            .addFlagBool("--confirm", "Confirm shutdown. This flag acts as a safety net to prevent unwanted shutdowns/reboots")
             .setHandler(lambda agentId, cmdline, args: (
                 target := conquest.get_string(args, 0),
                 message := conquest.get_string(args, 1),

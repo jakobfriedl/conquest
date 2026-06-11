@@ -68,9 +68,8 @@ proc addFlagInt*(self: Command, flag, name, description: string, required: bool 
     ))
     return self
 
-proc addFlagBool*(self: Command, flag, name, description: string, default: bool = false): Command {.exportpy.} =
+proc addFlagBool*(self: Command, flag, description: string, default: bool = false): Command {.exportpy.} =
     self.arguments.add(Argument(
-        name: name,
         description: description,
         isRequired: false,
         isFlag: true,

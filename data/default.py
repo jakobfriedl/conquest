@@ -47,8 +47,8 @@ Available options:
   - EKKO
   - ZILEAN
   - FOLIAGE""")
-            .addFlagBool("--spoof", "spoof", "Enable stack spoofing to obfuscate the call stack (only available for EKKO and ZILEAN sleepmask techniques).")
-            .addFlagBool("--no-spoof", "spoof", "Disable stack spoofing to obfuscate the call stack.")
+            .addFlagBool("--spoof", "Enable stack spoofing to obfuscate the call stack (only available for EKKO and ZILEAN sleepmask techniques).")
+            .addFlagBool("--no-spoof", "Disable stack spoofing to obfuscate the call stack.")
             .setHandler(_config)
 ).registerToGroup("core")
 
@@ -235,7 +235,7 @@ cmd_maketoken = (
   - 8: LOGON_NETWORK_CLEARTEXT 
   - 9: LOGON_NEW_CREDENTIALS (default)                        
 """, False, 9)
-            .addFlagBool("--store", "store", "Store access token in vault. Impersonate it using the 'use-token' command.")
+            .addFlagBool("--store", "Store access token in vault. Impersonate it using the 'use-token' command.")
             .registerToGroup("user impersonation")
             .registerToModule("token")
 )
@@ -244,7 +244,7 @@ cmd_stealtoken = (
     conquest.createCommand(name="steal-token", description="Steal the primary access token of a remote process.", example="steal-token 1234", 
                            message="Tasked agent to steal an access token.", mitre=["T1134.001"])
             .addArgInt("pid", "Process ID of the target process.", True)
-            .addFlagBool("--store", "store", "Store access token in vault. Impersonate it using the 'use-token' command.")
+            .addFlagBool("--store", "Store access token in vault. Impersonate it using the 'use-token' command.")
             .registerToGroup("user impersonation")
             .registerToModule("token")
 )
@@ -261,7 +261,7 @@ cmd_removetoken = (
     conquest.createCommand(name="remove-token", description="Remove access token from the vault.", example="remove-token --all",
                            message="Tasked agent to use a token from the vault.", mitre=["T1134"])
             .addFlagInt("--token", "token", "ID of the token to remove.", False, -1)
-            .addFlagBool("--all", "all", "Remove all tokens from the vault.")
+            .addFlagBool("--all", "Remove all tokens from the vault.")
             .setHandler(lambda agentId, cmdline, args: (
                 token := conquest.get_int(args, 0),
                 remove_all := conquest.get_bool(args, 1),
