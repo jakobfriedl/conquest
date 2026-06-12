@@ -6,7 +6,7 @@ import ../../../common/utils
 #[
     Object file loading involves the following steps
     1. Calculate and allocate memory required to hold the object file sections and symbols
-    2. Copy option sections into the newly allocated memory
+    2. Copy object sections into the newly allocated memory
     3. Parse and resolve function symbols 
     4. Perform section relocations 
     5. Change memory protection and execute the entry point function
