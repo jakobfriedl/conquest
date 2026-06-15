@@ -1,7 +1,7 @@
 import times, json, base64, strformat, tables
 import stb_image/write as stbiw
 import ./logger
-import ../db/dbLink
+import ../db/database
 import ../../common/[utils, event]
 import ../../types/[common, server, event]
 export recvEvent
