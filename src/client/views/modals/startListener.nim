@@ -1,10 +1,13 @@
-import strutils
+import strutils, strformat, base64
 import imguin/[cimgui, glfw_opengl]
-import ../../utils/appImGui
+import ../widgets/textarea
+import ../../utils/[appImGui, globals]
 import ../../../common/utils
 import ../../../types/[common, client]
 
-const DEFAULT_PORT = 8080'u16
+const
+    DEFAULT_PORT = 8080'u16
+    PLACEHOLDER = "PLACEHOLDER"
 
 proc ListenerModal*(): ListenerModalComponent =
     result = new ListenerModalComponent
@@ -13,54 +16,366 @@ proc ListenerModal*(): ListenerModalComponent =
     result.bindPort = DEFAULT_PORT
     zeroMem(addr result.pipe[0], 256)
     result.protocol = 0
-    for p in ListenerType.low .. ListenerType.high:
-        result.protocols.add($p)
 
-proc resetModalValues(component: ListenerModalComponent) = 
+    for t in ListenerType:
+        result.protocolLabels &= $t & "\0"
+    for e in EncodingType: 
+        result.encodingLabels &= $e & "\0"
+    for p in PlacementType: 
+        result.placementLabels &= $p & "\0"
+    
+    result.heartbeatDataTransformation = DataTransformation()
+    result.tasksDataTransformation = DataTransformation(placement: PLACEMENT_BODY)
+    result.resultDataTransformation = DataTransformation(placement: PLACEMENT_BODY)
+    
+    result.reqPreviewGET = Textarea(showTimestamps = false, autoScroll = false)
+    result.respPreviewGET = Textarea(showTimestamps = false, autoScroll = false)
+    result.reqPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
+    result.respPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
+
+proc resetModalValues(component: ListenerModalComponent) =
     zeroMem(addr component.callbackHosts[0], 256 * 32)
     zeroMem(addr component.bindAddress[0], 256)
     component.bindPort = DEFAULT_PORT
     zeroMem(addr component.pipe[0], 256)
     component.protocol = 0
 
-proc draw*(component: ListenerModalComponent): UIListener =
-    let textSpacing = igGetStyle().ItemSpacing.x    
+#[
+    Helper functions
+]#
+proc toString(buf: openArray[char]): string =
+    return $cast[cstring](unsafeAddr buf[0])
+
+proc contentHeight(buf: openArray[char]): float32 =
+    var lineCount: int32 = 1
+    for c in buf:
+        if c == '\0': break
+        if c == '\n': inc lineCount
+    return igGetFrameHeight() + float32(lineCount - 1) * igGetTextLineHeight()
+
+#[
+    Profile settings
+]#
+proc drawKeyValueSetting(component: ListenerModalComponent, id: string, pairs: var seq[KeyValue]) =
+    let 
+        textSpacing = igGetStyle().ItemSpacing.x
+        totalWidth = igGetContentRegionAvail().x
+        keyWidth = totalWidth * 0.3
+        removeWidth = igCalcTextSize("Remove", nil, false, 0.0f).x + igGetStyle().FramePadding.x * 2
+
+    var removeIdx = -1
+    for i in 0 ..< pairs.len():
+        igPushID_Int(int32(i))
+
+        igSetNextItemWidth(keyWidth)
+        igInputText(("##Key" & id).cstring, cast[cstring](addr pairs[i].key[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
+
+        igSameLine(0.0f, 0.0f)
+        igText(":")
+        igSameLine(0.0f, 0.0f)
+
+        let valueWidth = igGetContentRegionAvail().x - removeWidth - textSpacing
+        igSetNextItemWidth(valueWidth)
+        igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
+        igInputTextMultiline(("##Value" & id).cstring, cast[cstring](addr pairs[i].value[0]), 4096, vec2(0.0f, pairs[i].value.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
+        igPopStyleVar(1)
+
+        igSameLine(0.0f, textSpacing)
+
+        igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_DIM)
+        igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR_HOVERED)
+        igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
+        if igButton(("Remove##" & id).cstring, vec2(-1.0f, 0)):
+            removeIdx = i
+        igPopStyleColor(3)
+
+        igPopID()
+
+    if removeIdx >= 0:
+        pairs.delete(removeIdx)
+
+    if igButton(("Add##" & id).cstring, vec2(-1.0f, 0)):
+        var pair: KeyValue
+        zeroMem(addr pair, sizeof(KeyValue))
+        pairs.add(pair)
+
+proc drawDataTransformation(component: ListenerModalComponent, id: string, dataTransform: DataTransformation) =
+    let textSpacing = igGetStyle().ItemSpacing.x
+    var availableSize = igGetContentRegionAvail()
+
+    igText("Placement:  ")
+    igSameLine(0.0f, textSpacing)
+    igSetNextItemWidth(100.0f)
     
+    if id == "http-get.server.output":
+        igBeginDisabled(true)
+    igCombo_Str(("##Pl" & id).cstring, cast[ptr int32](addr dataTransform.placement), component.placementLabels.cstring, int32(ord(PlacementType.high) + 1))
+    if id == "http-get.server.output":
+        igEndDisabled()
+    
+    if dataTransform.placement != PLACEMENT_BODY:
+        igSameLine(0.0f, textSpacing)
+        igText("Name:")
+        igSameLine(0.0f, textSpacing)
+        availableSize = igGetContentRegionAvail()
+        igSetNextItemWidth(availableSize.x)
+        igInputText(("##Pn" & id).cstring, cast[cstring](addr dataTransform.placementName[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
+
+    igText("Encoding:   ")
+    igSameLine(0.0f, textSpacing)
+    
+    let encodingX = igGetCursorPosX()
+    let encodingAvailWidth = igGetContentRegionAvail().x
+    let buttonSize = igGetFrameHeight()
+    let removeWidth = igCalcTextSize("Remove", nil, false, 0.0f).x + igGetStyle().FramePadding.x * 2
+    let rightSectionWidth = buttonSize * 2 + removeWidth + textSpacing * 2
+    var removeIdx = -1
+    var swapIdx = -1
+    for i in 0 ..< dataTransform.encodings.len:
+        if i > 0: igSetCursorPosX(encodingX)
+        igPushID_Int(int32(i))
+        igSetNextItemWidth(100.0f)
+        igCombo_Str(("##Et" & id).cstring, cast[ptr int32](addr dataTransform.encodings[i].encodingType), component.encodingLabels.cstring, int32(ord(EncodingType.high) + 1))
+        if dataTransform.encodings[i].encodingType in {ENCODING_ROT, ENCODING_XOR}:
+            igSameLine(0.0f, textSpacing)
+            igText("Key:")
+            igSameLine(0.0f, textSpacing)
+            igSetNextItemWidth(60.0f)
+            igInputScalar(("##Ek" & id).cstring, ImGuiDataType_S32.int32, addr dataTransform.encodings[i].key, nil, nil, "%d", ImGui_InputTextFlags_CharsDecimal.int32)
+        if dataTransform.encodings[i].encodingType == ENCODING_BASE64:
+            igSameLine(0.0f, textSpacing)
+            igCheckbox(("URL-Safe##" & id).cstring, addr dataTransform.encodings[i].urlSafe)
+        igSameLine(encodingX + encodingAvailWidth - rightSectionWidth, 0.0f)
+        if i == 0: igBeginDisabled(true)
+        if igButton((ICON_FA_ARROW_UP & "##Eu").cstring, vec2(buttonSize, 0)):
+            swapIdx = i - 1
+        if i == 0: igEndDisabled()
+        igSameLine(0.0f, textSpacing)
+        if i == dataTransform.encodings.len - 1: igBeginDisabled(true)
+        if igButton((ICON_FA_ARROW_DOWN & "##Ed").cstring, vec2(buttonSize, 0)):
+            swapIdx = i
+        if i == dataTransform.encodings.len - 1: igEndDisabled()
+        igSameLine(0.0f, textSpacing)
+        igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_DIM)
+        igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR_HOVERED)
+        igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
+        if igButton(("Remove##Er").cstring, vec2(-1.0f, 0)):
+            removeIdx = i
+        igPopStyleColor(3)
+        igPopID()
+    if swapIdx >= 0:
+        swap(dataTransform.encodings[swapIdx], dataTransform.encodings[swapIdx + 1])
+    if removeIdx >= 0:
+        dataTransform.encodings.delete(removeIdx)
+    if dataTransform.encodings.len == 0: igSameLine(0.0f, textSpacing)
+    else: igSetCursorPosX(encodingX)
+    if igButton(("Add##Ea" & id).cstring, vec2(-1.0f, 0)):
+        dataTransform.encodings.add(Encoding())
+
+    igText("Prepend:    ")
+    igSameLine(0.0f, textSpacing)
+    availableSize = igGetContentRegionAvail()
+    igSetNextItemWidth(availableSize.x)
+    igInputText(("##Pp" & id).cstring, cast[cstring](addr dataTransform.prepend[0]), 4096, ImGui_InputTextFlags_None.int32, nil, nil)
+
+    igText("Append:     ")
+    igSameLine(0.0f, textSpacing)
+    availableSize = igGetContentRegionAvail()
+    igSetNextItemWidth(availableSize.x)
+    igInputText(("##Ap" & id).cstring, cast[cstring](addr dataTransform.append[0]), 4096, ImGui_InputTextFlags_None.int32, nil, nil)
+
+#[
+    Preview generation
+]#
+proc encode(data: string, encodings: seq[Encoding]): string =
+    result = data
+    for enc in encodings:
+        case enc.encodingType
+        of ENCODING_NONE: discard
+        of ENCODING_BASE64: result = encode(result, safe = enc.urlSafe).replace("=", "")
+        of ENCODING_HEX: result = result.toHex().toLowerAscii()
+        of ENCODING_ROT:
+            var s = ""
+            for c in result: s &= char((int(c) + enc.key) and 0xFF)
+            result = s
+        of ENCODING_XOR:
+            var s = ""
+            for c in result: s &= char(int(c) xor enc.key)
+            result = s
+
+proc firstLine(s: string): tuple[text: string, randomized: bool] =
+    let idx = s.find('\n')
+    if idx < 0: return (s, false)
+    return (s[0 ..< idx], true)
+
+proc kvToQueryString(pairs: seq[KeyValue]): string =
+    var parts: seq[string]
+    for pair in pairs:
+        let key = pair.key.toString()
+        let (value, _) = pair.value.toString().firstLine()
+        if key.len > 0: parts.add(key & "=" & value)
+    if parts.len > 0: result = "?" & parts.join("&")
+
+proc firstEndpoint(buf: openArray[char]): string =
+    for line in buf.toString().splitLines():
+        let ep = line.strip()
+        if ep.len > 0: return ep
+    return "/"
+
+type PreviewLine = seq[tuple[text: string, color: ImVec4]]
+
+proc addLine(lines: var seq[PreviewLine], segments: varargs[tuple[text: string, color: ImVec4]]) =
+    var line: PreviewLine
+    for seg in segments:
+        if seg.text.len > 0: line.add(seg)
+    if line.len > 0: lines.add(line)
+
+proc addHeaderLines(lines: var seq[PreviewLine], pairs: seq[KeyValue]) =
+    for pair in pairs:
+        let k = pair.key.toString()
+        let (v, _) = pair.value.toString().firstLine()
+        if k.len > 0: lines.addLine((k & ": " & v, CONSOLE_DEFAULT))
+
+proc previewFingerprint(lines: seq[PreviewLine]): string =
+    for line in lines:
+        for seg in line: result &= seg.text
+        result &= "\n"
+
+proc colorizeSegments(line: PreviewLine): PreviewLine =
+    for seg in line:
+        var current = ""
+        for c in seg.text:
+            if c in {'#', '$'}:
+                if current.len > 0: result.add((current, seg.color))
+                result.add(($c, CONSOLE_WARNING))
+                current = ""
+            else:
+                current &= c
+        if current.len > 0: result.add((current, seg.color))
+
+proc updatePreview(textarea: TextareaWidget, cache: var string, lines: seq[PreviewLine]) =
+    let fp = previewFingerprint(lines)
+    if fp == cache: return
+    cache = fp
+    textarea.clear()
+    for line in lines:
+        discard textarea.addItem(LOG_OUTPUT, colorizeSegments(line))
+
+proc generateGetRequest(component: ListenerModalComponent) =
+    var lines: seq[PreviewLine]
+    let endpoint = firstEndpoint(component.endpointsGET)
+    let query = kvToQueryString(component.queryParamsGET)
+    let encoded = encode(PLACEHOLDER, component.heartbeatDataTransformation.encodings)
+    let prepend = component.heartbeatDataTransformation.prepend.toString()
+    let append = component.heartbeatDataTransformation.append.toString()
+    let placementName = component.heartbeatDataTransformation.placementName.toString()
+    let ua = component.userAgentGET.toString()
+
+    case component.heartbeatDataTransformation.placement
+    of PLACEMENT_HEADER:
+        lines.addLine(("GET " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
+        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.addHeaderLines(component.reqHeadersGET)
+        lines.addLine((placementName & ": " & prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
+    of PLACEMENT_QUERY:
+        let payload = prepend & encoded & append
+        lines.addLine(("GET " & endpoint & query & (if query.len > 0: "&" else: "?") & placementName & "=" & payload & " HTTP/1.1", CONSOLE_DEFAULT))
+        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.addHeaderLines(component.reqHeadersGET)
+    of PLACEMENT_BODY:
+        lines.addLine(("GET " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
+        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.addHeaderLines(component.reqHeadersGET)
+        lines.addLine((prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
+    component.reqPreviewGET.updatePreview(component.previewCacheGETReq, lines)
+
+proc generateGetResponse(component: ListenerModalComponent) =
+    var lines: seq[PreviewLine]
+    let encoded = encode(PLACEHOLDER, component.tasksDataTransformation.encodings)
+    let prepend = component.tasksDataTransformation.prepend.toString()
+    let append = component.tasksDataTransformation.append.toString()
+
+    lines.addLine(("HTTP/1.1 200 OK", CONSOLE_DEFAULT))
+    lines.addHeaderLines(component.respHeadersGET)
+    lines.addLine((prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
+    component.respPreviewGET.updatePreview(component.previewCacheGETResp, lines)
+
+proc generatePostRequest(component: ListenerModalComponent) =
+    var lines: seq[PreviewLine]
+    let endpoint = firstEndpoint(component.endpointsPOST)
+    let query = kvToQueryString(component.queryParamsPOST)
+    let methodStr = component.methods.toString()
+    let (verb, _) = (if methodStr.len > 0: methodStr.firstLine() else: ("POST", false))
+    let encoded = encode(PLACEHOLDER, component.resultDataTransformation.encodings)
+    let prepend = component.resultDataTransformation.prepend.toString()
+    let append = component.resultDataTransformation.append.toString()
+    let placementName = component.resultDataTransformation.placementName.toString()
+    let ua = component.userAgentPOST.toString()
+
+    case component.resultDataTransformation.placement
+    of PLACEMENT_HEADER:
+        lines.addLine((verb & " " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
+        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.addHeaderLines(component.reqHeadersPOST)
+        lines.addLine((placementName & ": " & prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
+    of PLACEMENT_BODY:
+        lines.addLine((verb & " " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
+        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.addHeaderLines(component.reqHeadersPOST)
+        lines.addLine((prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
+    of PLACEMENT_QUERY:
+        let payload = prepend & encoded & append
+        lines.addLine((verb & " " & endpoint & query & (if query.len > 0: "&" else: "?") & placementName & "=" & payload & " HTTP/1.1", CONSOLE_DEFAULT))
+        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.addHeaderLines(component.reqHeadersPOST)
+    component.reqPreviewPOST.updatePreview(component.previewCachePOSTReq, lines)
+
+proc generatePostResponse(component: ListenerModalComponent) =
+    var lines: seq[PreviewLine]
+    lines.addLine(("HTTP/1.1 200 OK", CONSOLE_DEFAULT))
+    lines.addHeaderLines(component.respHeadersPOST)
+    let body = component.respBody.toString()
+    if body.len > 0: lines.addLine((body, CONSOLE_DEFAULT))
+    component.respPreviewPOST.updatePreview(component.previewCachePOSTResp, lines)
+
+#[
+    Draw
+]#
+proc draw*(component: ListenerModalComponent): UIListener =
+    let textSpacing = igGetStyle().ItemSpacing.x
+
     # Center modal
     let vp = igGetMainViewport()
     var center = ImGuiViewport_GetCenter(vp)
     igSetNextWindowPos(center, ImGuiCond_Appearing.int32, vec2(0.5f, 0.5f))
 
-    let modalWidth = max(500.0f, vp.Size.x * 0.25)
+    let modalWidth = max(600.0f, vp.Size.x * 0.25)
     igSetNextWindowSize(vec2(modalWidth, 0.0f), ImGuiCond_Always.int32)
-    
+
     var show = true
-    let windowFlags = ImGuiWindowFlags_None.int32 # or ImGuiWindowFlags_NoMove.int32
+    let windowFlags = ImGuiWindowFlags_None.int32
     if igBeginPopupModal("Start Listener", addr show, windowFlags):
         defer: igEndPopup()
+
+        var disableStart = false
 
         # Listener protocol/type dropdown selection
         igText("Listener Type:    ")
         igSameLine(0.0f, textSpacing)
         var availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
-        igCombo_Str("##InputProtocol", addr component.protocol, (component.protocols.join("\0") & "\0").cstring , component.protocols.len().int32)
-        
-        igDummy(vec2(0.0f, 10.0f))
-        igSeparator()
-        igDummy(vec2(0.0f, 10.0f))
+        igCombo_Str("##InputProtocol", addr component.protocol, component.protocolLabels.cstring, int32(ord(ListenerType.high) + 1))
 
-        # HTTP Listener settings
         case cast[ListenerType](component.protocol):
         of LISTENER_HTTP:
-            # Listener bindAddress 
+            # Listener bindAddress
             igText("Host (Bind):      ")
             igSameLine(0.0f, textSpacing)
             availableSize = igGetContentRegionAvail()
             igSetNextItemWidth(availableSize.x)
             igInputTextWithHint("##InputAddressBind", "0.0.0.0", cast[cstring](addr component.bindAddress[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
 
-            # Listener bindPort 
+            # Listener bindPort
             let step: uint16 = 1
             igText("Port (Bind):      ")
             igSameLine(0.0f, textSpacing)
@@ -73,12 +388,12 @@ proc draw*(component: ListenerModalComponent): UIListener =
             availableSize = igGetContentRegionAvail()
             igSetNextItemWidth(availableSize.x)
             igInputTextMultiline("##InputCallbackHosts", cast[cstring](addr component.callbackHosts[0]), 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
-      
+
             # Only enabled the start button when valid values have been entered
-            igBeginDisabled(($cast[cstring]((addr component.bindAddress[0])) == "") or (component.bindPort <= 0))
+            disableStart = ($cast[cstring]((addr component.bindAddress[0])) == "") or (component.bindPort <= 0)
 
         of LISTENER_SMB:
-            # SMB Pipe name 
+            # SMB Pipe name
             igText("Pipe name:        ")
             igSameLine(0.0f, textSpacing)
             igText("\\\\.\\pipe\\")
@@ -88,45 +403,160 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igInputText("##InputPipe", cast[cstring](addr component.pipe[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
 
             # Only enabled the start button when valid values have been entered
-            igBeginDisabled($cast[cstring]((addr component.pipe[0])) == "")
+            disableStart = $cast[cstring]((addr component.pipe[0])) == ""
 
+        # Network profile overwrites (HTTP Listeners only)
+        if cast[ListenerType](component.protocol) == LISTENER_HTTP:
+
+            igDummy(vec2(0.0f, 10.0f))
+
+            let profileSettings = igTreeNodeEx_Str("Network Profile Settings", ImGuiTreeNodeFlags_NoTreePushOnOpen.int32)
+            if profileSettings and igBeginTabBar("##Tabs", ImGuiTabBarFlags_None.int32):
+                defer: igEndTabBar()
+
+                # Tab 1: Agent GET Request: Heartbeat
+                if igBeginTabItem(fmt"GET {ICON_FA_ARROW_RIGHT} Heartbeat".cstring, nil, ImGuiTabBarFlags_None.int32):
+                    defer: igEndTabItem()
+                    igDummy(vec2(0.0f, 8.0f))
+
+                    igText("User-Agent: ")
+                    igSameLine(0.0f, textSpacing)
+                    availableSize = igGetContentRegionAvail()
+                    igSetNextItemWidth(availableSize.x)
+                    igInputText("##http-get.user-agent", cast[cstring](addr component.userAgentGET[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
+
+                    igText("Endpoints:  ")
+                    igSameLine(0.0f, textSpacing)
+                    availableSize = igGetContentRegionAvail()
+                    igSetNextItemWidth(availableSize.x)
+                    igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
+                    igInputTextMultiline("##http-get.endpoints", cast[cstring](addr component.endpointsGET[0]), 256 * 32, vec2(0.0f, component.endpointsGET.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
+                    igPopStyleVar(1)
+
+                    igSeparatorText("Request Headers")
+                    component.drawKeyValueSetting("http-get.agent.headers", component.reqHeadersGET)
+
+                    igSeparatorText("Query Parameters")
+                    component.drawKeyValueSetting("http-get.agent.parameters", component.queryParamsGET)
+
+                    igSeparatorText("Data Transformation: Heartbeat")
+                    component.drawDataTransformation("http-get.agent.heartbeat", component.heartbeatDataTransformation)
+
+                    igSeparatorText("Preview")
+                    generateGetRequest(component)
+                    availableSize = igGetContentRegionAvail()
+                    component.reqPreviewGET.draw(vec2(availableSize.x, max(100.0f, 6.0f * igGetTextLineHeightWithSpacing())))
+
+                # Tab 2: Server GET Response: Tasks
+                if igBeginTabItem(fmt"GET {ICON_FA_ARROW_LEFT} Tasks".cstring, nil, ImGuiTabBarFlags_None.int32):
+                    defer: igEndTabItem()
+                    igDummy(vec2(0.0f, 8.0f))
+
+                    igSeparatorText("Response Headers")
+                    component.drawKeyValueSetting("http-get.server.headers", component.respHeadersGET)
+
+                    igSeparatorText("Data Transformation: Tasks")
+                    component.drawDataTransformation("http-get.server.output", component.tasksDataTransformation)
+
+                    igSeparatorText("Preview")
+                    generateGetResponse(component)
+                    availableSize = igGetContentRegionAvail()
+                    component.respPreviewGET.draw(vec2(availableSize.x, max(100.0f, 6.0f * igGetTextLineHeightWithSpacing())))
+
+                # Tab 3: Agent POST Request: Task Results/Registration
+                if igBeginTabItem(fmt"POST {ICON_FA_ARROW_RIGHT} Results".cstring, nil, ImGuiTabBarFlags_None.int32):
+                    defer: igEndTabItem()
+                    igDummy(vec2(0.0f, 8.0f))
+
+                    igText("User-Agent:      ")
+                    igSameLine(0.0f, textSpacing)
+                    availableSize = igGetContentRegionAvail()
+                    igSetNextItemWidth(availableSize.x)
+                    igInputText("##http-post.user-agent", cast[cstring](addr component.userAgentPOST[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
+
+                    igText("Endpoints:       ")
+                    igSameLine(0.0f, textSpacing)
+                    availableSize = igGetContentRegionAvail()
+                    igSetNextItemWidth(availableSize.x)
+                    igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
+                    igInputTextMultiline("##http-post.endpoints", cast[cstring](addr component.endpointsPOST[0]), 256 * 32, vec2(0.0f, component.endpointsPOST.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
+                    igPopStyleVar(1)
+
+                    igText("Request Methods: ")
+                    igSameLine(0.0f, textSpacing)
+                    availableSize = igGetContentRegionAvail()
+                    igSetNextItemWidth(availableSize.x)
+                    igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
+                    igInputTextMultiline("##http-post.request-methods", cast[cstring](addr component.methods[0]), 256 * 32, vec2(0.0f, component.methods.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
+                    igPopStyleVar(1)
+
+                    igSeparatorText("Request Headers")
+                    component.drawKeyValueSetting("http-post.agent.headers", component.reqHeadersPOST)
+
+                    igSeparatorText("Query Parameters")
+                    component.drawKeyValueSetting("http-post.agent.parameters", component.queryParamsPOST)
+
+                    igSeparatorText("Data Transformation: Task Results & Registration")
+                    component.drawDataTransformation("http-post.agent.output", component.resultDataTransformation)
+
+                    igSeparatorText("Preview")
+                    generatePostRequest(component)
+                    availableSize = igGetContentRegionAvail()
+                    component.reqPreviewPOST.draw(vec2(availableSize.x, max(100.0f, 6.0f * igGetTextLineHeightWithSpacing())))
+
+                # Tab 4: Server POST Response
+                if igBeginTabItem(fmt"POST {ICON_FA_ARROW_LEFT} Response".cstring, nil, ImGuiTabBarFlags_None.int32):
+                    defer: igEndTabItem()
+                    igDummy(vec2(0.0f, 8.0f))
+
+                    igSeparatorText("Response Headers")
+                    component.drawKeyValueSetting("http-post.server.headers", component.respHeadersPOST)
+
+                    igSeparatorText("Response Body")
+                    availableSize = igGetContentRegionAvail()
+                    igInputTextMultiline("##http-post.server.output", cast[cstring](addr component.respBody[0]), MAX_INPUT_LENGTH, vec2(availableSize.x, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_None.int32, nil, nil)
+
+                    igSeparatorText("Preview")
+                    generatePostResponse(component)
+                    availableSize = igGetContentRegionAvail()
+                    component.respPreviewPOST.draw(vec2(availableSize.x, max(100.0f, 6.0f * igGetTextLineHeightWithSpacing())))
+
+        igDummy(vec2(0.0f, 10.0f))
+
+        # Buttons
         availableSize = igGetContentRegionAvail()
+        igBeginDisabled(disableStart)
+        if igButton("Start", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
 
-        igDummy(vec2(0.0f, 10.0f))
-        igSeparator()
-        igDummy(vec2(0.0f, 10.0f))
-
-        if igButton("Start", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)): 
-
-            let uuid = generateUUID() 
+            let uuid = generateUUID()
 
             # Process input values
             case cast[ListenerType](component.protocol):
-            of LISTENER_HTTP: 
+            of LISTENER_HTTP:
                 var hosts: string = ""
-                let 
+                let
                     callbackHosts = $cast[cstring]((addr component.callbackHosts[0]))
                     bindAddress = $cast[cstring]((addr component.bindAddress[0]))
                     bindPort =  int(component.bindPort)
 
-                if callbackHosts.isEmptyOrWhitespace(): 
+                if callbackHosts.isEmptyOrWhitespace():
                     hosts &= bindAddress & ":"  & $bindPort
 
-                else: 
+                else:
                     for host in callbackHosts.splitLines():
-                        if host.isEmptyOrWhitespace(): 
+                        if host.isEmptyOrWhitespace():
                             continue
 
                         hosts &= ";"
                         let hostParts = host.split(":")
                         if hostParts.len() == 2:
-                            if not hostParts[1].isEmptyOrWhitespace():  
+                            if not hostParts[1].isEmptyOrWhitespace():
                                 hosts &= hostParts[0] & ":" & hostParts[1]
-                            else: 
+                            else:
                                 hosts &= hostParts[0] & ":" & $bindPort
-                        elif hostParts.len() == 1 and not hostParts[0].isEmptyOrWhitespace(): 
+                        elif hostParts.len() == 1 and not hostParts[0].isEmptyOrWhitespace():
                             hosts &= hostParts[0] & ":" & $bindPort
-                
+
                     hosts.removePrefix(";")
 
                 # Return new listener object
@@ -137,8 +567,8 @@ proc draw*(component: ListenerModalComponent): UIListener =
                     address: bindAddress,
                     port: bindPort
                 )
-            
-            of LISTENER_SMB: 
+
+            of LISTENER_SMB:
                 let pipe = $cast[cstring]((addr component.pipe[0]))
                 result = UIListener(
                     listenerId: uuid,
@@ -147,8 +577,8 @@ proc draw*(component: ListenerModalComponent): UIListener =
                 )
 
             component.resetModalValues()
-            igCloseCurrentPopup() 
-        
+            igCloseCurrentPopup()
+
         igEndDisabled()
         igSameLine(0.0f, textSpacing)
 

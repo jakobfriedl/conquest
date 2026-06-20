@@ -109,13 +109,73 @@ type
         killDateMinute*: int32
         killDateSecond*: int32
 
+    EncodingType* = enum
+        ENCODING_NONE = "none"
+        ENCODING_BASE64 = "base64"
+        ENCODING_HEX = "hex"
+        ENCODING_ROT = "rot"
+        ENCODING_XOR = "xor"
+
+    PlacementType* = enum
+        PLACEMENT_HEADER = "header"
+        PLACEMENT_QUERY = "query"
+        PLACEMENT_BODY = "body"
+
+    Encoding* = object
+        encodingType*: EncodingType
+        key*: int32
+        urlSafe*: bool
+
+    DataTransformation* = ref object
+        placement*: PlacementType
+        placementName*: array[256, char]
+        encodings*: seq[Encoding]
+        prepend*: array[4096, char]
+        append*: array[4096, char]
+
+    KeyValue* = object
+        key*: array[256, char]
+        value*: array[4096, char]
+
     ListenerModalComponent* = ref object of RootObj
+        protocol*: int32
+        protocolLabels*: string
+        encodingLabels*: string
+        placementLabels*: string
+
         callbackHosts*: array[256 * 32, char]
         bindAddress*: array[256, char]
-        bindPort*: uint16 
+        bindPort*: uint16
         pipe*: array[256, char]
-        protocol*: int32
-        protocols*: seq[string]
+
+        userAgentGET*: array[256, char]
+        endpointsGET*: array[256 * 32, char]
+        reqHeadersGET*: seq[KeyValue]
+        queryParamsGET*: seq[KeyValue]
+        heartbeatDataTransformation*: DataTransformation
+        reqPreviewGET*: TextareaWidget
+
+        respHeadersGET*: seq[KeyValue]
+        tasksDataTransformation*: DataTransformation
+        respPreviewGET*: TextareaWidget
+
+        userAgentPOST*: array[256, char]
+        endpointsPOST*: array[256 * 32, char]
+        methods*: array[256 * 32, char]
+        reqHeadersPOST*: seq[KeyValue]
+        queryParamsPOST*: seq[KeyValue]
+        resultDataTransformation*: DataTransformation
+        reqPreviewPOST*: TextareaWidget
+
+        respHeadersPOST*: seq[KeyValue]
+        respBody*: array[MAX_INPUT_LENGTH, char]
+        respPreviewPOST*: TextareaWidget
+
+        previewCacheGETReq*: string
+        previewCacheGETResp*: string
+        previewCachePOSTReq*: string
+        previewCachePOSTResp*: string
+        resetTab*: bool
 
     EventlogComponent* = ref object of RootObj
         title*: string 
