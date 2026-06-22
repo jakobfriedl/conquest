@@ -3,7 +3,7 @@ import tables, times, strutils, sequtils, strformat, json, base64
 import ./utils/[appImGui, globals, dialogs]
 import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, scriptManager, chat]
 import ./views/loot/[screenshots, downloads, credentials]
-import ./views/modals/[generatePayload, connect]
+import ./views/modals/[generatePayload, startListener, connect]
 import ../common/[utils, profile, crypto, serialize]
 import ../types/[common, client, event]
 import ./core/[websocket, database]
@@ -17,7 +17,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
     defer: imPlotContext.ImPlotDestroyContext()
  
     var 
-        profile: Profile
         views: OrderedTable[string, tuple[shortcut: string, show: ptr bool]]
         showConquest = true
         showSessionsTable = true
@@ -187,7 +186,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                                 cq.connection = nil 
 
                     of CLIENT_PROFILE:
-                        profile = parseString(event.data["profile"].getStr())
+                        cq.listeners.startListenerModal.loadFromProfile(parseString(event.data["profile"].getStr()))
 
                     of CLIENT_LISTENER_ADD: 
                         let listener = event.data.to(UIListener)

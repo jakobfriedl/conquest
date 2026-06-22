@@ -1,6 +1,6 @@
-import strutils, times
+import times
 import imguin/[cimgui, glfw_opengl]
-import ../../utils/[appImGui, globals]
+import ../../utils/[appImGui, utils, globals]
 import ../../core/websocket
 import ../../../common/utils
 import ../../../types/[common, client]
@@ -13,8 +13,8 @@ proc CredentialModal*(): CredentialModalComponent =
     zeroMem(addr result.value[0], 512)
     zeroMem(addr result.note[0], MAX_INPUT_LENGTH)
 
-    for c in CredentialType.low .. CredentialType.high:
-        result.credTypes.add($c)
+    for c in CredentialType:
+        result.credTypes &= $c & "\0"
 
 proc resetModalValues(component: CredentialModalComponent) =
     component.credType = 0
@@ -55,7 +55,7 @@ proc draw*(component: CredentialModalComponent) =
         igSameLine(0.0f, textSpacing)
         var availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
-        igCombo_Str("##InputCredType", addr component.credType, (component.credTypes.join("\0") & "\0").cstring, component.credTypes.len().int32)
+        igCombo_Str("##InputCredType", addr component.credType, component.credTypes.cstring, component.credTypes.len().int32)
 
         igDummy(vec2(0.0f, 10.0f))
         igSeparator()
@@ -101,13 +101,13 @@ proc draw*(component: CredentialModalComponent) =
             let item = LootItem(
                 lootId: if component.editingItem.isNil: generateUUID() else: component.editingItem.lootId,
                 agentId: if component.editingItem.isNil: "" else: component.editingItem.agentId,
-                host: $cast[cstring](addr component.host[0]),
+                host: component.host.toString(),
                 timestamp: if component.editingItem.isNil: now().toTime().toUnix() else: component.editingItem.timestamp,
                 itemType: CREDENTIAL,
                 credType: cast[CredentialType](component.credType),
-                username: $cast[cstring](addr component.username[0]),
-                value: $cast[cstring](addr component.value[0]),
-                note: $cast[cstring](addr component.note[0])
+                username: component.username.toString(),
+                value: component.value.toString(),
+                note: component.note.toString()
             )
 
             cq.connection.sendLootModify(item, @[])

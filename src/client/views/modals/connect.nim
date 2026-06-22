@@ -1,6 +1,6 @@
 import whisky, strutils, strformat
 import imguin/[cimgui, glfw_opengl]
-import ../../utils/[appImGui, globals]
+import ../../utils/[appImGui, utils, globals]
 import ../../../types/[common, client]
 
 proc ConnectionModal*(host: string, port: int): ConnectionModalComponent =
@@ -29,9 +29,9 @@ proc resetModalValues(component: ConnectionModalComponent) =
 proc connect*(component: ConnectionModalComponent) = 
     component.errorMessage = ""
 
-    let host = $cast[cstring]((addr component.host[0]))
-    component.username = $cast[cstring]((addr component.usernameInput[0]))
-    component.password = $cast[cstring]((addr component.passwordInput[0]))
+    let host = component.host.toString()
+    component.username = component.usernameInput.toString()
+    component.password = component.passwordInput.toString()
 
     try: 
         cq.connection = WsConnection(
@@ -97,9 +97,9 @@ proc draw*(component: ConnectionModalComponent) =
 
         # Only enable the button when required fields have been filled in
         igBeginDisabled(
-            ($cast[cstring]((addr component.host[0])) == "") or 
+            (component.host.toString() == "") or 
             (component.port <= 0) or
-            ($cast[cstring]((addr component.usernameInput[0])) == "")
+            (component.usernameInput.toString() == "")
         )
 
         availableSize = igGetContentRegionAvail()

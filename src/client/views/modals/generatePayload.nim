@@ -34,14 +34,14 @@ proc PayloadModal*(): PayloadModalComponent =
     )
 
     # Populate dropdowns
-    for agentType in AgentType.low .. AgentType.high: 
-        result.agentTypes.add($agentType)
-    for payloadType in PayloadType.low .. PayloadType.high:
-        result.payloadTypes.add($payloadType)
-    for arch in Architecture.low .. Architecture.high:
-        result.architectures.add($arch)
-    for technique in SleepObfuscationTechnique.low .. SleepObfuscationTechnique.high:
-        result.sleepMaskTechniques.add($technique)
+    for agentType in AgentType: 
+        result.agentTypes &= $agentType & "\0"
+    for payloadType in PayloadType:
+        result.payloadTypes &= $payloadType & "\0"
+    for arch in Architecture:
+        result.architectures &= $arch & "\0"
+    for technique in SleepObfuscationTechnique:
+        result.sleepMaskTechniques &= $technique & "\0"
 
     result.moduleSelection = DualListSelection(cq.scriptManager.modules.values.toSeq().sorted(compareModules), moduleName, compareModules, moduleDesc)
     
@@ -166,9 +166,9 @@ proc serializeConfig(component: PayloadModalComponent): string =
         config["workingHours"]["endMinute"] = %component.workingHours.endMinute.int
 
     config["guardrails"] = newJObject()
-    if component.domainGuardrailEnabled: config["guardrails"]["domain"] = %($cast[cstring](addr component.domainGuardrail[0]))
-    if component.ipGuardrailEnabled: config["guardrails"]["ip"] = %($cast[cstring](addr component.ipGuardrail[0]))
-    if component.hostGuardrailEnabled: config["guardrails"]["hostname"] = %($cast[cstring](addr component.hostGuardrail[0]))
+    if component.domainGuardrailEnabled: config["guardrails"]["domain"] = %(component.domainGuardrail.toString())
+    if component.ipGuardrailEnabled: config["guardrails"]["ip"] = %(component.ipGuardrail.toString())
+    if component.hostGuardrailEnabled: config["guardrails"]["hostname"] = %(component.hostGuardrail.toString())
     config["killDate"] = %(if component.killDateEnabled: component.killDate else: 0'i64)
     config["selfDelete"] = %component.selfDelete
 
@@ -241,7 +241,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
     var center = ImGuiViewport_GetCenter(vp)
     igSetNextWindowPos(center, ImGuiCond_Appearing.int32, vec2(0.5f, 0.5f))
 
-    let modalWidth = max(600.0f, vp.Size.x * 0.25)
+    let modalWidth = max(500.0f, vp.Size.x * 0.25)
     let modalHeight= max(360.0f, vp.Size.y * 0.25)
     igSetNextWindowSize(vec2(modalWidth, modalHeight), ImGuiCond_Always.int32)
     
@@ -255,9 +255,9 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
         var availableSize = igGetContentRegionAvail()
 
         # Input/settings validation 
-        let domainError = if component.domainGuardrailEnabled: validateDomainGuardrail($cast[cstring](addr component.domainGuardrail[0])) else: ""
-        let ipError = if component.ipGuardrailEnabled: validateIPGuardrail($cast[cstring](addr component.ipGuardrail[0])) else: ""
-        let hostError = if component.hostGuardrailEnabled: validateHostnameGuardrail($cast[cstring](addr component.hostGuardrail[0])) else: ""
+        let domainError = if component.domainGuardrailEnabled: validateDomainGuardrail(component.domainGuardrail.toString()) else: ""
+        let ipError = if component.ipGuardrailEnabled: validateIPGuardrail(component.ipGuardrail.toString()) else: ""
+        let hostError = if component.hostGuardrailEnabled: validateHostnameGuardrail(component.hostGuardrail.toString()) else: ""
         let killDateError = if component.killDateEnabled: validateKillDate(component.killDate) else: ""
         let workingHoursError = if component.workingHoursEnabled and not component.workingHours.enabled: "Missing working hours configuration." else: ""
         
@@ -281,21 +281,21 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igSameLine(0.0f, textSpacing)
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x)
-                igCombo_Str("##InputAgentType", addr component.agentType, (component.agentTypes.join("\0") & "\0").cstring, component.agentTypes.len().int32)
+                igCombo_Str("##InputAgentType", addr component.agentType, component.agentTypes.cstring, component.agentTypes.len().int32)
 
                 # Architecture selection
                 igText("Arch:         ")
                 igSameLine(0.0f, textSpacing)
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x)
-                igCombo_Str("##InputArch", addr component.arch, (component.architectures.join("\0") & "\0").cstring, component.architectures.len().int32)
+                igCombo_Str("##InputArch", addr component.arch, component.architectures.cstring, component.architectures.len().int32)
 
                 # Payload type selection
                 igText("Payload type: ")
                 igSameLine(0.0f, textSpacing)
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x)
-                igCombo_Str("##InputPayloadType", addr component.payloadType, (component.payloadTypes.join("\0") & "\0").cstring, component.payloadTypes.len().int32)
+                igCombo_Str("##InputPayloadType", addr component.payloadType, component.payloadTypes.cstring, component.payloadTypes.len().int32)
 
                 igDummy(vec2(0.0f, 10.0f))
                 igSeparator()
@@ -340,7 +340,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igText("Sleepmask:      ")
                 igSameLine(0.0f, textSpacing)
                 igSetNextItemWidth(availableSize.x - markerWidth)
-                igCombo_Str("##InputSleepMask", addr component.sleepMask, (component.sleepMaskTechniques.join("\0") & "\0").cstring , component.sleepMaskTechniques.len().int32)
+                igCombo_Str("##InputSleepMask", addr component.sleepMask, component.sleepMaskTechniques.cstring , component.sleepMaskTechniques.len().int32)
                 igHelpMarker("""Conquest supports the following sleep obfuscation techniques:
 - NONE: Regular delayed execution using WaitForSingleObject.
 - EKKO: Encrypt agent memory during sleep via RtlCreateTimer.
@@ -614,9 +614,9 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                         ),
                         guardrails : Guardrails(
                             guardrails: guardrails,
-                            domain: if component.domainGuardrailEnabled: $(cast[cstring](addr component.domainGuardrail[0])) else: "",
-                            ip: if component.ipGuardrailEnabled: $(cast[cstring](addr component.ipGuardrail[0])) else: "",
-                            hostname: if component.hostGuardrailEnabled: $(cast[cstring](addr component.hostGuardrail[0])) else: ""
+                            domain: if component.domainGuardrailEnabled: component.domainGuardrail.toString() else: "",
+                            ip: if component.ipGuardrailEnabled: component.ipGuardrail.toString() else: "",
+                            hostname: if component.hostGuardrailEnabled: component.hostGuardrail.toString() else: ""
                         ),
                         selfDelete: component.selfDelete,
                         killDate: if component.killDateEnabled: component.killDate else: 0,

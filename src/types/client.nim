@@ -130,8 +130,8 @@ type
         placement*: PlacementType
         placementName*: array[256, char]
         encodings*: seq[Encoding]
-        prepend*: array[4096, char]
-        append*: array[4096, char]
+        prepend*: array[MAX_INPUT_LENGTH, char]
+        append*: array[MAX_INPUT_LENGTH, char]
 
     KeyValue* = object
         key*: array[256, char]
@@ -175,7 +175,7 @@ type
         previewCacheGETResp*: string
         previewCachePOSTReq*: string
         previewCachePOSTResp*: string
-        resetTab*: bool
+        profileSettingsOpen*: bool
 
     EventlogComponent* = ref object of RootObj
         title*: string 
@@ -184,6 +184,11 @@ type
 
     PayloadModalComponent* = ref object of RootObj
         show*: bool
+        agentTypes*: string
+        architectures*: string
+        payloadTypes*: string  
+        sleepMaskTechniques*: string
+        
         listener*: int32 
         agentType*: int32
         payloadType*: int32
@@ -204,10 +209,7 @@ type
         workingHoursEnabled*: bool
         workingHours*: WorkingHours
         verbose*: bool
-        agentTypes*: seq[string]
-        architectures*: seq[string]
-        payloadTypes*: seq[string]  
-        sleepMaskTechniques*: seq[string]
+
         moduleSelection*: DualListSelectionWidget[Module]
         configJson*: string
         configPreview*: TextareaWidget
@@ -223,7 +225,7 @@ type
         username*: array[256, char]
         value*: array[512, char]
         note*: array[MAX_INPUT_LENGTH, char]
-        credTypes*: seq[string]
+        credTypes*: string
         editingItem*: LootItem
 
     NoteModalComponent* = ref object of RootObj

@@ -1,5 +1,5 @@
 import imguin/[cimgui, glfw_opengl]
-import ../../utils/[appImGui, globals]
+import ../../utils/[appImGui, utils, globals]
 import ../../core/websocket
 import ../../../types/[common, client]
 
@@ -52,7 +52,7 @@ proc draw*(component: NoteModalComponent) =
                 credType: component.editingItem.credType,
                 username: component.editingItem.username,
                 value: component.editingItem.value,
-                note: $cast[cstring](addr component.note[0])
+                note: component.note.toString()
             )
 
             cq.connection.sendLootModify(item, @[])

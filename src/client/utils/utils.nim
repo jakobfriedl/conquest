@@ -32,6 +32,16 @@ proc igHelpMarker*(text: string) =
     igTextDisabled("(?)")
     setTooltip(text)    
 
+proc toString*(buf: openArray[char]): string =
+    return $cast[cstring](addr buf[0])
+
+proc contentHeight*(buf: openArray[char]): float32 =
+    var lineCount: int32 = 1
+    for c in buf:
+        if c == '\0': break
+        if c == '\n': inc lineCount
+    return igGetFrameHeight() + float32(lineCount - 1) * igGetTextLineHeight()
+
 type
     Theme* = enum
         Light, Dark, Classic

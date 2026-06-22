@@ -1,8 +1,9 @@
 import strutils, strformat, base64
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/textarea
-import ../../utils/[appImGui, globals]
-import ../../../common/utils
+import ../../utils/[appImGui, utils, globals]
+import ../../../common/[utils, profile]
+import ../../../common/toml/toml
 import ../../../types/[common, client]
 
 const
@@ -33,6 +34,7 @@ proc ListenerModal*(): ListenerModalComponent =
     result.reqPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
     result.respPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
 
+
 proc resetModalValues(component: ListenerModalComponent) =
     zeroMem(addr component.callbackHosts[0], 256 * 32)
     zeroMem(addr component.bindAddress[0], 256)
@@ -41,20 +43,208 @@ proc resetModalValues(component: ListenerModalComponent) =
     component.protocol = 0
 
 #[
-    Helper functions
+    Profile serialization
 ]#
-proc toString(buf: openArray[char]): string =
-    return $cast[cstring](unsafeAddr buf[0])
+proc setCharArray(dst: var openArray[char], src: string) =
+    zeroMem(addr dst[0], dst.len())
+    let n = min(src.len(), dst.len() - 1)
+    if n > 0: copyMem(addr dst[0], unsafeAddr src[0], n)
 
-proc contentHeight(buf: openArray[char]): float32 =
-    var lineCount: int32 = 1
-    for c in buf:
-        if c == '\0': break
-        if c == '\n': inc lineCount
-    return igGetFrameHeight() + float32(lineCount - 1) * igGetTextLineHeight()
+proc parseEncodingEntry(table: TomlTableRef): Encoding =
+    let encType = table.getTableValue("type").getStr()
+    case encType
+    of "base64":
+        result.encodingType = ENCODING_BASE64
+        let urlSafe = table.getTableValue("url-safe")
+        if urlSafe.kind == Bool: result.urlSafe = urlSafe.boolVal
+    of "hex": result.encodingType = ENCODING_HEX
+    of "rot":
+        result.encodingType = ENCODING_ROT
+        let key = table.getTableValue("key")
+        if key.kind == Int: result.key = int32(key.intVal)
+    of "xor":
+        result.encodingType = ENCODING_XOR
+        let key = table.getTableValue("key")
+        if key.kind == Int: result.key = int32(key.intVal)
+    else: result.encodingType = ENCODING_NONE
+
+proc parseProfileEncodings(profile: Profile, path: string): seq[Encoding] =
+    if profile.isArray(path & ".encoding"):
+        for elem in profile.getArray(path & ".encoding"):
+            let table = elem.getTable()
+            if not table.isNil: result.add(parseEncodingEntry(table))
+    else:
+        let table = profile.getTable(path & ".encoding")
+        if not table.isNil: result.add(parseEncodingEntry(table))
+
+proc parseProfileKeyValues(profile: Profile, path: string): seq[KeyValue] =
+    for (k, v) in profile.getTableKeys(path):
+        var kv: KeyValue
+        zeroMem(addr kv, sizeof(KeyValue))
+        kv.key.setCharArray(k)
+        if v.kind == Array:
+            var lines: seq[string]
+            for elem in profile.getArray(path & "." & k): lines.add(elem.getStr())
+            kv.value.setCharArray(lines.join("\n"))
+        else:
+            kv.value.setCharArray(v.getStr())
+        result.add(kv)
+
+proc parseProfileDataTransformation(profile: Profile, path: string, defaultPlacement: PlacementType = PLACEMENT_BODY): DataTransformation =
+    result = DataTransformation(placement: defaultPlacement)
+    let placementTable = profile.getTable(path & ".placement")
+    if not placementTable.isNil:
+        case placementTable.getTableValue("type").getStr()
+        of "header": result.placement = PLACEMENT_HEADER
+        of "query": result.placement = PLACEMENT_QUERY
+        else: result.placement = PLACEMENT_BODY
+        result.placementName.setCharArray(placementTable.getTableValue("name").getStr())
+    result.encodings = parseProfileEncodings(profile, path)
+    result.prepend.setCharArray(profile.getStringOrByteArray(path & ".prepend"))
+    result.append.setCharArray(profile.getStringOrByteArray(path & ".append"))
+
+proc loadFromProfile*(component: ListenerModalComponent, profile: Profile) =
+    if profile.isNil: return
+
+    component.userAgentGET.setCharArray(profile.getString("http-get.user-agent"))
+    var getEndpoints: seq[string]
+    for ep in profile.getArray("http-get.endpoints"): getEndpoints.add(ep.getStr())
+    component.endpointsGET.setCharArray(getEndpoints.join("\n"))
+    component.reqHeadersGET = parseProfileKeyValues(profile, "http-get.agent.headers")
+    component.queryParamsGET = parseProfileKeyValues(profile, "http-get.agent.parameters")
+    component.heartbeatDataTransformation = parseProfileDataTransformation(profile, "http-get.agent.heartbeat")
+
+    component.respHeadersGET = parseProfileKeyValues(profile, "http-get.server.headers")
+    component.tasksDataTransformation = parseProfileDataTransformation(profile, "http-get.server.output")
+
+    component.userAgentPOST.setCharArray(profile.getString("http-post.user-agent"))
+    var postEndpoints: seq[string]
+    for ep in profile.getArray("http-post.endpoints"): postEndpoints.add(ep.getStr())
+    component.endpointsPOST.setCharArray(postEndpoints.join("\n"))
+    var methods: seq[string]
+    for m in profile.getArray("http-post.request-methods"): methods.add(m.getStr())
+    component.methods.setCharArray(methods.join("\n"))
+    component.reqHeadersPOST = parseProfileKeyValues(profile, "http-post.agent.headers")
+    component.queryParamsPOST = parseProfileKeyValues(profile, "http-post.agent.parameters")
+    component.resultDataTransformation = parseProfileDataTransformation(profile, "http-post.agent.output")
+
+    component.respHeadersPOST = parseProfileKeyValues(profile, "http-post.server.headers")
+    component.respBody.setCharArray(profile.getString("http-post.server.output.body"))
+
+proc escapeToml(s: string): string = s.replace("\\", "\\\\").replace("\"", "\\\"")
+proc quotedToml(s: string): string = "\"" & s.escapeToml() & "\""
+
+proc arrayToToml(values: seq[string]): string =
+    var parts: seq[string]
+    for v in values: parts.add(v.quotedToml())
+    return "[" & parts.join(", ") & "]"
+
+proc encodingToToml(enc: Encoding): string =
+    case enc.encodingType
+    of ENCODING_NONE: return "{ type = \"none\" }"
+    of ENCODING_BASE64:
+        if enc.urlSafe: return "{ type = \"base64\", url-safe = true }"
+        return "{ type = \"base64\" }"
+    of ENCODING_HEX: return "{ type = \"hex\" }"
+    of ENCODING_ROT: return "{ type = \"rot\", key = " & $enc.key & " }"
+    of ENCODING_XOR: return "{ type = \"xor\", key = " & $enc.key & " }"
+
+proc dataTransformToToml(dt: DataTransformation): string =
+    let name = dt.placementName.toString()
+    case dt.placement
+    of PLACEMENT_BODY: result &= "placement = { type = \"body\" }\n"
+    of PLACEMENT_HEADER: result &= "placement = { type = \"header\", name = " & name.quotedToml() & " }\n"
+    of PLACEMENT_QUERY: result &= "placement = { type = \"query\", name = " & name.quotedToml() & " }\n"
+    if dt.encodings.len() == 1:
+        result &= "encoding = " & encodingToToml(dt.encodings[0]) & "\n"
+    elif dt.encodings.len() > 1:
+        result &= "encoding = [\n"
+        for i, enc in dt.encodings:
+            result &= "    " & encodingToToml(enc)
+            if i < dt.encodings.len() - 1: result &= ","
+            result &= "\n"
+        result &= "]\n"
+    let prepend = dt.prepend.toString()
+    let append = dt.append.toString()
+    if prepend.len() > 0: result &= "prepend = " & prepend.quotedToml() & "\n"
+    if append.len() > 0: result &= "append = " & append.quotedToml() & "\n"
+
+proc kvValueToToml(s: string): string =
+    var nonEmpty: seq[string]
+    for l in s.splitLines():
+        let t = l.strip()
+        if t.len() > 0: nonEmpty.add(t)
+    if nonEmpty.len() <= 1: return s.quotedToml()
+    return arrayToToml(nonEmpty)
+
+proc keyValuesToToml(pairs: seq[KeyValue]): string =
+    for pair in pairs:
+        let k = pair.key.toString()
+        if k.len() == 0: continue
+        result &= k & " = " & pair.value.toString().kvValueToToml() & "\n"
+
+proc toProfileToml*(component: ListenerModalComponent): string =
+    proc toMultilineString(buf: openArray[char]): seq[string] =
+        for line in buf.toString().splitLines():
+            let trimmed = line.strip()
+            if trimmed.len() > 0: result.add(trimmed)
+
+    let 
+        getUserAgent = component.userAgentGET.toString()
+        getEndpoints = component.endpointsGET.toMultilineString()
+        postUserAgent = component.userAgentPOST.toString()
+        postEndpoints = component.endpointsPOST.toMultilineString()
+        postMethods = component.methods.toMultilineString()
+
+    result &= "[http-get]\n"
+    if getUserAgent.len() > 0: result &= "user-agent = " & getUserAgent.quotedToml() & "\n"
+    if getEndpoints.len() > 0: result &= "endpoints = " & arrayToToml(getEndpoints) & "\n"
+
+    result &= "\n[http-get.agent.heartbeat]\n"
+    result &= dataTransformToToml(component.heartbeatDataTransformation)
+
+    if component.queryParamsGET.len() > 0:
+        result &= "\n[http-get.agent.parameters]\n"
+        result &= keyValuesToToml(component.queryParamsGET)
+
+    if component.reqHeadersGET.len() > 0:
+        result &= "\n[http-get.agent.headers]\n"
+        result &= keyValuesToToml(component.reqHeadersGET)
+
+    if component.respHeadersGET.len() > 0:
+        result &= "\n[http-get.server.headers]\n"
+        result &= keyValuesToToml(component.respHeadersGET)
+
+    result &= "\n[http-get.server.output]\n"
+    result &= dataTransformToToml(component.tasksDataTransformation)
+
+    result &= "\n[http-post]\n"
+    if postUserAgent.len() > 0: result &= "user-agent = " & postUserAgent.quotedToml() & "\n"
+    if postEndpoints.len() > 0: result &= "endpoints = " & arrayToToml(postEndpoints) & "\n"
+    if postMethods.len() > 0: result &= "request-methods = " & arrayToToml(postMethods) & "\n"
+
+    if component.reqHeadersPOST.len() > 0:
+        result &= "\n[http-post.agent.headers]\n"
+        result &= keyValuesToToml(component.reqHeadersPOST)
+
+    if component.queryParamsPOST.len() > 0:
+        result &= "\n[http-post.agent.parameters]\n"
+        result &= keyValuesToToml(component.queryParamsPOST)
+
+    result &= "\n[http-post.agent.output]\n"
+    result &= dataTransformToToml(component.resultDataTransformation)
+
+    if component.respHeadersPOST.len() > 0:
+        result &= "\n[http-post.server.headers]\n"
+        result &= keyValuesToToml(component.respHeadersPOST)
+
+    let respBody = component.respBody.toString()
+    if respBody.len() > 0:
+        result &= "\n[http-post.server.output]\n"
+        result &= "body = " & respBody.quotedToml() & "\n"
 
 #[
-    Profile settings
+    Profile setting inputs
 ]#
 proc drawKeyValueSetting(component: ListenerModalComponent, id: string, pairs: var seq[KeyValue]) =
     let 
@@ -63,7 +253,7 @@ proc drawKeyValueSetting(component: ListenerModalComponent, id: string, pairs: v
         keyWidth = totalWidth * 0.3
         removeWidth = igCalcTextSize("Remove", nil, false, 0.0f).x + igGetStyle().FramePadding.x * 2
 
-    var removeIdx = -1
+    var toRemove = -1
     for i in 0 ..< pairs.len():
         igPushID_Int(int32(i))
 
@@ -86,18 +276,93 @@ proc drawKeyValueSetting(component: ListenerModalComponent, id: string, pairs: v
         igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR_HOVERED)
         igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
         if igButton(("Remove##" & id).cstring, vec2(-1.0f, 0)):
-            removeIdx = i
+            toRemove = i
         igPopStyleColor(3)
 
         igPopID()
 
-    if removeIdx >= 0:
-        pairs.delete(removeIdx)
+    if toRemove >= 0:
+        pairs.delete(toRemove)
 
     if igButton(("Add##" & id).cstring, vec2(-1.0f, 0)):
         var pair: KeyValue
         zeroMem(addr pair, sizeof(KeyValue))
         pairs.add(pair)
+
+proc drawEncoding(component: ListenerModalComponent, id: string, encodings: var seq[Encoding]) =
+    let 
+        textSpacing = igGetStyle().ItemSpacing.x
+        encodingX = igGetCursorPosX()
+        encodingAvailWidth = igGetContentRegionAvail().x
+        buttonSize = igGetFrameHeight()
+        removeWidth = igCalcTextSize("Remove", nil, false, 0.0f).x + igGetStyle().FramePadding.x * 2
+        rightSectionWidth = buttonSize * 2 + removeWidth + textSpacing * 2
+    
+    var toRemove = -1
+    var toSwap = -1
+    for i in 0 ..< encodings.len():
+        if i > 0: 
+            igSetCursorPosX(encodingX)
+        igPushID_Int(int32(i))
+        igSetNextItemWidth(100.0f)
+        
+        igCombo_Str(("##EncodingType" & id).cstring, cast[ptr int32](addr encodings[i].encodingType), component.encodingLabels.cstring, int32(ord(EncodingType.high) + 1))
+        case encodings[i].encodingType
+        of ENCODING_ROT, ENCODING_XOR:
+            igSameLine(0.0f, textSpacing)
+            igText("Key:")
+            igSameLine(0.0f, textSpacing)
+            igSetNextItemWidth(60.0f)
+            igInputScalar(("##EncodingKey" & id).cstring, ImGuiDataType_S32.int32, addr encodings[i].key, nil, nil, "%d", ImGui_InputTextFlags_CharsDecimal.int32)
+        of ENCODING_BASE64:
+            igSameLine(0.0f, textSpacing)
+            igCheckbox(("URL-Safe##" & id).cstring, addr encodings[i].urlSafe)
+        else: 
+            discard
+        
+        igSameLine(encodingX + encodingAvailWidth - rightSectionWidth, 0.0f)
+        
+        # Reordering 
+        if i == 0: # Disable up arrow on first encoding
+            igBeginDisabled(true)
+        if igButton((ICON_FA_ARROW_UP & "##MoveUp").cstring, vec2(buttonSize, 0)):
+            toSwap = i - 1
+        if i == 0: 
+            igEndDisabled()
+        
+        igSameLine(0.0f, textSpacing)
+        
+        if i == encodings.len() - 1: # Disable down arrow on last encoding
+            igBeginDisabled(true)
+        if igButton((ICON_FA_ARROW_DOWN & "##MoveDown").cstring, vec2(buttonSize, 0)):
+            toSwap = i
+        if i == encodings.len() - 1: 
+            igEndDisabled()
+        igSameLine(0.0f, textSpacing)
+        
+        # Remove
+        igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_DIM)
+        igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR_HOVERED)
+        igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
+        if igButton(("Remove##EncodingRemove").cstring, vec2(-1.0f, 0)):
+            toRemove = i
+        igPopStyleColor(3)
+        igPopID()
+
+    if toSwap >= 0:
+        swap(encodings[toSwap], encodings[toSwap + 1])
+    
+    if toRemove >= 0:
+        encodings.delete(toRemove)
+    
+    if encodings.len() == 0: 
+        igSameLine(0.0f, textSpacing)
+    else: 
+        igSetCursorPosX(encodingX)
+    
+    # Add button
+    if igButton(("Add##EncodingAdd" & id).cstring, vec2(-1.0f, 0)):
+        encodings.add(Encoding())
 
 proc drawDataTransformation(component: ListenerModalComponent, id: string, dataTransform: DataTransformation) =
     let textSpacing = igGetStyle().ItemSpacing.x
@@ -106,13 +371,13 @@ proc drawDataTransformation(component: ListenerModalComponent, id: string, dataT
     igText("Placement:  ")
     igSameLine(0.0f, textSpacing)
     igSetNextItemWidth(100.0f)
-    
+
     if id == "http-get.server.output":
         igBeginDisabled(true)
     igCombo_Str(("##Pl" & id).cstring, cast[ptr int32](addr dataTransform.placement), component.placementLabels.cstring, int32(ord(PlacementType.high) + 1))
     if id == "http-get.server.output":
         igEndDisabled()
-    
+
     if dataTransform.placement != PLACEMENT_BODY:
         igSameLine(0.0f, textSpacing)
         igText("Name:")
@@ -123,54 +388,7 @@ proc drawDataTransformation(component: ListenerModalComponent, id: string, dataT
 
     igText("Encoding:   ")
     igSameLine(0.0f, textSpacing)
-    
-    let encodingX = igGetCursorPosX()
-    let encodingAvailWidth = igGetContentRegionAvail().x
-    let buttonSize = igGetFrameHeight()
-    let removeWidth = igCalcTextSize("Remove", nil, false, 0.0f).x + igGetStyle().FramePadding.x * 2
-    let rightSectionWidth = buttonSize * 2 + removeWidth + textSpacing * 2
-    var removeIdx = -1
-    var swapIdx = -1
-    for i in 0 ..< dataTransform.encodings.len:
-        if i > 0: igSetCursorPosX(encodingX)
-        igPushID_Int(int32(i))
-        igSetNextItemWidth(100.0f)
-        igCombo_Str(("##Et" & id).cstring, cast[ptr int32](addr dataTransform.encodings[i].encodingType), component.encodingLabels.cstring, int32(ord(EncodingType.high) + 1))
-        if dataTransform.encodings[i].encodingType in {ENCODING_ROT, ENCODING_XOR}:
-            igSameLine(0.0f, textSpacing)
-            igText("Key:")
-            igSameLine(0.0f, textSpacing)
-            igSetNextItemWidth(60.0f)
-            igInputScalar(("##Ek" & id).cstring, ImGuiDataType_S32.int32, addr dataTransform.encodings[i].key, nil, nil, "%d", ImGui_InputTextFlags_CharsDecimal.int32)
-        if dataTransform.encodings[i].encodingType == ENCODING_BASE64:
-            igSameLine(0.0f, textSpacing)
-            igCheckbox(("URL-Safe##" & id).cstring, addr dataTransform.encodings[i].urlSafe)
-        igSameLine(encodingX + encodingAvailWidth - rightSectionWidth, 0.0f)
-        if i == 0: igBeginDisabled(true)
-        if igButton((ICON_FA_ARROW_UP & "##Eu").cstring, vec2(buttonSize, 0)):
-            swapIdx = i - 1
-        if i == 0: igEndDisabled()
-        igSameLine(0.0f, textSpacing)
-        if i == dataTransform.encodings.len - 1: igBeginDisabled(true)
-        if igButton((ICON_FA_ARROW_DOWN & "##Ed").cstring, vec2(buttonSize, 0)):
-            swapIdx = i
-        if i == dataTransform.encodings.len - 1: igEndDisabled()
-        igSameLine(0.0f, textSpacing)
-        igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_DIM)
-        igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR_HOVERED)
-        igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
-        if igButton(("Remove##Er").cstring, vec2(-1.0f, 0)):
-            removeIdx = i
-        igPopStyleColor(3)
-        igPopID()
-    if swapIdx >= 0:
-        swap(dataTransform.encodings[swapIdx], dataTransform.encodings[swapIdx + 1])
-    if removeIdx >= 0:
-        dataTransform.encodings.delete(removeIdx)
-    if dataTransform.encodings.len == 0: igSameLine(0.0f, textSpacing)
-    else: igSetCursorPosX(encodingX)
-    if igButton(("Add##Ea" & id).cstring, vec2(-1.0f, 0)):
-        dataTransform.encodings.add(Encoding())
+    component.drawEncoding(id, dataTransform.encodings)
 
     igText("Prepend:    ")
     igSameLine(0.0f, textSpacing)
@@ -213,13 +431,13 @@ proc kvToQueryString(pairs: seq[KeyValue]): string =
     for pair in pairs:
         let key = pair.key.toString()
         let (value, _) = pair.value.toString().firstLine()
-        if key.len > 0: parts.add(key & "=" & value)
-    if parts.len > 0: result = "?" & parts.join("&")
+        if key.len() > 0: parts.add(key & "=" & value)
+    if parts.len() > 0: result = "?" & parts.join("&")
 
 proc firstEndpoint(buf: openArray[char]): string =
     for line in buf.toString().splitLines():
         let ep = line.strip()
-        if ep.len > 0: return ep
+        if ep.len() > 0: return ep
     return "/"
 
 type PreviewLine = seq[tuple[text: string, color: ImVec4]]
@@ -227,14 +445,14 @@ type PreviewLine = seq[tuple[text: string, color: ImVec4]]
 proc addLine(lines: var seq[PreviewLine], segments: varargs[tuple[text: string, color: ImVec4]]) =
     var line: PreviewLine
     for seg in segments:
-        if seg.text.len > 0: line.add(seg)
-    if line.len > 0: lines.add(line)
+        if seg.text.len() > 0: line.add(seg)
+    if line.len() > 0: lines.add(line)
 
 proc addHeaderLines(lines: var seq[PreviewLine], pairs: seq[KeyValue]) =
     for pair in pairs:
         let k = pair.key.toString()
         let (v, _) = pair.value.toString().firstLine()
-        if k.len > 0: lines.addLine((k & ": " & v, CONSOLE_DEFAULT))
+        if k.len() > 0: lines.addLine((k & ": " & v, CONSOLE_DEFAULT))
 
 proc previewFingerprint(lines: seq[PreviewLine]): string =
     for line in lines:
@@ -246,12 +464,12 @@ proc colorizeSegments(line: PreviewLine): PreviewLine =
         var current = ""
         for c in seg.text:
             if c in {'#', '$'}:
-                if current.len > 0: result.add((current, seg.color))
+                if current.len() > 0: result.add((current, seg.color))
                 result.add(($c, CONSOLE_WARNING))
                 current = ""
             else:
                 current &= c
-        if current.len > 0: result.add((current, seg.color))
+        if current.len() > 0: result.add((current, seg.color))
 
 proc updatePreview(textarea: TextareaWidget, cache: var string, lines: seq[PreviewLine]) =
     let fp = previewFingerprint(lines)
@@ -274,17 +492,17 @@ proc generateGetRequest(component: ListenerModalComponent) =
     case component.heartbeatDataTransformation.placement
     of PLACEMENT_HEADER:
         lines.addLine(("GET " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
         lines.addHeaderLines(component.reqHeadersGET)
         lines.addLine((placementName & ": " & prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     of PLACEMENT_QUERY:
         let payload = prepend & encoded & append
-        lines.addLine(("GET " & endpoint & query & (if query.len > 0: "&" else: "?") & placementName & "=" & payload & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.addLine(("GET " & endpoint & query & (if query.len() > 0: "&" else: "?") & placementName & "=" & payload & " HTTP/1.1", CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
         lines.addHeaderLines(component.reqHeadersGET)
     of PLACEMENT_BODY:
         lines.addLine(("GET " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
         lines.addHeaderLines(component.reqHeadersGET)
         lines.addLine((prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     component.reqPreviewGET.updatePreview(component.previewCacheGETReq, lines)
@@ -305,7 +523,7 @@ proc generatePostRequest(component: ListenerModalComponent) =
     let endpoint = firstEndpoint(component.endpointsPOST)
     let query = kvToQueryString(component.queryParamsPOST)
     let methodStr = component.methods.toString()
-    let (verb, _) = (if methodStr.len > 0: methodStr.firstLine() else: ("POST", false))
+    let (verb, _) = (if methodStr.len() > 0: methodStr.firstLine() else: ("POST", false))
     let encoded = encode(PLACEHOLDER, component.resultDataTransformation.encodings)
     let prepend = component.resultDataTransformation.prepend.toString()
     let append = component.resultDataTransformation.append.toString()
@@ -315,18 +533,18 @@ proc generatePostRequest(component: ListenerModalComponent) =
     case component.resultDataTransformation.placement
     of PLACEMENT_HEADER:
         lines.addLine((verb & " " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
         lines.addHeaderLines(component.reqHeadersPOST)
         lines.addLine((placementName & ": " & prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     of PLACEMENT_BODY:
         lines.addLine((verb & " " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
         lines.addHeaderLines(component.reqHeadersPOST)
         lines.addLine((prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     of PLACEMENT_QUERY:
         let payload = prepend & encoded & append
-        lines.addLine((verb & " " & endpoint & query & (if query.len > 0: "&" else: "?") & placementName & "=" & payload & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.addLine((verb & " " & endpoint & query & (if query.len() > 0: "&" else: "?") & placementName & "=" & payload & " HTTP/1.1", CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
         lines.addHeaderLines(component.reqHeadersPOST)
     component.reqPreviewPOST.updatePreview(component.previewCachePOSTReq, lines)
 
@@ -335,7 +553,7 @@ proc generatePostResponse(component: ListenerModalComponent) =
     lines.addLine(("HTTP/1.1 200 OK", CONSOLE_DEFAULT))
     lines.addHeaderLines(component.respHeadersPOST)
     let body = component.respBody.toString()
-    if body.len > 0: lines.addLine((body, CONSOLE_DEFAULT))
+    if body.len() > 0: lines.addLine((body, CONSOLE_DEFAULT))
     component.respPreviewPOST.updatePreview(component.previewCachePOSTResp, lines)
 
 #[
@@ -350,11 +568,13 @@ proc draw*(component: ListenerModalComponent): UIListener =
     igSetNextWindowPos(center, ImGuiCond_Appearing.int32, vec2(0.5f, 0.5f))
 
     let modalWidth = max(600.0f, vp.Size.x * 0.25)
-    igSetNextWindowSize(vec2(modalWidth, 0.0f), ImGuiCond_Always.int32)
+    let modalHeight = if component.profileSettingsOpen and cast[ListenerType](component.protocol) != LISTENER_SMB: max(700.0f, vp.Size.y * 0.5) else: 0.0f
+
+    igSetNextWindowSize(vec2(modalWidth, modalHeight), ImGuiCond_Always.int32)
+    let previewHeight = 8.0f * igGetTextLineHeightWithSpacing()
 
     var show = true
-    let windowFlags = ImGuiWindowFlags_None.int32
-    if igBeginPopupModal("Start Listener", addr show, windowFlags):
+    if igBeginPopupModal("Start Listener", addr show, ImGuiWindowFlags_NoResize.int32 or ImGui_WindowFlags_NoScrollbar.int32):
         defer: igEndPopup()
 
         var disableStart = false
@@ -390,7 +610,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igInputTextMultiline("##InputCallbackHosts", cast[cstring](addr component.callbackHosts[0]), 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
 
             # Only enabled the start button when valid values have been entered
-            disableStart = ($cast[cstring]((addr component.bindAddress[0])) == "") or (component.bindPort <= 0)
+            disableStart = (component.bindAddress.toString() == "") or (component.bindPort <= 0)
 
         of LISTENER_SMB:
             # SMB Pipe name
@@ -403,7 +623,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igInputText("##InputPipe", cast[cstring](addr component.pipe[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
 
             # Only enabled the start button when valid values have been entered
-            disableStart = $cast[cstring]((addr component.pipe[0])) == ""
+            disableStart = component.pipe.toString() == ""
 
         # Network profile overwrites (HTTP Listeners only)
         if cast[ListenerType](component.protocol) == LISTENER_HTTP:
@@ -411,12 +631,18 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igDummy(vec2(0.0f, 10.0f))
 
             let profileSettings = igTreeNodeEx_Str("Network Profile Settings", ImGuiTreeNodeFlags_NoTreePushOnOpen.int32)
+            component.profileSettingsOpen = profileSettings
             if profileSettings and igBeginTabBar("##Tabs", ImGuiTabBarFlags_None.int32):
                 defer: igEndTabBar()
+
+                availableSize = igGetContentRegionAvail()
+                let contentHeight = availableSize.y - igGetFrameHeightWithSpacing() - 10.0f
 
                 # Tab 1: Agent GET Request: Heartbeat
                 if igBeginTabItem(fmt"GET {ICON_FA_ARROW_RIGHT} Heartbeat".cstring, nil, ImGuiTabBarFlags_None.int32):
                     defer: igEndTabItem()
+                    discard igBeginChild_Str("##Tab1Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
+                    defer: igEndChild()
                     igDummy(vec2(0.0f, 8.0f))
 
                     igText("User-Agent: ")
@@ -445,11 +671,13 @@ proc draw*(component: ListenerModalComponent): UIListener =
                     igSeparatorText("Preview")
                     generateGetRequest(component)
                     availableSize = igGetContentRegionAvail()
-                    component.reqPreviewGET.draw(vec2(availableSize.x, max(100.0f, 6.0f * igGetTextLineHeightWithSpacing())))
+                    component.reqPreviewGET.draw(vec2(availableSize.x, previewHeight))
 
                 # Tab 2: Server GET Response: Tasks
                 if igBeginTabItem(fmt"GET {ICON_FA_ARROW_LEFT} Tasks".cstring, nil, ImGuiTabBarFlags_None.int32):
                     defer: igEndTabItem()
+                    discard igBeginChild_Str("##Tab2Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
+                    defer: igEndChild()
                     igDummy(vec2(0.0f, 8.0f))
 
                     igSeparatorText("Response Headers")
@@ -461,11 +689,13 @@ proc draw*(component: ListenerModalComponent): UIListener =
                     igSeparatorText("Preview")
                     generateGetResponse(component)
                     availableSize = igGetContentRegionAvail()
-                    component.respPreviewGET.draw(vec2(availableSize.x, max(100.0f, 6.0f * igGetTextLineHeightWithSpacing())))
+                    component.respPreviewGET.draw(vec2(availableSize.x, previewHeight))
 
                 # Tab 3: Agent POST Request: Task Results/Registration
                 if igBeginTabItem(fmt"POST {ICON_FA_ARROW_RIGHT} Results".cstring, nil, ImGuiTabBarFlags_None.int32):
                     defer: igEndTabItem()
+                    discard igBeginChild_Str("##Tab3Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
+                    defer: igEndChild()
                     igDummy(vec2(0.0f, 8.0f))
 
                     igText("User-Agent:      ")
@@ -502,11 +732,13 @@ proc draw*(component: ListenerModalComponent): UIListener =
                     igSeparatorText("Preview")
                     generatePostRequest(component)
                     availableSize = igGetContentRegionAvail()
-                    component.reqPreviewPOST.draw(vec2(availableSize.x, max(100.0f, 6.0f * igGetTextLineHeightWithSpacing())))
+                    component.reqPreviewPOST.draw(vec2(availableSize.x, previewHeight))
 
                 # Tab 4: Server POST Response
                 if igBeginTabItem(fmt"POST {ICON_FA_ARROW_LEFT} Response".cstring, nil, ImGuiTabBarFlags_None.int32):
                     defer: igEndTabItem()
+                    discard igBeginChild_Str("##Tab4Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
+                    defer: igEndChild()
                     igDummy(vec2(0.0f, 8.0f))
 
                     igSeparatorText("Response Headers")
@@ -519,7 +751,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
                     igSeparatorText("Preview")
                     generatePostResponse(component)
                     availableSize = igGetContentRegionAvail()
-                    component.respPreviewPOST.draw(vec2(availableSize.x, max(100.0f, 6.0f * igGetTextLineHeightWithSpacing())))
+                    component.respPreviewPOST.draw(vec2(availableSize.x, previewHeight))
 
         igDummy(vec2(0.0f, 10.0f))
 
@@ -585,3 +817,4 @@ proc draw*(component: ListenerModalComponent): UIListener =
         if igButton("Close", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
             component.resetModalValues()
             igCloseCurrentPopup()
+
