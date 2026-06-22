@@ -305,8 +305,10 @@ proc drawEncoding(component: ListenerModalComponent, id: string, encodings: var 
             igSetCursorPosX(encodingX)
         igPushID_Int(int32(i))
         igSetNextItemWidth(100.0f)
-        
-        igCombo_Str(("##EncodingType" & id).cstring, cast[ptr int32](addr encodings[i].encodingType), component.encodingLabels.cstring, int32(ord(EncodingType.high) + 1))
+
+        var encIdx = int32(ord(encodings[i].encodingType))
+        igCombo_Str(("##EncodingType" & id).cstring, addr encIdx, component.encodingLabels.cstring, int32(ord(EncodingType.high) + 1))
+        encodings[i].encodingType = EncodingType(encIdx)
         case encodings[i].encodingType
         of ENCODING_ROT, ENCODING_XOR:
             igSameLine(0.0f, textSpacing)
@@ -372,11 +374,13 @@ proc drawDataTransformation(component: ListenerModalComponent, id: string, dataT
     igSameLine(0.0f, textSpacing)
     igSetNextItemWidth(100.0f)
 
+    var placementIdx = int32(ord(dataTransform.placement))
     if id == "http-get.server.output":
         igBeginDisabled(true)
-    igCombo_Str(("##Pl" & id).cstring, cast[ptr int32](addr dataTransform.placement), component.placementLabels.cstring, int32(ord(PlacementType.high) + 1))
+    igCombo_Str(("##Pl" & id).cstring, addr placementIdx, component.placementLabels.cstring, int32(ord(PlacementType.high) + 1))
     if id == "http-get.server.output":
         igEndDisabled()
+    dataTransform.placement = PlacementType(placementIdx)
 
     if dataTransform.placement != PLACEMENT_BODY:
         igSameLine(0.0f, textSpacing)
