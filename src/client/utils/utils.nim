@@ -30,7 +30,14 @@ proc igTextWithTooltip*(text: string) =
 proc igHelpMarker*(text: string) =
     igSameLine(0.0f, igGetStyle().ItemSpacing.x)
     igTextDisabled("(?)")
-    setTooltip(text)    
+    setTooltip(text)
+
+proc igSeparatorTextWithHelpmarker*(label: string, help: string) =
+    let helpWidth = igCalcTextSize("(?)".cstring, nil, false, 0.0f).x + igGetStyle().ItemSpacing.x
+    igSeparatorTextEx(igGetID_Str(label.cstring), label.cstring, nil, helpWidth)
+    igSameLine(0.0f, 0.0f)
+    igTextDisabled(" (?)")
+    setTooltip(help)
 
 proc toString*(buf: openArray[char]): string =
     return $cast[cstring](addr buf[0])
