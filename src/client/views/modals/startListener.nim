@@ -1,7 +1,7 @@
 import strutils, strformat, base64
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/textarea
-import ../../utils/[appImGui, utils, globals]
+import ../../utils/[appImGui, utils, globals, dialogs]
 import ../../../common/[utils, profile]
 import ../../../common/toml/toml
 import ../../../types/[common, client]
@@ -121,8 +121,13 @@ proc loadFromProfile*(component: ListenerModalComponent, profile: Profile) =
     var postEndpoints: seq[string]
     for ep in profile.getArray("http-post.endpoints"): postEndpoints.add(ep.getStr())
     component.endpointsPOST.setCharArray(postEndpoints.join("\n"))
+    
     var methods: seq[string]
-    for m in profile.getArray("http-post.request-methods"): methods.add(m.getStr())
+    if profile.isArray("http-post.request-methods"): 
+        for m in profile.getArray("http-post.request-methods"): 
+            methods.add(m.getStr())
+    else: 
+        methods.add(profile.getString("http-post.request-methods"))
     component.methods.setCharArray(methods.join("\n"))
     component.reqHeadersPOST = parseProfileKeyValues(profile, "http-post.agent.headers")
     component.queryParamsPOST = parseProfileKeyValues(profile, "http-post.agent.parameters")
@@ -306,9 +311,9 @@ proc drawEncoding(component: ListenerModalComponent, id: string, encodings: var 
         igPushID_Int(int32(i))
         igSetNextItemWidth(100.0f)
 
-        var encIdx = int32(ord(encodings[i].encodingType))
-        igCombo_Str(("##EncodingType" & id).cstring, addr encIdx, component.encodingLabels.cstring, int32(ord(EncodingType.high) + 1))
-        encodings[i].encodingType = EncodingType(encIdx)
+        var enc = int32(ord(encodings[i].encodingType))
+        igCombo_Str(("##EncodingType" & id).cstring, addr enc, component.encodingLabels.cstring, int32(ord(EncodingType.high) + 1))
+        encodings[i].encodingType = EncodingType(enc)
         case encodings[i].encodingType
         of ENCODING_ROT, ENCODING_XOR:
             igSameLine(0.0f, textSpacing)
@@ -324,7 +329,7 @@ proc drawEncoding(component: ListenerModalComponent, id: string, encodings: var 
         
         igSameLine(encodingX + encodingAvailWidth - rightSectionWidth, 0.0f)
         
-        # Reordering 
+        # Encoding reordering 
         if i == 0: # Disable up arrow on first encoding
             igBeginDisabled(true)
         if igButton((ICON_FA_ARROW_UP & "##MoveUp").cstring, vec2(buttonSize, 0)):
@@ -342,7 +347,7 @@ proc drawEncoding(component: ListenerModalComponent, id: string, encodings: var 
             igEndDisabled()
         igSameLine(0.0f, textSpacing)
         
-        # Remove
+        # Remove button
         igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_DIM)
         igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR_HOVERED)
         igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
@@ -377,7 +382,7 @@ proc drawDataTransformation(component: ListenerModalComponent, id: string, dataT
     var placementIdx = int32(ord(dataTransform.placement))
     if id == "http-get.server.output":
         igBeginDisabled(true)
-    igCombo_Str(("##Pl" & id).cstring, addr placementIdx, component.placementLabels.cstring, int32(ord(PlacementType.high) + 1))
+    igCombo_Str(("##PlacementType" & id).cstring, addr placementIdx, component.placementLabels.cstring, int32(ord(PlacementType.high) + 1))
     if id == "http-get.server.output":
         igEndDisabled()
     dataTransform.placement = PlacementType(placementIdx)
@@ -388,7 +393,7 @@ proc drawDataTransformation(component: ListenerModalComponent, id: string, dataT
         igSameLine(0.0f, textSpacing)
         availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
-        igInputText(("##Pn" & id).cstring, cast[cstring](addr dataTransform.placementName[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
+        igInputText(("##PlacementName" & id).cstring, cast[cstring](addr dataTransform.placementName[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
 
     igText("Encoding:   ")
     igSameLine(0.0f, textSpacing)
@@ -398,13 +403,13 @@ proc drawDataTransformation(component: ListenerModalComponent, id: string, dataT
     igSameLine(0.0f, textSpacing)
     availableSize = igGetContentRegionAvail()
     igSetNextItemWidth(availableSize.x)
-    igInputText(("##Pp" & id).cstring, cast[cstring](addr dataTransform.prepend[0]), 4096, ImGui_InputTextFlags_None.int32, nil, nil)
+    igInputText(("##Prepend" & id).cstring, cast[cstring](addr dataTransform.prepend[0]), 4096, ImGui_InputTextFlags_None.int32, nil, nil)
 
     igText("Append:     ")
     igSameLine(0.0f, textSpacing)
     availableSize = igGetContentRegionAvail()
     igSetNextItemWidth(availableSize.x)
-    igInputText(("##Ap" & id).cstring, cast[cstring](addr dataTransform.append[0]), 4096, ImGui_InputTextFlags_None.int32, nil, nil)
+    igInputText(("##Append" & id).cstring, cast[cstring](addr dataTransform.append[0]), 4096, ImGui_InputTextFlags_None.int32, nil, nil)
 
 #[
     Preview generation
@@ -590,6 +595,10 @@ proc draw*(component: ListenerModalComponent): UIListener =
         igSetNextItemWidth(availableSize.x)
         igCombo_Str("##InputProtocol", addr component.protocol, component.protocolLabels.cstring, int32(ord(ListenerType.high) + 1))
 
+        igDummy(vec2(0.0f, 10.0f))
+        igSeparator()
+        igDummy(vec2(0.0f, 10.0f))
+
         case cast[ListenerType](component.protocol):
         of LISTENER_HTTP:
             # Listener bindAddress
@@ -634,128 +643,149 @@ proc draw*(component: ListenerModalComponent): UIListener =
 
             igDummy(vec2(0.0f, 10.0f))
 
-            let profileSettings = igTreeNodeEx_Str("Network Profile Settings", ImGuiTreeNodeFlags_NoTreePushOnOpen.int32)
-            component.profileSettingsOpen = profileSettings
-            if profileSettings and igBeginTabBar("##Tabs", ImGuiTabBarFlags_None.int32):
-                defer: igEndTabBar()
+            component.profileSettingsOpen = igTreeNodeEx_Str("Network Profile Settings", ImGuiTreeNodeFlags_NoTreePushOnOpen.int32) 
+            if component.profileSettingsOpen: 
 
-                availableSize = igGetContentRegionAvail()
-                let contentHeight = availableSize.y - igGetFrameHeightWithSpacing() - 10.0f
+                igDummy(vec2(0.0f, 10.0f))
 
-                # Tab 1: Agent GET Request: Heartbeat
-                if igBeginTabItem(fmt"GET {ICON_FA_ARROW_RIGHT} Heartbeat".cstring, nil, ImGuiTabBarFlags_None.int32):
-                    defer: igEndTabItem()
-                    discard igBeginChild_Str("##Tab1Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
-                    defer: igEndChild()
-                    igDummy(vec2(0.0f, 8.0f))
+                # Import/Export buttons
+                availableSize = igGetContentRegionAvail()            
+                if igButton("Import", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+                    let path = callDialogFileOpen("Load Profile", "", [("*.toml", "*.toml")])
+                    if path.len() != 0: 
+                        component.loadFromProfile(parseString(readFile(path)))
 
-                    igText("User-Agent: ")
-                    igSameLine(0.0f, textSpacing)
+                igSameLine(0.0f, textSpacing)
+
+                if igButton("Export", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+                    let defaultName = "listener_" & $cast[ListenerType](component.protocol) & ".toml"
+                    let path = callDialogFileSave("Save Profile", defaultName)
+                    if path.len() != 0: 
+                        writeFile(path, component.toProfileToml())
+
+                igDummy(vec2(0.0f, 10.0f))
+
+                # Profile settings
+                if igBeginTabBar("##Tabs", ImGuiTabBarFlags_None.int32):
+                    defer: igEndTabBar()
+
                     availableSize = igGetContentRegionAvail()
-                    igSetNextItemWidth(availableSize.x)
-                    igInputText("##http-get.user-agent", cast[cstring](addr component.userAgentGET[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
+                    let contentHeight = availableSize.y - igGetFrameHeightWithSpacing() - 10.0f
 
-                    igText("Endpoints:  ")
-                    igSameLine(0.0f, textSpacing)
-                    availableSize = igGetContentRegionAvail()
-                    igSetNextItemWidth(availableSize.x)
-                    igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
-                    igInputTextMultiline("##http-get.endpoints", cast[cstring](addr component.endpointsGET[0]), 256 * 32, vec2(0.0f, component.endpointsGET.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
-                    igPopStyleVar(1)
+                    # Tab 1: Agent GET Request: Heartbeat
+                    if igBeginTabItem(fmt"GET {ICON_FA_ARROW_RIGHT} Heartbeat".cstring, nil, ImGuiTabBarFlags_None.int32):
+                        defer: igEndTabItem()
+                        discard igBeginChild_Str("##Tab1Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
+                        defer: igEndChild()
+                        igDummy(vec2(0.0f, 8.0f))
 
-                    igSeparatorText("Request Headers")
-                    component.drawKeyValueSetting("http-get.agent.headers", component.reqHeadersGET)
+                        igText("User-Agent: ")
+                        igSameLine(0.0f, textSpacing)
+                        availableSize = igGetContentRegionAvail()
+                        igSetNextItemWidth(availableSize.x)
+                        igInputText("##http-get.user-agent", cast[cstring](addr component.userAgentGET[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
 
-                    igSeparatorText("Query Parameters")
-                    component.drawKeyValueSetting("http-get.agent.parameters", component.queryParamsGET)
+                        igText("Endpoints:  ")
+                        igSameLine(0.0f, textSpacing)
+                        availableSize = igGetContentRegionAvail()
+                        igSetNextItemWidth(availableSize.x)
+                        igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
+                        igInputTextMultiline("##http-get.endpoints", cast[cstring](addr component.endpointsGET[0]), 256 * 32, vec2(0.0f, component.endpointsGET.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
+                        igPopStyleVar(1)
 
-                    igSeparatorText("Data Transformation: Heartbeat")
-                    component.drawDataTransformation("http-get.agent.heartbeat", component.heartbeatDataTransformation)
+                        igSeparatorText("Request Headers")
+                        component.drawKeyValueSetting("http-get.agent.headers", component.reqHeadersGET)
 
-                    igSeparatorText("Preview")
-                    generateGetRequest(component)
-                    availableSize = igGetContentRegionAvail()
-                    component.reqPreviewGET.draw(vec2(availableSize.x, previewHeight))
+                        igSeparatorText("Query Parameters")
+                        component.drawKeyValueSetting("http-get.agent.parameters", component.queryParamsGET)
 
-                # Tab 2: Server GET Response: Tasks
-                if igBeginTabItem(fmt"GET {ICON_FA_ARROW_LEFT} Tasks".cstring, nil, ImGuiTabBarFlags_None.int32):
-                    defer: igEndTabItem()
-                    discard igBeginChild_Str("##Tab2Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
-                    defer: igEndChild()
-                    igDummy(vec2(0.0f, 8.0f))
+                        igSeparatorText("Data Transformation: Heartbeat")
+                        component.drawDataTransformation("http-get.agent.heartbeat", component.heartbeatDataTransformation)
 
-                    igSeparatorText("Response Headers")
-                    component.drawKeyValueSetting("http-get.server.headers", component.respHeadersGET)
+                        igSeparatorText("Preview")
+                        generateGetRequest(component)
+                        availableSize = igGetContentRegionAvail()
+                        component.reqPreviewGET.draw(vec2(availableSize.x, previewHeight))
 
-                    igSeparatorText("Data Transformation: Tasks")
-                    component.drawDataTransformation("http-get.server.output", component.tasksDataTransformation)
+                    # Tab 2: Server GET Response: Tasks
+                    if igBeginTabItem(fmt"GET {ICON_FA_ARROW_LEFT} Tasks".cstring, nil, ImGuiTabBarFlags_None.int32):
+                        defer: igEndTabItem()
+                        discard igBeginChild_Str("##Tab2Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
+                        defer: igEndChild()
+                        igDummy(vec2(0.0f, 8.0f))
 
-                    igSeparatorText("Preview")
-                    generateGetResponse(component)
-                    availableSize = igGetContentRegionAvail()
-                    component.respPreviewGET.draw(vec2(availableSize.x, previewHeight))
+                        igSeparatorText("Response Headers")
+                        component.drawKeyValueSetting("http-get.server.headers", component.respHeadersGET)
 
-                # Tab 3: Agent POST Request: Task Results/Registration
-                if igBeginTabItem(fmt"POST {ICON_FA_ARROW_RIGHT} Results".cstring, nil, ImGuiTabBarFlags_None.int32):
-                    defer: igEndTabItem()
-                    discard igBeginChild_Str("##Tab3Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
-                    defer: igEndChild()
-                    igDummy(vec2(0.0f, 8.0f))
+                        igSeparatorText("Data Transformation: Tasks")
+                        component.drawDataTransformation("http-get.server.output", component.tasksDataTransformation)
 
-                    igText("User-Agent:      ")
-                    igSameLine(0.0f, textSpacing)
-                    availableSize = igGetContentRegionAvail()
-                    igSetNextItemWidth(availableSize.x)
-                    igInputText("##http-post.user-agent", cast[cstring](addr component.userAgentPOST[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
+                        igSeparatorText("Preview")
+                        generateGetResponse(component)
+                        availableSize = igGetContentRegionAvail()
+                        component.respPreviewGET.draw(vec2(availableSize.x, previewHeight))
 
-                    igText("Endpoints:       ")
-                    igSameLine(0.0f, textSpacing)
-                    availableSize = igGetContentRegionAvail()
-                    igSetNextItemWidth(availableSize.x)
-                    igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
-                    igInputTextMultiline("##http-post.endpoints", cast[cstring](addr component.endpointsPOST[0]), 256 * 32, vec2(0.0f, component.endpointsPOST.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
-                    igPopStyleVar(1)
+                    # Tab 3: Agent POST Request: Task Results/Registration
+                    if igBeginTabItem(fmt"POST {ICON_FA_ARROW_RIGHT} Results".cstring, nil, ImGuiTabBarFlags_None.int32):
+                        defer: igEndTabItem()
+                        discard igBeginChild_Str("##Tab3Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
+                        defer: igEndChild()
+                        igDummy(vec2(0.0f, 8.0f))
 
-                    igText("Request Methods: ")
-                    igSameLine(0.0f, textSpacing)
-                    availableSize = igGetContentRegionAvail()
-                    igSetNextItemWidth(availableSize.x)
-                    igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
-                    igInputTextMultiline("##http-post.request-methods", cast[cstring](addr component.methods[0]), 256 * 32, vec2(0.0f, component.methods.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
-                    igPopStyleVar(1)
+                        igText("User-Agent:      ")
+                        igSameLine(0.0f, textSpacing)
+                        availableSize = igGetContentRegionAvail()
+                        igSetNextItemWidth(availableSize.x)
+                        igInputText("##http-post.user-agent", cast[cstring](addr component.userAgentPOST[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
 
-                    igSeparatorText("Request Headers")
-                    component.drawKeyValueSetting("http-post.agent.headers", component.reqHeadersPOST)
+                        igText("Endpoints:       ")
+                        igSameLine(0.0f, textSpacing)
+                        availableSize = igGetContentRegionAvail()
+                        igSetNextItemWidth(availableSize.x)
+                        igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
+                        igInputTextMultiline("##http-post.endpoints", cast[cstring](addr component.endpointsPOST[0]), 256 * 32, vec2(0.0f, component.endpointsPOST.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
+                        igPopStyleVar(1)
 
-                    igSeparatorText("Query Parameters")
-                    component.drawKeyValueSetting("http-post.agent.parameters", component.queryParamsPOST)
+                        igText("Request Methods: ")
+                        igSameLine(0.0f, textSpacing)
+                        availableSize = igGetContentRegionAvail()
+                        igSetNextItemWidth(availableSize.x)
+                        igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
+                        igInputTextMultiline("##http-post.request-methods", cast[cstring](addr component.methods[0]), 256 * 32, vec2(0.0f, component.methods.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
+                        igPopStyleVar(1)
 
-                    igSeparatorText("Data Transformation: Task Results & Registration")
-                    component.drawDataTransformation("http-post.agent.output", component.resultDataTransformation)
+                        igSeparatorText("Request Headers")
+                        component.drawKeyValueSetting("http-post.agent.headers", component.reqHeadersPOST)
 
-                    igSeparatorText("Preview")
-                    generatePostRequest(component)
-                    availableSize = igGetContentRegionAvail()
-                    component.reqPreviewPOST.draw(vec2(availableSize.x, previewHeight))
+                        igSeparatorText("Query Parameters")
+                        component.drawKeyValueSetting("http-post.agent.parameters", component.queryParamsPOST)
 
-                # Tab 4: Server POST Response
-                if igBeginTabItem(fmt"POST {ICON_FA_ARROW_LEFT} Response".cstring, nil, ImGuiTabBarFlags_None.int32):
-                    defer: igEndTabItem()
-                    discard igBeginChild_Str("##Tab4Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
-                    defer: igEndChild()
-                    igDummy(vec2(0.0f, 8.0f))
+                        igSeparatorText("Data Transformation: Task Results & Registration")
+                        component.drawDataTransformation("http-post.agent.output", component.resultDataTransformation)
 
-                    igSeparatorText("Response Headers")
-                    component.drawKeyValueSetting("http-post.server.headers", component.respHeadersPOST)
+                        igSeparatorText("Preview")
+                        generatePostRequest(component)
+                        availableSize = igGetContentRegionAvail()
+                        component.reqPreviewPOST.draw(vec2(availableSize.x, previewHeight))
 
-                    igSeparatorText("Response Body")
-                    availableSize = igGetContentRegionAvail()
-                    igInputTextMultiline("##http-post.server.output", cast[cstring](addr component.respBody[0]), MAX_INPUT_LENGTH, vec2(availableSize.x, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_None.int32, nil, nil)
+                    # Tab 4: Server POST Response
+                    if igBeginTabItem(fmt"POST {ICON_FA_ARROW_LEFT} Response".cstring, nil, ImGuiTabBarFlags_None.int32):
+                        defer: igEndTabItem()
+                        discard igBeginChild_Str("##Tab4Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
+                        defer: igEndChild()
+                        igDummy(vec2(0.0f, 8.0f))
 
-                    igSeparatorText("Preview")
-                    generatePostResponse(component)
-                    availableSize = igGetContentRegionAvail()
-                    component.respPreviewPOST.draw(vec2(availableSize.x, previewHeight))
+                        igSeparatorText("Response Headers")
+                        component.drawKeyValueSetting("http-post.server.headers", component.respHeadersPOST)
+
+                        igSeparatorText("Response Body")
+                        availableSize = igGetContentRegionAvail()
+                        igInputTextMultiline("##http-post.server.output", cast[cstring](addr component.respBody[0]), MAX_INPUT_LENGTH, vec2(availableSize.x, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_None.int32, nil, nil)
+
+                        igSeparatorText("Preview")
+                        generatePostResponse(component)
+                        availableSize = igGetContentRegionAvail()
+                        component.respPreviewPOST.draw(vec2(availableSize.x, previewHeight))
 
         igDummy(vec2(0.0f, 10.0f))
 
@@ -822,3 +852,4 @@ proc draw*(component: ListenerModalComponent): UIListener =
             component.resetModalValues()
             igCloseCurrentPopup()
 
+        igSameLine(0.0f, textSpacing)
