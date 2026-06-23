@@ -186,7 +186,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                                 cq.connection = nil 
 
                     of CLIENT_PROFILE:
-                        cq.listeners.startListenerModal.loadFromProfile(parseString(event.data["profile"].getStr()))
+                        cq.listeners.startListenerModal.setProfile(parseString(event.data["profile"].getStr()))
 
                     of CLIENT_LISTENER_ADD: 
                         let listener = event.data.to(UIListener)

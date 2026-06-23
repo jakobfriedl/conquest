@@ -1,4 +1,4 @@
-import strutils, strformat, base64
+import strutils, strformat, base64, os 
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/textarea
 import ../../utils/[appImGui, utils, globals, dialogs]
@@ -8,7 +8,7 @@ import ../../../types/[common, client]
 
 const
     DEFAULT_PORT = 8080'u16
-    PLACEHOLDER = "PLACEHOLDER"
+    PLACEHOLDER = "[PLACEHOLDER]"
 
 proc ListenerModal*(): ListenerModalComponent =
     result = new ListenerModalComponent
@@ -45,52 +45,62 @@ proc resetModalValues(component: ListenerModalComponent) =
 #[
     Profile serialization
 ]#
-proc setCharArray(dst: var openArray[char], src: string) =
+proc setValue(dst: var openArray[char], src: string) =
     zeroMem(addr dst[0], dst.len())
     let n = min(src.len(), dst.len() - 1)
     if n > 0: copyMem(addr dst[0], unsafeAddr src[0], n)
 
-proc parseEncodingEntry(table: TomlTableRef): Encoding =
+proc parseEncoding(table: TomlTableRef): Encoding =
     let encType = table.getTableValue("type").getStr()
     case encType
     of "base64":
         result.encodingType = ENCODING_BASE64
         let urlSafe = table.getTableValue("url-safe")
-        if urlSafe.kind == Bool: result.urlSafe = urlSafe.boolVal
-    of "hex": result.encodingType = ENCODING_HEX
+        if urlSafe.kind == Bool: 
+            result.urlSafe = urlSafe.boolVal
+    of "hex": 
+        result.encodingType = ENCODING_HEX
     of "rot":
         result.encodingType = ENCODING_ROT
         let key = table.getTableValue("key")
-        if key.kind == Int: result.key = int32(key.intVal)
+        if key.kind == Int: 
+            result.key = int32(key.intVal)
     of "xor":
         result.encodingType = ENCODING_XOR
         let key = table.getTableValue("key")
-        if key.kind == Int: result.key = int32(key.intVal)
-    else: result.encodingType = ENCODING_NONE
+        if key.kind == Int: 
+            result.key = int32(key.intVal)
+    else: 
+        result.encodingType = ENCODING_NONE
 
-proc parseProfileEncodings(profile: Profile, path: string): seq[Encoding] =
-    if profile.isArray(path & ".encoding"):
-        for elem in profile.getArray(path & ".encoding"):
+proc parseEncodings(profile: Profile, path: string): seq[Encoding] =
+    if profile.isArray(path):
+        for elem in profile.getArray(path):
             let table = elem.getTable()
-            if not table.isNil: result.add(parseEncodingEntry(table))
+            if not table.isNil: 
+                result.add(parseEncoding(table))
     else:
-        let table = profile.getTable(path & ".encoding")
-        if not table.isNil: result.add(parseEncodingEntry(table))
+        let table = profile.getTable(path)
+        if not table.isNil: 
+            result.add(parseEncoding(table))
 
-proc parseProfileKeyValues(profile: Profile, path: string): seq[KeyValue] =
+proc parseSetting(profile: Profile, path: string): seq[KeyValue] =
     for (k, v) in profile.getTableKeys(path):
         var kv: KeyValue
         zeroMem(addr kv, sizeof(KeyValue))
-        kv.key.setCharArray(k)
+        kv.key.setValue(k)
+        
         if v.kind == Array:
             var lines: seq[string]
-            for elem in profile.getArray(path & "." & k): lines.add(elem.getStr())
-            kv.value.setCharArray(lines.join("\n"))
+            for elem in profile.getArray(path & "." & k): 
+                lines.add(elem.getStr())
+            kv.value.setValue(lines.join("\n"))
         else:
-            kv.value.setCharArray(v.getStr())
+            kv.value.setValue(v.getStr())
+        
         result.add(kv)
 
-proc parseProfileDataTransformation(profile: Profile, path: string, defaultPlacement: PlacementType = PLACEMENT_BODY): DataTransformation =
+proc parseDataTransformation(profile: Profile, path: string, defaultPlacement: PlacementType = PLACEMENT_BODY): DataTransformation =
     result = DataTransformation(placement: defaultPlacement)
     let placementTable = profile.getTable(path & ".placement")
     if not placementTable.isNil:
@@ -98,29 +108,34 @@ proc parseProfileDataTransformation(profile: Profile, path: string, defaultPlace
         of "header": result.placement = PLACEMENT_HEADER
         of "query": result.placement = PLACEMENT_QUERY
         else: result.placement = PLACEMENT_BODY
-        result.placementName.setCharArray(placementTable.getTableValue("name").getStr())
-    result.encodings = parseProfileEncodings(profile, path)
-    result.prepend.setCharArray(profile.getStringOrByteArray(path & ".prepend"))
-    result.append.setCharArray(profile.getStringOrByteArray(path & ".append"))
+        result.placementName.setValue(placementTable.getTableValue("name").getStr())
+    result.encodings = parseEncodings(profile, path & ".encoding")
+    result.prepend.setValue(profile.getStringOrByteArray(path & ".prepend"))
+    result.append.setValue(profile.getStringOrByteArray(path & ".append"))
 
-proc loadFromProfile*(component: ListenerModalComponent, profile: Profile) =
-    if profile.isNil: return
+proc setProfile*(component: ListenerModalComponent, profile: Profile) =
+    if profile.isNil: 
+        return
 
-    component.userAgentGET.setCharArray(profile.getString("http-get.user-agent"))
-    var getEndpoints: seq[string]
-    for ep in profile.getArray("http-get.endpoints"): getEndpoints.add(ep.getStr())
-    component.endpointsGET.setCharArray(getEndpoints.join("\n"))
-    component.reqHeadersGET = parseProfileKeyValues(profile, "http-get.agent.headers")
-    component.queryParamsGET = parseProfileKeyValues(profile, "http-get.agent.parameters")
-    component.heartbeatDataTransformation = parseProfileDataTransformation(profile, "http-get.agent.heartbeat")
+    component.userAgentGET.setValue(profile.getString("http-get.user-agent"))
+    
+    var endpointsGET: seq[string]
+    for endpoint in profile.getArray("http-get.endpoints"): 
+        endpointsGET.add(endpoint.getStr())
+    component.endpointsGET.setValue(endpointsGET.join("\n"))
+    component.reqHeadersGET = parseSetting(profile, "http-get.agent.headers")
+    component.queryParamsGET = parseSetting(profile, "http-get.agent.parameters")
+    component.heartbeatDataTransformation = parseDataTransformation(profile, "http-get.agent.heartbeat")
 
-    component.respHeadersGET = parseProfileKeyValues(profile, "http-get.server.headers")
-    component.tasksDataTransformation = parseProfileDataTransformation(profile, "http-get.server.output")
+    component.respHeadersGET = parseSetting(profile, "http-get.server.headers")
+    component.tasksDataTransformation = parseDataTransformation(profile, "http-get.server.output")
 
-    component.userAgentPOST.setCharArray(profile.getString("http-post.user-agent"))
-    var postEndpoints: seq[string]
-    for ep in profile.getArray("http-post.endpoints"): postEndpoints.add(ep.getStr())
-    component.endpointsPOST.setCharArray(postEndpoints.join("\n"))
+    component.userAgentPOST.setValue(profile.getString("http-post.user-agent"))
+
+    var endpointsPOST: seq[string]
+    for endpoint in profile.getArray("http-post.endpoints"): 
+        endpointsPOST.add(endpoint.getStr())
+    component.endpointsPOST.setValue(endpointsPOST.join("\n"))
     
     var methods: seq[string]
     if profile.isArray("http-post.request-methods"): 
@@ -128,125 +143,139 @@ proc loadFromProfile*(component: ListenerModalComponent, profile: Profile) =
             methods.add(m.getStr())
     else: 
         methods.add(profile.getString("http-post.request-methods"))
-    component.methods.setCharArray(methods.join("\n"))
-    component.reqHeadersPOST = parseProfileKeyValues(profile, "http-post.agent.headers")
-    component.queryParamsPOST = parseProfileKeyValues(profile, "http-post.agent.parameters")
-    component.resultDataTransformation = parseProfileDataTransformation(profile, "http-post.agent.output")
+    component.methods.setValue(methods.join("\n"))
+    
+    component.reqHeadersPOST = parseSetting(profile, "http-post.agent.headers")
+    component.queryParamsPOST = parseSetting(profile, "http-post.agent.parameters")
+    component.resultDataTransformation = parseDataTransformation(profile, "http-post.agent.output")
 
-    component.respHeadersPOST = parseProfileKeyValues(profile, "http-post.server.headers")
-    component.respBody.setCharArray(profile.getString("http-post.server.output.body"))
+    component.respHeadersPOST = parseSetting(profile, "http-post.server.headers")
+    component.respBody.setValue(profile.getString("http-post.server.output.body"))
+    
+# Escape and quote TOML string
+proc quoted(s: string): string = "\"" & s.replace("\\", "\\\\").replace("\"", "\\\"") & "\""
 
-proc escapeToml(s: string): string = s.replace("\\", "\\\\").replace("\"", "\\\"")
-proc quotedToml(s: string): string = "\"" & s.escapeToml() & "\""
-
-proc arrayToToml(values: seq[string]): string =
+proc toTomlArray(values: seq[string]): string =
     var parts: seq[string]
-    for v in values: parts.add(v.quotedToml())
+    for v in values: parts.add(v.quoted())
     return "[" & parts.join(", ") & "]"
 
-proc encodingToToml(enc: Encoding): string =
+proc toTomlEncoding(enc: Encoding): string =
     case enc.encodingType
-    of ENCODING_NONE: return "{ type = \"none\" }"
+    of ENCODING_NONE: 
+        return "{ type = \"none\" }"
     of ENCODING_BASE64:
-        if enc.urlSafe: return "{ type = \"base64\", url-safe = true }"
+        if enc.urlSafe: 
+            return "{ type = \"base64\", url-safe = true }"
         return "{ type = \"base64\" }"
-    of ENCODING_HEX: return "{ type = \"hex\" }"
-    of ENCODING_ROT: return "{ type = \"rot\", key = " & $enc.key & " }"
-    of ENCODING_XOR: return "{ type = \"xor\", key = " & $enc.key & " }"
+    of ENCODING_HEX: 
+        return "{ type = \"hex\" }"
+    of ENCODING_ROT: 
+        return "{ type = \"rot\", key = " & $enc.key & " }"
+    of ENCODING_XOR: 
+        return "{ type = \"xor\", key = " & $enc.key & " }"
 
-proc dataTransformToToml(dt: DataTransformation): string =
-    let name = dt.placementName.toString()
-    case dt.placement
-    of PLACEMENT_BODY: result &= "placement = { type = \"body\" }\n"
-    of PLACEMENT_HEADER: result &= "placement = { type = \"header\", name = " & name.quotedToml() & " }\n"
-    of PLACEMENT_QUERY: result &= "placement = { type = \"query\", name = " & name.quotedToml() & " }\n"
-    if dt.encodings.len() == 1:
-        result &= "encoding = " & encodingToToml(dt.encodings[0]) & "\n"
-    elif dt.encodings.len() > 1:
+proc dataTransformToToml(dataTransform: DataTransformation): string =
+    let name = dataTransform.placementName.toString()
+    case dataTransform.placement
+    of PLACEMENT_BODY: 
+        result &= "placement = { type = \"body\" }\n"
+    of PLACEMENT_HEADER: 
+        result &= "placement = { type = \"header\", name = " & name.quoted() & " }\n"
+    of PLACEMENT_QUERY: 
+        result &= "placement = { type = \"query\", name = " & name.quoted() & " }\n"
+    
+    if dataTransform.encodings.len() == 1:
+        result &= "encoding = " & toTomlEncoding(dataTransform.encodings[0]) & "\n"
+    elif dataTransform.encodings.len() > 1:
         result &= "encoding = [\n"
-        for i, enc in dt.encodings:
-            result &= "    " & encodingToToml(enc)
-            if i < dt.encodings.len() - 1: result &= ","
+        for i, enc in dataTransform.encodings:
+            result &= "    " & toTomlEncoding(enc)
+            if i < dataTransform.encodings.len() - 1: result &= ","
             result &= "\n"
         result &= "]\n"
-    let prepend = dt.prepend.toString()
-    let append = dt.append.toString()
-    if prepend.len() > 0: result &= "prepend = " & prepend.quotedToml() & "\n"
-    if append.len() > 0: result &= "append = " & append.quotedToml() & "\n"
+        
+    result &= "prepend = " & dataTransform.prepend.toString().quoted() & "\n"
+    result &= "append = " & dataTransform.append.toString().quoted() & "\n"
 
-proc kvValueToToml(s: string): string =
+proc toTomlKeyValue(s: string): string =
     var nonEmpty: seq[string]
     for l in s.splitLines():
         let t = l.strip()
-        if t.len() > 0: nonEmpty.add(t)
-    if nonEmpty.len() <= 1: return s.quotedToml()
-    return arrayToToml(nonEmpty)
+        if t.len() > 0: 
+            nonEmpty.add(t)
+    if nonEmpty.len() <= 1: 
+        return s.quoted()
+    return toTomlArray(nonEmpty)
 
-proc keyValuesToToml(pairs: seq[KeyValue]): string =
+proc toTomlSetting(pairs: seq[KeyValue]): string =
     for pair in pairs:
         let k = pair.key.toString()
-        if k.len() == 0: continue
-        result &= k & " = " & pair.value.toString().kvValueToToml() & "\n"
+        if k.len() != 0: 
+            result &= k & " = " & pair.value.toString().toTomlKeyValue() & "\n"
 
-proc toProfileToml*(component: ListenerModalComponent): string =
+proc toTomlProfile*(component: ListenerModalComponent, profileName: string): string =
+    
     proc toMultilineString(buf: openArray[char]): seq[string] =
         for line in buf.toString().splitLines():
             let trimmed = line.strip()
             if trimmed.len() > 0: result.add(trimmed)
+    
+    result &= "name = " & profileName.quoted() & "\n"
 
     let 
         getUserAgent = component.userAgentGET.toString()
-        getEndpoints = component.endpointsGET.toMultilineString()
+        endpointsGET = component.endpointsGET.toMultilineString()
         postUserAgent = component.userAgentPOST.toString()
-        postEndpoints = component.endpointsPOST.toMultilineString()
+        endpointsPOST = component.endpointsPOST.toMultilineString()
         postMethods = component.methods.toMultilineString()
 
-    result &= "[http-get]\n"
-    if getUserAgent.len() > 0: result &= "user-agent = " & getUserAgent.quotedToml() & "\n"
-    if getEndpoints.len() > 0: result &= "endpoints = " & arrayToToml(getEndpoints) & "\n"
+    result &= "\n[http-get]\n"
+    if getUserAgent.len() > 0: result &= "user-agent = " & getUserAgent.quoted() & "\n"
+    if endpointsGET.len() > 0: result &= "endpoints = " & toTomlArray(endpointsGET) & "\n"
 
     result &= "\n[http-get.agent.heartbeat]\n"
     result &= dataTransformToToml(component.heartbeatDataTransformation)
 
     if component.queryParamsGET.len() > 0:
         result &= "\n[http-get.agent.parameters]\n"
-        result &= keyValuesToToml(component.queryParamsGET)
+        result &= toTomlSetting(component.queryParamsGET)
 
     if component.reqHeadersGET.len() > 0:
         result &= "\n[http-get.agent.headers]\n"
-        result &= keyValuesToToml(component.reqHeadersGET)
+        result &= toTomlSetting(component.reqHeadersGET)
 
     if component.respHeadersGET.len() > 0:
         result &= "\n[http-get.server.headers]\n"
-        result &= keyValuesToToml(component.respHeadersGET)
+        result &= toTomlSetting(component.respHeadersGET)
 
     result &= "\n[http-get.server.output]\n"
     result &= dataTransformToToml(component.tasksDataTransformation)
 
     result &= "\n[http-post]\n"
-    if postUserAgent.len() > 0: result &= "user-agent = " & postUserAgent.quotedToml() & "\n"
-    if postEndpoints.len() > 0: result &= "endpoints = " & arrayToToml(postEndpoints) & "\n"
-    if postMethods.len() > 0: result &= "request-methods = " & arrayToToml(postMethods) & "\n"
+    if postUserAgent.len() > 0: result &= "user-agent = " & postUserAgent.quoted() & "\n"
+    if endpointsPOST.len() > 0: result &= "endpoints = " & toTomlArray(endpointsPOST) & "\n"
+    if postMethods.len() > 0: result &= "request-methods = " & toTomlArray(postMethods) & "\n"
 
     if component.reqHeadersPOST.len() > 0:
         result &= "\n[http-post.agent.headers]\n"
-        result &= keyValuesToToml(component.reqHeadersPOST)
+        result &= toTomlSetting(component.reqHeadersPOST)
 
     if component.queryParamsPOST.len() > 0:
         result &= "\n[http-post.agent.parameters]\n"
-        result &= keyValuesToToml(component.queryParamsPOST)
+        result &= toTomlSetting(component.queryParamsPOST)
 
     result &= "\n[http-post.agent.output]\n"
     result &= dataTransformToToml(component.resultDataTransformation)
 
     if component.respHeadersPOST.len() > 0:
         result &= "\n[http-post.server.headers]\n"
-        result &= keyValuesToToml(component.respHeadersPOST)
+        result &= toTomlSetting(component.respHeadersPOST)
 
     let respBody = component.respBody.toString()
     if respBody.len() > 0:
         result &= "\n[http-post.server.output]\n"
-        result &= "body = " & respBody.quotedToml() & "\n"
+        result &= "body = " & respBody.quoted() & "\n"
 
 #[
     Profile setting inputs
@@ -653,15 +682,16 @@ proc draw*(component: ListenerModalComponent): UIListener =
                 if igButton("Import", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
                     let path = callDialogFileOpen("Load Profile", "", [("*.toml", "*.toml")])
                     if path.len() != 0: 
-                        component.loadFromProfile(parseString(readFile(path)))
+                        component.setProfile(parseString(readFile(path)))
 
                 igSameLine(0.0f, textSpacing)
 
                 if igButton("Export", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
-                    let defaultName = "listener_" & $cast[ListenerType](component.protocol) & ".toml"
+                    let defaultName = "listener_" & generateUUID() & ".toml"
                     let path = callDialogFileSave("Save Profile", defaultName)
                     if path.len() != 0: 
-                        writeFile(path, component.toProfileToml())
+                        let (_, name, _) = splitFile(path)
+                        writeFile(path, component.toTomlProfile(name))
 
                 igDummy(vec2(0.0f, 10.0f))
 
@@ -670,7 +700,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
                     defer: igEndTabBar()
 
                     availableSize = igGetContentRegionAvail()
-                    let contentHeight = availableSize.y - igGetFrameHeightWithSpacing() - 10.0f
+                    let contentHeight = availableSize.y - igGetFrameHeightWithSpacing() - 20.0f
 
                     # Tab 1: Agent GET Request: Heartbeat
                     if igBeginTabItem(fmt"GET {ICON_FA_ARROW_RIGHT} Heartbeat".cstring, nil, ImGuiTabBarFlags_None.int32):
@@ -851,5 +881,3 @@ proc draw*(component: ListenerModalComponent): UIListener =
         if igButton("Close", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
             component.resetModalValues()
             igCloseCurrentPopup()
-
-        igSameLine(0.0f, textSpacing)
