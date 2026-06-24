@@ -36,11 +36,13 @@ proc ListenerModal*(): ListenerModalComponent =
 
 
 proc resetModalValues(component: ListenerModalComponent) =
+    zeroMem(addr component.name[0], 256)
+    component.protocol = 0
     zeroMem(addr component.callbackHosts[0], 256 * 32)
     zeroMem(addr component.bindAddress[0], 256)
     component.bindPort = DEFAULT_PORT
     zeroMem(addr component.pipe[0], 256)
-    component.protocol = 0
+    component.profileSettingsOpen = false
 
 #[
     Profile serialization
@@ -214,15 +216,14 @@ proc toTomlSetting(pairs: seq[KeyValue]): string =
         if k.len() != 0: 
             result &= k & " = " & pair.value.toString().toTomlKeyValue() & "\n"
 
-proc toTomlProfile*(component: ListenerModalComponent, profileName: string = ""): string =
+proc toTomlProfile*(component: ListenerModalComponent): string =
     
     proc toMultilineString(buf: openArray[char]): seq[string] =
         for line in buf.toString().splitLines():
             let trimmed = line.strip()
             if trimmed.len() > 0: result.add(trimmed)
     
-    if profileName.len() > 0:
-        result &= "name = " & profileName.quoted() & "\n\n"
+    result &= "name = " & component.name.toString().quoted() & "\n"
 
     let 
         getUserAgent = component.userAgentGET.toString()
@@ -231,7 +232,7 @@ proc toTomlProfile*(component: ListenerModalComponent, profileName: string = "")
         endpointsPOST = component.endpointsPOST.toMultilineString()
         postMethods = component.methods.toMultilineString()
 
-    result &= "[http-get]\n"
+    result &= "\n[http-get]\n"
     if getUserAgent.len() > 0: result &= "user-agent = " & getUserAgent.quoted() & "\n"
     if endpointsGET.len() > 0: result &= "endpoints = " & toTomlArray(endpointsGET) & "\n"
 
@@ -640,10 +641,17 @@ proc draw*(component: ListenerModalComponent): UIListener =
 
         var disableStart = false
 
-        # Listener protocol/type dropdown selection
-        igText("Listener Type:    ")
+        # Listener name
+        igText("Name:             ")
         igSameLine(0.0f, textSpacing)
         var availableSize = igGetContentRegionAvail()
+        igSetNextItemWidth(availableSize.x)
+        igInputText("##InputName", cast[cstring](addr component.name[0]), 256, ImGui_InputTextFlags_None .int32, nil, nil)
+
+        # Listener protocol/type dropdown selection
+        igText("Protocol:         ")
+        igSameLine(0.0f, textSpacing)
+        availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
         igCombo_Str("##InputProtocol", addr component.protocol, component.protocolLabels.cstring, int32(ord(ListenerType.high) + 1))
 
@@ -710,11 +718,9 @@ proc draw*(component: ListenerModalComponent): UIListener =
                 igSameLine(0.0f, textSpacing)
 
                 if igButton("Export", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
-                    let defaultName = "listener_" & generateUUID() & ".toml"
-                    let path = callDialogFileSave("Save Profile", defaultName)
+                    let path = callDialogFileSave("Save Profile", component.name.toString() & ".toml")
                     if path.len() != 0: 
-                        let (_, name, _) = splitFile(path)
-                        writeFile(path, component.toTomlProfile(name))
+                        writeFile(path, component.toTomlProfile())
 
                 igDummy(vec2(0.0f, 10.0f))
 
@@ -849,18 +855,23 @@ proc draw*(component: ListenerModalComponent): UIListener =
 
         # Buttons
         availableSize = igGetContentRegionAvail()
-        igBeginDisabled(disableStart)
+        igBeginDisabled(disableStart or component.name.toString.len() <= 0)
         if igButton("Start", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
 
             let uuid = generateUUID()
+            result = UIListener(
+                listenerId: uuid,
+                name: component.name.toString(),
+                listenerType: cast[ListenerType](component.protocol)
+            )
 
-            # Process input values
-            case cast[ListenerType](component.protocol):
+            # Process callback settings
+            case result.listenerType:
             of LISTENER_HTTP:
                 var hosts: string = ""
                 let
-                    callbackHosts = $cast[cstring]((addr component.callbackHosts[0]))
-                    bindAddress = $cast[cstring]((addr component.bindAddress[0]))
+                    callbackHosts = component.callbackHosts.toString()
+                    bindAddress = component.bindAddress.toString()
                     bindPort =  int(component.bindPort)
 
                 if callbackHosts.isEmptyOrWhitespace():
@@ -883,23 +894,13 @@ proc draw*(component: ListenerModalComponent): UIListener =
 
                     hosts.removePrefix(";")
 
-                # Return new listener object
-                result = UIListener(
-                    listenerId: uuid,
-                    listenerType: LISTENER_HTTP,
-                    hosts: hosts,
-                    address: bindAddress,
-                    port: bindPort,
-                    profile: component.toTomlProfile()
-                )
+                result.hosts = hosts
+                result.address = bindAddress
+                result.port = bindPort
+                result.profile = component.toTomlProfile()
 
             of LISTENER_SMB:
-                let pipe = $cast[cstring]((addr component.pipe[0]))
-                result = UIListener(
-                    listenerId: uuid,
-                    listenerType: LISTENER_SMB,
-                    pipe: "\\\\.\\pipe\\" & pipe
-                )
+                result.pipe = "\\\\.\\pipe\\" & component.pipe.toString()
 
             component.resetModalValues()
             igCloseCurrentPopup()

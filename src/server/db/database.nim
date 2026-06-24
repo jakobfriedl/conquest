@@ -18,6 +18,7 @@ proc dbInit*(cq: Conquest, dbPath: string) =
         CREATE TABLE IF NOT EXISTS listeners (
             listenerId          TEXT    PRIMARY KEY,
             listenerType        TEXT    NOT NULL,
+            name                TEXT    NOT NULL DEFAULT '',
             hosts               TEXT,
             address             TEXT,
             port                INTEGER UNIQUE,

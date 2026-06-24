@@ -71,6 +71,7 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
             l = Listener(
                 server: server,
                 listenerId: listener.listenerId,
+                name: listener.name,
                 listenerType: LISTENER_HTTP,
                 hosts: listener.hosts,
                 address: listener.address,
@@ -92,6 +93,7 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
         of LISTENER_SMB:
             l = Listener(
                 listenerId: listener.listenerId,
+                name: listener.name,
                 listenerType: LISTENER_SMB,
                 pipe: listener.pipe
             )
@@ -108,9 +110,9 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
                 cq.listeners.del(listener.listenerId)
                 raise newException(CatchableError, "Failed to store listener in database")
 
-        cq.success("Started listener", fgGreen, fmt" {l.listenerId}.")
+        cq.success("Started listener", fgGreen, fmt""" "{listener.name}" ({l.listenerId}).""")
         cq.sendListener(l)
-        cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Started listener {l.listenerId}.")
+        cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"""Started listener "{listener.name}" ({l.listenerId}).""")
 
     except CatchableError as err:
         cq.error("Failed to start listener: ", err.msg)

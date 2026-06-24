@@ -138,6 +138,7 @@ type
         value*: array[4096, char]
 
     ListenerModalComponent* = ref object of RootObj
+        name*: array[256, char]
         protocol*: int32
         protocolLabels*: string
         encodingLabels*: string
@@ -244,7 +245,6 @@ type
         title*: string 
         showComponent*: ptr bool
         listeners*: Table[string, UIListener]
-        selection*: ptr ImGuiSelectionBasicStorage
         startListenerModal*: ListenerModalComponent
         generatePayloadModal*: PayloadModalComponent
 
@@ -392,6 +392,7 @@ type
 
     UIListener* = ref object
         listenerId*: string
+        name*: string
         case listenerType*: ListenerType
         of LISTENER_HTTP: 
             hosts*: string

@@ -10,7 +10,6 @@ proc ListenersTable*(title: string, showComponent: ptr bool): ListenersTableComp
     result.title = title
     result.showComponent = showComponent
     result.listeners = initTable[string, UIListener]() 
-    result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
     result.startListenerModal = ListenerModal()
     result.generatePayloadModal = PayloadModal()
 
@@ -59,65 +58,51 @@ proc draw*(component: ListenersTableComponent) =
         ImGui_TableFlags_SizingStretchSame.int32
     )
 
-    let cols: int32 = 5
+    let cols: int32 = 7
     if igBeginTable("Listeners", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
         igTableSetupColumn("ListenerID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
-        igTableSetupColumn("Listener Type", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Name", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Protocol", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Bind Address", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Bind Port", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Callback", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("##Actions", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
 
         igTableSetupScrollFreeze(0, 1)
         igTableHeadersRow()
         
-        var multiSelectIO = igBeginMultiSelect(ImGuiMultiSelectFlags_ClearOnEscape.int32 or ImGuiMultiSelectFlags_BoxSelect1d.int32, component.selection[].Size, int32(component.listeners.len())) 
-        ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
-
-        for i, listener in listeners: 
-            
+        for i, listener in listeners:
             igTableNextRow(ImGuiTableRowFlags_None.int32, 0.0f)
 
-            if igTableSetColumnIndex(0):          
-                # Enable multi-select functionality       
-                igSetNextItemSelectionUserData(i)
-                var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i))
-                discard igSelectable_Bool(listener.listenerId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
-                
-            if igTableSetColumnIndex(1): 
+            if igTableSetColumnIndex(0):
+                igText(listener.listenerId.cstring)
+            if igTableSetColumnIndex(1):
+                igText(listener.name.cstring)
+            if igTableSetColumnIndex(2):
                 igText(($listener.listenerType).cstring)
-            if igTableSetColumnIndex(2): 
-                if listener.listenerType == LISTENER_HTTP: 
+            if igTableSetColumnIndex(3):
+                if listener.listenerType == LISTENER_HTTP:
                     igText(listener.address.cstring)
-                else: 
+                else:
                     igText("-")
-            if igTableSetColumnIndex(3): 
-                if listener.listenerType == LISTENER_HTTP: 
+            if igTableSetColumnIndex(4):
+                if listener.listenerType == LISTENER_HTTP:
                     igText(($listener.port).cstring)
-                else: 
+                else:
                     igText("-")
-            if igTableSetColumnIndex(4): 
-                if listener.listenerType == LISTENER_HTTP: 
+            if igTableSetColumnIndex(5):
+                if listener.listenerType == LISTENER_HTTP:
                     for host in listener.hosts.split(";"):
                         igText(host.cstring)
                 elif listener.listenerType == LISTENER_SMB:
                     igText(listener.pipe.cstring)
+            if igTableSetColumnIndex(6):
+                igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_HOVERED)
+                igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR)
+                igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
+                if igButton(("Stop##" & $int32(i)).cstring, vec2(igGetContentRegionAvail().x, 0.0f)):
+                    cq.connection.sendStopListener(listener.listenerId)
+                igPopStyleColor(3)
 
-        # Handle right-click context menu
-        # Right-clicking the table header to hide/show columns or reset the layout is only possible when no sessions are selected
-        if component.selection[].Size > 0 and igBeginPopupContextWindow("TableContextMenu", ImGui_PopupFlags_MouseButtonRight.int32): 
-            
-            if igMenuItem("Stop", nil, false, true): 
-                for i, listener in listeners:
-                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
-                        cq.connection.sendStopListener(listener.listenerId)
-
-                ImGuiSelectionBasicStorage_Clear(component.selection)
-                igCloseCurrentPopup()
-
-            igEndPopup()
-
-        multiSelectIO = igEndMultiSelect()
-        ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
-        
         igEndTable()

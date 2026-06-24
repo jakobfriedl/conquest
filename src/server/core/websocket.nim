@@ -28,6 +28,7 @@ proc `%`*(agent: Agent): JsonNode =
 proc `%`*(listener: Listener): JsonNode =
     result = newJObject()
     result["listenerId"] = %listener.listenerId
+    result["name"] = %listener.name
     result["listenerType"] = %listener.listenerType
     
     case listener.listenerType:
