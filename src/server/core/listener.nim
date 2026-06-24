@@ -20,36 +20,37 @@ proc serve(listener: Listener) {.thread.} =
     except CatchableError as err:
         discard errorChannel.trySend(err.msg.splitLines()[^1].strip())
 
-# Handle HTTP listener routing inline to prevent the team server from crashing when a listener is stopped
-proc handler(request: Request) {.gcsafe.} =
-    {.cast(gcsafe).}:
-        let path = request.path
-        let verb = request.httpMethod
+# Returns a handler function configured to use the profile settings of the listener, rather than the team server's
+proc handler(profile: Profile): proc(request: Request) {.gcsafe.} =
+    result = proc(request: Request) {.gcsafe.} =
+        {.cast(gcsafe).}:
+            let path = request.path
+            let verb = request.httpMethod
 
-        for endpoint in cq.profile.getArray("http-get.endpoints"):
-            if path == endpoint.getStringValue():
-                if verb == "GET":
-                    routes.httpGet(request)
-                else:
-                    routes.error405(request)
-                return
+            for endpoint in profile.getArray("http-get.endpoints"):
+                if path == endpoint.getStringValue():
+                    if verb == "GET":
+                        routes.httpGet(request, profile)
+                    else:
+                        routes.error405(request)
+                    return
 
-        var postMethods = @["POST"]
-        let configuredMethods = cq.profile.getArray("http-post.request-methods")
-        if configuredMethods.len > 0:
-            postMethods.setLen(0)
-            for m in configuredMethods:
-                postMethods.add(m.getStringValue())
+            var postMethods = @["POST"]
+            let configuredMethods = profile.getArray("http-post.request-methods")
+            if configuredMethods.len() > 0:
+                postMethods.setLen(0)
+                for m in configuredMethods:
+                    postMethods.add(m.getStringValue())
 
-        for endpoint in cq.profile.getArray("http-post.endpoints"):
-            if path == endpoint.getStringValue():
-                if verb in postMethods:
-                    routes.httpPost(request)
-                else:
-                    routes.error405(request)
-                return
+            for endpoint in profile.getArray("http-post.endpoints"):
+                if path == endpoint.getStringValue():
+                    if verb in postMethods:
+                        routes.httpPost(request, profile)
+                    else:
+                        routes.error405(request)
+                    return
 
-        routes.error404(request)
+            routes.error404(request)
 
 proc listenerStart*(cq: Conquest, listener: UIListener) =
     try:
@@ -57,7 +58,7 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
         
         case listener.listenerType
         of LISTENER_HTTP:
-            let server = newServer(handler, maxBodyLen = 1024 * 1024 * 1024)
+            let server = newServer(handler(parseString(listener.profile)), maxBodyLen = 1024 * 1024 * 1024)
 
             l = Listener(
                 server: server,
@@ -65,7 +66,8 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
                 listenerType: LISTENER_HTTP,
                 hosts: listener.hosts,
                 address: listener.address,
-                port: listener.port
+                port: listener.port,
+                profile: listener.profile
             )
 
             var thread: Thread[Listener]

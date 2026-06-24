@@ -21,7 +21,8 @@ proc dbInit*(cq: Conquest, dbPath: string) =
             hosts               TEXT,
             address             TEXT,
             port                INTEGER UNIQUE,
-            pipe                TEXT
+            pipe                TEXT,
+            profile             TEXT
         );
 
         CREATE TABLE IF NOT EXISTS agents (

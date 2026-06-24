@@ -32,17 +32,19 @@ type
             hosts*: string
             address*: string
             port*: int
+            profile*: string
         of LISTENER_SMB: 
             pipe*: string
 
     UIListener* = ref object
         listenerId*: string
         case listenerType*: ListenerType
-        of LISTENER_HTTP: 
+        of LISTENER_HTTP:
             hosts*: string
             address*: string
             port*: int
-        of LISTENER_SMB: 
+            profile*: string
+        of LISTENER_SMB:
             pipe*: string
 
     WsConnection* = ref object

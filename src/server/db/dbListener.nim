@@ -12,13 +12,13 @@ proc dbStoreListener*(cq: Conquest, listener: Listener): bool =
         case listener.listenerType:
         of LISTENER_HTTP:
             cq.db.exec("""
-                INSERT INTO listeners (listenerId, listenerType, hosts, address, port, pipe)
-                VALUES (?, ?, ?, ?, ?, NULL);
-            """, listener.listenerId, $listener.listenerType, listener.hosts, listener.address, listener.port)
+                INSERT INTO listeners (listenerId, listenerType, hosts, address, port, pipe, profile)
+                VALUES (?, ?, ?, ?, ?, NULL, ?);
+            """, listener.listenerId, $listener.listenerType, listener.hosts, listener.address, listener.port, listener.profile)
         of LISTENER_SMB:
             cq.db.exec("""
-                INSERT INTO listeners (listenerId, listenerType, hosts, address, port, pipe)
-                VALUES (?, ?, NULL, NULL, NULL, ?);
+                INSERT INTO listeners (listenerId, listenerType, hosts, address, port, pipe, profile)
+                VALUES (?, ?, NULL, NULL, NULL, ?, NULL);
             """, listener.listenerId, $listener.listenerType, listener.pipe)
         return true
     except: 
@@ -27,9 +27,9 @@ proc dbStoreListener*(cq: Conquest, listener: Listener): bool =
 
 proc dbGetAllListeners*(cq: Conquest): seq[UIListener] = 
     try:
-        let rows = cq.db.all("SELECT listenerId, listenerType, hosts, address, port, pipe FROM listeners;")
+        let rows = cq.db.all("SELECT listenerId, listenerType, hosts, address, port, pipe, profile FROM listeners;")
         for row in rows:
-            let (listenerId, listenerType, hosts, address, port, pipe) = row.unpack((string, string, Option[string], Option[string], Option[int], Option[string]))
+            let (listenerId, listenerType, hosts, address, port, pipe, profile) = row.unpack((string, string, Option[string], Option[string], Option[int], Option[string], Option[string]))
             case parseEnum[ListenerType](listenerType):
             of LISTENER_HTTP:
                 result.add(UIListener(
@@ -37,7 +37,8 @@ proc dbGetAllListeners*(cq: Conquest): seq[UIListener] =
                     listenerType: LISTENER_HTTP,
                     hosts: hosts.get(""),
                     address: address.get(""),
-                    port: port.get(0)
+                    port: port.get(0),
+                    profile: profile.get("")
                 ))
             of LISTENER_SMB:
                 result.add(UIListener(

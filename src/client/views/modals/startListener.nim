@@ -214,14 +214,15 @@ proc toTomlSetting(pairs: seq[KeyValue]): string =
         if k.len() != 0: 
             result &= k & " = " & pair.value.toString().toTomlKeyValue() & "\n"
 
-proc toTomlProfile*(component: ListenerModalComponent, profileName: string): string =
+proc toTomlProfile*(component: ListenerModalComponent, profileName: string = ""): string =
     
     proc toMultilineString(buf: openArray[char]): seq[string] =
         for line in buf.toString().splitLines():
             let trimmed = line.strip()
             if trimmed.len() > 0: result.add(trimmed)
     
-    result &= "name = " & profileName.quoted() & "\n"
+    if profileName.len() > 0:
+        result &= "name = " & profileName.quoted() & "\n\n"
 
     let 
         getUserAgent = component.userAgentGET.toString()
@@ -230,7 +231,7 @@ proc toTomlProfile*(component: ListenerModalComponent, profileName: string): str
         endpointsPOST = component.endpointsPOST.toMultilineString()
         postMethods = component.methods.toMultilineString()
 
-    result &= "\n[http-get]\n"
+    result &= "[http-get]\n"
     if getUserAgent.len() > 0: result &= "user-agent = " & getUserAgent.quoted() & "\n"
     if endpointsGET.len() > 0: result &= "endpoints = " & toTomlArray(endpointsGET) & "\n"
 
@@ -888,7 +889,8 @@ proc draw*(component: ListenerModalComponent): UIListener =
                     listenerType: LISTENER_HTTP,
                     hosts: hosts,
                     address: bindAddress,
-                    port: bindPort
+                    port: bindPort,
+                    profile: component.toTomlProfile()
                 )
 
             of LISTENER_SMB:

@@ -53,8 +53,8 @@ proc serializeConfiguration(cq: Conquest, agentBuildInformation: AgentBuildInfor
     # Public key for key exchange
     packer.addData(cq.keyPair.publicKey)
 
-    # C2 profile
-    packer.addDataWithLengthPrefix(string.toBytes(cq.profileString))
+    # C2 profile (from the listener)
+    packer.addDataWithLengthPrefix(string.toBytes(listener.profile))
 
     let data = packer.pack() 
     packer.reset() 

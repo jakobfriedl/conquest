@@ -35,6 +35,7 @@ proc `%`*(listener: Listener): JsonNode =
         result["hosts"] = %listener.hosts
         result["address"] = %listener.address
         result["port"] = %listener.port 
+        result["profile"] = %listener.profile
     of LISTENER_SMB:
         result["pipe"] = %listener.pipe
 

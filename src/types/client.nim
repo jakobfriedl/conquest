@@ -397,6 +397,7 @@ type
             hosts*: string
             address*: string
             port*: int
+            profile*: string
         of LISTENER_SMB: 
             pipe*: string
 
