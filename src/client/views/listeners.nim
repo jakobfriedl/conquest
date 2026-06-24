@@ -1,6 +1,7 @@
 import strutils, sequtils, tables
 import imguin/[cimgui, glfw_opengl, simple]
 import ./modals/[startListener, generatePayload]
+import ./widgets/textarea
 import ../utils/[appImGui, globals]
 import ../core/websocket
 import ../../types/[common, client]
@@ -12,6 +13,7 @@ proc ListenersTable*(title: string, showComponent: ptr bool): ListenersTableComp
     result.listeners = initTable[string, UIListener]() 
     result.startListenerModal = ListenerModal()
     result.generatePayloadModal = PayloadModal()
+    result.profilePreview = Textarea(showTimestamps = false, autoScroll = false)
 
 proc draw*(component: ListenersTableComponent) = 
     igBegin(component.title.cstring, component.showComponent, 0)
@@ -40,6 +42,15 @@ proc draw*(component: ListenersTableComponent) =
     let buildInformation = component.generatePayloadModal.draw(listeners)
     if buildInformation != nil:
         cq.connection.sendAgentBuild(buildInformation)
+
+    # Profile TOML Preview
+    if component.showProfilePreview:
+        igOpenPopup_str("Profile", ImGui_PopupFlags_None.int32)
+    
+    igSetNextWindowSize(vec2(600.0f, 800.0f), ImGuiCond_Always.int32)
+    if igBeginPopupModal("Profile", addr component.showProfilePreview, ImGuiWindowFlags_NoResize.int32):
+        component.profilePreview.draw(vec2(0.0f, 0.0f))
+        igEndPopup()
 
     #[
         Listener table
@@ -98,10 +109,24 @@ proc draw*(component: ListenersTableComponent) =
                 elif listener.listenerType == LISTENER_SMB:
                     igText(listener.pipe.cstring)
             if igTableSetColumnIndex(6):
+                let buttonWidth = (igGetContentRegionAvail().x - igGetStyle().ItemSpacing.x) / 2.0f
+                
+                # Profile preview button
+                if listener.listenerType == LISTENER_HTTP:
+                    if igButton(("View Profile##" & $int32(i)).cstring, vec2(buttonWidth, 0.0f)):
+                        component.profilePreview.clear()
+                        component.profilePreview.addItem(LOG_OUTPUT, listener.profile)
+                        component.showProfilePreview = true
+                else:
+                    igDummy(vec2(buttonWidth, 0.0f))
+                
+                igSameLine(0.0f, -1.0f)
+                
+                # Stop button
                 igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_HOVERED)
                 igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR)
                 igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
-                if igButton(("Stop##" & $int32(i)).cstring, vec2(igGetContentRegionAvail().x, 0.0f)):
+                if igButton(("Stop##" & $int32(i)).cstring, vec2(buttonWidth, 0.0f)):
                     cq.connection.sendStopListener(listener.listenerId)
                 igPopStyleColor(3)
 

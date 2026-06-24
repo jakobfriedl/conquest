@@ -242,11 +242,13 @@ type
         inputBuffer*: array[MAX_INPUT_LENGTH, char]
 
     ListenersTableComponent* = ref object of RootObj
-        title*: string 
+        title*: string
         showComponent*: ptr bool
         listeners*: Table[string, UIListener]
         startListenerModal*: ListenerModalComponent
         generatePayloadModal*: PayloadModalComponent
+        profilePreview*: TextareaWidget
+        showProfilePreview*: bool
 
     ScriptManagerComponent* = ref object of RootObj
         title*: string 
