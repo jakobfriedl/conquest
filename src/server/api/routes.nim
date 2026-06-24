@@ -5,7 +5,7 @@ import ./handlers
 import ../globals
 import ../core/[logger, websocket]
 import ../../common/[utils, serialize, profile]
-import ../../types/[common, server]
+import ../../types/common
 
 # Not Found
 proc error404*(request: Request) =  

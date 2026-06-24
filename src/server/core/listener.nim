@@ -1,12 +1,16 @@
 import strformat, strutils, terminal, tables, os
 import mummy
 
-import ../globals
 import ../api/routes
 import ../db/database
 import ../core/[logger, websocket]
 import ../../common/profile
 import ../../types/[common, server]
+
+# Required to access mummys request.server field, which allows us to map servers to the profile they use
+import std/importutils
+privateAccess(RequestObj)
+var serverProfiles: Table[pointer, Profile]
 
 # Channel for serve thread to signal bind failure back to listenerStart.
 var errorChannel: Channel[string]
@@ -20,45 +24,49 @@ proc serve(listener: Listener) {.thread.} =
     except CatchableError as err:
         discard errorChannel.trySend(err.msg.splitLines()[^1].strip())
 
-# Returns a handler function configured to use the profile settings of the listener, rather than the team server's
-proc handler(profile: Profile): proc(request: Request) {.gcsafe.} =
-    result = proc(request: Request) {.gcsafe.} =
-        {.cast(gcsafe).}:
-            let path = request.path
-            let verb = request.httpMethod
-
-            for endpoint in profile.getArray("http-get.endpoints"):
-                if path == endpoint.getStringValue():
-                    if verb == "GET":
-                        routes.httpGet(request, profile)
-                    else:
-                        routes.error405(request)
-                    return
-
-            var postMethods = @["POST"]
-            let configuredMethods = profile.getArray("http-post.request-methods")
-            if configuredMethods.len() > 0:
-                postMethods.setLen(0)
-                for m in configuredMethods:
-                    postMethods.add(m.getStringValue())
-
-            for endpoint in profile.getArray("http-post.endpoints"):
-                if path == endpoint.getStringValue():
-                    if verb in postMethods:
-                        routes.httpPost(request, profile)
-                    else:
-                        routes.error405(request)
-                    return
-
+proc handler(request: Request) {.gcsafe.} =
+    {.cast(gcsafe).}:
+        let profile = serverProfiles.getOrDefault(cast[pointer](request.server))    # Retrieve profile settings from the profiles table 
+        if profile.isNil:
             routes.error404(request)
+            return
+
+        let path = request.path
+        let verb = request.httpMethod
+
+        for endpoint in profile.getArray("http-get.endpoints"):
+            if path == endpoint.getStringValue():
+                if verb == "GET":
+                    routes.httpGet(request, profile)
+                else:
+                    routes.error405(request)
+                return
+
+        var postMethods = @["POST"]
+        let configuredMethods = profile.getArray("http-post.request-methods")
+        if configuredMethods.len() > 0:
+            postMethods.setLen(0)
+            for m in configuredMethods:
+                postMethods.add(m.getStringValue())
+
+        for endpoint in profile.getArray("http-post.endpoints"):
+            if path == endpoint.getStringValue():
+                if verb in postMethods:
+                    routes.httpPost(request, profile)
+                else:
+                    routes.error405(request)
+                return
+
+        routes.error404(request)
 
 proc listenerStart*(cq: Conquest, listener: UIListener) =
     try:
         var l: Listener
-        
+
         case listener.listenerType
         of LISTENER_HTTP:
-            let server = newServer(handler(parseString(listener.profile)), maxBodyLen = 1024 * 1024 * 1024)
+            let server = newServer(handler, maxBodyLen = 1024 * 1024 * 1024)
+            serverProfiles[cast[pointer](server)] = parseString(listener.profile)   # Create table entry to handle profile overwrites
 
             l = Listener(
                 server: server,
@@ -124,6 +132,7 @@ proc listenerStop*(cq: Conquest, name: string) =
         let listener = cq.listeners[name]
         case listener.listenerType:
         of LISTENER_HTTP:
+            serverProfiles.del(cast[pointer](listener.server))
             try: listener.server.close()
             except: discard
         of LISTENER_SMB: discard
