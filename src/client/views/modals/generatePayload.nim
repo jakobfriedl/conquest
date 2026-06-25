@@ -306,7 +306,7 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 igSameLine(0.0f, textSpacing)
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x)
-                igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.name).join("\0") & "\0").cstring , listeners.len().int32)
+                igCombo_Str("##InputListener", addr component.listener, (listeners.mapIt(it.name & " (" & $it.listenerType & ")").join("\0") & "\0").cstring , listeners.len().int32)
 
                 # Verbose mode checkbox
                 igText("Verbose:      ")

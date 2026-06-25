@@ -126,7 +126,7 @@ proc draw*(component: ListenersTableComponent) =
                 igPushStyleColor(ImGuiCol_Button.int32, CONSOLE_ERROR_HOVERED)
                 igPushStyleColor(ImGuiCol_ButtonHovered.int32, CONSOLE_ERROR)
                 igPushStyleColor(ImGuiCol_ButtonActive.int32, CONSOLE_ERROR)
-                if igButton(("Stop##" & $int32(i)).cstring, vec2(buttonWidth, 0.0f)):
+                if igButton(("Stop Listener##" & $int32(i)).cstring, vec2(buttonWidth, 0.0f)):
                     cq.connection.sendStopListener(listener.listenerId)
                 igPopStyleColor(3)
 

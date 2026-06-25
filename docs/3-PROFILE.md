@@ -47,7 +47,7 @@ users = [
 
 ## GET settings
 
-The largest part of the malleable C2 profiles is taken up by the configuration of HTTP GET and POST requests. Starting with HTTP GET, it is possible to define the User-Agent that is used for GET requests, as well as the URI endpoints which are requested by the agent. Here, either a regular string or an array of string can be used. While the listener creates a route for each endpoint passed to this array, the agent randomly selects one of the endpoints for each GET request. Endpoints must not include `#` characters, as the randomization is done for each request separately.
+The largest part of the malleable C2 profiles is taken up by the configuration of HTTP GET and POST requests. Starting with HTTP GET, it is possible to define the User-Agent that is used for GET requests, as well as the URI endpoints which are requested by the agent. For both the User-Agent and the endpoints, either a regular string or an array of string can be used. While the listener creates a route for each endpoint passed to this array, the agent randomly selects one of the endpoints for each GET request. Endpoints must not include `#` characters, as the randomization is done for each request separately.
 
 ```toml
 [http-get]
@@ -172,7 +172,10 @@ HTTP POST requests can be configured in a similar way to GET requests. Here, it 
 
 ```toml 
 [http-post]
-user-agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+user-agent = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+    "User-Agent"
+]
 
 # Defines URI endpoints for HTTP POST requests
 # This has to be an array, even if it only has one member

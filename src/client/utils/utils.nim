@@ -49,6 +49,25 @@ proc contentHeight*(buf: openArray[char]): float32 =
         if c == '\n': inc lineCount
     return igGetFrameHeight() + float32(lineCount - 1) * igGetTextLineHeight()
 
+proc igMultilineInputFitted*(id: cstring, buf: var openArray[char], tooltip: cstring = "") =
+    let textSpacing = igGetStyle().ItemSpacing.x
+    
+    let markerWidth = 
+        if tooltip.len() > 0: 
+            igCalcTextSize("(?)", nil, false, 0.0f).x + textSpacing
+        else: 0.0f
+
+    igSameLine(0.0f, textSpacing)
+    let availableWidth = igGetContentRegionAvail().x - markerWidth
+    igSetNextItemWidth(availableWidth)
+    igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
+    igInputTextMultiline(id, cast[cstring](addr buf[0]), csize_t(buf.len()), vec2(0.0f, buf.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
+    igPopStyleVar(1)
+    
+    if tooltip.len() > 0:
+        igHelpMarker($tooltip)
+
+
 type
     Theme* = enum
         Light, Dark, Classic

@@ -149,7 +149,7 @@ type
         bindPort*: uint16
         pipe*: array[256, char]
 
-        userAgentGET*: array[256, char]
+        userAgentGET*: array[256 * 32, char]
         endpointsGET*: array[256 * 32, char]
         reqHeadersGET*: seq[KeyValue]
         queryParamsGET*: seq[KeyValue]
@@ -160,7 +160,7 @@ type
         tasksDataTransformation*: DataTransformation
         respPreviewGET*: TextareaWidget
 
-        userAgentPOST*: array[256, char]
+        userAgentPOST*: array[256 * 32, char]
         endpointsPOST*: array[256 * 32, char]
         methods*: array[256 * 32, char]
         reqHeadersPOST*: seq[KeyValue]

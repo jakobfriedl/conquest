@@ -1,4 +1,4 @@
-import strutils, strformat, base64, os, random, sequtils
+import strutils, strformat, base64, random, sequtils
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/textarea
 import ../../utils/[appImGui, utils, globals, dialogs]
@@ -119,8 +119,13 @@ proc setProfile*(component: ListenerModalComponent, profile: Profile) =
     if profile.isNil: 
         return
 
-    component.userAgentGET.setValue(profile.getString("http-get.user-agent"))
-    
+    if profile.isArray("http-get.user-agent"):
+        var userAgents: seq[string]
+        for ua in profile.getArray("http-get.user-agent"): userAgents.add(ua.getStr())
+        component.userAgentGET.setValue(userAgents.join("\n"))
+    else:
+        component.userAgentGET.setValue(profile.getString("http-get.user-agent"))
+
     var endpointsGET: seq[string]
     for endpoint in profile.getArray("http-get.endpoints"): 
         endpointsGET.add(endpoint.getStr())
@@ -132,7 +137,12 @@ proc setProfile*(component: ListenerModalComponent, profile: Profile) =
     component.respHeadersGET = parseSetting(profile, "http-get.server.headers")
     component.tasksDataTransformation = parseDataTransformation(profile, "http-get.server.output")
 
-    component.userAgentPOST.setValue(profile.getString("http-post.user-agent"))
+    if profile.isArray("http-post.user-agent"):
+        var userAgents: seq[string]
+        for ua in profile.getArray("http-post.user-agent"): userAgents.add(ua.getStr())
+        component.userAgentPOST.setValue(userAgents.join("\n"))
+    else:
+        component.userAgentPOST.setValue(profile.getString("http-post.user-agent"))
 
     var endpointsPOST: seq[string]
     for endpoint in profile.getArray("http-post.endpoints"): 
@@ -225,15 +235,16 @@ proc toTomlProfile*(component: ListenerModalComponent): string =
     
     result &= "name = " & component.name.toString().quoted() & "\n"
 
-    let 
-        getUserAgent = component.userAgentGET.toString()
+    let
+        getUserAgents = component.userAgentGET.toMultilineString()
         endpointsGET = component.endpointsGET.toMultilineString()
-        postUserAgent = component.userAgentPOST.toString()
+        postUserAgents = component.userAgentPOST.toMultilineString()
         endpointsPOST = component.endpointsPOST.toMultilineString()
         postMethods = component.methods.toMultilineString()
 
     result &= "\n[http-get]\n"
-    if getUserAgent.len() > 0: result &= "user-agent = " & getUserAgent.quoted() & "\n"
+    if getUserAgents.len() == 1: result &= "user-agent = " & getUserAgents[0].quoted() & "\n"
+    elif getUserAgents.len() > 1: result &= "user-agent = " & toTomlArray(getUserAgents) & "\n"
     if endpointsGET.len() > 0: result &= "endpoints = " & toTomlArray(endpointsGET) & "\n"
 
     result &= "\n[http-get.agent.heartbeat]\n"
@@ -255,7 +266,8 @@ proc toTomlProfile*(component: ListenerModalComponent): string =
     result &= dataTransformToToml(component.tasksDataTransformation)
 
     result &= "\n[http-post]\n"
-    if postUserAgent.len() > 0: result &= "user-agent = " & postUserAgent.quoted() & "\n"
+    if postUserAgents.len() == 1: result &= "user-agent = " & postUserAgents[0].quoted() & "\n"
+    elif postUserAgents.len() > 1: result &= "user-agent = " & toTomlArray(postUserAgents) & "\n"
     if endpointsPOST.len() > 0: result &= "endpoints = " & toTomlArray(endpointsPOST) & "\n"
     if postMethods.len() > 0: result &= "request-methods = " & toTomlArray(postMethods) & "\n"
 
@@ -545,22 +557,23 @@ proc generateGetRequest(component: ListenerModalComponent, randomized: bool = fa
     let prepend = component.heartbeatDataTransformation.prepend.toString()
     let append = component.heartbeatDataTransformation.append.toString()
     let placementName = component.heartbeatDataTransformation.placementName.toString()
-    let ua = component.userAgentGET.toString()
+    let (ua, uaHasMultiple) = component.userAgentGET.toString().pickLine(randomized)
+    let uaColor = if uaHasMultiple: CONSOLE_WARNING else: CONSOLE_DEFAULT
 
     case component.heartbeatDataTransformation.placement
     of PLACEMENT_HEADER:
         lines.addLine(("GET " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
         lines.addHeaderLines(component.reqHeadersGET, randomized)
         lines.addLine((placementName & ": " & prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     of PLACEMENT_QUERY:
         let payload = prepend & encoded & append
         lines.addLine(("GET " & endpoint & query & (if query.len() > 0: "&" else: "?") & placementName & "=" & payload & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
         lines.addHeaderLines(component.reqHeadersGET, randomized)
     of PLACEMENT_BODY:
         lines.addLine(("GET " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
         lines.addHeaderLines(component.reqHeadersGET, randomized)
         lines.addLine((prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     component.reqPreviewGET.updatePreview(component.previewCacheGETReq, lines)
@@ -586,23 +599,24 @@ proc generatePostRequest(component: ListenerModalComponent, randomized: bool = f
     let prepend = component.resultDataTransformation.prepend.toString()
     let append = component.resultDataTransformation.append.toString()
     let placementName = component.resultDataTransformation.placementName.toString()
-    let ua = component.userAgentPOST.toString()
+    let (ua, uaHasMultiple) = component.userAgentPOST.toString().pickLine(randomized)
+    let uaColor = if uaHasMultiple: CONSOLE_WARNING else: CONSOLE_DEFAULT
 
     case component.resultDataTransformation.placement
     of PLACEMENT_HEADER:
         lines.addLine((verb & " " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
         lines.addHeaderLines(component.reqHeadersPOST, randomized)
         lines.addLine((placementName & ": " & prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     of PLACEMENT_BODY:
         lines.addLine((verb & " " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
         lines.addHeaderLines(component.reqHeadersPOST, randomized)
         lines.addLine((prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     of PLACEMENT_QUERY:
         let payload = prepend & encoded & append
         lines.addLine((verb & " " & endpoint & query & (if query.len() > 0: "&" else: "?") & placementName & "=" & payload & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
         lines.addHeaderLines(component.reqHeadersPOST, randomized)
     component.reqPreviewPOST.updatePreview(component.previewCachePOSTReq, lines)
 
@@ -622,7 +636,6 @@ proc generatePostResponse(component: ListenerModalComponent, randomized: bool = 
 ]#
 proc draw*(component: ListenerModalComponent): UIListener =
     let textSpacing = igGetStyle().ItemSpacing.x
-    let markerWidth = igCalcTextSize("(?)", nil, false, -1.0f).x + textSpacing
 
     # Center modal
     let vp = igGetMainViewport()
@@ -739,20 +752,10 @@ proc draw*(component: ListenerModalComponent): UIListener =
                         igDummy(vec2(0.0f, 8.0f))
 
                         igText("User-Agent: ")
-                        igSameLine(0.0f, textSpacing)
-                        availableSize = igGetContentRegionAvail()
-                        igSetNextItemWidth(availableSize.x - markerWidth)
-                        igInputText("##http-get.user-agent", cast[cstring](addr component.userAgentGET[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
-                        igHelpMarker("User-Agent for GET requests.")
+                        igMultilineInputFitted("##http-get.user-agent", component.userAgentGET, "User-Agent for GET requests.\nWhen multiple newline-separated user agents are specified, a random one is chosen for each request.")
 
                         igText("Endpoints:  ")
-                        igSameLine(0.0f, textSpacing)
-                        availableSize = igGetContentRegionAvail()
-                        igSetNextItemWidth(availableSize.x - markerWidth)
-                        igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
-                        igInputTextMultiline("##http-get.endpoints", cast[cstring](addr component.endpointsGET[0]), 256 * 32, vec2(0.0f, component.endpointsGET.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
-                        igPopStyleVar(1)
-                        igHelpMarker("Endpoints for GET requests.\nWhen multiple newline-separated endpoints are specified, a random one is chosen for each request.")
+                        igMultilineInputFitted("##http-get.endpoints", component.endpointsGET, "Endpoints for GET requests.\nWhen multiple newline-separated endpoints are specified, a random one is chosen for each request.")
 
                         igSeparatorTextWithHelpmarker("Request Headers", "Headers for GET requests.\n\nRandomization:\n - #: Random alphanumeric character\n - $: Random digit\n - Multiple newline-separated values: a random value is chosen for each request.")
                         component.drawKeyValueSetting("http-get.agent.headers", component.reqHeadersGET)
@@ -794,29 +797,13 @@ proc draw*(component: ListenerModalComponent): UIListener =
                         igDummy(vec2(0.0f, 8.0f))
 
                         igText("User-Agent:      ")
-                        igSameLine(0.0f, textSpacing - markerWidth)
-                        availableSize = igGetContentRegionAvail()
-                        igSetNextItemWidth(availableSize.x)
-                        igInputText("##http-post.user-agent", cast[cstring](addr component.userAgentPOST[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
-                        igHelpMarker("User-Agent for POST requests.")
+                        igMultilineInputFitted("##http-post.user-agent", component.userAgentPOST, "User-Agent for POST requests.\nWhen multiple newline-separated user agents are specified, a random one is chosen for each request.")
 
                         igText("Endpoints:       ")
-                        igSameLine(0.0f, textSpacing)
-                        availableSize = igGetContentRegionAvail()
-                        igSetNextItemWidth(availableSize.x - markerWidth)
-                        igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
-                        igInputTextMultiline("##http-post.endpoints", cast[cstring](addr component.endpointsPOST[0]), 256 * 32, vec2(0.0f, component.endpointsPOST.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
-                        igPopStyleVar(1)
-                        igHelpMarker("Endpoints for POST requests.\nWhen multiple newline-separated endpoints are specified, a random one is chosen for each request.")
+                        igMultilineInputFitted("##http-post.endpoints", component.endpointsPOST, "Endpoints for POST requests.\nWhen multiple newline-separated endpoints are specified, a random one is chosen for each request.")
 
                         igText("Request Methods: ")
-                        igSameLine(0.0f, textSpacing)
-                        availableSize = igGetContentRegionAvail()
-                        igSetNextItemWidth(availableSize.x - markerWidth)
-                        igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
-                        igInputTextMultiline("##http-post.request-methods", cast[cstring](addr component.methods[0]), 256 * 32, vec2(0.0f, component.methods.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
-                        igPopStyleVar(1)
-                        igHelpMarker("Request methods used for POST requests.\nWhen multiple newline-separated HTTP verbs are specified, a random one is chosen for each request. Example:\nPOST\nPUT\nGET")
+                        igMultilineInputFitted("##http-post.request-methods", component.methods, "Request methods used for POST requests.\nWhen multiple newline-separated HTTP verbs are specified, a random one is chosen for each request. Example:\nPOST\nPUT\nGET")
 
                         igSeparatorTextWithHelpmarker("Request Headers", "Headers for POST requests.\n\nRandomization:\n - #: Random alphanumeric character\n - $: Random digit\n - Multiple newline-separated values: a random value is chosen for each request.")
                         component.drawKeyValueSetting("http-post.agent.headers", component.reqHeadersPOST)
