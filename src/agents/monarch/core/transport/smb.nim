@@ -138,7 +138,7 @@ when defined(TRANSPORT_SMB):
         openSmbSecurityAttributes(addr smbSecAttr, addr secAttr)
         
         ctx.transport.hPipe = CreateNamedPipeW(
-            +$ctx.transport.pipe,
+            +$ctx.transport.callback,
             PIPE_ACCESS_DUPLEX,
             PIPE_TYPE_BYTE or PIPE_READMODE_BYTE or PIPE_WAIT,  # byte mode for framing
             PIPE_UNLIMITED_INSTANCES,

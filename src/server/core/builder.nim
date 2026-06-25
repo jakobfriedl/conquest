@@ -19,11 +19,14 @@ proc serializeConfiguration(cq: Conquest, agentBuildInformation: AgentBuildInfor
     # Listener configuration
     packer.add(string.toUuid(listener.listenerId))
 
+    # Callback settings 
     case listener.listenerType:
     of LISTENER_HTTP:
         packer.addDataWithLengthPrefix(string.toBytes(listener.hosts))
+        packer.addDataWithLengthPrefix(string.toBytes(listener.profile))
     of LISTENER_SMB: 
         packer.addDataWithLengthPrefix(string.toBytes(listener.pipe))
+        packer.addDataWithLengthPrefix(string.toBytes(""))
 
     # Sleep settings
     packer.add(agentBuildInformation.sleepSettings.sleepDelay)
@@ -52,9 +55,6 @@ proc serializeConfiguration(cq: Conquest, agentBuildInformation: AgentBuildInfor
 
     # Public key for key exchange
     packer.addData(cq.keyPair.publicKey)
-
-    # C2 profile (from the listener)
-    packer.addDataWithLengthPrefix(string.toBytes(listener.profile))
 
     let data = packer.pack() 
     packer.reset() 

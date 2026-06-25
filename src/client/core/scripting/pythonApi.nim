@@ -303,6 +303,22 @@ proc resources_root*(): string {.exportpy.} =
 proc user*(): string {.exportpy.} = 
     return cq.connection.user
 
+proc transportSettings(listenerId: string): string {.exportpy.} = 
+    if not cq.listeners.listeners.hasKey(listenerId): 
+        raise newException(CatchableError, fmt"Listener does not exist: {listenerId}.")
+    
+    let listener = cq.listeners.listeners[listenerId]
+    if listener.listenerType != LISTENER_HTTP:
+        raise newException(CatchableError, fmt"Listener is not an HTTP listener: {listenerId}.")
+
+    # Pack transport settings
+    var packer = Packer.init()
+    packer.addDataWithLengthPrefix(string.toBytes(listener.listenerId))     # ListenerId
+    packer.addDataWithLengthPrefix(string.toBytes(listener.hosts))          # Callback settings
+    packer.addDataWithLengthPrefix(string.toBytes(listener.profile))        # C2 profile
+
+    return Bytes.toHex(packer.pack())
+
 proc set_impersonation(agentId, token: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
         cq.sessions.agents[agentId].impersonationToken = token

@@ -24,6 +24,7 @@ def _config(agentId, cmdline, args):
     sleepmask = conquest.get_string(args, 2)
     spoof = conquest.get_bool(args, 3)
     no_spoof = conquest.get_bool(args, 4)
+    listenerId = conquest.get_string(args, 5).upper()
 
     if spoof and no_spoof:
         return conquest.error(agentId, "The flags --spoof and --no-spoof cannot be used together.", cmdline)
@@ -33,6 +34,16 @@ def _config(agentId, cmdline, args):
         return conquest.error(agentId, "Jitter must be between 0 and 100.", cmdline)
     if sleep != -1 and sleep < 0:
         return conquest.error(agentId, "Sleep delay cannot be negative.", cmdline)
+
+    # Runtime channel switching
+    if listenerId: 
+        try:
+            # Retrieve transport settings for the listener
+            transport = conquest.transportSettings(listenerId)
+            # Pass the transport settings instead of the listenerId
+            return conquest.execute_alias(agentId, cmdline, cmdline.replace(listenerId, transport))
+        except Exception as err:
+            return conquest.error(agentId, str(err), cmdline)
 
     conquest.execute_command(agentId, cmdline)
 
@@ -49,6 +60,7 @@ Available options:
   - FOLIAGE""")
             .addFlagBool("--spoof", "Enable stack spoofing to obfuscate the call stack (only available for EKKO and ZILEAN sleepmask techniques).")
             .addFlagBool("--no-spoof", "Disable stack spoofing to obfuscate the call stack.")
+            .addFlagString("--listener", "listenerId", "Dynamically switch the callback channel to another HTTP listener at runtime.")
             .setHandler(_config)
 ).registerToGroup("core")
 

