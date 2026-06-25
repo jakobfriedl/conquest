@@ -246,6 +246,7 @@ type
         title*: string
         showComponent*: ptr bool
         listeners*: Table[string, UIListener]
+        selection*: ptr ImGuiSelectionBasicStorage
         startListenerModal*: ListenerModalComponent
         generatePayloadModal*: PayloadModalComponent
         profilePreview*: TextareaWidget
