@@ -176,6 +176,7 @@ type
         previewCacheGETResp*: string
         previewCachePOSTReq*: string
         previewCachePOSTResp*: string
+        previewSeed*: int
         profileSettingsOpen*: bool
 
     EventlogComponent* = ref object of RootObj

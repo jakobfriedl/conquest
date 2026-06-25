@@ -1,4 +1,4 @@
-import strutils, strformat, base64, random, sequtils
+import strutils, strformat, base64, random, sequtils, hashes
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/textarea
 import ../../utils/[appImGui, utils, globals, dialogs]
@@ -457,54 +457,47 @@ proc drawDataTransformation(component: ListenerModalComponent, id: string, dataT
 #[
     Preview generation
 ]#
+type PreviewLine = seq[tuple[text: string, color: ImVec4]]
+
 proc encode(data: string, encodings: seq[Encoding]): string =
     result = data
     for enc in encodings:
         case enc.encodingType
-        of ENCODING_NONE: discard
-        of ENCODING_BASE64: result = encode(result, safe = enc.urlSafe).replace("=", "")
-        of ENCODING_HEX: result = result.toHex().toLowerAscii()
+        of ENCODING_NONE: 
+            discard
+        of ENCODING_BASE64: 
+            result = encode(result, safe = enc.urlSafe).replace("=", "")
+        of ENCODING_HEX: 
+            result = result.toHex().toLowerAscii()
         of ENCODING_ROT:
             var s = ""
-            for c in result: s &= char((int(c) + enc.key) and 0xFF)
+            for c in result: 
+                s &= char((int(c) + enc.key) and 0xFF)
             result = s
         of ENCODING_XOR:
             var s = ""
-            for c in result: s &= char(int(c) xor enc.key)
+            for c in result: 
+                s &= char(int(c) xor enc.key)
             result = s
 
-const ALPHANUMERIC = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-proc randomizePlaceholders(s: string): string =
-    for c in s:
-        case c
-        of '#': result &= ALPHANUMERIC[rand(ALPHANUMERIC.high)]
-        of '$': result &= chr(ord('0') + rand(9))
-        else: result &= c
-
-proc pickLine(s: string, randomized: bool): tuple[text: string, hasMultiple: bool] =
+proc pickLine(s: string, previewSeed: int): string =
     let lines = s.splitLines().filterIt(it.strip().len() > 0)
-    if lines.len() == 0: return ("", false)
-    if lines.len() == 1: return (lines[0], false)
-    if randomized: return (lines[rand(lines.high)], true)
-    return (lines[0], true)
+    if lines.len() == 0: return ""
+    if lines.len() == 1: return lines[0]
+    return lines[abs(hash(s) xor previewSeed) mod lines.len()]
 
-proc kvToQueryString(pairs: seq[KeyValue], randomized: bool): string =
+proc previewQueryParams(pairs: seq[KeyValue], previewSeed: int): string =
     var parts: seq[string]
     for pair in pairs:
         let key = pair.key.toString()
-        var (value, _) = pair.value.toString().pickLine(randomized)
-        if randomized: value = value.randomizePlaceholders()
+        let value = pair.value.toString().pickLine(previewSeed)
         if key.len() > 0: parts.add(key & "=" & value)
     if parts.len() > 0: result = "?" & parts.join("&")
 
-proc pickEndpoint(buf: openArray[char], randomized: bool): string =
-    let (line, _) = buf.toString().pickLine(randomized)
-    if randomized and line.len() > 0: return line.randomizePlaceholders()
+proc previewEndpoint(buf: openArray[char], previewSeed: int): string =
+    let line = buf.toString().pickLine(previewSeed)
     if line.len() > 0: return line
     return "/"
-
-type PreviewLine = seq[tuple[text: string, color: ImVec4]]
 
 proc addLine(lines: var seq[PreviewLine], segments: varargs[tuple[text: string, color: ImVec4]]) =
     var line: PreviewLine
@@ -512,122 +505,116 @@ proc addLine(lines: var seq[PreviewLine], segments: varargs[tuple[text: string, 
         if seg.text.len() > 0: line.add(seg)
     if line.len() > 0: lines.add(line)
 
-proc addHeaderLines(lines: var seq[PreviewLine], pairs: seq[KeyValue], randomized: bool) =
+proc previewHeader(lines: var seq[PreviewLine], pairs: seq[KeyValue], previewSeed: int) =
     for pair in pairs:
         let k = pair.key.toString()
-        let (v, hasMultiple) = pair.value.toString().pickLine(randomized)
+        let v = pair.value.toString().pickLine(previewSeed)
         if k.len() > 0:
-            if randomized:
-                let rv = v.randomizePlaceholders()
-                let color = if hasMultiple or rv != v: CONSOLE_WARNING else: CONSOLE_DEFAULT
-                lines.addLine((k & ": " & rv, color))
-            else:
-                lines.addLine((k & ": " & v, CONSOLE_DEFAULT))
+            lines.addLine((k & ": " & v, CONSOLE_DEFAULT))
 
-proc previewFingerprint(lines: seq[PreviewLine]): string =
-    for line in lines:
-        for seg in line: result &= seg.text
-        result &= "\n"
+proc colorize(line: PreviewLine): PreviewLine =
+    let ALPHANUMERIC = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-proc colorizeSegments(line: PreviewLine): PreviewLine =
     for seg in line:
         var current = ""
         for c in seg.text:
             if c in {'#', '$'}:
                 if current.len() > 0: result.add((current, seg.color))
-                result.add(($c, CONSOLE_WARNING))
+                if c == '#': result.add(($ALPHANUMERIC[rand(ALPHANUMERIC.high)], CONSOLE_WARNING))
+                else: result.add(($chr(ord('0') + rand(9)), CONSOLE_WARNING))
                 current = ""
             else:
                 current &= c
         if current.len() > 0: result.add((current, seg.color))
 
 proc updatePreview(textarea: TextareaWidget, cache: var string, lines: seq[PreviewLine]) =
-    let fp = previewFingerprint(lines)
-    if fp == cache: return
+    var fp = ""
+    for line in lines:
+        for seg in line: fp &= seg.text
+        fp &= "\n"
+    
+    if fp == cache: 
+        return
     cache = fp
     textarea.clear()
     for line in lines:
-        discard textarea.addItem(LOG_OUTPUT, colorizeSegments(line))
+        discard textarea.addItem(LOG_OUTPUT, colorize(line))
 
-proc generateGetRequest(component: ListenerModalComponent, randomized: bool = false) =
+proc generateGetRequest(component: ListenerModalComponent) =
     var lines: seq[PreviewLine]
-    let endpoint = pickEndpoint(component.endpointsGET, randomized)
-    let query = kvToQueryString(component.queryParamsGET, randomized)
+    let endpoint = previewEndpoint(component.endpointsGET, component.previewSeed)
+    let query = previewQueryParams(component.queryParamsGET, component.previewSeed)
     let encoded = encode(PLACEHOLDER, component.heartbeatDataTransformation.encodings)
     let prepend = component.heartbeatDataTransformation.prepend.toString()
     let append = component.heartbeatDataTransformation.append.toString()
     let placementName = component.heartbeatDataTransformation.placementName.toString()
-    let (ua, uaHasMultiple) = component.userAgentGET.toString().pickLine(randomized)
-    let uaColor = if uaHasMultiple: CONSOLE_WARNING else: CONSOLE_DEFAULT
+    let ua = component.userAgentGET.toString().pickLine(component.previewSeed)
 
     case component.heartbeatDataTransformation.placement
     of PLACEMENT_HEADER:
         lines.addLine(("GET " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
-        lines.addHeaderLines(component.reqHeadersGET, randomized)
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.previewHeader(component.reqHeadersGET, component.previewSeed)
         lines.addLine((placementName & ": " & prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     of PLACEMENT_QUERY:
         let payload = prepend & encoded & append
         lines.addLine(("GET " & endpoint & query & (if query.len() > 0: "&" else: "?") & placementName & "=" & payload & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
-        lines.addHeaderLines(component.reqHeadersGET, randomized)
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.previewHeader(component.reqHeadersGET, component.previewSeed)
     of PLACEMENT_BODY:
         lines.addLine(("GET " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
-        lines.addHeaderLines(component.reqHeadersGET, randomized)
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.previewHeader(component.reqHeadersGET, component.previewSeed)
         lines.addLine((prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     component.reqPreviewGET.updatePreview(component.previewCacheGETReq, lines)
 
-proc generateGetResponse(component: ListenerModalComponent, randomized: bool = false) =
+proc generateGetResponse(component: ListenerModalComponent) =
     var lines: seq[PreviewLine]
     let encoded = encode(PLACEHOLDER, component.tasksDataTransformation.encodings)
     let prepend = component.tasksDataTransformation.prepend.toString()
     let append = component.tasksDataTransformation.append.toString()
 
     lines.addLine(("HTTP/1.1 200 OK", CONSOLE_DEFAULT))
-    lines.addHeaderLines(component.respHeadersGET, randomized)
+    lines.previewHeader(component.respHeadersGET, component.previewSeed)
     lines.addLine((prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     component.respPreviewGET.updatePreview(component.previewCacheGETResp, lines)
 
-proc generatePostRequest(component: ListenerModalComponent, randomized: bool = false) =
+proc generatePostRequest(component: ListenerModalComponent) =
     var lines: seq[PreviewLine]
-    let endpoint = pickEndpoint(component.endpointsPOST, randomized)
-    let query = kvToQueryString(component.queryParamsPOST, randomized)
+    let endpoint = previewEndpoint(component.endpointsPOST, component.previewSeed)
+    let query = previewQueryParams(component.queryParamsPOST, component.previewSeed)
     let methodStr = component.methods.toString()
-    let (verb, _) = (if methodStr.len() > 0: methodStr.pickLine(randomized) else: ("POST", false))
+    let verb = if methodStr.len() > 0: methodStr.pickLine(component.previewSeed) else: "POST"
     let encoded = encode(PLACEHOLDER, component.resultDataTransformation.encodings)
     let prepend = component.resultDataTransformation.prepend.toString()
     let append = component.resultDataTransformation.append.toString()
     let placementName = component.resultDataTransformation.placementName.toString()
-    let (ua, uaHasMultiple) = component.userAgentPOST.toString().pickLine(randomized)
-    let uaColor = if uaHasMultiple: CONSOLE_WARNING else: CONSOLE_DEFAULT
+    let ua = component.userAgentPOST.toString().pickLine(component.previewSeed)
 
     case component.resultDataTransformation.placement
     of PLACEMENT_HEADER:
         lines.addLine((verb & " " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
-        lines.addHeaderLines(component.reqHeadersPOST, randomized)
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.previewHeader(component.reqHeadersPOST, component.previewSeed)
         lines.addLine((placementName & ": " & prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     of PLACEMENT_BODY:
         lines.addLine((verb & " " & endpoint & query & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
-        lines.addHeaderLines(component.reqHeadersPOST, randomized)
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.previewHeader(component.reqHeadersPOST, component.previewSeed)
         lines.addLine((prepend, CONSOLE_DEFAULT), (encoded, CONSOLE_INFO), (append, CONSOLE_DEFAULT))
     of PLACEMENT_QUERY:
         let payload = prepend & encoded & append
         lines.addLine((verb & " " & endpoint & query & (if query.len() > 0: "&" else: "?") & placementName & "=" & payload & " HTTP/1.1", CONSOLE_DEFAULT))
-        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, uaColor))
-        lines.addHeaderLines(component.reqHeadersPOST, randomized)
+        if ua.len() > 0: lines.addLine(("User-Agent: " & ua, CONSOLE_DEFAULT))
+        lines.previewHeader(component.reqHeadersPOST, component.previewSeed)
     component.reqPreviewPOST.updatePreview(component.previewCachePOSTReq, lines)
 
-proc generatePostResponse(component: ListenerModalComponent, randomized: bool = false) =
+proc generatePostResponse(component: ListenerModalComponent) =
     var lines: seq[PreviewLine]
     lines.addLine(("HTTP/1.1 200 OK", CONSOLE_DEFAULT))
-    lines.addHeaderLines(component.respHeadersPOST, randomized)
+    lines.previewHeader(component.respHeadersPOST, component.previewSeed)
     let body = component.respBody.toString()
-    if randomized and body.len() > 0:
-        lines.addLine((body.randomizePlaceholders(), CONSOLE_WARNING))
-    elif body.len() > 0:
+    if body.len() > 0:
         lines.addLine((body, CONSOLE_DEFAULT))
     component.respPreviewPOST.updatePreview(component.previewCachePOSTResp, lines)
 
@@ -636,6 +623,7 @@ proc generatePostResponse(component: ListenerModalComponent, randomized: bool = 
 ]#
 proc draw*(component: ListenerModalComponent): UIListener =
     let textSpacing = igGetStyle().ItemSpacing.x
+    let shuffleWidth = igCalcTextSize("(?)".cstring, nil, false, 0.0f).x + igGetStyle().ItemSpacing.x
 
     # Center modal
     let vp = igGetMainViewport()
@@ -766,7 +754,10 @@ proc draw*(component: ListenerModalComponent): UIListener =
                         igSeparatorTextWithHelpmarker("Data Transformation: Heartbeat", "Defines how the heartbeat packet is transformed and placed in the GET request.\n\nPlacement: Location of the binary packet in the request (header, query parameter, or body).\nEncoding: Encoding applied to the packet (base64, hex, rot, xor). Multiple encodings are applied in order from top to bottom.\nPrepend/Append: Strings added before/after the packet in the request.")
                         component.drawDataTransformation("http-get.agent.heartbeat", component.heartbeatDataTransformation)
 
-                        igSeparatorText("Preview")
+                        igSeparatorTextEx(igGetID_Str("##PreviewGETReq"), "Preview".cstring, nil, shuffleWidth)
+                        igSameLine(0.0f, textSpacing)
+                        if igSmallButton(ICON_FA_SHUFFLE & "##ShuffleGETReq"): 
+                            inc component.previewSeed
                         generateGetRequest(component)
                         availableSize = igGetContentRegionAvail()
                         component.reqPreviewGET.draw(vec2(availableSize.x, previewHeight))
@@ -784,7 +775,10 @@ proc draw*(component: ListenerModalComponent): UIListener =
                         igSeparatorTextWithHelpmarker("Data Transformation: Tasks", "Defines how the task packet is transformed and placed in the GET response.\n\nPlacement: Location of the binary packet in the response (header, query parameter, or body).\nEncoding: Encoding applied to the packet (base64, hex, rot, xor). Multiple encodings are applied in order from top to bottom.\nPrepend/Append: Strings added before/after the packet in the response.")
                         component.drawDataTransformation("http-get.server.output", component.tasksDataTransformation)
 
-                        igSeparatorText("Preview")
+                        igSeparatorTextEx(igGetID_Str("##PreviewGETResp"), "Preview".cstring, nil, shuffleWidth)
+                        igSameLine(0.0f, textSpacing)
+                        if igSmallButton(ICON_FA_SHUFFLE & "##ShuffleGETResp"): 
+                            inc component.previewSeed
                         generateGetResponse(component)
                         availableSize = igGetContentRegionAvail()
                         component.respPreviewGET.draw(vec2(availableSize.x, previewHeight))
@@ -814,7 +808,10 @@ proc draw*(component: ListenerModalComponent): UIListener =
                         igSeparatorTextWithHelpmarker("Data Transformation: Task Results & Registration", "Defines how the task result/registration packet is transformed and placed in the POST request.\n\nPlacement: Location of the binary packet in the request (header, query parameter, or body).\nEncoding: Encoding applied to the packet (base64, hex, rot, xor). Multiple encodings are applied in order from top to bottom.\nPrepend/Append: Strings added before/after the packet in the request.")
                         component.drawDataTransformation("http-post.agent.output", component.resultDataTransformation)
 
-                        igSeparatorText("Preview")
+                        igSeparatorTextEx(igGetID_Str("##PreviewPOSTReq"), "Preview".cstring, nil, shuffleWidth)
+                        igSameLine(0.0f, textSpacing)
+                        if igSmallButton(ICON_FA_SHUFFLE & "##ShufflePOSTReq"): 
+                            inc component.previewSeed
                         generatePostRequest(component)
                         availableSize = igGetContentRegionAvail()
                         component.reqPreviewPOST.draw(vec2(availableSize.x, previewHeight))
@@ -833,7 +830,10 @@ proc draw*(component: ListenerModalComponent): UIListener =
                         availableSize = igGetContentRegionAvail()
                         igInputTextMultiline("##http-post.server.output", cast[cstring](addr component.respBody[0]), MAX_INPUT_LENGTH, vec2(availableSize.x, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_None.int32, nil, nil)
 
-                        igSeparatorText("Preview")
+                        igSeparatorTextEx(igGetID_Str("##PreviewPOSTResp"), "Preview".cstring, nil, shuffleWidth)
+                        igSameLine(0.0f, textSpacing)
+                        if igSmallButton(ICON_FA_SHUFFLE & "##ShufflePOSTResp"): 
+                            inc component.previewSeed
                         generatePostResponse(component)
                         availableSize = igGetContentRegionAvail()
                         component.respPreviewPOST.draw(vec2(availableSize.x, previewHeight))
