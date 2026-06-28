@@ -295,6 +295,17 @@ proc sendLinks*(cq: Conquest, agentId, linkData: string, clientId: string = "") 
     )
     cq.broadcast(event, clientId)
 
+proc sendConfig*(cq: Conquest, agentId, agentConfig: string, clientId: string = "") =
+    let event = Event(
+        eventType: CLIENT_CONFIG, 
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "agentId": agentId,
+            "config": agentConfig,
+        }
+    )
+    cq.broadcast(event, clientId)
+
 proc sendUpdateParent*(cq: Conquest, agentId, parentId: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_UPDATE_PARENT, 
@@ -306,13 +317,3 @@ proc sendUpdateParent*(cq: Conquest, agentId, parentId: string, clientId: string
     )
     cq.broadcast(event, clientId)
 
-proc sendUpdateSleep*(cq: Conquest, agentId: string, delay: int, clientId: string = "") = 
-    let event = Event(
-        eventType: CLIENT_UPDATE_SLEEP, 
-        timestamp: now().toTime().toUnix(),
-        data: %*{
-            "agentId": agentId,
-            "delay": delay
-        }
-    )
-    cq.broadcast(event, clientId)

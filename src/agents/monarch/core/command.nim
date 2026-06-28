@@ -55,30 +55,17 @@ commands[CMD_CONFIG] = proc(ctx: AgentCtx, task: Task): TaskResult =
         when defined(TRANSPORT_HTTP):   # Channel switching is only implemented for HTTP transport
             if transport.len > 0: 
                 var unpacker = Unpacker.init(Bytes.toString(transport))
-                ctx.transport.listenerId = unpacker.getDataWithLengthPrefix()   # Listener ID
-                ctx.transport.callback = unpacker.getDataWithLengthPrefix()     # Callback hosts
-                ctx.transport.profile = parseString(unpacker.getDataWithLengthPrefix())   # C2 Profile
+                ctx.transport.listenerId = unpacker.getDataWithLengthPrefix()               # Listener ID
+                ctx.transport.callback = unpacker.getDataWithLengthPrefix()                 # Callback hosts
+                ctx.transport.profile = parseString(unpacker.getDataWithLengthPrefix())     # C2 Profile
 
-        let spoofStack = 
-            if ctx.sleepSettings.spoofStack and ctx.sleepSettings.sleepTechnique notin {EKKO, ZILEAN}:
-                "true (unused)" # Stack spoofing is only available for EKKO and ZILEAN
-            else:
-                $ctx.sleepSettings.spoofStack
+        var packer = Packer.init() 
+        packer.addDataWithLengthPrefix(string.toBytes(ctx.transport.listenerId))
+        packer.add(uint32(ctx.sleepSettings.sleepDelay))
+        packer.add(uint32(ctx.sleepSettings.jitter))
+        packer.add(uint8(ctx.sleepSettings.sleepTechnique))
+        packer.add(uint8(ctx.sleepSettings.spoofStack))
 
-        let config = fmt"""Agent configuration:
- - Listener:       {ctx.transport.listenerId}
- - Delay:          {$ctx.sleepSettings.sleepDelay}s
- - Jitter:         {$ctx.sleepSettings.jitter}%
- - Sleepmask:      {$ctx.sleepSettings.sleepTechnique}
- - Stack spoofing: {spoofStack}
- """
-
-        # Return binary structure containing sleepDelay and overall agent config
-        # The sleep delay is updated in the team server database and on the client 
-        var packer = Packer.init()
-        packer.add(ctx.sleepSettings.sleepDelay)
-        packer.addDataWithLengthPrefix(string.toBytes(config))
-        
         return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, packer.pack())
 
     except CatchableError as err:

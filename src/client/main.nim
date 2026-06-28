@@ -472,10 +472,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
                     of CLIENT_JOBS: 
                         let
                             agentId = event.data["agentId"].getStr()
-                            data = event.data["jobs"].getStr()
                             commands = event.data["commands"]
                         
-                        var unpacker = Unpacker.init(data)
+                        var unpacker = Unpacker.init(event.data["jobs"].getStr())
                         let count = unpacker.getUint32() 
                         if count > 0: 
                             let console = cq.sessions.agents[agentId].console
@@ -496,11 +495,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, "No running jobs.")
 
                     of CLIENT_LINKS: 
-                        let 
-                            agentId = event.data["agentId"].getStr()
-                            data = event.data["links"].getStr()
+                        let agentId = event.data["agentId"].getStr()
 
-                        var unpacker = Unpacker.init(data)
+                        var unpacker = Unpacker.init(event.data["links"].getStr())
                         let count = unpacker.getUint32() 
                         if count > 0: 
                             let console = cq.sessions.agents[agentId].console
@@ -524,10 +521,28 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         if cq.sessions.agents.hasKey(agentId):
                             cq.sessions.agents[agentId].parentId = event.data["parentId"].getStr()
 
-                    of CLIENT_UPDATE_SLEEP:
+                    of CLIENT_CONFIG:
                         let agentId = event.data["agentId"].getStr()
+                        var unpacker = Unpacker.init(event.data["config"].getStr())
+
                         if cq.sessions.agents.hasKey(agentId):
-                            cq.sessions.agents[agentId].sleep = event.data["delay"].getInt()
+                            cq.sessions.agents[agentId].listenerId = unpacker.getDataWithLengthPrefix()
+                            cq.sessions.agents[agentId].sleep = int(unpacker.getUint32())
+                            let
+                                jitter = unpacker.getUint32()
+                                sleepmask = cast[SleepObfuscationTechnique](unpacker.getUint8())
+                                spoofStack = cast[bool](unpacker.getUint8())
+
+                            let config = fmt"""Agent configuration:
+ - Listener:       {cq.sessions.agents[agentId].listenerId}
+ - Delay:          {cq.sessions.agents[agentId].sleep}s
+ - Jitter:         {jitter}%
+ - Sleepmask:      {sleepmask}
+ - Stack spoofing: {spoofStack}
+ """
+                            cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, config)
+
+
 
                     else: discard 
             

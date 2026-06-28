@@ -42,7 +42,7 @@ type
         CLIENT_JOBS = 118'u8                # Send running jobs
         CLIENT_LINKS = 119'u8               # Send linked agents
         CLIENT_UPDATE_PARENT = 120'u8       # Update the parent agent of a linked agent
-        CLIENT_UPDATE_SLEEP = 121'u8        # Update sleep delay
+        CLIENT_CONFIG = 121'u8              # Send agent configuration  
 
     Event* = object 
         eventType*: EventType               

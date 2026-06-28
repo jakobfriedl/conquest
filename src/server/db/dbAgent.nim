@@ -67,17 +67,13 @@ proc dbAgentExists*(cq: Conquest, agentId: string): bool =
     let res = cq.db.one("SELECT 1 FROM agents WHERE agentId = ? LIMIT 1", agentId)
     return res.isSome
 
-proc dbUpdateSleep*(cq: Conquest, agentId: string, sleep: int): bool =
+proc dbUpdateAgent*(cq: Conquest, agent: Agent): bool =
     try:
-        cq.db.exec("UPDATE agents SET sleep = ? WHERE agentId = ?", sleep, agentId)
-        return true
-    except:
-        cq.error(getCurrentExceptionMsg())
-        return false
-
-proc dbUpdateTokenImpersonation*(cq: Conquest, agentId: string, impersonationToken: string): bool =
-    try:
-        cq.db.exec("UPDATE agents SET impersonationToken = ? WHERE agentId = ?", impersonationToken, agentId)
+        let sessionKeyBlob = agent.sessionKey.toSeq()
+        cq.db.exec("""
+        UPDATE agents SET listenerId = ?, process = ?, pid = ?, username = ?, impersonationToken = ?, hostname = ?, domain = ?, ipInternal = ?, ipExternal = ?, os = ?, elevated = ?, sleep = ?, modules = ?, latestCheckin = ?, sessionKey = ? 
+        WHERE agentId = ?;""", agent.listenerId, agent.process, agent.pid, agent.username, agent.impersonationToken, agent.hostname, agent.domain, agent.ipInternal, agent.ipExternal, agent.os, agent.elevated, agent.sleep, agent.modules, agent.latestCheckin, sessionKeyBlob, agent.agentId)
+        cq.agents[agent.agentId] = agent
         return true
     except:
         cq.error(getCurrentExceptionMsg())

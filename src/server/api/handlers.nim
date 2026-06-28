@@ -160,16 +160,20 @@ proc handleResult*(resultData: seq[byte]) =
                 of CMD_CONFIG:
                     var unpacker = Unpacker.init(Bytes.toString(taskResult.data))
                     let 
+                        newListenerId = unpacker.getDataWithLengthPrefix()
                         newDelay = int(unpacker.getUint32())
-                        config = unpacker.getDataWithLengthPrefix() 
-                    
+
+                    # Update stored listenerId
+                    if newListenerId != cq.agents[agentId].listenerId: 
+                        cq.agents[agentId].listenerId = newListenerId
+                        discard cq.dbUpdateAgent(cq.agents[agentId])
+
                     # Update stored sleep delay if it has changed
                     if newDelay != cq.agents[agentId].sleep: 
                         cq.agents[agentId].sleep = newDelay
-                        discard cq.dbUpdateSleep(agentId, newDelay)
-                        cq.sendUpdateSleep(agentId, newDelay)
+                        discard cq.dbUpdateAgent(cq.agents[agentId])
 
-                    cq.sendConsoleItem(agentId, LOG_OUTPUT, config, command, taskId)
+                    cq.sendConfig(agentId, Bytes.toString(taskResult.data))
 
                 of CMD_DOWNLOAD:
                     # Complete download job
@@ -235,15 +239,14 @@ proc handleResult*(resultData: seq[byte]) =
                     # Update impersonation token in database & client UI
                     let output = Bytes.toString(taskResult.data)
                     if output.startsWith("Impersonated"):
-                        let impersonationToken = output.split(" ", 1)[1..^1].join(" ")[0..^2]
-                        if cq.dbUpdateTokenImpersonation(agentId, impersonationToken):
-                            cq.agents[agentId].impersonationToken = impersonationToken
-                            cq.sendImpersonationToken(agentId, impersonationToken)
+                        cq.agents[agentId].impersonationToken = output.split(" ", 1)[1..^1].join(" ")[0..^2]
+                        if cq.dbUpdateAgent(cq.agents[agentId]):
+                            cq.sendImpersonationToken(agentId, cq.agents[agentId].impersonationToken)
                                 
                 of CMD_REV2SELF:
                     # Remove impersonation token
-                    if cq.dbUpdateTokenImpersonation(agentId, ""):
-                        cq.agents[agentId].impersonationToken.setLen(0)
+                    cq.agents[agentId].impersonationToken.setLen(0)
+                    if cq.dbUpdateAgent(cq.agents[agentId]):
                         cq.sendRevertToken(agentId)
                 
                 of CMD_CD, CMD_PWD: 
