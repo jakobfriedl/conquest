@@ -59,9 +59,35 @@ proc handler(request: Request) {.gcsafe.} =
 
         routes.error404(request)
 
+proc listenerStop*(cq: Conquest, name: string)=
+    # Verify that listener exists
+    if not cq.dbListenerExists(name):
+        raise newException(CatchableError, fmt"Listener {name} does not exist.")
+
+    # Remove entry from database to prevent server restart
+    if not cq.dbDeleteListenerByName(name):
+        raise newException(CatchableError, fmt"Failed to stop listener: {getCurrentExceptionMsg()}")
+
+    # Stop listener
+    if name in cq.listeners:
+        let listener = cq.listeners[name]
+        case listener.listenerType:
+        of LISTENER_HTTP:
+            serverProfiles.del(cast[pointer](listener.server))
+            try: listener.server.close()
+            except: discard
+        of LISTENER_SMB: discard
+        cq.listeners.del(name)
+
 proc listenerStart*(cq: Conquest, listener: UIListener) =
     try:
         var l: Listener
+        var action = "Started"
+
+        # Stop edited listener before restarting it 
+        if cq.listeners.hasKey(listener.listenerId):
+            cq.listenerStop(listener.listenerId)
+            action = "Updated"
 
         case listener.listenerType
         of LISTENER_HTTP:
@@ -110,36 +136,10 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
                 cq.listeners.del(listener.listenerId)
                 raise newException(CatchableError, "Failed to store listener in database")
 
-        cq.success("Started listener", fgGreen, fmt""" "{listener.name}" ({l.listenerId}).""")
+        cq.success(fmt"{action} listener", fgGreen, fmt""" "{listener.name}" ({l.listenerId}).""")
         cq.sendListener(l)
-        cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"""Started listener "{listener.name}" ({l.listenerId}).""")
+        cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"""{action} listener "{listener.name}" ({l.listenerId}).""")
 
     except CatchableError as err:
         cq.error("Failed to start listener: ", err.msg)
         cq.sendEventlogItem(LOG_ERROR_SHORT, fmt"Failed to start listener: {err.msg}.")
-
-proc listenerStop*(cq: Conquest, name: string) =
-    # Verify that listener exists
-    if not cq.dbListenerExists(name):
-        cq.error(fmt"Listener {name} does not exist.")
-        return
-
-    # Remove entry from database to prevent server restart
-    if not cq.dbDeleteListenerByName(name):
-        cq.error("Failed to stop listener: ", getCurrentExceptionMsg())
-        return
-
-    # Stop listener
-    if name in cq.listeners:
-        let listener = cq.listeners[name]
-        case listener.listenerType:
-        of LISTENER_HTTP:
-            serverProfiles.del(cast[pointer](listener.server))
-            try: listener.server.close()
-            except: discard
-        of LISTENER_SMB: discard
-        cq.listeners.del(name)
-
-    cq.sendListenerRemove(name)
-    cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Stopped listener {name}.")
-    cq.success("Stopped listener ", fgGreen, name, resetStyle, ".")

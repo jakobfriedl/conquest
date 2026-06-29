@@ -34,8 +34,8 @@ proc ListenerModal*(): ListenerModalComponent =
     result.reqPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
     result.respPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
 
-
 proc resetModalValues(component: ListenerModalComponent) =
+    component.editingListener = nil
     zeroMem(addr component.name[0], 256)
     component.protocol = 0
     zeroMem(addr component.callbackHosts[0], 256 * 32)
@@ -163,7 +163,20 @@ proc setProfile*(component: ListenerModalComponent, profile: Profile) =
 
     component.respHeadersPOST = parseSetting(profile, "http-post.server.headers")
     component.respBody.setValue(profile.getString("http-post.server.output.body"))
-    
+
+proc setEdit*(component: ListenerModalComponent, listener: UIListener) =
+    component.editingListener = listener
+    component.name.setValue(listener.name)
+    component.protocol = int32(ord(listener.listenerType))
+    case listener.listenerType:
+    of LISTENER_HTTP:
+        component.bindAddress.setValue(listener.address)
+        component.bindPort = uint16(listener.port)
+        component.callbackHosts.setValue(listener.hosts.replace(";", "\n"))
+        component.setProfile(parseString(listener.profile))
+    of LISTENER_SMB:
+        component.pipe.setValue(listener.pipe.replace("\\\\.\\pipe\\", ""))
+
 # Escape and quote TOML string
 proc quoted(s: string): string = "\"" & s.replace("\\", "\\\\").replace("\"", "\\\"") & "\""
 
@@ -635,6 +648,8 @@ proc generatePostResponse(component: ListenerModalComponent) =
 proc draw*(component: ListenerModalComponent): UIListener =
     let textSpacing = igGetStyle().ItemSpacing.x
     let shuffleWidth = igCalcTextSize("(?)".cstring, nil, false, 0.0f).x + igGetStyle().ItemSpacing.x
+    let modalLabel = if component.editingListener.isNil: "Start Listener" else: "Edit Listener"
+    let buttonLabel = if component.editingListener.isNil: "Start" else: "Save"
 
     # Center modal
     let vp = igGetMainViewport()
@@ -648,7 +663,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
     let previewHeight = 8.0f * igGetTextLineHeightWithSpacing()
 
     var show = true
-    if igBeginPopupModal("Start Listener", addr show, ImGuiWindowFlags_NoResize.int32 or ImGui_WindowFlags_NoScrollbar.int32):
+    if igBeginPopupModal(modalLabel.cstring, addr show, ImGuiWindowFlags_NoResize.int32 or ImGui_WindowFlags_NoScrollbar.int32):
         defer: igEndPopup()
 
         var disableStart = false
@@ -873,9 +888,9 @@ proc draw*(component: ListenerModalComponent): UIListener =
         # Buttons
         availableSize = igGetContentRegionAvail()
         igBeginDisabled(disableStart or component.name.toString.len() <= 0)
-        if igButton("Start", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
+        if igButton(buttonLabel.cstring, vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
 
-            let uuid = generateUUID()
+            let uuid = if component.editingListener.isNil: generateUUID() else: component.editingListener.listenerId
             result = UIListener(
                 listenerId: uuid,
                 name: component.name.toString(),

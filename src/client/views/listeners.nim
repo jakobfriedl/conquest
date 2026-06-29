@@ -36,14 +36,6 @@ proc draw*(component: ListenersTableComponent) =
 
     let listeners = component.listeners.values().toSeq()
 
-    let listener = component.startListenerModal.draw()
-    if listener != nil:
-        cq.connection.sendStartListener(listener)
-
-    let buildInformation = component.generatePayloadModal.draw(listeners)
-    if buildInformation != nil:
-        cq.connection.sendAgentBuild(buildInformation)
-
     # Profile TOML Preview
     if component.showProfilePreview:
         igOpenPopup_str("Profile", ImGui_PopupFlags_None.int32)
@@ -67,6 +59,7 @@ proc draw*(component: ListenersTableComponent) =
         ImGui_TableFlags_SizingStretchSame.int32
     )
 
+    var pendingEdit = false
     let cols: int32 = 6
     if igBeginTable("Listeners", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
@@ -138,6 +131,11 @@ proc draw*(component: ListenersTableComponent) =
                         igCloseCurrentPopup()
                 igEndMenu()
 
+            if igMenuItem("Edit", nil, false, selectedListeners.len() == 1):
+                component.startListenerModal.setEdit(selectedListeners[0])
+                pendingEdit = true
+                igCloseCurrentPopup()
+
             if igMenuItem("View Profile", nil, false, selectedListeners.len() == 1 and selectedListeners[0].listenerType == LISTENER_HTTP):
                 component.profilePreview.clear()
                 component.profilePreview.addItem(LOG_OUTPUT, selectedListeners[0].profile)
@@ -159,3 +157,14 @@ proc draw*(component: ListenersTableComponent) =
         ImGuiSelectionBasicStorage_ApplyRequests(component.selection, multiSelectIO)
 
         igEndTable()
+
+    if pendingEdit:
+        igOpenPopup_str("Edit Listener", ImGui_PopupFlags_None.int32)
+
+    let listener = component.startListenerModal.draw()
+    if listener != nil:
+        cq.connection.sendStartListener(listener)
+
+    let buildInformation = component.generatePayloadModal.draw(listeners)
+    if buildInformation != nil:
+        cq.connection.sendAgentBuild(buildInformation)

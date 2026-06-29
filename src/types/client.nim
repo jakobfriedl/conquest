@@ -178,6 +178,8 @@ type
         previewCachePOSTResp*: string
         previewSeed*: int
         profileSettingsOpen*: bool
+        
+        editingListener*: UIListener
 
     EventlogComponent* = ref object of RootObj
         title*: string 

