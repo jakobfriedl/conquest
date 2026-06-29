@@ -416,6 +416,7 @@ type
 # Client context
 type 
     Conquest* = ref object
+        profile*: Profile
         sessions*: SessionsComponent
         listeners*: ListenersTableComponent
         chat*: ChatComponent

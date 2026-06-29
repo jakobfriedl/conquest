@@ -34,16 +34,6 @@ proc ListenerModal*(): ListenerModalComponent =
     result.reqPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
     result.respPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
 
-proc resetModalValues(component: ListenerModalComponent) =
-    component.editingListener = nil
-    zeroMem(addr component.name[0], 256)
-    component.protocol = 0
-    zeroMem(addr component.callbackHosts[0], 256 * 32)
-    zeroMem(addr component.bindAddress[0], 256)
-    component.bindPort = DEFAULT_PORT
-    zeroMem(addr component.pipe[0], 256)
-    component.profileSettingsOpen = false
-
 #[
     Profile serialization
 ]#
@@ -112,8 +102,8 @@ proc parseDataTransformation(profile: Profile, path: string, defaultPlacement: P
         else: result.placement = PLACEMENT_BODY
         result.placementName.setValue(placementTable.getTableValue("name").getStr())
     result.encodings = parseEncodings(profile, path & ".encoding")
-    result.prepend.setValue(profile.getStringOrByteArray(path & ".prepend"))
-    result.append.setValue(profile.getStringOrByteArray(path & ".append"))
+    result.prepend.setValue(profile.getStringOrByteArrayRaw(path & ".prepend"))
+    result.append.setValue(profile.getStringOrByteArrayRaw(path & ".append"))
 
 proc setProfile*(component: ListenerModalComponent, profile: Profile) =
     if profile.isNil: 
@@ -124,7 +114,7 @@ proc setProfile*(component: ListenerModalComponent, profile: Profile) =
         for userAgent in profile.getArray("http-get.user-agent"): userAgents.add(userAgent.getStr())
         component.userAgentGET.setValue(userAgents.join("\n"))
     else:
-        component.userAgentGET.setValue(profile.getString("http-get.user-agent"))
+        component.userAgentGET.setValue(profile.getStringRaw("http-get.user-agent"))
 
     var endpointsGET: seq[string]
     for endpoint in profile.getArray("http-get.endpoints"): 
@@ -142,7 +132,7 @@ proc setProfile*(component: ListenerModalComponent, profile: Profile) =
         for userAgent in profile.getArray("http-post.user-agent"): userAgents.add(userAgent.getStr())
         component.userAgentPOST.setValue(userAgents.join("\n"))
     else:
-        component.userAgentPOST.setValue(profile.getString("http-post.user-agent"))
+        component.userAgentPOST.setValue(profile.getStringRaw("http-post.user-agent"))
 
     var endpointsPOST: seq[string]
     for endpoint in profile.getArray("http-post.endpoints"): 
@@ -154,7 +144,7 @@ proc setProfile*(component: ListenerModalComponent, profile: Profile) =
         for m in profile.getArray("http-post.request-methods"): 
             methods.add(m.getStr())
     else: 
-        methods.add(profile.getString("http-post.request-methods"))
+        methods.add(profile.getStringRaw("http-post.request-methods"))
     component.methods.setValue(methods.join("\n"))
     
     component.reqHeadersPOST = parseSetting(profile, "http-post.agent.headers")
@@ -162,7 +152,7 @@ proc setProfile*(component: ListenerModalComponent, profile: Profile) =
     component.resultDataTransformation = parseDataTransformation(profile, "http-post.agent.output")
 
     component.respHeadersPOST = parseSetting(profile, "http-post.server.headers")
-    component.respBody.setValue(profile.getString("http-post.server.output.body"))
+    component.respBody.setValue(profile.getStringRaw("http-post.server.output.body"))
 
 proc setEdit*(component: ListenerModalComponent, listener: UIListener) =
     component.editingListener = listener
@@ -176,6 +166,17 @@ proc setEdit*(component: ListenerModalComponent, listener: UIListener) =
         component.setProfile(parseString(listener.profile))
     of LISTENER_SMB:
         component.pipe.setValue(listener.pipe.replace("\\\\.\\pipe\\", ""))
+
+proc resetModalValues(component: ListenerModalComponent) =
+    component.editingListener = nil
+    zeroMem(addr component.name[0], 256)
+    component.protocol = 0
+    zeroMem(addr component.callbackHosts[0], 256 * 32)
+    zeroMem(addr component.bindAddress[0], 256)
+    component.bindPort = DEFAULT_PORT
+    zeroMem(addr component.pipe[0], 256)
+    component.profileSettingsOpen = false
+    component.setProfile(cq.profile)
 
 # Escape and quote TOML string
 proc quoted(s: string): string = "\"" & s.replace("\\", "\\\\").replace("\"", "\\\"") & "\""
@@ -943,3 +944,6 @@ proc draw*(component: ListenerModalComponent): UIListener =
         if igButton("Close", vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
             component.resetModalValues()
             igCloseCurrentPopup()
+
+    if not show:
+        component.resetModalValues()

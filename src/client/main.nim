@@ -186,7 +186,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
                                 cq.connection = nil 
 
                     of CLIENT_PROFILE:
-                        cq.listeners.startListenerModal.setProfile(parseString(event.data["profile"].getStr()))
+                        cq.profile = parseString(event.data["profile"].getStr())
+                        cq.listeners.startListenerModal.setProfile(cq.profile)
 
                     of CLIENT_LISTENER_ADD: 
                         let listener = event.data.to(UIListener)
@@ -537,8 +538,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
  - Stack spoofing: {spoofStack}
  """
                             cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, config)
-
-
 
                     else: discard 
             

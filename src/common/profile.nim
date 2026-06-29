@@ -49,6 +49,10 @@ proc getString*(profile: Profile, path: string, default: string = ""): string =
     let key = profile.findKey(path)
     return key.getStringValue(default)
 
+proc getStringRaw*(profile:Profile, path: string, default: string = ""): string = 
+    let key = profile.findKey(path)
+    return key.getStr(default)
+
 proc getInt*(profile: Profile, path: string, default: int = 0): int =
     let key = profile.findKey(path)
     return key.getInt(default)
@@ -79,6 +83,14 @@ proc getStringOrByteArray*(profile: Profile, path: string): string =
             result &= char(element.getInt())
     else: 
         result = profile.getString(path)    
+
+proc getStringOrByteArrayRaw*(profile: Profile, path: string): string = 
+    result = ""
+    if profile.isArray(path): 
+        for element in profile.getArray(path): 
+            result &= char(element.getInt())
+    else: 
+        result = profile.getStringRaw(path)  
 
 #[
     Data transformation
