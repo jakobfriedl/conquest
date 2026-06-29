@@ -1,4 +1,5 @@
 import conquest
+import re
 
 # Create default modules (selectable during payload generation)
 conquest.createModule("shell", "Execute shell commands.")
@@ -233,7 +234,13 @@ cmd_screenshot = (
             .registerToModule("screenshot")
 )
 
-# Token manipulation
+# Token manipulation    
+def _impersonate(agentId, output):
+    conquest.output(agentId, output + "\n")
+    match = re.search(r'(?:Impersonated)\s+(\S+?)\.?$', output, re.MULTILINE)
+    if match:
+        conquest.set_impersonation(agentId, match.group(1)) 
+
 cmd_maketoken = (
     conquest.createCommand(name="make-token", description="Create an access token from username and password.", example="make-token LAB\\john Password123!", 
                            message="Tasked agent to create an access token from username and password.", mitre=["T1134.003"])
@@ -248,6 +255,7 @@ cmd_maketoken = (
   - 9: LOGON_NEW_CREDENTIALS (default)                        
 """, False, 9)
             .addFlagBool("--store", "Store access token in vault. Impersonate it using the 'use-token' command.")
+            .setOutputHandler(_impersonate)
             .registerToGroup("user impersonation")
             .registerToModule("token")
 )
@@ -257,6 +265,7 @@ cmd_stealtoken = (
                            message="Tasked agent to steal an access token.", mitre=["T1134.001"])
             .addArgInt("pid", "Process ID of the target process.", True)
             .addFlagBool("--store", "Store access token in vault. Impersonate it using the 'use-token' command.")
+            .setOutputHandler(_impersonate)
             .registerToGroup("user impersonation")
             .registerToModule("token")
 )
@@ -265,6 +274,7 @@ cmd_usetoken = (
     conquest.createCommand(name="use-token", description="Use and impersonate access token from the vault.", example="use-token 1",
                            message="Tasked agent to use a token from the vault.", mitre=["T1134"])
             .addArgInt("token", "ID of the token to impersonate.", True)
+            .setOutputHandler(_impersonate)
             .registerToGroup("user impersonation")
             .registerToModule("token")
 )
@@ -287,6 +297,9 @@ cmd_removetoken = (
 cmd_rev2self = (
     conquest.createCommand(name="rev2self", description="Revert to original access token.", example="rev2self", 
                            message="Tasked agent to revert to original access token.", mitre=[])
+            .setOutputHandler(lambda agentId, output: (
+                conquest.set_impersonation(agentId, "")
+            ))
             .registerToGroup("user impersonation")
             .registerToModule("token")
 )

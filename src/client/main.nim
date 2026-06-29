@@ -275,7 +275,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             taskId = event.data["taskId"].getStr()
                             timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
 
-                        if taskId != "": 
+                        if taskId != "" and message.len() > 0: 
                             cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, @[(fmt"[{timestamp}]", CONSOLE_GRAY), (fmt"[{taskId}] ", CONSOLE_INFO), ("Output:", CONSOLE_DEFAULT)])
 
                         try: 
@@ -333,13 +333,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         else: discard
 
                     of CLIENT_IMPERSONATE_TOKEN: 
-                        let 
-                            agentId = event.data["agentId"].getStr()
-                            impersonationToken = event.data["impersonationToken"].getStr()
+                        let agentId = event.data["agentId"].getStr()
+                        let impersonationToken = event.data["impersonationToken"].getStr()
                         cq.sessions.agents[agentId].impersonationToken = impersonationToken
-
-                    of CLIENT_REVERT_TOKEN: 
-                        cq.sessions.agents[event.data["agentId"].getStr()].impersonationToken = ""
                 
                     of CLIENT_PROCESSES: 
                         let

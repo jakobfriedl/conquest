@@ -530,7 +530,7 @@ when MODULE_TOKEN.isEnabled():
         try: 
             print fmt"   [>] Reverting access token."
             rev2self()
-            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, @[])
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_STRING, @[])
 
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))

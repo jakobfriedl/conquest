@@ -235,20 +235,6 @@ proc handleResult*(resultData: seq[byte]) =
                     cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
                     cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).")
 
-                of CMD_MAKE_TOKEN, CMD_STEAL_TOKEN, CMD_USE_TOKEN: 
-                    # Update impersonation token in database & client UI
-                    let output = Bytes.toString(taskResult.data)
-                    if output.startsWith("Impersonated"):
-                        cq.agents[agentId].impersonationToken = output.split(" ", 1)[1..^1].join(" ")[0..^2]
-                        if cq.dbUpdateAgent(cq.agents[agentId]):
-                            cq.sendImpersonationToken(agentId, cq.agents[agentId].impersonationToken)
-                                
-                of CMD_REV2SELF:
-                    # Remove impersonation token
-                    cq.agents[agentId].impersonationToken.setLen(0)
-                    if cq.dbUpdateAgent(cq.agents[agentId]):
-                        cq.sendRevertToken(agentId)
-                
                 of CMD_CD, CMD_PWD: 
                     # Update working directory in the client UI
                     cq.sendWorkingDirectory(agentId, Bytes.toString(taskResult.data))
@@ -294,7 +280,7 @@ proc handleResult*(resultData: seq[byte]) =
                 else: discard 
                 
                 # Output RESULT_STRING packets to the agent console
-                if cast[ResultType](taskResult.resultType) == RESULT_STRING and int(taskResult.length) > 0:
+                if cast[ResultType](taskResult.resultType) == RESULT_STRING:
                     cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command, taskId)
 
             of STATUS_FAILED: 

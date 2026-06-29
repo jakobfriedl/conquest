@@ -321,9 +321,7 @@ proc transportSettings(listenerId: string): string {.exportpy.} =
 
 proc set_impersonation(agentId, token: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
-        cq.sessions.agents[agentId].impersonationToken = token
         cq.connection.sendImpersonationToken(agentId, token)
-
 
 proc add_screenshot*(agentId, filename: string, contents: seq[byte], note: string = "") {.exportpy.} =
     if cq.sessions.agents.hasKey(agentId):

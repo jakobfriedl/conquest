@@ -165,7 +165,9 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
             of CLIENT_IMPERSONATE_TOKEN:
                 let agentId = event.data["agentId"].getStr()
                 cq.agents[agentId].impersonationToken =  event.data["impersonationToken"].getStr() 
-                discard cq.dbUpdateAgent(cq.agents[agentId])
+                if cq.dbUpdateAgent(cq.agents[agentId]):
+                    # Broadcast updated token to all connected clients
+                    cq.sendImpersonationToken(agentId, cq.agents[agentId].impersonationToken)
 
             else: discard
 

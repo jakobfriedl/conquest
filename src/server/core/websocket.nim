@@ -213,16 +213,6 @@ proc sendImpersonationToken*(cq: Conquest, agentId, impersonationToken: string, 
     )
     cq.broadcast(event, clientId)
 
-proc sendRevertToken*(cq: Conquest, agentId: string, clientId: string = "") = 
-    let event = Event(
-        eventType: CLIENT_REVERT_TOKEN,
-        timestamp: now().toTime().toUnix(),
-        data: %*{
-            "agentId": agentId
-        }
-    )
-    cq.broadcast(event, clientId)
-
 proc sendProcessList*(cq: Conquest, agentId, procData: string, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_PROCESSES, 
