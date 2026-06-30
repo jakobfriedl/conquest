@@ -145,7 +145,8 @@ type
         placementLabels*: string
 
         callbackHosts*: array[256 * 32, char]
-        bindAddress*: array[256, char]
+        interfaces*: seq[string]
+        bindAddress*: int32
         bindPort*: uint16
         pipe*: array[256, char]
 

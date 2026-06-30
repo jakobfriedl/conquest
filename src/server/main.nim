@@ -78,8 +78,9 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
 
                 of CLIENT_SYNC:
                     # Synchronize data between client and server (after client authentication)
-                    # C2 profile 
+                    # C2 profile and server interfaces
                     cq.sendProfile(cq.profileString, clientId = clientId)
+                    cq.sendInterfaces(clientId = clientId)
                     
                     # Listeners
                     for id, listener in cq.listeners: 

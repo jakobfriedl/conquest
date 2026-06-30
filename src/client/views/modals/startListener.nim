@@ -13,7 +13,6 @@ const
 proc ListenerModal*(): ListenerModalComponent =
     result = new ListenerModalComponent
     zeroMem(addr result.callbackHosts[0], 256 * 32)
-    zeroMem(addr result.bindAddress[0], 256)
     result.bindPort = DEFAULT_PORT
     zeroMem(addr result.pipe[0], 256)
     result.protocol = 0
@@ -207,7 +206,7 @@ proc setEdit*(component: ListenerModalComponent, listener: UIListener) =
     component.protocol = int32(ord(listener.listenerType))
     case listener.listenerType:
     of LISTENER_HTTP:
-        component.bindAddress.setValue(listener.address)
+        component.bindAddress = int32(component.interfaces.find(listener.address).max(0))
         component.bindPort = uint16(listener.port)
         component.callbackHosts.setValue(listener.hosts.replace(";", "\n"))
         component.setProfile(parseString(listener.profile))
@@ -219,7 +218,7 @@ proc resetModalValues(component: ListenerModalComponent) =
     zeroMem(addr component.name[0], 256)
     component.protocol = 0
     zeroMem(addr component.callbackHosts[0], 256 * 32)
-    zeroMem(addr component.bindAddress[0], 256)
+    component.bindAddress = 0
     component.bindPort = DEFAULT_PORT
     zeroMem(addr component.pipe[0], 256)
     component.profileSettingsOpen = false
@@ -766,39 +765,26 @@ proc draw*(component: ListenerModalComponent): UIListener =
 
         case cast[ListenerType](component.protocol):
         of LISTENER_HTTP:
-            # Listener bindAddress
-            let bindAddressError = isEmpty(component.bindAddress.toString())
-            if bindAddressError.len() > 0:
-                igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
-                igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
-                igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
-            
-            igText("Host (Bind):      ")
+            # Listener bind address and port (inline 75/25)
+            igText("Bind Host & Port: ")
             igSameLine(0.0f, textSpacing)
             availableSize = igGetContentRegionAvail()
-            igSetNextItemWidth(availableSize.x)
-            igInputTextWithHint("##InputAddressBind", "0.0.0.0", cast[cstring](addr component.bindAddress[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
-            
-            if bindAddressError.len() > 0: 
-                igPopStyleColor(3)
-                if igIsItemHovered(0): setTooltip(bindAddressError)
-
-            # Listener bindPort
-            let step: uint16 = 1
-            igText("Port (Bind):      ")
+            igSetNextItemWidth(availableSize.x * 0.75f)
+            igCombo_Str("##InputAddressBind", addr component.bindAddress, component.interfaces.join("\0").cstring, int32(component.interfaces.len()))
             igSameLine(0.0f, textSpacing)
-            igSetNextItemWidth(availableSize.x)
+            let step: uint16 = 1
+            igSetNextItemWidth(igGetContentRegionAvail().x)
             igInputScalar("##InputPortBind", ImGuiDataType_U16.int32, addr component.bindPort, addr step, nil, "%hu", ImGui_InputTextFlags_CharsDecimal.int32)
-            
+
             # Callback hosts
-            igText("Hosts (Callback): ")
+            igText("Callback Hosts:   ")
             igSameLine(0.0f, textSpacing)
             availableSize = igGetContentRegionAvail()
             igSetNextItemWidth(availableSize.x)
             igInputTextMultiline("##InputCallbackHosts", cast[cstring](addr component.callbackHosts[0]), 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
 
             # Only enabled the start button when valid values have been entered
-            disableStart = (bindAddressError.len > 0) or (component.bindPort <= 0)
+            disableStart = component.interfaces.len() == 0 or component.bindPort <= 0
 
         of LISTENER_SMB:
             # SMB Pipe name
@@ -1080,8 +1066,8 @@ proc draw*(component: ListenerModalComponent): UIListener =
                 var hosts: string = ""
                 let
                     callbackHosts = component.callbackHosts.toString()
-                    bindAddress = component.bindAddress.toString()
-                    bindPort =  int(component.bindPort)
+                    bindAddress = component.interfaces[component.bindAddress]
+                    bindPort = int(component.bindPort)
 
                 if callbackHosts.isEmptyOrWhitespace():
                     hosts &= bindAddress & ":"  & $bindPort

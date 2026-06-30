@@ -42,7 +42,8 @@ type
         CLIENT_JOBS = 118'u8                # Send running jobs
         CLIENT_LINKS = 119'u8               # Send linked agents
         CLIENT_UPDATE_PARENT = 120'u8       # Update the parent agent of a linked agent
-        CLIENT_CONFIG = 121'u8              # Send agent configuration  
+        CLIENT_CONFIG = 121'u8              # Send agent configuration
+        CLIENT_INTERFACES = 122'u8          # Send available network interfaces
 
     Event* = object 
         eventType*: EventType               

@@ -1,9 +1,10 @@
-import times, json, base64, strformat, tables
+import times, json, base64, strformat, tables, posix
 import stb_image/write as stbiw
 import ./logger
 import ../db/database
 import ../../common/[utils, event]
 import ../../types/[common, server, event]
+
 export recvEvent
 
 proc `%`*(agent: Agent): JsonNode =
@@ -52,7 +53,7 @@ proc broadcast(cq: Conquest, event: Event, clientId: string) =
 #[
     Server -> Client
 ]#
-proc sendPublicKey*(cq: Conquest, publicKey: Key, clientId: string = "") = 
+proc sendPublicKey*(cq: Conquest, publicKey: common.Key, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_KEY_EXCHANGE,
         timestamp: now().toTime().toUnix(),
@@ -82,7 +83,37 @@ proc sendProfile*(cq: Conquest, profileString: string, clientId: string = "") =
     )
     cq.broadcast(event, clientId)
 
-proc sendEventlogItem*(cq: Conquest, logType: LogType, message: string, clientId: string = "") = 
+type Ifaddrs {.importc: "struct ifaddrs", header: "<ifaddrs.h>".} = object
+    ifa_next {.importc.}: ptr Ifaddrs
+    ifa_addr {.importc.}: ptr SockAddr
+
+proc getifaddrs(ifap: var ptr Ifaddrs): cint {.importc, header: "<ifaddrs.h>".}
+proc freeifaddrs(ifap: ptr Ifaddrs) {.importc, header: "<ifaddrs.h>".}
+
+proc sendInterfaces*(cq: Conquest, clientId: string = "") =
+    var addresses = @["0.0.0.0"]
+    var ifap: ptr Ifaddrs
+    if getifaddrs(ifap) == 0:
+        defer: freeifaddrs(ifap)
+        var curr = ifap
+        while curr != nil:
+            if curr.ifa_addr != nil and curr.ifa_addr.sa_family == TSa_Family(AF_INET):
+                let b = cast[ptr array[4, uint8]](addr cast[ptr Sockaddr_in](curr.ifa_addr).sin_addr)
+                let ip = fmt"{b[0]}.{b[1]}.{b[2]}.{b[3]}"
+                if ip notin addresses:
+                    addresses.add(ip)
+            curr = curr.ifa_next
+
+    let event = Event(
+        eventType: CLIENT_INTERFACES,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "interfaces": addresses
+        }
+    )
+    cq.broadcast(event, clientId)
+
+proc sendEventlogItem*(cq: Conquest, logType: LogType, message: string, clientId: string = "") =
     let event = Event(
         eventType: CLIENT_EVENTLOG_ITEM,
         timestamp: now().toTime().toUnix(),
