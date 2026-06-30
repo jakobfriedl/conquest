@@ -34,6 +34,53 @@ proc ListenerModal*(): ListenerModalComponent =
     result.reqPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
     result.respPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
 
+
+#[
+    Validation
+]#
+const VALID_HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+
+proc igBeginTabItemWithValidation*(label: string, hasError: bool): bool =
+    if hasError:
+        igPushStyleColor(ImGuiCol_Tab.int32, CONSOLE_ERROR_DIM)
+        igPushStyleColor(ImGuiCol_TabHovered.int32, CONSOLE_ERROR_HOVERED)
+        igPushStyleColor(ImGuiCol_TabSelected.int32, CONSOLE_ERROR)
+    result = igBeginTabItem(label.cstring, nil, ImGuiTabBarFlags_None.int32)
+    if hasError: 
+        igPopStyleColor(3)
+
+proc isEmpty(input: string): string =
+    for line in input.splitLines():
+        if line.strip().len() > 0: return ""
+    return "Value required."
+
+proc isEmpty(pairs: seq[KeyValue]): string =
+    for pair in pairs:
+        if pair.key.toString().len() > 0 and pair.value.toString().strip().len() == 0: return "Value required."
+    return ""
+
+proc validateEndpoints(input: string): string =
+    var hasLine = false
+    for line in input.splitLines():
+        let trimmed = line.strip()
+        if trimmed.len() > 0:
+            hasLine = true
+            if '#' in trimmed or '$' in trimmed: return "Endpoints must not contain wildcard characters ('#' or '$')."
+    if not hasLine: return "At least one endpoint required."
+    return ""
+
+proc validateMethods(input: string): string =
+    for line in input.splitLines():
+        let trimmed = line.strip()
+        if trimmed.len() > 0 and trimmed.toUpperAscii() notin VALID_HTTP_METHODS:
+            return "Invalid HTTP method: '" & trimmed & "'"
+    return ""
+
+proc validatePlacementName(dataTransform: DataTransformation): string =
+    if dataTransform.placement != PLACEMENT_BODY and dataTransform.placementName.toString().len() <= 0:
+        return "Value required."
+    return ""
+
 #[
     Profile serialization
 ]#
@@ -326,11 +373,21 @@ proc drawKeyValueSetting(component: ListenerModalComponent, id: string, pairs: v
         igText(":")
         igSameLine(0.0f, 0.0f)
 
+        let valueError = if pairs[i].key.toString().len() > 0 and pairs[i].value.toString().strip().len() == 0: "Value required." else: ""
+        if valueError.len() > 0:
+            igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+            igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+            igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+        
         let valueWidth = igGetContentRegionAvail().x - removeWidth - textSpacing
         igSetNextItemWidth(valueWidth)
         igPushStyleVar_Float(ImGui_StyleVar_ScrollbarSize.int32, 0.0f)
         igInputTextMultiline(("##Value" & id).cstring, cast[cstring](addr pairs[i].value[0]), 4096, vec2(0.0f, pairs[i].value.contentHeight()), ImGui_InputTextFlags_None.int32, nil, nil)
         igPopStyleVar(1)
+
+        if valueError.len() > 0: 
+            igPopStyleColor(3)
+            if igIsItemHovered(0): setTooltip(valueError)
 
         igSameLine(0.0f, textSpacing)
 
@@ -445,12 +502,22 @@ proc drawDataTransformation(component: ListenerModalComponent, id: string, dataT
     dataTransform.placement = PlacementType(placementIdx)
 
     if dataTransform.placement != PLACEMENT_BODY:
+        let placementNameError = dataTransform.validatePlacementName()
+        if placementNameError.len() > 0:
+            igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+            igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+            igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+        
         igSameLine(0.0f, textSpacing)
         igText("Name:")
         igSameLine(0.0f, textSpacing)
         availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
         igInputText(("##PlacementName" & id).cstring, cast[cstring](addr dataTransform.placementName[0]), 256, ImGui_InputTextFlags_None.int32, nil, nil)
+        
+        if placementNameError.len() > 0: 
+            igPopStyleColor(3)
+            if igIsItemHovered(0): setTooltip(placementNameError)
 
     igText("Encoding:   ")
     igSameLine(0.0f, textSpacing)
@@ -670,11 +737,21 @@ proc draw*(component: ListenerModalComponent): UIListener =
         var disableStart = false
 
         # Listener name
+        let nameError = isEmpty(component.name.toString())
+        if nameError.len() > 0:
+            igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+            igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+            igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+
         igText("Name:             ")
         igSameLine(0.0f, textSpacing)
         var availableSize = igGetContentRegionAvail()
         igSetNextItemWidth(availableSize.x)
-        igInputText("##InputName", cast[cstring](addr component.name[0]), 256, ImGui_InputTextFlags_None .int32, nil, nil)
+        igInputText("##InputName", cast[cstring](addr component.name[0]), 256, ImGui_InputTextFlags_None .int32, nil, nil)        
+        
+        if nameError.len() > 0: 
+            igPopStyleColor(3)
+            if igIsItemHovered(0): setTooltip(nameError)
 
         # Listener protocol/type dropdown selection
         igText("Protocol:         ")
@@ -690,11 +767,21 @@ proc draw*(component: ListenerModalComponent): UIListener =
         case cast[ListenerType](component.protocol):
         of LISTENER_HTTP:
             # Listener bindAddress
+            let bindAddressError = isEmpty(component.bindAddress.toString())
+            if bindAddressError.len() > 0:
+                igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+                igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+                igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+            
             igText("Host (Bind):      ")
             igSameLine(0.0f, textSpacing)
             availableSize = igGetContentRegionAvail()
             igSetNextItemWidth(availableSize.x)
             igInputTextWithHint("##InputAddressBind", "0.0.0.0", cast[cstring](addr component.bindAddress[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
+            
+            if bindAddressError.len() > 0: 
+                igPopStyleColor(3)
+                if igIsItemHovered(0): setTooltip(bindAddressError)
 
             # Listener bindPort
             let step: uint16 = 1
@@ -702,7 +789,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igSameLine(0.0f, textSpacing)
             igSetNextItemWidth(availableSize.x)
             igInputScalar("##InputPortBind", ImGuiDataType_U16.int32, addr component.bindPort, addr step, nil, "%hu", ImGui_InputTextFlags_CharsDecimal.int32)
-
+            
             # Callback hosts
             igText("Hosts (Callback): ")
             igSameLine(0.0f, textSpacing)
@@ -711,10 +798,16 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igInputTextMultiline("##InputCallbackHosts", cast[cstring](addr component.callbackHosts[0]), 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
 
             # Only enabled the start button when valid values have been entered
-            disableStart = (component.bindAddress.toString() == "") or (component.bindPort <= 0)
+            disableStart = (bindAddressError.len > 0) or (component.bindPort <= 0)
 
         of LISTENER_SMB:
             # SMB Pipe name
+            let pipeError = isEmpty(component.pipe.toString())
+            if pipeError.len() > 0:
+                igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+                igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+                igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+            
             igText("Pipe name:        ")
             igSameLine(0.0f, textSpacing)
             igText("\\\\.\\pipe\\")
@@ -722,12 +815,45 @@ proc draw*(component: ListenerModalComponent): UIListener =
             availableSize = igGetContentRegionAvail()
             igSetNextItemWidth(availableSize.x)
             igInputText("##InputPipe", cast[cstring](addr component.pipe[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
+            
+            if pipeError.len() > 0: 
+                igPopStyleColor(3)
+                if igIsItemHovered(0): setTooltip(pipeError)
 
             # Only enabled the start button when valid values have been entered
-            disableStart = component.pipe.toString() == ""
+            disableStart = pipeError.len() > 0
 
         # Network profile overwrites (HTTP Listeners only)
         if cast[ListenerType](component.protocol) == LISTENER_HTTP:
+
+            # Validation
+            let 
+                userAgentGETError = isEmpty(component.userAgentGET.toString())
+                endpointsGETError = validateEndpoints(component.endpointsGET.toString())
+                reqHeadersGetError = isEmpty(component.reqHeadersGET)
+                queryParamsGetError = isEmpty(component.queryParamsGET)
+                heartbeatPlacementError = validatePlacementName(component.heartbeatDataTransformation)
+                getReqError = @[userAgentGETError, endpointsGETError, reqHeadersGetError, queryParamsGetError, heartbeatPlacementError].anyIt(it.len() > 0)
+
+            let 
+                respHeadersGetError = isEmpty(component.respHeadersGET)
+                tasksPlacementError = validatePlacementName(component.tasksDataTransformation)
+                getRespError = respHeadersGetError.len() > 0 or tasksPlacementError.len() > 0
+
+            let 
+                userAgentPOSTError = isEmpty(component.userAgentPOST.toString())
+                endpointsPOSTError = validateEndpoints(component.endpointsPOST.toString())
+                methodsError = validateMethods(component.methods.toString())
+                reqHeadersPostError = isEmpty(component.reqHeadersPOST)
+                queryParamsPostError = isEmpty(component.queryParamsPOST)
+                resultPlacementError = validatePlacementName(component.resultDataTransformation)
+                postReqError = @[userAgentPOSTError, endpointsPOSTError, methodsError, reqHeadersPostError, queryParamsPostError, resultPlacementError].anyIt(it.len() > 0)
+
+            let 
+                respHeadersPostError = isEmpty(component.respHeadersPOST)
+                postRespError = respHeadersPostError.len() > 0
+
+            disableStart = disableStart or getReqError or getRespError or postReqError or postRespError
 
             igDummy(vec2(0.0f, 10.0f))
 
@@ -765,17 +891,37 @@ proc draw*(component: ListenerModalComponent): UIListener =
                     let contentHeight = availableSize.y - igGetFrameHeightWithSpacing() - 20.0f
 
                     # Tab 1: Agent GET Request: Heartbeat
-                    if igBeginTabItem(fmt"GET {ICON_FA_ARROW_RIGHT} Heartbeat".cstring, nil, ImGuiTabBarFlags_None.int32):
+                    if igBeginTabItemWithValidation(fmt"GET {ICON_FA_ARROW_RIGHT} Heartbeat", getReqError):
                         defer: igEndTabItem()
                         discard igBeginChild_Str("##Tab1Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
                         defer: igEndChild()
                         igDummy(vec2(0.0f, 8.0f))
 
                         igText("User-Agent: ")
-                        igMultilineInputFitted("##http-get.user-agent", component.userAgentGET, "User-Agent for GET requests.\nWhen multiple newline-separated user agents are specified, a random one is chosen for each request.")
+                        if userAgentGETError.len() > 0:
+                            igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+                            igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+                            igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+                        
+                        igMultilineInputFitted("##http-get.user-agent", component.userAgentGET, true)
+                        
+                        if userAgentGETError.len() > 0:
+                            igPopStyleColor(3)
+                            if igIsItemHovered(0): setTooltip(userAgentGETError)
+                        igHelpMarker("User-Agent for GET requests.\nWhen multiple newline-separated user agents are specified, a random one is chosen for each request.")
 
                         igText("Endpoints:  ")
-                        igMultilineInputFitted("##http-get.endpoints", component.endpointsGET, "Endpoints for GET requests.\nWhen multiple newline-separated endpoints are specified, a random one is chosen for each request.")
+                        if endpointsGETError.len() > 0:
+                            igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+                            igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+                            igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+                        
+                        igMultilineInputFitted("##http-get.endpoints", component.endpointsGET, true)
+                        
+                        if endpointsGETError.len() > 0:
+                            igPopStyleColor(3)
+                            if igIsItemHovered(0): setTooltip(endpointsGETError)
+                        igHelpMarker("Endpoints for GET requests.\nWhen multiple newline-separated endpoints are specified, a random one is chosen for each request.")
 
                         igDummy(vec2(0.0f, 10.0f))
                         igSeparatorTextWithHelpmarker("Request Headers", "Headers for GET requests.\n\nRandomization:\n - #: Random alphanumeric character\n - $: Random digit\n - Multiple newline-separated values: a random value is chosen for each request.")
@@ -799,7 +945,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
                         component.reqPreviewGET.draw(vec2(availableSize.x, previewHeight))
 
                     # Tab 2: Server GET Response: Tasks
-                    if igBeginTabItem(fmt"GET {ICON_FA_ARROW_LEFT} Tasks".cstring, nil, ImGuiTabBarFlags_None.int32):
+                    if igBeginTabItemWithValidation(fmt"GET {ICON_FA_ARROW_LEFT} Tasks", getRespError):
                         defer: igEndTabItem()
                         discard igBeginChild_Str("##Tab2Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
                         defer: igEndChild()
@@ -823,20 +969,50 @@ proc draw*(component: ListenerModalComponent): UIListener =
                         component.respPreviewGET.draw(vec2(availableSize.x, previewHeight))
 
                     # Tab 3: Agent POST Request: Task Results/Registration
-                    if igBeginTabItem(fmt"POST {ICON_FA_ARROW_RIGHT} Results".cstring, nil, ImGuiTabBarFlags_None.int32):
+                    if igBeginTabItemWithValidation(fmt"POST {ICON_FA_ARROW_RIGHT} Results", postReqError):
                         defer: igEndTabItem()
                         discard igBeginChild_Str("##Tab3Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
                         defer: igEndChild()
                         igDummy(vec2(0.0f, 8.0f))
 
                         igText("User-Agent:      ")
-                        igMultilineInputFitted("##http-post.user-agent", component.userAgentPOST, "User-Agent for POST requests.\nWhen multiple newline-separated user agents are specified, a random one is chosen for each request.")
+                        if userAgentPOSTError.len() > 0:
+                            igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+                            igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+                            igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+                        
+                        igMultilineInputFitted("##http-post.user-agent", component.userAgentPOST, true)
+                        
+                        if userAgentPOSTError.len() > 0:
+                            igPopStyleColor(3)
+                            if igIsItemHovered(0): setTooltip(userAgentPOSTError)
+                        igHelpMarker("User-Agent for POST requests.\nWhen multiple newline-separated user agents are specified, a random one is chosen for each request.")
 
                         igText("Endpoints:       ")
-                        igMultilineInputFitted("##http-post.endpoints", component.endpointsPOST, "Endpoints for POST requests.\nWhen multiple newline-separated endpoints are specified, a random one is chosen for each request.")
+                        if endpointsPOSTError.len() > 0:
+                            igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+                            igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+                            igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+                        
+                        igMultilineInputFitted("##http-post.endpoints", component.endpointsPOST, true)
+                        
+                        if endpointsPOSTError.len() > 0:
+                            igPopStyleColor(3)
+                            if igIsItemHovered(0): setTooltip(endpointsPOSTError)
+                        igHelpMarker("Endpoints for POST requests.\nWhen multiple newline-separated endpoints are specified, a random one is chosen for each request.")
 
                         igText("Request Methods: ")
-                        igMultilineInputFitted("##http-post.request-methods", component.methods, "Request methods used for POST requests.\nWhen multiple newline-separated HTTP verbs are specified, a random one is chosen for each request. Example:\nPOST\nPUT\nGET")
+                        if methodsError.len() > 0:
+                            igPushStyleColor(ImGuiCol_FrameBg.int32, CONSOLE_ERROR_DIM)
+                            igPushStyleColor(ImGuiCol_FrameBgHovered.int32, CONSOLE_ERROR_HOVERED)
+                            igPushStyleColor(ImGuiCol_FrameBgActive.int32, CONSOLE_ERROR)
+                        
+                        igMultilineInputFitted("##http-post.request-methods", component.methods, true)
+                        
+                        if methodsError.len() > 0:
+                            igPopStyleColor(3)
+                            if igIsItemHovered(0): setTooltip(methodsError)
+                        igHelpMarker("Request methods used for POST requests.\nWhen multiple newline-separated HTTP verbs are specified, a random one is chosen for each request.")
 
                         igDummy(vec2(0.0f, 10.0f))
                         igSeparatorTextWithHelpmarker("Request Headers", "Headers for POST requests.\n\nRandomization:\n - #: Random alphanumeric character\n - $: Random digit\n - Multiple newline-separated values: a random value is chosen for each request.")
@@ -860,7 +1036,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
                         component.reqPreviewPOST.draw(vec2(availableSize.x, previewHeight))
 
                     # Tab 4: Server POST Response
-                    if igBeginTabItem(fmt"POST {ICON_FA_ARROW_LEFT} Response".cstring, nil, ImGuiTabBarFlags_None.int32):
+                    if igBeginTabItemWithValidation(fmt"POST {ICON_FA_ARROW_LEFT} Response", postRespError):
                         defer: igEndTabItem()
                         discard igBeginChild_Str("##Tab4Scroll", vec2(0, contentHeight), ImGuiChildFlags_None.int32, ImGuiWindowFlags_None.int32)
                         defer: igEndChild()

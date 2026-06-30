@@ -235,10 +235,6 @@ proc handleResult*(resultData: seq[byte]) =
                     cq.output(fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).", "\n")
                     cq.sendConsoleItem(agentId, LOG_OUTPUT, fmt"File downloaded to {downloadPath} ({$fileData.len()} bytes).")
 
-                of CMD_CD, CMD_PWD: 
-                    # Update working directory in the client UI
-                    cq.sendWorkingDirectory(agentId, Bytes.toString(taskResult.data))
-
                 of CMD_LINK: 
                     # When an SMB agent is linked, the registration data is sent as the task result of the 'link' command
                     # We register the newly linked agent as a child of the requesting agent
@@ -280,8 +276,8 @@ proc handleResult*(resultData: seq[byte]) =
                 else: discard 
                 
                 # Output RESULT_STRING packets to the agent console
-                if cast[ResultType](taskResult.resultType) == RESULT_STRING:
-                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command, taskId)
+                if cast[ResultType](taskResult.resultType) != RESULT_BINARY:
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command, taskId, cast[ResultType](taskResult.resultType) == RESULT_NO_OUTPUT)
 
             of STATUS_FAILED: 
                 cq.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.")

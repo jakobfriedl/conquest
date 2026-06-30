@@ -90,17 +90,18 @@ proc resetModalValues*(component: PayloadModalComponent) =
     component.buildLog.clear()
     component.resetTab = true
 
-proc igBeginTabItemWithValidation(label: string, hasError: bool): bool =
+#[
+    Validation
+]#
+proc igBeginTabItemWithValidation*(label: string, hasError: bool): bool =
     if hasError:
         igPushStyleColor(ImGuiCol_Tab.int32, CONSOLE_ERROR_DIM)
         igPushStyleColor(ImGuiCol_TabHovered.int32, CONSOLE_ERROR_HOVERED)
         igPushStyleColor(ImGuiCol_TabSelected.int32, CONSOLE_ERROR)
     result = igBeginTabItem(label.cstring, nil, ImGuiTabBarFlags_None.int32)
-    if hasError: igPopStyleColor(3)
+    if hasError: 
+        igPopStyleColor(3)
 
-#[
-    Input Validators
-]#
 proc validateDomainGuardrail(input: string): string =
     if input.strip().len() == 0: return ""
     let pattern = re2"[a-zA-Z0-9][a-zA-Z0-9\-\*\?\.]*"

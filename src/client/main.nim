@@ -274,9 +274,10 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             agentId = event.data["agentId"].getStr() 
                             message = event.data["message"].getStr()
                             taskId = event.data["taskId"].getStr()
+                            noOutput = event.data["noOutput"].getBool()
                             timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
 
-                        if taskId != "" and message.len() > 0: 
+                        if taskId != "" and not noOutput: 
                             cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, @[(fmt"[{timestamp}]", CONSOLE_GRAY), (fmt"[{taskId}] ", CONSOLE_INFO), ("Output:", CONSOLE_DEFAULT)])
 
                         try: 
@@ -450,11 +451,6 @@ proc main(ip: string = "localhost", port: int = 37573) =
                                 currentTable[][entry.name].lastWriteTime = entry.lastWriteTime
                             else:
                                 currentTable[][entry.name] = entry
-
-                    of CLIENT_WORKING_DIRECTORY: 
-                        let agentId = event.data["agentId"].getStr()
-                        if cq.sessions.agents.hasKey(agentId):
-                            cq.sessions.agents[agentId].workingDirectory = some(event.data["directory"].getStr())
 
                     of CLIENT_CHAT: 
                         let user = event.data["user"].getStr()

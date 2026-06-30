@@ -1,4 +1,4 @@
-import tables, strformat, strutils, unicode
+import tables, strformat, strutils, unicode, std/options
 import ../[task, websocket]
 import ../../views/widgets/textarea
 import ../../../common/[utils, serialize]
@@ -322,6 +322,14 @@ proc transportSettings(listenerId: string): string {.exportpy.} =
 proc set_impersonation(agentId, token: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
         cq.connection.sendImpersonationToken(agentId, token)
+
+proc set_workingdir(agentId, path: string) {.exportpy.} =
+    if cq.sessions.agents.hasKey(agentId):
+        cq.sessions.agents[agentId].workingDirectory = 
+            if path != "": 
+                some(path)
+            else: 
+                none(string)
 
 proc add_screenshot*(agentId, filename: string, contents: seq[byte], note: string = "") {.exportpy.} =
     if cq.sessions.agents.hasKey(agentId):

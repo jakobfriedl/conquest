@@ -177,6 +177,10 @@ cmd_ps = (
 cmd_pwd = (
     conquest.createCommand(name="pwd", description="Retrieve current working directory.", example="pwd",
                            message="Tasked agent to retrieve current working directory.", mitre=["T1083"])
+            .setOutputHandler(lambda agentId, output: (
+                conquest.output(agentId, output),
+                conquest.set_workingdir(agentId, output)
+            ))
             .registerToGroup("situational awareness")
             .registerToModule("filesystem")
 )
@@ -185,6 +189,9 @@ cmd_cd = (
     conquest.createCommand(name="cd", description="Change current working directory.", example="cd C:\\Windows\\Tasks", 
                            message="Tasked agent to change working directory.", mitre=["T1083"])
             .addArgString("directory", "Relative or absolute path of the directory to change to.", True)
+            .setOutputHandler(lambda agentId, output: (
+                conquest.set_workingdir(agentId, output)
+            ))
             .registerToGroup("situational awareness")
             .registerToModule("filesystem")
 )

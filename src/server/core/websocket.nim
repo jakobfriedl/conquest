@@ -99,7 +99,7 @@ proc sendEventlogItem*(cq: Conquest, logType: LogType, message: string, clientId
     if cq.clients.len > 0 or clientId != "":
         cq.broadcast(event, clientId)
 
-proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: string, command: string = "", taskId: string = "", clientId: string = "") = 
+proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: string, command: string = "", taskId: string = "", noOutput: bool = false, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_CONSOLE_ITEM,
         timestamp: now().toTime().toUnix(),
@@ -108,7 +108,8 @@ proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: 
             "logType": cast[uint8](logType),
             "command": command,
             "taskId": taskId,
-            "message": message
+            "message": message,
+            "noOutput": noOutput
         }
     )
 
