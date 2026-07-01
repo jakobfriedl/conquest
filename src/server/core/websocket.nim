@@ -31,6 +31,7 @@ proc `%`*(listener: Listener): JsonNode =
     result["listenerId"] = %listener.listenerId
     result["name"] = %listener.name
     result["listenerType"] = %listener.listenerType
+    result["timestamp"] = %listener.timestamp
     
     case listener.listenerType:
     of LISTENER_HTTP:
@@ -87,15 +88,15 @@ type Ifaddrs {.importc: "struct ifaddrs", header: "<ifaddrs.h>".} = object
     ifa_next {.importc.}: ptr Ifaddrs
     ifa_addr {.importc.}: ptr SockAddr
 
-proc getifaddrs(ifap: var ptr Ifaddrs): cint {.importc, header: "<ifaddrs.h>".}
-proc freeifaddrs(ifap: ptr Ifaddrs) {.importc, header: "<ifaddrs.h>".}
+proc getifaddrs(pIfAddrs: var ptr Ifaddrs): cint {.importc, header: "<ifaddrs.h>".}
+proc freeifaddrs(pIfAddrs: ptr Ifaddrs) {.importc, header: "<ifaddrs.h>".}
 
 proc sendInterfaces*(cq: Conquest, clientId: string = "") =
     var addresses = @["0.0.0.0"]
-    var ifap: ptr Ifaddrs
-    if getifaddrs(ifap) == 0:
-        defer: freeifaddrs(ifap)
-        var curr = ifap
+    var pIfAddrs: ptr Ifaddrs
+    if getifaddrs(pIfAddrs) == 0:
+        defer: freeifaddrs(pIfAddrs)
+        var curr = pIfAddrs
         while curr != nil:
             if curr.ifa_addr != nil and curr.ifa_addr.sa_family == TSa_Family(AF_INET):
                 let b = cast[ptr array[4, uint8]](addr cast[ptr Sockaddr_in](curr.ifa_addr).sin_addr)

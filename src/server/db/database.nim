@@ -19,11 +19,12 @@ proc dbInit*(cq: Conquest, dbPath: string) =
             listenerId          TEXT    PRIMARY KEY,
             listenerType        TEXT    NOT NULL,
             name                TEXT    NOT NULL DEFAULT '',
-            hosts               TEXT,
+            timestamp           INTEGER NOT NULL,
             address             TEXT,
-            port                INTEGER UNIQUE,
-            pipe                TEXT,
-            profile             TEXT
+            port                INTEGER,
+            hosts               TEXT,
+            profile             TEXT,
+            pipe                TEXT
         );
 
         CREATE TABLE IF NOT EXISTS agents (

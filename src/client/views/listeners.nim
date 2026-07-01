@@ -1,8 +1,8 @@
-import strutils, sequtils, tables
+import strutils, sequtils, tables, times, algorithm
 import imguin/[cimgui, glfw_opengl, simple]
 import ./modals/[startListener, generatePayload]
 import ./widgets/textarea
-import ../utils/[appImGui, globals]
+import ../utils/[appImGui, globals, utils]
 import ../core/websocket
 import ../../types/[common, client]
 
@@ -34,7 +34,7 @@ proc draw*(component: ListenersTableComponent) =
         igOpenPopup_str("Generate Payload", ImGui_PopupFlags_None.int32)
     igEndDisabled()
 
-    let listeners = component.listeners.values().toSeq()
+    let listeners = component.listeners.values().toSeq().sortedByIt(it.timestamp)
 
     # Profile TOML Preview
     if component.showProfilePreview:
@@ -60,7 +60,7 @@ proc draw*(component: ListenersTableComponent) =
     )
 
     var pendingEdit = false
-    let cols: int32 = 6
+    let cols: int32 = 7
     if igBeginTable("Listeners", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
         igTableSetupColumn("ListenerID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
@@ -69,6 +69,7 @@ proc draw*(component: ListenersTableComponent) =
         igTableSetupColumn("Bind Address", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Bind Port", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Callback", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Creation Date", ImGuiTableColumnFlags_DefaultHide.int32, 0.0f, 0)
 
         igTableSetupScrollFreeze(0, 1)
         igTableHeadersRow()
@@ -85,25 +86,27 @@ proc draw*(component: ListenersTableComponent) =
                 var isSelected = ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i))
                 discard igSelectable_Bool(listener.listenerId.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
             if igTableSetColumnIndex(1):
-                igText(listener.name.cstring)
+                igTextWithTooltip(listener.name)
             if igTableSetColumnIndex(2):
-                igText(($listener.listenerType).cstring)
+                igTextWithTooltip(($listener.listenerType))
             if igTableSetColumnIndex(3):
                 if listener.listenerType == LISTENER_HTTP:
-                    igText(listener.address.cstring)
+                    igTextWithTooltip(listener.address)
                 else:
-                    igText("-")
+                    igTextWithTooltip("-")
             if igTableSetColumnIndex(4):
                 if listener.listenerType == LISTENER_HTTP:
-                    igText(($listener.port).cstring)
+                    igTextWithTooltip(($listener.port))
                 else:
-                    igText("-")
+                    igTextWithTooltip("-")
             if igTableSetColumnIndex(5):
                 if listener.listenerType == LISTENER_HTTP:
                     for host in listener.hosts.split(";"):
-                        igText(host.cstring)
+                        igTextWithTooltip(host)
                 elif listener.listenerType == LISTENER_SMB:
-                    igText(listener.pipe.cstring)
+                    igTextWithTooltip(listener.pipe)
+            if igTableSetColumnIndex(6):
+                igTextWithTooltip(listener.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss"))            
 
         # Right-click context menu
         let showContextMenu =

@@ -1,4 +1,4 @@
-import strutils, strformat, base64, random, sequtils, hashes
+import strutils, strformat, base64, random, sequtils, times, hashes
 import imguin/[cimgui, glfw_opengl]
 import ../widgets/textarea
 import ../../utils/[appImGui, utils, globals, dialogs]
@@ -32,7 +32,6 @@ proc ListenerModal*(): ListenerModalComponent =
     result.respPreviewGET = Textarea(showTimestamps = false, autoScroll = false)
     result.reqPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
     result.respPreviewPOST = Textarea(showTimestamps = false, autoScroll = false)
-
 
 #[
     Validation
@@ -705,7 +704,8 @@ proc generatePostResponse(component: ListenerModalComponent) =
     lines.previewLine(("HTTP/1.1 200 OK", CONSOLE_DEFAULT))
     lines.previewHeader(component.respHeadersPOST, component.previewSeed)
     let body = component.respBody.toString()
-    if body.len() > 0: lines.previewLine((body, CONSOLE_DEFAULT))
+    if body.len() > 0: 
+        lines.previewLine((body, CONSOLE_DEFAULT))
 
     component.respPreviewPOST.updatePreview(component.previewCachePOSTResp, lines, component.previewSeed)
 
@@ -714,6 +714,7 @@ proc generatePostResponse(component: ListenerModalComponent) =
 ]#
 proc draw*(component: ListenerModalComponent): UIListener =
     let textSpacing = igGetStyle().ItemSpacing.x
+    let markerWidth = igCalcTextSize("(?)", nil, false, 0.0f).x + textSpacing
     let shuffleWidth = igCalcTextSize("(?)".cstring, nil, false, 0.0f).x + igGetStyle().ItemSpacing.x
     let modalLabel = if component.editingListener.isNil: "Start Listener" else: "Edit Listener"
     let buttonLabel = if component.editingListener.isNil: "Start" else: "Save"
@@ -773,15 +774,17 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igCombo_Str("##InputAddressBind", addr component.bindAddress, component.interfaces.join("\0").cstring, int32(component.interfaces.len()))
             igSameLine(0.0f, textSpacing)
             let step: uint16 = 1
-            igSetNextItemWidth(igGetContentRegionAvail().x)
+            igSetNextItemWidth(igGetContentRegionAvail().x - markerWidth)
             igInputScalar("##InputPortBind", ImGuiDataType_U16.int32, addr component.bindPort, addr step, nil, "%hu", ImGui_InputTextFlags_CharsDecimal.int32)
+            igHelpMarker("Address and port the listener will bind to on the team server.")
 
             # Callback hosts
             igText("Callback Hosts:   ")
             igSameLine(0.0f, textSpacing)
             availableSize = igGetContentRegionAvail()
             igSetNextItemWidth(availableSize.x)
-            igInputTextMultiline("##InputCallbackHosts", cast[cstring](addr component.callbackHosts[0]), 256 * 32, vec2(0.0f, 3.0f * igGetTextLineHeightWithSpacing()), ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
+            igMultilineInputFitted("##InputCallbackHosts", component.callbackHosts, true)
+            igHelpMarker("Callback hosts that the agent connects to. If multiple are defined, a random entry from the list of callback hosts is selected for each request.\nThe hosts are defined, separated by new-lines, in the format <ip/domain>:<port>. If no port is specified, the bind port is used instead. If no callback hosts are defined at all, the bind host and bind port are used.")
 
             # Only enabled the start button when valid values have been entered
             disableStart = component.interfaces.len() == 0 or component.bindPort <= 0
@@ -801,7 +804,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
             availableSize = igGetContentRegionAvail()
             igSetNextItemWidth(availableSize.x)
             igInputText("##InputPipe", cast[cstring](addr component.pipe[0]), 256, ImGui_InputTextFlags_CharsNoBlank.int32, nil, nil)
-            
+
             if pipeError.len() > 0: 
                 igPopStyleColor(3)
                 if igIsItemHovered(0): setTooltip(pipeError)
@@ -1053,11 +1056,11 @@ proc draw*(component: ListenerModalComponent): UIListener =
         igBeginDisabled(disableStart or component.name.toString.len() <= 0)
         if igButton(buttonLabel.cstring, vec2(availableSize.x * 0.5 - textSpacing * 0.5, 0.0f)):
 
-            let uuid = if component.editingListener.isNil: generateUUID() else: component.editingListener.listenerId
             result = UIListener(
-                listenerId: uuid,
+                listenerId: if component.editingListener.isNil(): generateUUID() else: component.editingListener.listenerId,
                 name: component.name.toString(),
-                listenerType: cast[ListenerType](component.protocol)
+                listenerType: cast[ListenerType](component.protocol),
+                timestamp: if component.editingListener.isNil(): now().toTime().toUnix() else: component.editingListener.timestamp
             )
 
             # Process callback settings

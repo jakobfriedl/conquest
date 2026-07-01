@@ -190,6 +190,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         cq.listeners.startListenerModal.setProfile(cq.profile)
 
                     of CLIENT_INTERFACES:
+                        cq.listeners.startListenerModal.interfaces.setLen(0) # Reset list of interfaces so they are not duplicated
                         for ip in event.data["interfaces"]:
                             cq.listeners.startListenerModal.interfaces.add(ip.getStr())
 

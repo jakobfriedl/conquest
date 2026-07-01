@@ -28,6 +28,7 @@ type
         server*: Server
         listenerId*: string
         name*: string
+        timestamp*: int64
         case listenerType*: ListenerType
         of LISTENER_HTTP: 
             hosts*: string
@@ -40,6 +41,7 @@ type
     UIListener* = ref object
         listenerId*: string
         name*: string
+        timestamp*: int64
         case listenerType*: ListenerType
         of LISTENER_HTTP:
             hosts*: string

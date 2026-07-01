@@ -92,17 +92,18 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
         case listener.listenerType
         of LISTENER_HTTP:
             let server = newServer(handler, maxBodyLen = 1024 * 1024 * 1024)
-            serverProfiles[cast[pointer](server)] = parseString(listener.profile)   # Create table entry to handle profile overwrites
+            serverProfiles[cast[pointer](server)] = parseString(listener.profile) # Create table entry to handle profile overwrites
 
             l = Listener(
-                server: server,
-                listenerId: listener.listenerId,
-                name: listener.name,
-                listenerType: LISTENER_HTTP,
-                hosts: listener.hosts,
-                address: listener.address,
-                port: listener.port,
-                profile: listener.profile
+                listenerId: listener.listenerId, 
+                name: listener.name, 
+                timestamp: listener.timestamp, 
+                listenerType: LISTENER_HTTP, 
+                hosts: listener.hosts, 
+                address: listener.address, 
+                port: listener.port, 
+                profile: listener.profile,
+                server: server
             )
 
             var thread: Thread[Listener]
@@ -110,7 +111,7 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
 
             # Drain stale messages, then poll up to 300ms for a bind failure.
             while errorChannel.tryRecv().dataAvailable: discard
-            for _ in 0 ..< 3:   # Wait for 300ms
+            for _ in 0 ..< 3: # Wait for up to 300ms
                 sleep(100)
                 let r = errorChannel.tryRecv()
                 if r.dataAvailable:
@@ -118,9 +119,10 @@ proc listenerStart*(cq: Conquest, listener: UIListener) =
 
         of LISTENER_SMB:
             l = Listener(
-                listenerId: listener.listenerId,
-                name: listener.name,
-                listenerType: LISTENER_SMB,
+                listenerId: listener.listenerId, 
+                name: listener.name, 
+                timestamp: listener.timestamp, 
+                listenerType: LISTENER_SMB, 
                 pipe: listener.pipe
             )
 
