@@ -202,59 +202,67 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         let listenerId = event.data["listenerId"].getStr()
                         cq.listeners.listeners.del(listenerId)
 
-                    of CLIENT_AGENT_ADD: 
-                        var agent = UIAgent(
-                            agentId: event.data["agentId"].getStr(),
-                            listenerId: event.data["listenerId"].getStr(),
-                            username: event.data["username"].getStr(),
-                            impersonationToken: event.data["impersonationToken"].getStr(),
-                            hostname: event.data["hostname"].getStr(),
-                            domain: event.data["domain"].getStr(),
-                            ipInternal: event.data["ipInternal"].getStr(),
-                            ipExternal: event.data["ipExternal"].getStr(),
-                            os: event.data["os"].getStr(),
-                            process: event.data["process"].getStr(),
-                            pid: event.data["pid"].getInt(),
-                            elevated: event.data["elevated"].getBool(),
-                            sleep: event.data["sleep"].getInt(),
-                            modules: cast[uint32](event.data["modules"].getInt()),
-                            firstCheckin: event.data["firstCheckin"].getInt(),
-                            latestCheckin: event.data["latestCheckin"].getInt(),
-                            parentId: event.data["parentId"].getStr(),
-                            processes: none(Processes),
-                            filesystem: none(OrderedTable[string, DirectoryEntry]),
-                            workingDirectory: none(string),
-                        )
-                    
-                        agent.consoleTitle = fmt" {ICON_FA_TERMINAL} [{agent.agentId}] {agent.username} @ {agent.hostname}"
-                        agent.console = Console(agent.agentId)
-                        agent.console.textarea.addItem(LOG_OUTPUT, @[
-                            ("[" & agent.firstCheckin.fromUnix().local().format("dd-MM-yyyy HH:mm:ss") & "]", CONSOLE_GRAY),
-                            (" Agent ", CONSOLE_DEFAULT),
-                            (agent.agentId, CONSOLE_INFO),
-                            (" connected from ", CONSOLE_DEFAULT),
-                            (agent.username & " @ " & agent.hostname, CONSOLE_INFO),
-                            (" <> ", CONSOLE_ERROR),
-                            ("[OS: ", CONSOLE_DEFAULT),
-                            (agent.os, CONSOLE_INFO),
-                            ("] [Internal: ", CONSOLE_DEFAULT),
-                            (agent.ipInternal, CONSOLE_INFO),
-                            ("] [Process: ", CONSOLE_DEFAULT),
-                            ($agent.pid & "/" & agent.process, CONSOLE_INFO),
-                            ("]", CONSOLE_DEFAULT),
-                        ])
-                        cq.sessions.agents[agent.agentId] = agent
+                    of CLIENT_AGENT_ADD:
+                        let agentId = event.data["agentId"].getStr()
+                        let unknown = not cq.sessions.agents.hasKey(agentId)
 
-                        # Initialize position of console windows to bottom by drawing them once when they are added
-                        # By default, the consoles are attached to the same DockNode as the Listeners table (Default: bottom), 
-                        # so if you place your listeners somewhere else, the console windows show up somewhere else too
-                        # The only case that is not covered is when the listeners table is hidden and the bottom panel was split
-                        let listenersWindow = igFindWindowByName(WIDGET_LISTENERS) 
-                        if listenersWindow != nil and listenersWindow.DockNode != nil:
-                            igSetNextWindowDockID(listenersWindow.DockNode.ID, ImGuiCond_FirstUseEver.int32)
-                        else:
-                            igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
-                        agent.console.draw()
+                        if unknown:
+                            var agent = UIAgent(
+                                agentId: agentId, 
+                                firstCheckin: event.data["firstCheckin"].getInt(), 
+                                processes: none(Processes), 
+                                filesystem: none(OrderedTable[string, DirectoryEntry]), 
+                                workingDirectory: none(string)
+                            )
+                            
+                            agent.console = Console(agent.agentId)
+                            agent.console.textarea.addItem(LOG_OUTPUT, @[
+                                ("[" & agent.firstCheckin.fromUnix().local().format("dd-MM-yyyy HH:mm:ss") & "]", CONSOLE_GRAY),
+                                (" Agent ", CONSOLE_DEFAULT),
+                                (agent.agentId, CONSOLE_INFO),
+                                (" connected from ", CONSOLE_DEFAULT),
+                                (event.data["username"].getStr() & " @ " & event.data["hostname"].getStr(), CONSOLE_INFO),
+                                (" <> ", CONSOLE_ERROR),
+                                ("[OS: ", CONSOLE_DEFAULT),
+                                (event.data["os"].getStr(), CONSOLE_INFO),
+                                ("] [Internal: ", CONSOLE_DEFAULT),
+                                (event.data["ipInternal"].getStr(), CONSOLE_INFO),
+                                ("] [Process: ", CONSOLE_DEFAULT),
+                                ($event.data["pid"].getInt() & "/" & event.data["process"].getStr(), CONSOLE_INFO),
+                                ("]", CONSOLE_DEFAULT),
+                            ])
+                            cq.sessions.agents[agentId] = agent
+
+                        let agent = cq.sessions.agents[agentId]
+                        agent.listenerId = event.data["listenerId"].getStr()
+                        agent.username = event.data["username"].getStr()
+                        agent.impersonationToken = event.data["impersonationToken"].getStr()
+                        agent.hostname = event.data["hostname"].getStr()
+                        agent.domain = event.data["domain"].getStr()
+                        agent.ipInternal = event.data["ipInternal"].getStr()
+                        agent.ipExternal = event.data["ipExternal"].getStr()
+                        agent.os = event.data["os"].getStr()
+                        agent.process = event.data["process"].getStr()
+                        agent.pid = event.data["pid"].getInt()
+                        agent.elevated = event.data["elevated"].getBool()
+                        agent.sleep = event.data["sleep"].getInt()
+                        agent.modules = cast[uint32](event.data["modules"].getInt())
+                        agent.latestCheckin = event.data["latestCheckin"].getInt()
+                        agent.parentId = event.data["parentId"].getStr()
+
+                        agent.consoleTitle = fmt" {ICON_FA_TERMINAL} [{agent.agentId}] {agent.username} @ {agent.hostname}"
+
+                        if unknown:
+                            # Initialize position of console windows to bottom by drawing them once when they are added
+                            # By default, the consoles are attached to the same DockNode as the Listeners table (Default: bottom),
+                            # so if you place your listeners somewhere else, the console windows show up somewhere else too
+                            # The only case that is not covered is when the listeners table is hidden and the bottom panel was split
+                            let listenersWindow = igFindWindowByName(WIDGET_LISTENERS)
+                            if listenersWindow != nil and listenersWindow.DockNode != nil:
+                                igSetNextWindowDockID(listenersWindow.DockNode.ID, ImGuiCond_FirstUseEver.int32)
+                            else:
+                                igSetNextWindowDockID(dockBottom, ImGuiCond_FirstUseEver.int32)
+                            agent.console.draw()
 
                     of CLIENT_AGENT_CHECKIN:
                         let agentId = event.data["agentId"].getStr()

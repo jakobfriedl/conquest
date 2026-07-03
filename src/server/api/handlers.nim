@@ -26,6 +26,11 @@ proc register*(registrationData: seq[byte], remoteAddress: string): bool {.disca
                 cq.error("Failed to create log directory.\n")
                 return false
 
+            if cq.agents.hasKey(agent.agentId):
+                agent.tasks = cq.agents[agent.agentId].tasks
+                agent.taskCommands = cq.agents[agent.agentId].taskCommands
+                agent.links = cq.agents[agent.agentId].links
+                
             cq.agents[agent.agentId] = agent
             cq.info("Agent ", fgYellow, styleBright, agent.agentId, resetStyle, " connected to listener ", fgGreen, styleBright, agent.listenerId, resetStyle, ": ", fgYellow, styleBright, fmt"{agent.username}@{agent.hostname}")
             cq.sendAgent(agent)

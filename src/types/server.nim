@@ -1,4 +1,4 @@
-import mummy, tables, tiny_sqlite
+import mummy, tables, tiny_sqlite, locks
 import ./[common, protocol] 
 
 type 
@@ -68,6 +68,7 @@ type
 type 
     Conquest* = ref object
         db*: DbConn
+        dbLock*: Lock
         listeners*: Table[string, Listener]
         agents*: Table[string, Agent]
         keyPair*: KeyPair

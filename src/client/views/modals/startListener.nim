@@ -770,7 +770,7 @@ proc draw*(component: ListenerModalComponent): UIListener =
             igText("Bind Host & Port: ")
             igSameLine(0.0f, textSpacing)
             availableSize = igGetContentRegionAvail()
-            igSetNextItemWidth(availableSize.x * 0.75f)
+            igSetNextItemWidth(availableSize.x * 0.65f)
             igCombo_Str("##InputAddressBind", addr component.bindAddress, component.interfaces.join("\0").cstring, int32(component.interfaces.len()))
             igSameLine(0.0f, textSpacing)
             let step: uint16 = 1

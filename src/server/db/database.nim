@@ -1,4 +1,4 @@
-import system, terminal, tiny_sqlite
+import system, terminal, tiny_sqlite, locks
 
 import ./[dbAgent, dbListener, dbLoot, dbLink]
 import ../core/logger
@@ -8,9 +8,10 @@ import ../../types/server
 export dbAgent, dbListener, dbLoot, dbLink
 
 proc dbInit*(cq: Conquest, dbPath: string) =
-    
+
     cq.db = openDatabase(dbPath, mode=dbReadWrite)
-    
+    initLock(cq.dbLock)
+
     cq.db.exec("PRAGMA synchronous=NORMAL")
     cq.db.exec("PRAGMA foreign_keys=ON")
     
