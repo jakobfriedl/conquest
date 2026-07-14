@@ -244,7 +244,7 @@ cmd_screenshot = (
 # Token manipulation    
 def _impersonate(agentId, output):
     conquest.output(agentId, output + "\n")
-    match = re.search(r'(?:Impersonated)\s+(\S+?)\.?$', output, re.MULTILINE)
+    match = re.search(r'(?:Impersonated)\s+(.+?)\.?$', output, re.MULTILINE)
     if match:
         conquest.set_impersonation(agentId, match.group(1)) 
 

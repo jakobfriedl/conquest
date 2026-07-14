@@ -103,6 +103,7 @@ proc getCommands*(component: ScriptManagerComponent): OrderedTable[string, Comma
 
 proc getCommand*(component: ScriptManagerComponent, name: string): Command = 
     let commands = component.getCommands()
-    if name notin commands:
-        raise newException(ValueError, fmt"The command '{name}' does not exist.")
-    return commands[name]
+    let command = name.toLowerAscii()
+    if command notin commands:
+        raise newException(ValueError, fmt"The command '{command}' does not exist.")
+    return commands[command]
