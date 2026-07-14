@@ -61,14 +61,14 @@ proc serializeConfiguration(cq: Conquest, agentBuildInformation: AgentBuildInfor
 
     # Encrypt profile configuration data with a newly generated encryption key
     var aesKey = generateBytes(Key) 
-    let iv = generateBytes(Iv)
+    let nonce = generateBytes(Nonce)
 
-    let (encData, gmac) = encrypt(aesKey, iv, data)
+    let (encData, mac) = encrypt(aesKey, nonce, data)
 
     # Add plaintext encryption material in front of the 
     packer.addData(aesKey)
-    packer.addData(iv)
-    packer.addData(gmac)
+    packer.addData(nonce)
+    packer.addData(mac)
     packer.add(uint32(encData.len()))
     let encMaterial = packer.pack() 
 
@@ -136,7 +136,7 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
     cq.sendBuildlogItem(LOG_INFO_SHORT, "Compiling agent...", clientId = clientId)
     
     try:
-        # Using the startProcess function from the 'osproc' module, it is possible to retrieve the output as it is received, line-by-line instead of all at once
+        # Using the startProcess function from the 'osproc' module, it is possible to retrieve the output as it is recenonceed, line-by-line instead of all at once
         let process = startProcess("/bin/bash", args=["-c", buildCommand], options={poUsePath, poStdErrToStdOut})
         let outputStream = process.outputStream
 

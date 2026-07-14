@@ -10,7 +10,7 @@ import ../types/[common, event]
 proc sendEvent*(ws: WebSocket, event: Event, key: Key = default(Key)) = 
     var packer = Packer.init() 
 
-    let iv = generateBytes(Iv)
+    let nonce = generateBytes(Nonce)
     var data = string.toBytes($event.data)
 
     packer.add(cast[uint8](event.eventType))
@@ -21,10 +21,10 @@ proc sendEvent*(ws: WebSocket, event: Event, key: Key = default(Key)) =
         let compressed = compress(data, BestCompression, dfGzip)
         
         # Encrypt data
-        let (encData, gmac) = encrypt(key, iv, compressed)
+        let (encData, mac) = encrypt(key, nonce, compressed)
         
-        packer.addData(iv)      # 12 bytes IV
-        packer.addData(gmac)    # 16 bytes Authentication Tag
+        packer.addData(nonce)       # 12 bytes IV
+        packer.addData(mac)         # 16 bytes Authentication Tag
         packer.addDataWithLengthPrefix(encData)
     else: 
         packer.addDataWithLengthPrefix(data)
@@ -44,14 +44,12 @@ proc recvEvent*(message: Message, key: Key = default(Key)): Event =
     if eventType != CLIENT_KEY_EXCHANGE and eventType != CLIENT_HEARTBEAT: 
     
         let 
-            iv = unpacker.getByteArray(Iv)
-            gmac = unpacker.getByteArray(AuthenticationTag)
+            nonce = unpacker.getByteArray(Nonce)
+            mac = unpacker.getByteArray(AuthenticationTag)
             encData = string.toBytes(unpacker.getDataWithLengthPrefix())
     
         # Decrypt data
-        let (decData, tag) = decrypt(key, iv, encData)
-        if tag != gmac: 
-            raise newException(CatchableError, "Invalid authentication tag.")
+        let decData = decrypt(key, nonce, encData, 0, mac)
 
         # Decompress data
         data = Bytes.toString(uncompress(decData, dfGzip))

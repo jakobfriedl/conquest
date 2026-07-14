@@ -17,11 +17,11 @@ proc deserializeTask*(ctx: AgentCtx, bytes: seq[byte]): Task =
     let header = unpacker.deserializeHeader()
 
     # Packet Validation
-    validatePacket(header, cast[uint8](MSG_TASK)) 
+    validatePacket(header, MSG_TASK) 
 
     # Decrypt payload 
     let compressedPayload = unpacker.getBytes(int(header.size))
-    let decData = validateDecryption(ctx.sessionKey, header.iv, compressedPayload, header.seqNr, header)
+    let decData = decrypt(ctx.sessionKey, header.nonce, compressedPayload, header.seqNr, header.mac)
 
     # Decompress payload 
     let payload = uncompress(decData, dfGzip)

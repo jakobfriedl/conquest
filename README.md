@@ -19,7 +19,7 @@ For more information about architecture, usage and features, check out the [docu
   
 - Different listener types: HTTP, SMB
 - Advanced malleable C2 profile system for configuring network traffic (TOML v1.1)
-- Encrypted C2 communication leveraging AES256-GCM and X25519 key exchange
+- Secure C2 communication leveraging X25519 key exchange and symmetric ChaCha20-Poly1305 encryption
 - Logging of all operator activity
 - Loot management:
   - Downloads
@@ -49,8 +49,9 @@ For more information about architecture, usage and features, check out the [docu
 - In-memory execution of DLLs
 - Token manipulation & token vault
 - AMSI/ETW patching via hardware breakpoints
-- Compile-time string obfuscation 
+- Compile-time string obfuscation
 - Self-destruct functionality
+- Dynamic HTTP channel switching
 - Execution guardrails
 - Agent kill date & working hours
 

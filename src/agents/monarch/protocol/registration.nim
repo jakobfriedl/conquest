@@ -12,8 +12,8 @@ proc createRegistration*(ctx: AgentCtx, metadata: AgentMetadata): Registration =
             size: 0'u32,
             agentId: string.toUuid(ctx.agentId),
             seqNr: nextSequence(string.toUuid(ctx.agentId)),                              
-            iv: generateBytes(Iv),
-            gmac: default(AuthenticationTag)
+            nonce: generateBytes(Nonce),
+            mac: default(AuthenticationTag)
         ), 
         agentPublicKey: ctx.agentPublicKey,
         metadata: metadata
@@ -45,10 +45,10 @@ proc serializeRegistrationData*(ctx: AgentCtx, data: var Registration): seq[byte
     let compressedPayload = compress(metadata, BestCompression, dfGzip)
 
     # Encrypt metadata
-    let (encData, gmac) = encrypt(ctx.sessionKey, data.header.iv, compressedPayload, data.header.seqNr)
+    let (encData, mac) = encrypt(ctx.sessionKey, data.header.nonce, compressedPayload, data.header.seqNr)
 
-    # Set authentication tag (GMAC)
-    data.header.gmac = gmac
+    # Set authentication tag (MAC)
+    data.header.mac = mac
 
     # Serialize header
     let header = packer.serializeHeader(data.header, uint32(encData.len))

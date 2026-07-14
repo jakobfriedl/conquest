@@ -652,7 +652,7 @@ proc sleepObfuscate*(sleepSettings: SleepSettings, hWakeupEvent: HANDLE) =
             break
 
     # Generate random encryption key
-    var keyBuffer: string = Bytes.toString(generateBytes(KeyRC4)) 
+    var keyBuffer: string = Bytes.toString(generateBytes(16)) 
     key.Buffer = cast[PVOID](addr keyBuffer[0]) 
     key.Length = cast[DWORD](keyBuffer.len())
 

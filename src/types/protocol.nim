@@ -2,8 +2,8 @@ import ./common
 
 const   
     MAGIC* = 0x514E3043'u32     # Magic value: C0NQ
-    VERSION* = 1'u8             # Version 1
-    HEADER_SIZE* = 48'u8        # 48 bytes fixed packet header size
+    VERSION* = 1'u8             # Version 1 
+    HEADER_SIZE* = 60'u8        # 60 bytes fixed packet header size
 
 type
     HeaderFlags* = enum 
@@ -32,8 +32,8 @@ type
         size*: uint32               # [4 bytes ] size of the payload body
         agentId*: Uuid              # [4 bytes ] agent id, used as AAD for encryption
         seqNr*: uint32              # [4 bytes ] sequence number, used as AAD for encryption
-        iv*: Iv                     # [12 bytes] random IV for AES256 GCM encryption
-        gmac*: AuthenticationTag    # [16 bytes] authentication tag for AES256 GCM encryption
+        nonce*: Nonce               # [24 bytes] random nonce for ChaCha20-Poly1305 encryption
+        mac*: AuthenticationTag     # [16 bytes] authentication tag for ChaCha20-Poly1305 encryption
 
     TaskArg* = object 
         argType*: uint8             # [1 byte  ] argument type
@@ -60,7 +60,7 @@ type
         data*: seq[byte]            # variable length result
 
     Heartbeat* = object 
-        header*: Header            # [48 bytes ] fixed header
+        header*: Header            # [60 bytes ] fixed header
         listenerId*: Uuid          # [4 bytes  ] listener id
         timestamp*: uint32         # [4 bytes  ] unix timestamp
 

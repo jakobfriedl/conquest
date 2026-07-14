@@ -163,8 +163,8 @@ proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[s
     taskHeader.size = 0'u32
     taskHeader.agentId = string.toUuid(agentId)
     taskHeader.seqNr = nextSequence(taskHeader.agentId)
-    taskHeader.iv = generateBytes(Iv)
-    taskHeader.gmac = default(AuthenticationTag)
+    taskHeader.nonce = generateBytes(Nonce)
+    taskHeader.mac = default(AuthenticationTag)
     result.header = taskHeader
 
 # Wrapper functions for dispatching tasks to the agent

@@ -1,70 +1,64 @@
 import system
-import nimcrypto
-
 import ./utils
-import ../types/[common, protocol]
+import ../types/common
+
+# Monocypher C function imports from (monocypher/monocypher.c)
+{.compile: protect("monocypher/monocypher.c").}
+proc crypto_aead_lock*(cipher_text: ptr byte, mac: ptr byte, key: ptr byte, nonce: ptr byte, ad: ptr byte, ad_size: csize_t, plain_text: ptr byte, text_size: csize_t) {.importc, cdecl.}
+proc crypto_aead_unlock*(plain_text: ptr byte, mac: ptr byte, key: ptr byte, nonce: ptr byte, ad: ptr byte, ad_size: csize_t, cipher_text: ptr byte, text_size: csize_t): cint {.importc, cdecl.}
+proc crypto_x25519*(shared_secret: ptr byte, your_secret_key: ptr byte, their_public_key: ptr byte) {.importc, cdecl.}
+proc crypto_x25519_public_key*(public_key: ptr byte, secret_key: ptr byte) {.importc, cdecl.}
+proc crypto_blake2b_keyed*(hash: ptr byte, hash_size: csize_t, key: ptr byte, key_size: csize_t, message: ptr byte, message_size: csize_t) {.importc, cdecl.}
+proc crypto_wipe*(data: ptr byte, size: csize_t) {.importc, cdecl.}
 
 #[
-    Symmetric AES256 GCM encryption for secure C2 traffic
-    Ensures both confidentiality and integrity of the packet 
+    Symmetric encryption using ChaCha20-Poly1305
+    Ensures both confidentiality and integrity of the packet using a message authentication code (MAC)
+     - https://monocypher.org/manual/aead
 ]#
-proc generateBytes*(T: typedesc[Key | Iv | KeyRC4]): array =
-    var bytes: T
-    if randomBytes(bytes) != sizeof(T): 
-        raise newException(CatchableError, protect("Failed to generate byte array."))
-    return bytes
 
-proc encrypt*(key: Key, iv: Iv, data: seq[byte], sequenceNumber: uint32 = 0): (seq[byte], AuthenticationTag) =
-    
-    # Encrypt data using AES-256 GCM
+proc encrypt*(key: Key, nonce: Nonce, data: seq[byte], sequenceNumber: uint32 = 0): (seq[byte], AuthenticationTag) =
     var encData = newSeq[byte](data.len)
-    var tag: AuthenticationTag
-    
-    var ctx: GCM[aes256]
-    ctx.init(key, iv, uint32.toBytes(sequenceNumber))    
-    
-    ctx.encrypt(data, encData)
-    ctx.getTag(tag)
-    ctx.clear()
-    
-    return (encData, tag)
+    var mac: AuthenticationTag
+    let aad = uint32.toBytes(sequenceNumber)
 
-proc decrypt*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint32 = 0): (seq[byte], AuthenticationTag) =
+    crypto_aead_lock(
+        addr encData[0],                # Encrypted data
+        addr mac[0],                    # Authentication tag 
+        addr key[0],                    # Encryption key 
+        addr nonce[0],                  # Nonce
+        addr aad[0],                    # Additional authentication data: sequence number
+        cast[csize_t](aad.len()),       # AAD length
+        addr data[0],                   # Plaintext data 
+        cast[csize_t](data.len())       # Plaintext length
+    )
     
-    # Decrypt data using AES-256 GCM
+    return (encData, mac)
+
+proc decrypt*(key: Key, nonce: Nonce, encData: seq[byte], sequenceNumber: uint32 = 0, mac: AuthenticationTag): seq[byte] =
     var data = newSeq[byte](encData.len)
-    var tag: AuthenticationTag
-    
-    var ctx: GCM[aes256]
-    ctx.init(key, iv, uint32.toBytes(sequenceNumber))
-    
-    ctx.decrypt(encData, data)
-    ctx.getTag(tag)
-    ctx.clear()
-    
-    return (data, tag)
+    let aad = uint32.toBytes(sequenceNumber)
 
-proc validateDecryption*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint32, header: Header): seq[byte] = 
-
-    let (decData, gmac) = decrypt(key, iv, encData, sequenceNumber)
-
-    if gmac != header.gmac: 
+    if crypto_aead_unlock(
+        addr data[0],                   # Decrypted data
+        addr mac[0],                    # Authentication tag to validate against
+        addr key[0],                    # Encryption key 
+        addr nonce[0],                  # Nonce 
+        addr aad[0],                    # Additional authentication data: sequence number
+        cast[csize_t](aad.len()),       # AAD length 
+        addr encData[0],                # Ciphertext data
+        cast[csize_t](encData.len())    # Ciphertext length 
+    ) != 0:
+        crypto_wipe(addr data[0], cast[csize_t](data.len()))
         raise newException(CatchableError, protect("Invalid authentication tag."))
-
-    return decData
+        
+    return data
 
 #[
     Key exchange using X25519 and Blake2b
     Elliptic curve cryptography ensures that the actual session key is never sent over the network
     Private keys and shared secrets are wiped from agent memory as soon as possible 
 ]#
-{.compile: protect("monocypher/monocypher.c").}
-
-# C function imports from (monocypher/monocypher.c)
-proc crypto_x25519*(shared_secret: ptr byte, your_secret_key: ptr byte, their_public_key: ptr byte) {.importc, cdecl.}
-proc crypto_x25519_public_key*(public_key: ptr byte, secret_key: ptr byte) {.importc, cdecl.}
-proc crypto_blake2b_keyed*(hash: ptr byte, hash_size: csize_t, key: ptr byte, key_size: csize_t, message: ptr byte, message_size: csize_t) {.importc, cdecl.}
-proc crypto_wipe*(data: ptr byte, size: csize_t) {.importc, cdecl.}
 
 # Generate X25519 public key from private key
 proc getPublicKey*(privateKey: Key): Key =

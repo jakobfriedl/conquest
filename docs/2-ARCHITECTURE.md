@@ -68,7 +68,7 @@ Conquest’s C2 communication occurs over HTTP and uses 4 distinct types of pack
 - **Task**: When an operator interacts with an agents and executes a command, a task packet is dispatched that contains the command to be executed and all arguments.
 - **Result**: After an agent completes a task, it sends a packet containing the command output to the team server, which displays the result to the operator.
 
-Each packet consists of a fixed-size header and a variable-length body, with the header containing important unencrypted metadata that helps the recipient process the rest of the packet. Among other fields, it contains the 4-byte hex-identifier of the agent, which tells the team server which agent is polling for tasks or posting results. The variable-length payload body is encrypted using AES-256 GCM using a asymmetrically shared session key and a randomly generated initialization vector (IV), which is included in the header for every message. The GCM mode of operation creates the 16-byte Galois Message Authentication Code (GMAC), which is used to verify that the message has not been tampered with. The cryptographic implementations are more thoroughly explained in the [Cryptography](#cryptography) section.
+Each packet consists of a fixed-size header and a variable-length body,  with the header containing important unencrypted metadata that helps the recipient process the rest of the packet. Among other fields, it contains the 4-byte identifier of the agent, which tells the team server which agent is polling for tasks or posting results. The variable-length payload body is encrypted using ChaCha20-Poly1305 using an asymmetrically shared session key and a randomly generated 24-byte nonce, which is included in the header for every message. The sequence number of the packet is used as additional authenticated data (AAD) securing it against modification for replay attacks. ChaCha20-Poly1305 produces a 16-byte MAC, which is used to verify that the message has not been tampered with. The cryptographic implementations are more thoroughly explained in the [Cryptography](#cryptography) section.
 
 ```
    0               1               2               3               4
@@ -84,13 +84,16 @@ Each packet consists of a fixed-size header and a variable-length body, with the
 20 │                       Sequence Number                         │
    ├───────────────────────────────────────────────────────────────┤
 24 │                                                               │
-28 │                        IV (12 bytes)                          │
-32 │                                                               │
-   ├───────────────────────────────────────────────────────────────┤
+28 │                                                               │
+32 │                      Nonce (24 bytes)                         │
 36 │                                                               │
-40 │                   GMAC Authentication Tag                     │
-44 │                          (16 bytes)                           │
+40 │                                                               │
+44 │                                                               │
+   ├───────────────────────────────────────────────────────────────┤
 48 │                                                               │
+52 │                   Message Authentication Code                 │
+56 │                          (16 bytes)                           │
+60 │                                                               │
    └───────────────────────────────────────────────────────────────┘
                                [Header]
 ```
@@ -98,15 +101,15 @@ Each packet consists of a fixed-size header and a variable-length body, with the
 Here is the Nim type for the Header:
 ```nim
 type Header* = object
-        magic*: uint32              # [4 bytes ] magic value 
-        version*: uint8             # [1 byte  ] protocol version
-        packetType*: uint8          # [1 byte  ] message type 
-        flags*: uint16              # [2 bytes ] message flags
-        size*: uint32               # [4 bytes ] size of the payload body
-        agentId*: Uuid              # [4 bytes ] agent id, used as AAD for encryption
-        seqNr*: uint32              # [4 bytes ] sequence number, used as AAD for encryption
-        iv*: Iv                     # [12 bytes] random IV for AES256 GCM encryption
-        gmac*: AuthenticationTag    # [16 bytes] authentication tag for AES256 GCM encryption
+   magic*: uint32              # [4 bytes ] magic value 
+   version*: uint8             # [1 byte  ] protocol version
+   packetType*: uint8          # [1 byte  ] message type 
+   flags*: uint16              # [2 bytes ] message flags
+   size*: uint32               # [4 bytes ] size of the payload body
+   agentId*: Uuid              # [4 bytes ] agent id, used as AAD for encryption
+   seqNr*: uint32              # [4 bytes ] sequence number, used as AAD for encryption
+   nonce*: Nonce               # [24 bytes] random nonce for ChaCha20-Poly1305 encryption
+   mac*: AuthenticationTag     # [16 bytes] authentication tag for ChaCha20-Poly1305 encryption
 ```
 
 ### Registration 
@@ -141,7 +144,7 @@ The **Heartbeat** packet is comparable to a simple Check-in request. Between sle
 
 ```nim
 type Heartbeat* = object 
-    header*: Header            # [48 bytes ] fixed header
+    header*: Header            # [60 bytes ] fixed header
     listenerId*: Uuid          # [4 bytes  ] listener id
     timestamp*: uint32         # [4 bytes  ] unix timestamp
 ```
@@ -212,14 +215,14 @@ For each task that an agent executes, a result packet is sent to the team server
    0               2               4               6               8
    ├───────────────┴───────────────┴───────────────┴───────────────┤
 0  │                                                               |
-   |                       Header (48 bytes)                       |
+   |                       Header (60 bytes)                       |
    |                                                               |
    ├───────────────────────────────┬───────────────────────────────┤
-48 │            Task ID            │           Listener ID         │
+60 │            Task ID            │           Listener ID         │
    ├───────────────────────────────┼───────────────┬────────┬──────┤
-56 |           Timestamp           │      CMD      │ Status │ Type │
+68 |           Timestamp           │      CMD      │ Status │ Type │
    ├───────────────────────────────┼───────────────┴────────┴──────┤
-64 │            Length             │                               │
+76 │            Length             │                               │
    ├───────────────────────────────┘                               │
    │                                                               │
    │                         Result Data                           │
@@ -250,7 +253,7 @@ As mentioned before, the payload body of a network packet is serialized and encr
 - A 32-byte session key is derived from the shared secret, which is used to encrypt all C2 communication.
 - Ephemeral keys, such as the agent’s private key and the shared secret are **wiped from memory** as soon as they are no longer needed to prevent them from being compromised.
 
-The X25519 implementation used in Conquest is exposed by the [Monocypher](https://monocypher.org/) library. The shared secret is not suitable to be used as the encryption key, as it is not cryptographically random. To derive a session key, the secret is hashed using the Blake2B hashing algorithm along with some other information, such as the public keys and a message, to create a secure 32-byte key.
+The X25519 implementation used in Conquest is exposed by the [Monocypher](https://monocypher.org/manual/x25519) library. The shared secret is not suitable to be used as the encryption key, as it is not cryptographically random. To derive a session key, the secret is hashed using the Blake2B hashing algorithm along with some other information, such as the public keys and a message, to create a secure 32-byte key.
 
 ```nim
 # Key derivation
@@ -281,40 +284,45 @@ proc deriveSessionKey*(keyPair: KeyPair, publicKey: Key): Key =
 
 When a `Monarch` is generated, it has the public key of the team server patched into it's binary. When the agent is executed, it generates its own key pair. Using the newly created private key and the servers’ public key, it subsequently derives the session key used for the packet encryption. At that point, the agent can wipe its own private key from memory, as it is no longer needed. For the server to be able to derive the same session key, the agent includes its public key in the registration packet, as mentioned before. When the server deserializes and parses the registration packet, it uses its own private key and the agent’s public key to derive the same session key and stores it in a database. Following this exchange, all communication between an agent and the server is encrypted using this session key as explained in the following section.
 
-With the key exchange completed, what follows is the encryption of a network packet’s body using the AES-256 block cipher in the Galois/Counter Mode (GCM) mode of operation. GCM provides authenticated encryption with associated data (AEAD), ensuring that both confidentiality and integrity are guaranteed. This is achieved by combining the Counter Mode (CTR) for encryption and GHASH for authentication. In addition to encrypting the data, an authentication tag, also known as Galois Message Authentication Code (GMAC) is calculated based on the encrypted data and additional authenticated data (AAD). AAD is any unencrypted data, for which integrity and authenticity should be ensured, such as the sequence number that prevents packet replay attacks. If the ciphertext or sequence number of a packet are modified before it is received, the recipient’s recalculation of the 16-byte GMAC will not match the tag included in the packet header, allowing the server or agent to detect tampering and discard the packet.
+With the key exchange completed, what follows is the encryption of a network packet's body using ChaCha20-Poly1305, a stream cipher construction that provides authenticated encryption with associated data (AEAD), ensuring both confidentiality and integrity. This is achieved by combining the ChaCha20 stream cipher for encryption and Poly1305 for authentication. In addition to encrypting the data, a 16-byte authentication tag is calculated based on the ciphertext and additional authenticated data (AAD). AAD is any unencrypted data for which integrity and authenticity should be ensured, such as the sequence number to prevent replay attacks. If the ciphertext or sequence number of a packet are modified before it is received, the recipient's recalculation of the Poly1305 tag will not match the message authentication code included in the packet header, allowing the server or agent to detect tampering and discard the packet. The ChaCha20-Poly1305 implementation used in Conquest is provided by the [Monocypher](https://monocypher.org/manual/aead) library.
 
 ```nim
-import nimcrypto 
-
-proc encrypt*(key: Key, iv: Iv, data: seq[byte], sequenceNumber: uint32): (seq[byte], AuthenticationTag) =
-    
-    # Encrypt data using AES-256 GCM
+proc encrypt*(key: Key, nonce: Nonce, data: seq[byte], sequenceNumber: uint32 = 0): (seq[byte], AuthenticationTag) =
     var encData = newSeq[byte](data.len)
-    var tag: AuthenticationTag
-    
-    var ctx: GCM[aes256]
-    ctx.init(key, iv, sequenceNumber.toBytes())    
-    
-    ctx.encrypt(data, encData)
-    ctx.getTag(tag)
-    ctx.clear()
-    
-    return (encData, tag)
+    var mac: AuthenticationTag
+    let aad = uint32.toBytes(sequenceNumber)
 
-proc decrypt*(key: Key, iv: Iv, encData: seq[byte], sequenceNumber: uint32): (seq[byte], AuthenticationTag) =
+    crypto_aead_lock(
+        addr encData[0],                # Encrypted data
+        addr mac[0],                    # Authentication tag 
+        addr key[0],                    # Encryption key 
+        addr nonce[0],                  # Nonce
+        addr aad[0],                    # Additional authentication data: sequence number
+        cast[csize_t](aad.len()),       # AAD length
+        addr data[0],                   # Plaintext data 
+        cast[csize_t](data.len())       # Plaintext length
+    )
     
-    # Decrypt data using AES-256 GCM
+    return (encData, mac)
+
+proc decrypt*(key: Key, nonce: Nonce, encData: seq[byte], sequenceNumber: uint32 = 0, mac: AuthenticationTag): seq[byte] =
     var data = newSeq[byte](encData.len)
-    var tag: AuthenticationTag
-    
-    var ctx: GCM[aes256]
-    ctx.init(key, iv, sequenceNumber.toBytes())
-    
-    ctx.decrypt(encData, data)
-    ctx.getTag(tag)
-    ctx.clear()
-    
-    return (data, tag)
+    let aad = uint32.toBytes(sequenceNumber)
+
+    if crypto_aead_unlock(
+        addr data[0],                   # Decrypted data
+        addr mac[0],                    # Authentication tag to validate against
+        addr key[0],                    # Encryption key 
+        addr nonce[0],                  # Nonce 
+        addr aad[0],                    # Additional authentication data: sequence number
+        cast[csize_t](aad.len()),       # AAD length 
+        addr encData[0],                # Ciphertext data
+        cast[csize_t](encData.len())    # Ciphertext length 
+    ) != 0:
+        crypto_wipe(addr data[0], cast[csize_t](data.len()))
+        raise newException(CatchableError, protect("Invalid authentication tag."))
+        
+    return data
 ```
 
 ## Directory Structure

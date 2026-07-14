@@ -28,14 +28,14 @@ proc validateSequence(agentId: uint32, seqNr: uint32, packetType: uint8): bool =
     ingressTable[agentId] = seqNr
     return true
 
-proc validatePacket*(header: Header, expectedType: uint8) = 
+proc validatePacket*(header: Header, expectedType: PacketType) = 
     
     # Validate magic number
     if header.magic != MAGIC:
         raise newException(CatchableError, protect("Invalid magic bytes."))
 
     # Validate packet type
-    if header.packetType != expectedType: 
+    if cast[PacketType](header.packetType) != expectedType: 
         raise newException(CatchableError, protect("Invalid packet type."))
 
     # Validate sequence number 

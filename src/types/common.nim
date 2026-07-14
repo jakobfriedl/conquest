@@ -3,10 +3,11 @@ import ../common/toml/toml
 type    
     Uuid* = uint32
     Bytes* = seq[byte]
+
+    # https://monocypher.org/manual/aead
     Key* = array[32, byte]
-    Iv* = array[12, byte]
+    Nonce* = array[24, byte]
     AuthenticationTag* = array[16, byte]
-    KeyRC4* = array[16, byte]
 
 type 
     KeyPair* = object 

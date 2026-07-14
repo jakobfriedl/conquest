@@ -1,6 +1,6 @@
 import macros, hashes
-import strutils, nimcrypto
-
+import strutils
+import std/sysrand 
 import ../types/common
 
 proc toString*(T: type Bytes, data: openArray[byte]): string =
@@ -59,6 +59,38 @@ proc xorBytes*(data: seq[byte], key: int): seq[byte] =
 #[
     Utility functions
 ]#
+proc generateBytes*(T: typedesc[Key | Nonce]): T =
+    var bytes: T
+    if not urandom(bytes):
+        raise newException(CatchableError, protect("Failed to generate byte array."))
+    return bytes
+
+proc generateBytes*(size: static int): array[size, byte] =
+    if not urandom(result):
+        raise newException(CatchableError, protect("Failed to generate byte array."))
+
+proc toHex*(T: type Bytes, data: seq[byte]): string =
+    result = newStringOfCap(data.len * 2)
+    for b in data:
+        result.add b.toHex(2).toLowerAscii
+
+proc hexDigit(c: char): byte {.inline.} =
+    case c
+    of '0'..'9': byte(ord(c) - ord('0'))
+    of 'a'..'f': byte(ord(c) - ord('a') + 10)
+    of 'A'..'F': byte(ord(c) - ord('A') + 10)
+    else: 0
+
+proc fromHex*(T: type Bytes, hex: string): seq[byte] =
+    result = newSeq[byte](hex.len div 2)
+    for i in 0..<result.len:
+        result[i] = (hex[i*2].hexDigit shl 4) or hex[i*2+1].hexDigit
+
+proc fromHex*(T: type Bytes, hex: seq[byte]): seq[byte] =
+    result = newSeq[byte](hex.len div 2)
+    for i in 0..<result.len:
+        result[i] = (hex[i*2].char.hexDigit shl 4) or hex[i*2+1].char.hexDigit
+
 proc toUuid*(T: type string, uuid: string): Uuid = 
     return fromHex[uint32](uuid)
 
@@ -67,10 +99,7 @@ proc toString*(T: type Uuid, uuid: Uuid): string =
 
 proc generateUUID*(): string = 
     # Create a 4-byte HEX UUID string (8 characters)
-    var uuid: array[4, byte]
-    if randomBytes(uuid) != 4: 
-        raise newException(CatchableError, protect("Failed to generate UUID."))
-    return uuid.toHex().toUpperAscii()
+    return Bytes.toHex(@(generateBytes(4))).toUpperAscii()
 
 proc toUint32*(T: type Bytes, data: seq[byte]): uint32 =
     if data.len != 4:
@@ -121,25 +150,3 @@ proc toKey*(value: string): Key =
         raise newException(ValueError, protect("Invalid key length."))
   
     copyMem(addr result[0], addr value[0], 32)
-
-proc toHex*(T: type Bytes, data: seq[byte]): string =
-    result = newStringOfCap(data.len * 2)
-    for b in data:
-        result.add b.toHex(2).toLowerAscii
-
-proc hexDigit(c: char): byte {.inline.} =
-    case c
-    of '0'..'9': byte(ord(c) - ord('0'))
-    of 'a'..'f': byte(ord(c) - ord('a') + 10)
-    of 'A'..'F': byte(ord(c) - ord('A') + 10)
-    else: 0
-
-proc fromHex*(T: type Bytes, hex: string): seq[byte] =
-    result = newSeq[byte](hex.len div 2)
-    for i in 0..<result.len:
-        result[i] = (hex[i*2].hexDigit shl 4) or hex[i*2+1].hexDigit
-
-proc fromHex*(T: type Bytes, hex: seq[byte]): seq[byte] =
-    result = newSeq[byte](hex.len div 2)
-    for i in 0..<result.len:
-        result[i] = (hex[i*2].char.hexDigit shl 4) or hex[i*2+1].char.hexDigit

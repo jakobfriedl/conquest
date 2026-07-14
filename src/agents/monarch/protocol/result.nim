@@ -12,8 +12,8 @@ proc createTaskResult*(ctx: AgentCtx, task: Task, status: StatusType, resultType
             size: 0'u32,
             agentId: string.toUuid(ctx.agentId),
             seqNr: nextSequence(string.toUuid(ctx.agentId)), 
-            iv: generateBytes(Iv),
-            gmac: default(array[16, byte])
+            nonce: generateBytes(Nonce),
+            mac: default(array[16, byte])
         ), 
         taskId: task.taskId,
         listenerId: string.toUuid(ctx.transport.listenerId),
@@ -46,10 +46,10 @@ proc serializeTaskResult*(ctx: AgentCtx, taskResult: var TaskResult): seq[byte] 
     let compressedPayload = compress(body, BestCompression, dfGzip)
 
     # Encrypt result body 
-    let (encData, gmac) = encrypt(ctx.sessionKey, taskResult.header.iv, compressedPayload, taskResult.header.seqNr)
+    let (encData, mac) = encrypt(ctx.sessionKey, taskResult.header.nonce, compressedPayload, taskResult.header.seqNr)
 
-    # Set authentication tag (GMAC)
-    taskResult.header.gmac = gmac
+    # Set authentication tag (MAC)
+    taskResult.header.mac = mac
 
     # Serialize header 
     let header = packer.serializeHeader(taskResult.header, uint32(encData.len))

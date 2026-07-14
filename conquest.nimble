@@ -8,7 +8,6 @@ srcDir      = "src"
 # Dependencies
 requires "nim >= 2.2.10"
 
-requires "nimcrypto >= 0.6.4"
 requires "tiny_sqlite >= 0.2.0"
 requires "winim >= 3.9.4"
 requires "ptr_math >= 0.3.0"

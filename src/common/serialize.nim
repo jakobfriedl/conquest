@@ -116,7 +116,7 @@ proc getBytes*(unpacker: Unpacker, length: int): seq[byte] =
     if bytesRead != length:
         raise newException(IOError, protect("Not enough data to read"))
 
-proc getByteArray*(unpacker: Unpacker, T: typedesc[Key | Iv | AuthenticationTag]): array = 
+proc getByteArray*(unpacker: Unpacker, T: typedesc[Key | Nonce | AuthenticationTag]): array = 
     var bytes: array[sizeof(T), byte]
 
     let bytesRead = unpacker.stream.readData(addr bytes[0], sizeof(T))
@@ -163,8 +163,8 @@ proc serializeHeader*(packer: Packer, header: Header, bodySize: uint32): seq[byt
         .add(bodySize)
         .add(header.agentId)
         .add(header.seqNr) 
-        .addData(header.iv) 
-        .addData(header.gmac)
+        .addData(header.nonce) 
+        .addData(header.mac)
 
     return packer.pack()
 
@@ -177,7 +177,7 @@ proc deserializeHeader*(unpacker: Unpacker): Header=
         size: unpacker.getUint32(),
         agentId: unpacker.getUint32(),
         seqNr: unpacker.getUint32(),
-        iv: unpacker.getByteArray(Iv),
-        gmac: unpacker.getByteArray(AuthenticationTag)
+        nonce: unpacker.getByteArray(Nonce),
+        mac: unpacker.getByteArray(AuthenticationTag)
     )
     

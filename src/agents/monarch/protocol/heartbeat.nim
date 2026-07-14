@@ -12,8 +12,8 @@ proc createHeartbeat*(ctx: AgentCtx): Heartbeat =
             size: 0'u32,
             agentId: string.toUuid(ctx.agentId),
             seqNr: 0'u32,  
-            iv: generateBytes(Iv),
-            gmac: default(AuthenticationTag)
+            nonce: generateBytes(Nonce),
+            mac: default(AuthenticationTag)
         ), 
         listenerId: string.toUuid(ctx.transport.listenerId),
         timestamp: uint32(now().toTime().toUnix())
@@ -35,10 +35,10 @@ proc serializeHeartbeat*(ctx: AgentCtx, request: var Heartbeat): seq[byte] =
     let compressedPayload = compress(body, BestCompression, dfGzip)
 
     # Encrypt check-in / heartbeat request body 
-    let (encData, gmac) = encrypt(ctx.sessionKey, request.header.iv, compressedPayload, request.header.seqNr)
+    let (encData, mac) = encrypt(ctx.sessionKey, request.header.nonce, compressedPayload, request.header.seqNr)
 
-    # Set authentication tag (GMAC)
-    request.header.gmac = gmac
+    # Set authentication tag (MAC)
+    request.header.mac = mac
 
     # Serialize header
     let header = packer.serializeHeader(request.header, uint32(encData.len))

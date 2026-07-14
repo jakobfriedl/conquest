@@ -12,16 +12,13 @@ proc deserializeConfiguration(config: string): AgentCtx =
         
     var aesKey = unpacker.getByteArray(Key)
     let 
-        iv = unpacker.getByteArray(Iv)
-        authTag = unpacker.getByteArray(AuthenticationTag)
+        nonce = unpacker.getByteArray(Nonce)
+        mac = unpacker.getByteArray(AuthenticationTag)
         length = int(unpacker.getUint32())  
 
     # Decrypt profile configuration
-    let (decData, gmac) = decrypt(aesKey, iv, unpacker.getBytes(length))
+    let decData = decrypt(aesKey, nonce, unpacker.getBytes(length), 0, mac)
     wipeKey(aesKey)
-
-    if gmac != authTag: 
-        raise newException(CatchableError, protect("Invalid authentication tag."))
 
     # Parse decrypted profile configuration 
     unpacker = Unpacker.init(Bytes.toString(decData))
