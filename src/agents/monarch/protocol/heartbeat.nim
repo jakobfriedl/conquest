@@ -8,7 +8,7 @@ proc createHeartbeat*(ctx: AgentCtx): Heartbeat =
             magic: MAGIC,
             version: VERSION, 
             packetType: cast[uint8](MSG_HEARTBEAT),
-            flags: cast[uint16](FLAG_ENCRYPTED),
+            flags: cast[uint16](FLAG_ENCRYPTED) or cast[uint16](FLAG_COMPRESSED),
             size: 0'u32,
             agentId: string.toUuid(ctx.agentId),
             seqNr: 0'u32,  

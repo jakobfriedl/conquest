@@ -39,14 +39,15 @@ proc serializeTaskResult*(ctx: AgentCtx, taskResult: var TaskResult): seq[byte] 
         .add(taskResult.resultType)
         .addDataWithLengthPrefix(taskResult.data)
 
-    let body = packer.pack()
+    var payload = packer.pack()
     packer.reset()
 
     # Compress payload 
-    let compressedPayload = compress(body, BestCompression, dfGzip)
+    if (taskResult.header.flags and cast[uint16](FLAG_COMPRESSED)) != 0: 
+        payload = compress(payload, BestCompression, dfGzip)
 
     # Encrypt result body 
-    let (encData, mac) = encrypt(ctx.sessionKey, taskResult.header.nonce, compressedPayload, taskResult.header.seqNr)
+    let (encData, mac) = encrypt(ctx.sessionKey, taskResult.header.nonce, payload, taskResult.header.seqNr)
 
     # Set authentication tag (MAC)
     taskResult.header.mac = mac
