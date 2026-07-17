@@ -1,5 +1,5 @@
 import winim/lean
-import strformat, strutils, ptr_math
+import strformat, strutils
 import ./[beacon, io]
 import ../../../common/utils
 
@@ -101,7 +101,7 @@ proc getSymbolName(objSym: PIMAGE_SYMBOL, stringTable: PCHAR): string =
         return $cast[cstring](addr nameBuf[0])
     else:
         # Long name
-        return $(cast[cstring](stringTable + objSym.N.Name.Long))
+        return $(cast[cstring](cast[uint](stringTable) + uint(objSym.N.Name.Long)))
 
 proc strchr*(str: pointer, c: char): pointer =
     var pStr = cast[ptr char](str)

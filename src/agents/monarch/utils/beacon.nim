@@ -1,5 +1,4 @@
 import winim/lean
-import ptr_math
 import ../../../common/utils 
 
 #[
@@ -44,10 +43,10 @@ proc swapEndianess(indata: uint32): uint32 =
     var testInt: uint32 = 0xaabbccdd'u32
     var outInt: uint32 = indata
     if cast[ptr uint8](addr testInt)[] == 0xdd:
-        cast[ptr uint8](addr outInt)[] = (cast[ptr uint8](addr indata) + 3)[]
-        (cast[ptr uint8](addr outInt) + 1)[] = (cast[ptr uint8](addr indata) + 2)[]
-        (cast[ptr uint8](addr outInt) + 2)[] = (cast[ptr uint8](addr indata) + 1)[]
-        (cast[ptr uint8](addr outInt) + 3)[] = cast[ptr uint8](addr indata)[]
+        cast[ptr UncheckedArray[uint8]](addr outInt)[0] = cast[ptr UncheckedArray[uint8]](addr indata)[3]
+        cast[ptr UncheckedArray[uint8]](addr outInt)[1] = cast[ptr UncheckedArray[uint8]](addr indata)[2]
+        cast[ptr UncheckedArray[uint8]](addr outInt)[2] = cast[ptr UncheckedArray[uint8]](addr indata)[1]
+        cast[ptr UncheckedArray[uint8]](addr outInt)[3] = cast[ptr UncheckedArray[uint8]](addr indata)[0]
     return outInt
 
 #[
