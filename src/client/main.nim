@@ -1,7 +1,7 @@
 import whisky, nimpy
 import tables, times, strutils, sequtils, strformat, json, base64
 import ./utils/[appImGui, globals, dialogs]
-import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, scriptManager, chat]
+import ./views/[dockspace, sessions, listeners, eventlog, console, processBrowser, fileBrowser, scriptManager, chat, targets]
 import ./views/loot/[screenshots, downloads, credentials]
 import ./views/modals/[generatePayload, startListener, connect]
 import ../common/[utils, profile, crypto, serialize]
@@ -9,8 +9,14 @@ import ../types/[common, client, event]
 import ./core/[websocket, database]
 import ./core/scripting/engine
 
+type 
+    Modifier = enum 
+        MODIFIER_INACTIVE = 0
+        MODIFIER_VIEWS = 1 
+        MODIFIER_LOOT = 2
+
 proc main(ip: string = "localhost", port: int = 37573) = 
-    var app = createApp(1024, 800, imnodes = true, title = "Conquest V0.4", docking = true)
+    var app = createApp(1024, 800, imnodes = true, title = "Conquest v0.4", docking = true)
     defer: app.destroyApp()
 
     var imPlotContext = ImPlot_CreateContext()
@@ -21,6 +27,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         showConquest = true
         showSessionsTable = true
         showSessionsGraph = false
+        showTargets = false
         showListeners = true
         showEventlog = true
         showDownloads = false
@@ -30,7 +37,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         showFiles = false
         showScriptManager = false
         showChat = false
-        modifierActive = false
+        modifier = MODIFIER_INACTIVE
 
     var 
         dockTop: ImGuiID = 0
@@ -38,17 +45,19 @@ proc main(ip: string = "localhost", port: int = 37573) =
         dockTopLeft: ImGuiID = 0
         dockTopRight: ImGuiID = 0
 
-    views["Sessions (Table)"] = (shortcut: "Ctrl+A, T", show: addr showSessionsTable)
-    views["Sessions (Graph)"] = (shortcut: "Ctrl+A, G", show: addr showSessionsGraph)
-    views["Listeners"] = (shortcut: "Ctrl+A, L", show: addr showListeners)
-    views["Eventlog"] = (shortcut: "Ctrl+A, E", show: addr showEventlog)
-    views["Chat"] = (shortcut: "Ctrl+A, O", show: addr showChat)
-    views["Loot:Downloads"] = (shortcut: "Ctrl+A, D", show: addr showDownloads)
-    views["Loot:Screenshots"] = (shortcut: "Ctrl+A, S", show: addr showScreenshots)
-    views["Loot:Credentials"] = (shortcut: "Ctrl+A, C", show: addr showCredentials)
-    views["Process Browser"] = (shortcut: "Ctrl+A, P", show: addr showProcesses)
-    views["Filesystem Browser"] = (shortcut: "Ctrl+A, F", show: addr showFiles)
-    views["Script Manager"] = (shortcut: "Ctrl+A, M", show: addr showScriptManager)
+    views["Views:Sessions (Table)"] = (shortcut: "Ctrl+B, A", show: addr showSessionsTable)
+    views["Views:Sessions (Graph)"] = (shortcut: "Ctrl+B, G", show: addr showSessionsGraph)
+    views["Views:Targets"] = (shortcut: "Ctrl+B, T", show: addr showTargets)
+    views["Views:Listeners"] = (shortcut: "Ctrl+B, L", show: addr showListeners)
+    views["Views:Eventlog"] = (shortcut: "Ctrl+B, E", show: addr showEventlog)
+    views["Views:Chat"] = (shortcut: "Ctrl+B, C", show: addr showChat)
+    views["Views:Process Browser"] = (shortcut: "Ctrl+B, P", show: addr showProcesses)
+    views["Views:Filesystem Browser"] = (shortcut: "Ctrl+B, F", show: addr showFiles)
+    views["Views:Script Manager"] = (shortcut: "Ctrl+B, M", show: addr showScriptManager)
+
+    views["Loot:Downloads"] = (shortcut: "Ctrl+L, D", show: addr showDownloads)
+    views["Loot:Screenshots"] = (shortcut: "Ctrl+L, S", show: addr showScreenshots)
+    views["Loot:Credentials"] = (shortcut: "Ctrl+L, C", show: addr showCredentials)
 
     # Initialize database 
     dbInit()
@@ -64,6 +73,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         loadScript(path)
 
     cq.sessions = Sessions(WIDGET_SESSIONS_TABLE, addr showSessionsTable, WIDGET_SESSIONS_GRAPH, addr showSessionsGraph)
+    cq.targets = Targets(WIDGET_TARGETS, addr showTargets)
     cq.chat = Chat(WIDGET_CHAT, addr showChat)
     cq.listeners = ListenersTable(WIDGET_LISTENERS, addr showListeners)
     cq.eventlog = Eventlog(WIDGET_EVENTLOG, addr showEventlog)
@@ -92,40 +102,45 @@ proc main(ip: string = "localhost", port: int = 37573) =
         newFrame()
 
         # Handle keyboard shortcuts to open/focus UI components
+        if io.KeyCtrl and igIsKeyPressed_Bool(ImGui_Key_B, false): 
+            modifier = MODIFIER_VIEWS
+        if io.KeyCtrl and igIsKeyPressed_Bool(ImGui_Key_L, false): 
+            modifier = MODIFIER_LOOT
+
         template openAndFocus(show: var bool, widget: string) =
             show = true
             igSetWindowFocus_Str(widget.cstring)
-            modifierActive = false
+            modifier = MODIFIER_INACTIVE
 
-        # CTRL+B is used as the modifier key 
-        if io.KeyCtrl and igIsKeyPressed_Bool(ImGui_Key_B, false):
-            modifierActive = true
-
-        if modifierActive and not io.KeyCtrl:
+        if (modifier == MODIFIER_VIEWS) and (not io.KeyCtrl):
             if igIsKeyPressed_Bool(ImGui_Key_A, false):
                 openAndFocus(showSessionsTable, WIDGET_SESSIONS_TABLE)
+            elif igIsKeyPressed_Bool(ImGui_Key_G, false):
+                openAndFocus(showSessionsGraph, WIDGET_SESSIONS_GRAPH)
+            elif igIsKeyPressed_Bool(ImGui_Key_T, false):
+                openAndFocus(showTargets, WIDGET_TARGETS)
             elif igIsKeyPressed_Bool(ImGui_Key_L, false):
                 openAndFocus(showListeners, WIDGET_LISTENERS)
             elif igIsKeyPressed_Bool(ImGui_Key_E, false):
                 openAndFocus(showEventlog, WIDGET_EVENTLOG)
-            elif igIsKeyPressed_Bool(ImGui_Key_T, false):
+            elif igIsKeyPressed_Bool(ImGui_Key_C, false):
                 openAndFocus(showChat, WIDGET_CHAT)
             elif igIsKeyPressed_Bool(ImGui_Key_P, false):
                 openAndFocus(showProcesses, WIDGET_PROCESS_BROWSER)
             elif igIsKeyPressed_Bool(ImGui_Key_F, false):
                 openAndFocus(showFiles, WIDGET_FILE_BROWSER)
-            elif igIsKeyPressed_Bool(ImGui_Key_S, false):
+            elif igIsKeyPressed_Bool(ImGui_Key_M, false):
+                openAndFocus(showScriptManager, WIDGET_SCRIPT_MANAGER)
+            elif igIsKeyPressed_Bool(ImGui_Key_Escape, false):
+                modifier = MODIFIER_INACTIVE
+
+        if (modifier == MODIFIER_LOOT) and (not io.KeyCtrl): 
+            if igIsKeyPressed_Bool(ImGui_Key_S, false):
                 openAndFocus(showScreenshots, WIDGET_SCREENSHOTS)
             elif igIsKeyPressed_Bool(ImGui_Key_D, false):
                 openAndFocus(showDownloads, WIDGET_DOWNLOADS)
             elif igIsKeyPressed_Bool(ImGui_Key_C, false):
                 openAndFocus(showCredentials, WIDGET_CREDENTIALS)
-            elif igIsKeyPressed_Bool(ImGui_Key_M, false):
-                openAndFocus(showScriptManager, WIDGET_SCRIPT_MANAGER)
-            elif igIsKeyPressed_Bool(ImGui_Key_G, false):
-                openAndFocus(showSessionsGraph, WIDGET_SESSIONS_GRAPH)
-            elif igIsKeyPressed_Bool(ImGui_Key_Escape, false):
-                modifierActive = false
 
         # Initialize dockspace and docking layout 
         dockspace.draw(addr showConquest, views, addr dockTop, addr dockBottom, addr dockTopLeft, addr dockTopRight)
@@ -138,6 +153,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
         if cq.connection != nil:
             # Draw UI components
             cq.sessions.draw()
+            if showTargets: cq.targets.draw()
             if showListeners: cq.listeners.draw()
             if showEventlog: cq.eventlog.draw()
             if showDownloads: cq.downloads.draw()

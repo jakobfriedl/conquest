@@ -276,15 +276,19 @@ type
         selection*: string
 
     SessionsComponent* = ref object of RootObj
-        agents*:         Table[string, UIAgent]
-        selection*:      ptr ImGuiSelectionBasicStorage
-        focusedConsole*: string
-        interact*:       bool
         tableTitle*:     string
         showTable*:      ptr bool
         graphTitle*:     string
         showGraph*:      ptr bool
+        agents*:         Table[string, UIAgent]
+        selection*:      ptr ImGuiSelectionBasicStorage
+        focusedConsole*: string
+        interact*:       bool
         graph*:          GraphWidget
+
+    TargetsComponent* = ref object of RootObj
+        title*: string
+        showComponent*: ptr bool
 
     # Loot 
     DownloadsComponent* = ref object of RootObj
@@ -420,6 +424,7 @@ type
     Conquest* = ref object
         profile*: Profile
         sessions*: SessionsComponent
+        targets*: TargetsComponent
         listeners*: ListenersTableComponent
         chat*: ChatComponent
         eventlog*: EventlogComponent
