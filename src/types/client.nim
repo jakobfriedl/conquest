@@ -289,6 +289,7 @@ type
     TargetsComponent* = ref object of RootObj
         title*: string
         showComponent*: ptr bool
+        selectedTarget*: tuple[hostname: string, domain: string]
 
     # Loot 
     DownloadsComponent* = ref object of RootObj
