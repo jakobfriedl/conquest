@@ -29,10 +29,14 @@ proc draw*(component: ScreenshotsComponent) =
 
     var pendingNoteEdit = false
     var availableSize = igGetContentRegionAvail()
-        
-    # Left panel (file table) 
-    let childFlags = ImGui_ChildFlags_ResizeX.int32 or ImGui_ChildFlags_NavFlattened.int32
-    if igBeginChild_Str("##Left", vec2(availableSize.x * 0.5f, 0.0f), childFlags, ImGui_WindowFlags_None.int32):
+
+    if igIsKeyPressed_Bool(ImGui_Key_Escape, false):
+        component.selectedLootId = ""
+
+    # Left panel (file table)
+    let hasSelection = component.selectedLootId != "" and component.items.hasKey(component.selectedLootId)
+    let childFlags = ImGui_ChildFlags_NavFlattened.int32 or (if hasSelection: ImGui_ChildFlags_ResizeX.int32 else: 0)
+    if igBeginChild_Str((if hasSelection: "##LeftSplit".cstring else: "##LeftFull".cstring), vec2(if hasSelection: availableSize.x * 0.5f else: 0.0f, 0.0f), childFlags, 0):
 
         let tableFlags = (
             ImGui_TableFlags_Resizable.int32 or
@@ -130,29 +134,20 @@ proc draw*(component: ScreenshotsComponent) =
         component.noteModal.draw()
 
     igEndChild()
-    igSameLine(0.0f, 0.0f)
 
-    if igIsKeyPressed_Bool(ImGui_Key_Escape, false):
-        component.selectedLootId = ""
-
-    # Right panel (image preview)
-    if igBeginChild_Str("##Preview", vec2(0.0f, 0.0f), ImGui_ChildFlags_Borders.int32, ImGui_WindowFlags_None.int32):
-
-        if component.selectedLootId != "" and component.items.hasKey(component.selectedLootId):
+    if hasSelection:
+        igSameLine(0.0f, 0.0f)
+        # Right panel (image preview)
+        if igBeginChild_Str("##Preview", vec2(0.0f, 0.0f), ImGui_ChildFlags_Borders.int32, ImGui_WindowFlags_None.int32):
             let entry = component.items[component.selectedLootId]
 
-            # Check if the texture has already been loaded from the team server
-            # If the texture doesn't exist yet, send a request to the team server to retrieve and render it
             if entry.texture.isNil():
                 cq.connection.sendGetLoot(component.selectedLootId)
-                component.items[component.selectedLootId].texture = ScreenshotTexture() # Ensure that the sendGetLoot() function is sent only once by setting a value for the table key
+                component.items[component.selectedLootId].texture = ScreenshotTexture()
 
             else:
                 let texture = entry.texture
                 if texture.textureId != 0:
                     igImage(ImTextureRef(internal_TexData: nil, internal_TexID: texture.textureId), vec2(texture.width, texture.height), vec2(0, 0), vec2(1, 1))
 
-        else:
-            igText("Select item for preview.")
-
-    igEndChild()
+        igEndChild()

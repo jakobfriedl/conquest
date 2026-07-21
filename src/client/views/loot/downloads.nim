@@ -20,10 +20,14 @@ proc draw*(component: DownloadsComponent) =
 
     var pendingNoteEdit = false
     var availableSize = igGetContentRegionAvail()
-        
-    # Left panel (file table) 
-    let childFlags = ImGui_ChildFlags_ResizeX.int32 or ImGui_ChildFlags_NavFlattened.int32
-    if igBeginChild_Str("##Left", vec2(availableSize.x * 0.66f, 0.0f), childFlags, ImGui_WindowFlags_None.int32):
+
+    if igIsKeyPressed_Bool(ImGui_Key_Escape, false):
+        component.selectedLootId = ""
+
+    # Left panel (file table)
+    let hasSelection = component.selectedLootId != "" and component.items.hasKey(component.selectedLootId)
+    let childFlags = ImGui_ChildFlags_NavFlattened.int32 or (if hasSelection: ImGui_ChildFlags_ResizeX.int32 else: 0)
+    if igBeginChild_Str((if hasSelection: "##LeftSplit".cstring else: "##LeftFull".cstring), vec2(if hasSelection: availableSize.x * 0.66f else: 0.0f, 0.0f), childFlags, 0):
 
         let tableFlags = (
             ImGui_TableFlags_Resizable.int32 or
@@ -125,36 +129,29 @@ proc draw*(component: DownloadsComponent) =
         component.noteModal.draw()
 
     igEndChild()
-    igSameLine(0.0f, 0.0f)
 
-    if igIsKeyPressed_Bool(ImGui_Key_Escape, false):
-        component.selectedLootId = ""
-
-    # Right panel (file content)
-    if igBeginChild_Str("##Preview", vec2(0.0f, 0.0f), ImGui_ChildFlags_Borders.int32, ImGui_WindowFlags_None.int32):
-
-        if component.selectedLootId != "" and component.items.hasKey(component.selectedLootId):
+    if hasSelection:
+        igSameLine(0.0f, 0.0f)
+        # Right panel (file content)
+        if igBeginChild_Str("##Preview", vec2(0.0f, 0.0f), ImGui_ChildFlags_Borders.int32, ImGui_WindowFlags_None.int32):
             let item = component.items[component.selectedLootId].item
-            
+
             if component.items[component.selectedLootId].contents == "":
                 cq.connection.sendGetLoot(item.lootId)
-                component.items[component.selectedLootId].contents = " " 
+                component.items[component.selectedLootId].contents = " "
 
-            else: 
+            else:
                 igText(fmt"[{item.host}] ".cstring)
                 igSameLine(0.0f, 0.0f)
                 igText(item.remotePath.cstring)
-                
+
                 igDummy(vec2(0.0f, 5.0f))
                 igSeparator()
-                igDummy(vec2(0.0f, 5.0f)) 
+                igDummy(vec2(0.0f, 5.0f))
 
                 if component.textarea.isEmpty() and not component.items[component.selectedLootId].contents.isEmptyOrWhitespace():
                     component.textarea.addItem(LOG_OUTPUT, component.items[component.selectedLootId].contents)
-                
-                component.textarea.draw(vec2(-1.0f, -1.0f))
-            
-        else:
-            igText("Select item to preview contents")
 
-    igEndChild()
+                component.textarea.draw(vec2(-1.0f, -1.0f))
+
+        igEndChild()

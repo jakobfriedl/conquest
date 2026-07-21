@@ -37,8 +37,13 @@ proc draw*(component: TargetsComponent) =
         ImGui_TableFlags_SizingStretchSame.int32
     )
 
-    let childFlags = ImGui_ChildFlags_ResizeX.int32 or ImGui_ChildFlags_NavFlattened.int32
-    if igBeginChild_Str("##Left", vec2(availableSize.x * 0.4f, 0.0f), childFlags, ImGui_WindowFlags_None.int32):
+    if igIsKeyPressed_Bool(ImGui_Key_Escape, false):
+        component.selectedTarget.hostname.setLen(0)
+        component.selectedTarget.domain.setLen(0)
+
+    let hasSelection = component.selectedTarget.hostname != ""
+    let childFlags = ImGui_ChildFlags_NavFlattened.int32 or (if hasSelection: ImGui_ChildFlags_ResizeX.int32 else: 0)
+    if igBeginChild_Str((if hasSelection: "##LeftSplit".cstring else: "##LeftFull".cstring), vec2(if hasSelection: availableSize.x * 0.4f else: 0.0f, 0.0f), childFlags, 0):
 
         let cols: int32 = 5
         if igBeginTable("##Targets", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
@@ -77,19 +82,13 @@ proc draw*(component: TargetsComponent) =
             igEndTable()
 
     igEndChild()
-    igSameLine(0.0f, 0.0f)
 
-    if igIsKeyPressed_Bool(ImGui_Key_Escape, false):
-        component.selectedTarget.hostname.setLen(0)
-        component.selectedTarget.domain.setLen(0)
-
-    if igBeginChild_Str("##Details", vec2(0.0f, 0.0f), ImGui_ChildFlags_Borders.int32, ImGui_WindowFlags_None.int32):
-
-        if component.selectedTarget.hostname != "":
+    if hasSelection:
+        igSameLine(0.0f, 0.0f)
+        if igBeginChild_Str("##Details", vec2(0.0f, 0.0f), ImGui_ChildFlags_Borders.int32, ImGui_WindowFlags_None.int32):
             let agents = component.selectedTarget.getAgents()
             if agents.len > 0:
-                # Get metadata from first matching agent
-                let match = agents[0] 
+                let match = agents[0]
                 igTextColored(CONSOLE_INFO, fmt"{match.hostname} [{match.ipInternal}]".cstring)
                 igSeparator()
                 igDummy(vec2(0.0f, 5.0f))
@@ -110,7 +109,8 @@ proc draw*(component: TargetsComponent) =
                 igSeparator()
                 igDummy(vec2(0.0f, 5.0f))
 
-                if igBeginTable("##AgentList", 4, tableFlags, vec2(0.0f, 0.0f), 0.0f):
+                let minTableHeight = max(igGetContentRegionAvail().y, 70.0f)
+                if igBeginTable("##AgentList", 4, tableFlags, vec2(0.0f, minTableHeight), 0.0f):
                     igTableSetupColumn("Agent ID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
                     igTableSetupColumn("Username", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
                     igTableSetupColumn("Process", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
@@ -146,7 +146,4 @@ proc draw*(component: TargetsComponent) =
 
                     igEndTable()
 
-        else:
-            igText("Select a target to view details.")
-
-    igEndChild()
+        igEndChild()
