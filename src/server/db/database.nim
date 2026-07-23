@@ -33,6 +33,7 @@ proc dbInit*(cq: Conquest, dbPath: string) =
             listenerId          TEXT    NOT NULL,
             process             TEXT    NOT NULL,
             pid                 INTEGER NOT NULL,
+            arch                TEXT    NOT NULL, 
             username            TEXT    NOT NULL,
             impersonationToken  TEXT    NOT NULL,
             hostname            TEXT    NOT NULL,

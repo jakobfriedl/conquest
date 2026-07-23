@@ -17,6 +17,10 @@ type
     Profile* = TomlTableRef
 
 type 
+    Architecture* {.size: sizeof(uint8).} = enum
+        ARCH_X64 = "x64"
+        ARCH_X86 = "x86"
+
     CommandType* {.size: sizeof(uint16).} = enum 
         CMD_CONFIG = "config"
         CMD_EXIT = "exit"
@@ -127,21 +131,17 @@ type
         workingHours*: WorkingHours
 
 # Shared types for client & server
-when defined(client) or defined(server): 
-    type 
+when defined(client) or defined(server):
+    type
         # Payload generation
         AgentType* {.size: sizeof(uint8).} = enum
             AGENT_MONARCH = "Monarch"
 
         PayloadType* {.size: sizeof(uint8).} = enum
             PAYLOAD_EXE = "Windows Executable (.exe)"
-            PAYLOAD_SVC = "Windows Service Executable (.svc.exe)" 
+            PAYLOAD_SVC = "Windows Service Executable (.svc.exe)"
             PAYLOAD_DLL = "Windows DLL (.dll)"
             # PAYLOAD_BIN = "Raw shellcode (.bin)"
-
-        Architecture* {.size: sizeof(uint8).} = enum
-            ARCH_X64 = "x64"
-            ARCH_X86 = "x86"
 
         ListenerType* {.size: sizeof(uint8).} = enum
             LISTENER_HTTP = "HTTP"

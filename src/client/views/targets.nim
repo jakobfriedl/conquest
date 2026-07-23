@@ -129,7 +129,7 @@ proc draw*(component: TargetsComponent) =
                         if igTableSetColumnIndex(1):
                             igText(agent.username.cstring)
                         if igTableSetColumnIndex(2):
-                            igText(fmt"{agent.pid}/{agent.process}".cstring)
+                            igText(fmt"{agent.pid}/{agent.process} [{agent.arch}]".cstring)
                         if igTableSetColumnIndex(3):
                             let duration = now() - agent.latestCheckin.fromUnix().local()
                             let totalSeconds = duration.inSeconds

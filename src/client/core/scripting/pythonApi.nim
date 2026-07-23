@@ -16,7 +16,7 @@ import ../../../types/[common, client, protocol]
     - https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/topics_aggressor-scripts/as-resources_functions.htm 
 ]#
 
-proc addArgString*(self: Command, name, description: string, required: bool = false, default: string = "", nargs: int = 1): Command {.exportpy.} = 
+proc addArgString(self: Command, name, description: string, required: bool = false, default: string = "", nargs: int = 1): Command {.exportpy.} = 
     self.arguments.add(Argument(
         name: name,
         description: description,
@@ -29,7 +29,7 @@ proc addArgString*(self: Command, name, description: string, required: bool = fa
     ))
     return self
 
-proc addFlagString*(self: Command, flag, name, description: string, required: bool = false, default: string = "", nargs: int = 1): Command {.exportpy.} =
+proc addFlagString(self: Command, flag, name, description: string, required: bool = false, default: string = "", nargs: int = 1): Command {.exportpy.} =
     self.arguments.add(Argument(
         name: name,
         description: description,
@@ -42,7 +42,7 @@ proc addFlagString*(self: Command, flag, name, description: string, required: bo
     ))
     return self
 
-proc addArgInt*(self: Command, name, description: string, required: bool = false, default: int = 0): Command {.exportpy.} = 
+proc addArgInt(self: Command, name, description: string, required: bool = false, default: int = 0): Command {.exportpy.} = 
     self.arguments.add(Argument(
         name: name,
         description: description,
@@ -55,7 +55,7 @@ proc addArgInt*(self: Command, name, description: string, required: bool = false
     ))
     return self
 
-proc addFlagInt*(self: Command, flag, name, description: string, required: bool = false, default: int = 0): Command {.exportpy.} =
+proc addFlagInt(self: Command, flag, name, description: string, required: bool = false, default: int = 0): Command {.exportpy.} =
     self.arguments.add(Argument(
         name: name,
         description: description,
@@ -68,7 +68,7 @@ proc addFlagInt*(self: Command, flag, name, description: string, required: bool 
     ))
     return self
 
-proc addFlagBool*(self: Command, flag, description: string, default: bool = false): Command {.exportpy.} =
+proc addFlagBool(self: Command, flag, description: string, default: bool = false): Command {.exportpy.} =
     self.arguments.add(Argument(
         description: description,
         isRequired: false,
@@ -80,7 +80,7 @@ proc addFlagBool*(self: Command, flag, description: string, default: bool = fals
     ))
     return self
 
-proc addArgFile*(self: Command, name, description: string, required: bool = false, default: string = ""): Command {.exportpy.} = 
+proc addArgFile(self: Command, name, description: string, required: bool = false, default: string = ""): Command {.exportpy.} = 
     self.arguments.add(Argument(
         name: name,
         description: description,
@@ -93,7 +93,7 @@ proc addArgFile*(self: Command, name, description: string, required: bool = fals
     ))
     return self
 
-proc addFlagFile*(self: Command, flag, name, description: string, required: bool = false, default: string = ""): Command {.exportpy.} = 
+proc addFlagFile(self: Command, flag, name, description: string, required: bool = false, default: string = ""): Command {.exportpy.} = 
     self.arguments.add(Argument(
         name: name,
         description: description,
@@ -106,19 +106,19 @@ proc addFlagFile*(self: Command, flag, name, description: string, required: bool
     ))
     return self
 
-proc setHandler*(self: Command, handler: PyObject): Command {.exportpy.} =          # handler(agentId: string, cmdline: string, args: seq[TaskArg])
+proc setHandler(self: Command, handler: PyObject): Command {.exportpy.} =          # handler(agentId: string, cmdline: string, args: seq[TaskArg])
     if not handler.isNil and pyBuiltinsModule().callable(handler).to(bool):
         self.hasHandler = true
         self.handler = handler
     return self 
 
-proc setOutputHandler*(self: Command, handler: PyObject): Command {.exportpy.} = 
+proc setOutputHandler(self: Command, handler: PyObject): Command {.exportpy.} = 
     if not handler.isNil and pyBuiltinsModule().callable(handler).to(bool):       # handler(agentId: string, output: string)
         self.hasOutputHandler = true
         self.outputHandler = handler
     return self 
 
-proc createCommand*(name, description, example, message: string, mitre: seq[string] = @[]): Command {.exportpy.} = 
+proc createCommand(name, description, example, message: string, mitre: seq[string] = @[]): Command {.exportpy.} = 
     return Command(
         name: name, 
         description: description,
@@ -129,14 +129,14 @@ proc createCommand*(name, description, example, message: string, mitre: seq[stri
         hasHandler: false
     )
 
-proc createModule*(name, description: string) {.exportpy.} =
+proc createModule(name, description: string) {.exportpy.} =
     cq.scriptManager.modules[name] = Module(
         name: name,
         description: description,
         commands: @[]
     )
 
-proc registerToGroup*(self: Command, group: string): Command {.exportpy.} =
+proc registerToGroup(self: Command, group: string): Command {.exportpy.} =
     if not cq.scriptManager.groups.hasKey(group):
         cq.scriptManager.groups[group] = initOrderedTable[string, Command]()
     cq.scriptManager.groups[group][self.name] = self
@@ -148,7 +148,7 @@ proc registerToGroup*(self: Command, group: string): Command {.exportpy.} =
 
     return self
 
-proc registerToModule*(self: Command, module: string): Command {.exportpy.} =
+proc registerToModule(self: Command, module: string): Command {.exportpy.} =
     if not cq.scriptManager.modules.hasKey(module):
         raise newException(CatchableError, fmt"Module not found: {module}.")
     cq.scriptManager.modules[module].commands.add(self)
@@ -164,7 +164,7 @@ proc registerToModule*(self: Command, module: string): Command {.exportpy.} =
 # - s: 2-byte short integer
 # - z: Null-terminated string with length-prefix (UTF-8)
 # - Z: Null-terminated wide-char string with length-prefix (UTF-16)
-proc bof_pack*(types: string, args: seq[PyObject]): string {.exportpy.} = 
+proc bof_pack(types: string, args: seq[PyObject]): string {.exportpy.} = 
     if types.len() != args.len():
         raise newException(ValueError, "Invalid number of arguments.")
     
@@ -209,7 +209,7 @@ proc bof_pack*(types: string, args: seq[PyObject]): string {.exportpy.} =
 
 # Pack object file and params for asynchronous BOF execution using the async-bof post-ex DLL
 # Format: [objLen][objBytes][argsLen][argsBytes][entryFuncLen][entryFunc]
-proc async_bof_pack*(bof, params: string, entryFunc: string = "go"): string {.exportpy.} =
+proc async_bof_pack(bof, params: string, entryFunc: string = "go"): string {.exportpy.} =
     var packer = Packer.init() 
     packer.addDataWithLengthPrefix(string.toBytes(readFile(bof)))
     packer.addDataWithLengthPrefix(if params.len > 0: Bytes.fromHex(string.toBytes(params)) else: @[])
@@ -218,7 +218,7 @@ proc async_bof_pack*(bof, params: string, entryFunc: string = "go"): string {.ex
  
 # Pack arguments into bytes
 # https://sleep.dashnine.org/manual/pack.html
-proc pack*(types: string, args: seq[PyObject]): seq[byte] {.exportpy.} = 
+proc pack(types: string, args: seq[PyObject]): seq[byte] {.exportpy.} = 
     if types.len() != args.len():
         raise newException(ValueError, "Invalid number of arguments.")
     
@@ -269,38 +269,38 @@ proc pack*(types: string, args: seq[PyObject]): seq[byte] {.exportpy.} =
     
     return packer.pack()     
 
-proc debug_log*(message: string) {.exportpy.} = 
+proc debug_log(message: string) {.exportpy.} = 
     echo ">> ", message
 
-proc error*(agentId, message: string, cmdline: string = "") {.exportpy.} = 
+proc error(agentId, message: string, cmdline: string = "") {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
         if cmdline != "":
             cq.sessions.agents[agentId].console.textarea.addItem(LOG_COMMAND, cmdline)
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_ERROR, message)
 
-proc warn*(agentId, message: string) {.exportpy.} = 
+proc warn(agentId, message: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_WARNING, message)
 
-proc info*(agentId, message: string) {.exportpy.} = 
+proc info(agentId, message: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_INFO, message)
 
-proc success*(agentId, message: string) {.exportpy.} = 
+proc success(agentId, message: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_SUCCESS, message)
 
-proc output*(agentId, message: string) {.exportpy.} = 
+proc output(agentId, message: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId): 
         cq.sessions.agents[agentId].console.textarea.addItem(LOG_OUTPUT, message)
 
-proc modules_root*(): string {.exportpy.} = 
+proc modules_root(): string {.exportpy.} = 
     return CONQUEST_ROOT & "/data/modules"
 
-proc resources_root*(): string {.exportpy.} = 
+proc resources_root(): string {.exportpy.} = 
     return CONQUEST_ROOT & "/data/resources"
 
-proc user*(): string {.exportpy.} = 
+proc user(): string {.exportpy.} = 
     return cq.connection.user
 
 proc transportSettings(listenerId: string): string {.exportpy.} = 
@@ -319,6 +319,12 @@ proc transportSettings(listenerId: string): string {.exportpy.} =
 
     return Bytes.toHex(packer.pack())
 
+proc arch(agentId: string): string {.exportpy.} = 
+    if not cq.sessions.agents.hasKey(agentId):
+        raise newException(CatchableError, fmt"Agent does not exist: {agentId}.")
+
+    return cq.sessions.agents[agentId].arch
+
 proc set_impersonation(agentId, token: string) {.exportpy.} = 
     if cq.sessions.agents.hasKey(agentId):
         cq.connection.sendImpersonationToken(agentId, token)
@@ -331,7 +337,7 @@ proc set_workingdir(agentId, path: string) {.exportpy.} =
             else: 
                 none(string)
 
-proc add_screenshot*(agentId, filename: string, contents: seq[byte], note: string = "") {.exportpy.} =
+proc add_screenshot(agentId, filename: string, contents: seq[byte], note: string = "") {.exportpy.} =
     if cq.sessions.agents.hasKey(agentId):
         let loot = LootItem(
             itemType: SCREENSHOT,
@@ -341,7 +347,7 @@ proc add_screenshot*(agentId, filename: string, contents: seq[byte], note: strin
         )
         cq.connection.sendLootModify(loot, contents)
 
-proc add_download*(agentId, filename: string, contents: seq[byte], note: string = "") {.exportpy.} =
+proc add_download(agentId, filename: string, contents: seq[byte], note: string = "") {.exportpy.} =
     if cq.sessions.agents.hasKey(agentId):
         let loot = LootItem(
             itemType: DOWNLOAD,
@@ -351,7 +357,7 @@ proc add_download*(agentId, filename: string, contents: seq[byte], note: string 
         )
         cq.connection.sendLootModify(loot, contents)
 
-proc add_credential*(agentId: string, credType: int, username, value: string, note: string = "") {.exportpy.} =
+proc add_credential(agentId: string, credType: int, username, value: string, note: string = "") {.exportpy.} =
     if cq.sessions.agents.hasKey(agentId):
         let loot = LootItem(
             itemType: CREDENTIAL,
@@ -364,29 +370,29 @@ proc add_credential*(agentId: string, credType: int, username, value: string, no
         cq.connection.sendLootModify(loot, @[])
 
 # Execute a command
-proc execute_command*(agentId, command: string) {.exportpy.} =
+proc execute_command(agentId, command: string) {.exportpy.} =
     sendTask(agentId, command)
 
 # Execute an alias command string instead of the entered command
-proc execute_alias*(agentId, command, alias: string) {.exportpy.} =
+proc execute_alias(agentId, command, alias: string) {.exportpy.} =
     sendTask(agentId, command, alias)
 
-proc get_string*(args: seq[TaskArg], i: int = 0): string {.exportpy.} = 
+proc get_string(args: seq[TaskArg], i: int = 0): string {.exportpy.} = 
     if i >= args.len(): 
         return ""
     return Bytes.toString(args[i].data)
 
-proc get_int*(args: seq[TaskArg], i: int = 0): int {.exportpy.} = 
+proc get_int(args: seq[TaskArg], i: int = 0): int {.exportpy.} = 
     if i >= args.len(): 
         return 0
     return int(cast[int32](Bytes.toUint32(args[i].data)))
 
-proc get_bool*(args: seq[TaskArg], i: int = 0): bool {.exportpy.} = 
+proc get_bool(args: seq[TaskArg], i: int = 0): bool {.exportpy.} = 
     if i >= args.len(): 
         return false
     return cast[bool](args[i].data[0])
 
-proc get_file*(args: seq[TaskArg], i: int = 0): tuple[name: string, data: seq[byte]] {.exportpy.} =
+proc get_file(args: seq[TaskArg], i: int = 0): tuple[name: string, data: seq[byte]] {.exportpy.} =
     if i >= args.len():
         return ("", @[])
     var unpacker = Unpacker.init(Bytes.toString(args[i].data))

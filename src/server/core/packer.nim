@@ -102,7 +102,8 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte], remoteAddress: string):
         ipInternal = unpacker.getDataWithLengthPrefix()
         os = unpacker.getDataWithLengthPrefix()
         process = unpacker.getDataWithLengthPrefix()
-        pid = unpacker.getUint32() 
+        pid = unpacker.getUint32()
+        arch =  unpacker.getUint8()
         isElevated = unpacker.getUint8()
         sleep = unpacker.getUint32()
         modules = unpacker.getUint32()
@@ -119,6 +120,7 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte], remoteAddress: string):
         os: os,
         process: process,
         pid: int(pid),
+        arch: $cast[Architecture](arch),
         elevated: isElevated != 0,
         sleep: int(sleep),
         modules: modules,

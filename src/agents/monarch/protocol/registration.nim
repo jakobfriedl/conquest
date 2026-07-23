@@ -33,6 +33,7 @@ proc serializeRegistrationData*(ctx: AgentCtx, data: var Registration): seq[byte
         .addDataWithLengthPrefix(data.metadata.os)
         .addDataWithLengthPrefix(data.metadata.process)
         .add(data.metadata.pid)
+        .add(data.metadata.arch)
         .add(data.metadata.isElevated)
         .add(data.metadata.sleep)
         .add(data.metadata.jitter)

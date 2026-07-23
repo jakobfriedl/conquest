@@ -54,7 +54,7 @@ proc agentContextMenu(component: SessionsComponent, selected: seq[UIAgent], agen
         igEndMenu()
     
     if igBeginMenu("Copy", true):
-        for label in ["AgentID", "ParentID", "ListenerID", "Username", "Impersonation Token", "Hostname", "Domain", "IP (Internal)", "IP (External)", "Operating System", "Process", "PID"]:
+        for label in ["AgentID", "ParentID", "ListenerID", "Username", "Impersonation Token", "Hostname", "Domain", "IP (Internal)", "IP (External)", "Operating System", "Process", "PID", "Arch"]:
             if igMenuItem(label.cstring, nil, false, true):
                 var toCopy = ""
                 for agent in selected:
@@ -71,6 +71,7 @@ proc agentContextMenu(component: SessionsComponent, selected: seq[UIAgent], agen
                         of "Operating System": agent.os
                         of "Process": agent.process
                         of "PID": $agent.pid
+                        of "Arch": agent.arch
                         else: "") & "\n"
                 igSetClipboardText(toCopy.strip().cstring)
                 igCloseCurrentPopup()
@@ -121,7 +122,7 @@ proc draw*(component: SessionsComponent) =
             ImGui_TableFlags_SizingStretchSame.int32
         )
 
-        let cols: int32 = 13
+        let cols: int32 = 14
         if igBeginTable("Sessions", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
 
             igTableSetupColumn("AgentID", ImGuiTableColumnFlags_NoReorder.int32 or ImGuiTableColumnFlags_NoHide.int32, 0.0f, 0)
@@ -135,6 +136,7 @@ proc draw*(component: SessionsComponent) =
             igTableSetupColumn("OS", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("Process", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("PID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+            igTableSetupColumn("Arch", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("First seen", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
             igTableSetupColumn("Last seen", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
 
@@ -196,6 +198,8 @@ proc draw*(component: SessionsComponent) =
                 if igTableSetColumnIndex(10):
                     igTextWithTooltip($agent.pid)
                 if igTableSetColumnIndex(11):
+                    igTextWithTooltip(agent.arch)
+                if igTableSetColumnIndex(12):
                     let duration = now() - agent.firstCheckin.fromUnix().local()
                     let totalSeconds = duration.inSeconds
 
@@ -205,7 +209,7 @@ proc draw*(component: SessionsComponent) =
 
                     igText(fmt"{hours:02d}:{minutes:02d}:{seconds:02d} ago".cstring)
 
-                if igTableSetColumnIndex(12):
+                if igTableSetColumnIndex(13):
                     let duration = now() - component.agents[agent.agentId].latestCheckin.fromUnix().local()
                     let totalSeconds = duration.inSeconds
 

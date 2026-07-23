@@ -245,6 +245,8 @@ proc main(ip: string = "localhost", port: int = 37573) =
                                 (event.data["ipInternal"].getStr(), CONSOLE_INFO),
                                 ("] [Process: ", CONSOLE_DEFAULT),
                                 ($event.data["pid"].getInt() & "/" & event.data["process"].getStr(), CONSOLE_INFO),
+                                ("] [Arch: ", CONSOLE_DEFAULT),
+                                (event.data["arch"].getStr(), CONSOLE_INFO),
                                 ("]", CONSOLE_DEFAULT),
                             ])
                             cq.sessions.agents[agentId] = agent
@@ -260,6 +262,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         agent.os = event.data["os"].getStr()
                         agent.process = event.data["process"].getStr()
                         agent.pid = event.data["pid"].getInt()
+                        agent.arch = event.data["arch"].getStr()
                         agent.elevated = event.data["elevated"].getBool()
                         agent.sleep = event.data["sleep"].getInt()
                         agent.modules = cast[uint32](event.data["modules"].getInt())

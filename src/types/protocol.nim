@@ -74,6 +74,7 @@ type
         os*: seq[byte]
         process*: seq[byte]
         pid*: uint32
+        arch*: uint8
         isElevated*: uint8
         sleep*: uint32
         jitter*: uint32

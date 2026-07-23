@@ -389,6 +389,7 @@ type
         os*: string
         process*: string
         pid*: int
+        arch*: string
         elevated*: bool 
         sleep*: int 
         modules*: uint32

@@ -103,6 +103,13 @@ proc getProcessExe*(): string =
 proc getProcessId*(): int =
     return int(GetCurrentProcessId())
 
+# Architecture
+proc getArch*(): Architecture = 
+    when defined(amd64): 
+        return ARCH_X64
+    else: 
+        return ARCH_X86
+
 # Current process elevation/integrity level
 proc isElevated*(): bool =
     let 
@@ -285,6 +292,7 @@ proc collectAgentMetadata*(ctx: AgentCtx): AgentMetadata =
         os: string.toBytes(getOSVersion()),
         process: string.toBytes(getProcessExe()),
         pid: cast[uint32](getProcessId()),
+        arch: cast[uint8](getArch()),
         isElevated: cast[uint8](isElevated()),
         sleep: cast[uint32](ctx.sleepSettings.sleepDelay),
         jitter: cast[uint32](ctx.sleepSettings.jitter),
