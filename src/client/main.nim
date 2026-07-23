@@ -16,7 +16,7 @@ type
         MODIFIER_LOOT = 2
 
 proc main(ip: string = "localhost", port: int = 37573) = 
-    var app = createApp(1024, 800, imnodes = true, title = "Conquest v0.4", docking = true)
+    var app = createApp(1024, 800, imnodes = true, title = "Conquest v0.5", docking = true)
     defer: app.destroyApp()
 
     var imPlotContext = ImPlot_CreateContext()

@@ -40,24 +40,27 @@ For more information about architecture, usage and features, check out the [docu
 
 ### Monarch Agent
 
+- Support for x64 & x86 architectures 
 - Different payload types: .exe, .dll, .svc.exe
 - Sleep obfuscation via Ekko, Zilean or Foliage with support for call stack spoofing
 - Asynchronous job system for long-running tasks
 - Stable COFF/BOF Loader
-  - Support for Async BOFs
+  - Support for **Async BOFs**
 - In-memory execution of .NET assemblies
 - In-memory execution of DLLs
 - Token manipulation & token vault
 - AMSI/ETW patching via hardware breakpoints
 - Compile-time string obfuscation
 - Self-destruct functionality
-- Dynamic HTTP channel switching
+- Dynamic network profile switching
 - Execution guardrails
 - Agent kill date & working hours
 
 ## Screenshots
 
 ![Conquest Client](assets/readme-1.png)
+
+![Listener settings](assets/readme-5.png)
 
 ![Payload generation](assets/readme-2.png)
 
