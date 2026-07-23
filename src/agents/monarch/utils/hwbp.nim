@@ -19,7 +19,10 @@ proc ucRet*() {.asmNoStackFrame.} =
 
 proc BLOCK_REAL*(pThreadCtx: PCONTEXT) =
     ## Used in detour function to block execution of original hooked function
-    pThreadCtx.Rip = cast[int](ucRet)
+    when defined(amd64):
+        pThreadCtx.Rip = cast[int](ucRet)
+    else:
+        pThreadCtx.Eip = cast[int](ucRet)
 
 proc setDr7Bits*(currentDr7Register, startingBitPosition, nmbrOfBitsToModify, newBitValue: int): int =
     ## Enable or disable an installed breakpoint
@@ -88,7 +91,7 @@ proc removeHardwareBreakpoint*(drx: DRX): bool =
 
     return true
 
-proc vectorHandler*(pExceptionInfo: ptr EXCEPTION_POINTERS): int = 
+proc vectorHandler*(pExceptionInfo: ptr EXCEPTION_POINTERS): int {.stdcall.} =
     # If the exception is 'EXCEPTION_SINGLE_STEP' then its caused by a bp
     if (pExceptionInfo.ExceptionRecord.ExceptionCode == EXCEPTION_SINGLE_STEP):
         if (cast[int](pExceptionInfo.ExceptionRecord.ExceptionAddress) == pExceptionInfo.ContextRecord.Dr0) or
@@ -126,34 +129,36 @@ proc vectorHandler*(pExceptionInfo: ptr EXCEPTION_POINTERS): int =
 
 #[ Function argument handling ]#
 proc getFunctionArgument*(pThreadCtx: PCONTEXT, dwParamIdx: int): pointer =
-    # amd64
-    case dwParamIdx:
-    of 1:
-        return cast[PULONG](pThreadCtx.Rcx)
-    of 2:
-        return cast[PULONG](pThreadCtx.Rdx)
-    of 3:
-        return cast[PULONG](pThreadCtx.R8)
-    of 4:
-        return cast[PULONG](pThreadCtx.R9)
+    when defined(amd64):
+        case dwParamIdx:
+        of 1:
+            return cast[PULONG](pThreadCtx.Rcx)
+        of 2:
+            return cast[PULONG](pThreadCtx.Rdx)
+        of 3:
+            return cast[PULONG](pThreadCtx.R8)
+        of 4:
+            return cast[PULONG](pThreadCtx.R9)
+        else:
+            return cast[PULONG](pThreadCtx.Rsp + (dwParamIdx * sizeof(PVOID)))
     else:
-        # else more arguments are pushed to the stack
-        return cast[PULONG](pThreadCtx.Rsp + (dwParamIdx * sizeof(PVOID)))
+        return cast[PULONG](pThreadCtx.Esp + (dwParamIdx * sizeof(PVOID)))
 
 proc setFunctionArgument*(pThreadCtx: PCONTEXT, uValue: PULONG, dwParamIdx: int) =
-    # amd64
-    case dwParamIdx:
-    of 1:
-        pThreadCtx.Rcx = cast[int](uValue)
-    of 2:
-        pThreadCtx.Rdx = cast[int](uValue)
-    of 3:
-        pThreadCtx.R8 = cast[int](uValue)
-    of 4:
-        pThreadCtx.R9 = cast[int](uValue)
+    when defined(amd64):
+        case dwParamIdx:
+        of 1:
+            pThreadCtx.Rcx = cast[int](uValue)
+        of 2:
+            pThreadCtx.Rdx = cast[int](uValue)
+        of 3:
+            pThreadCtx.R8 = cast[int](uValue)
+        of 4:
+            pThreadCtx.R9 = cast[int](uValue)
+        else:
+            cast[ptr int](pThreadCtx.Rsp + (dwParamIdx * sizeof(PVOID)))[] = cast[int](uValue)
     else:
-        # else more arguments are pushed to the stack
-        cast[ptr int](pThreadCtx.Rsp + (dwParamIdx * sizeof(PVOID)))[] = cast[int](uValue)
+        cast[ptr int](pThreadCtx.Esp + (dwParamIdx * sizeof(PVOID)))[] = cast[int](uValue)
 
 # getFunctionArgument macros
 template GETPARAM_1*(ctx: PCONTEXT): pointer = getFunctionArgument(ctx, 1)

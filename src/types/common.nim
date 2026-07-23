@@ -141,6 +141,7 @@ when defined(client) or defined(server):
 
         Architecture* {.size: sizeof(uint8).} = enum
             ARCH_X64 = "x64"
+            ARCH_X86 = "x86"
 
         ListenerType* {.size: sizeof(uint8).} = enum
             LISTENER_HTTP = "HTTP"

@@ -85,6 +85,9 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
     let listenerType = ($listener.listenerType)
     let agentType = ($agentBuildInformation.agentType).toLowerAscii() 
     let arch = $agentBuildInformation.arch 
+    let (cpu, gcc) = case agentBuildInformation.arch
+        of ARCH_X64: ("amd64", "x86_64-w64-mingw32-gcc")
+        of ARCH_X86: ("i386", "i686-w64-mingw32-gcc")
 
     var ext: string = ""
     var additionalFlags: string = ""
@@ -108,7 +111,7 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
     # Usage: NIMBLE_PATH=/path/to/vendor/pkgs2 bin/server -p profile.toml
     let nimblePath = getEnv("NIMBLE_PATH")
     let depsDir = if nimblePath != "": fmt"--nimblePath:{nimblePath}" else: ""
-    let buildCommand = fmt"nim {depsDir} --os:windows --cpu:amd64 --gcc.exe:x86_64-w64-mingw32-gcc --gcc.linkerexe:x86_64-w64-mingw32-gcc -o:{outFile} c {CONQUEST_ROOT}/src/agents/{agentType}/main.nim"
+    let buildCommand = fmt"nim {depsDir} --os:windows --cpu:{cpu} --gcc.exe:{gcc} --gcc.linkerexe:{gcc} -o:{outFile} c {CONQUEST_ROOT}/src/agents/{agentType}/main.nim"
     
     # Create agent configuration file (nim.cfg)  
     let placeholder = PLACEHOLDER & "A".repeat(placeholderLength - len(PLACEHOLDER))
