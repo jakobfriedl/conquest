@@ -9,6 +9,7 @@
 - [Sessions](#sessions)
   - [Table View](#table-view)
   - [Graph View](#graph-view)
+- [Targets](#targets)
 - [Agent Console](#agent-console)
 - [Loot](#loot)
   - [Downloads](#downloads)
@@ -26,22 +27,23 @@ Conquest's operator client is developed using a wrapper for the **Dear ImGui** l
 
 ### Keyboard Shortcuts 
 
-Keyboard shortcuts can be used to open and focus UI components. `CTRL + B` is used as a modifier key. Pressing ESC deactivates the modifier key.
+Keyboard shortcuts can be used to open and focus UI components. There are two modifier keys: `CTRL + B` for views and `CTRL + L` for loot. Pressing ESC deactivates the modifier key.
 
 | Action | Shortcut |
 | --- | --- |
-| **Modifier key** | `CTRL + B` |
-| Sessions Table | `MOD + A` |
-| Sessions Graph | `MOD + G` |
-| Listeners | `MOD + L` |
-| Eventlog | `MOD + E` |
-| Operator Chat | `MOD + T` |
-| Downloads | `MOD + D` |
-| Screenshots | `MOD + S` |
-| Credentials | `MOD + C` |
-| Process Browser | `MOD + P` |
-| Filesystem Browser | `MOD + F` |
-| Script Manager | `MOD + M` |
+| Sessions Table | `Ctrl+B, A` |
+| Sessions Graph | `Ctrl+B, G` |
+| Targets | `Ctrl+B, T` |
+| Listeners | `Ctrl+B, L` |
+| Eventlog | `Ctrl+B, E` |
+| Operator Chat | `Ctrl+B, C` |
+| Process Browser | `Ctrl+B, P` |
+| Filesystem Browser | `Ctrl+B, F` |
+| Script Manager | `Ctrl+B, M` |
+| --- | --- |
+| Downloads | `Ctrl+L, D` |
+| Screenshots | `Ctrl+L, S` |
+| Credentials | `Ctrl+L, C` |
 
 ## User Authentication
 
@@ -54,9 +56,13 @@ When startin the client, the operator is met with the user authentication modal.
 
 ## Listeners
 
-The **Listeners** view shows a table with all currently active listeners and provides buttons for starting new listeners and for generating `Monarch` payloads. Right-clicking an active listeners opens a context menu that allows the user to stop the listener and remove it from the team server database. 
+The **Listeners** view shows a table with all currently active listeners and provides buttons for starting new listeners and for generating `Monarch` payloads. Right-clicking an active listeners opens a context menu that allows the user to edit (and restart) the listener or stop the listener and remove it from the team server database. 
 
 ![Listeners View](../assets/client.png)
+
+For HTTP listeners, it is further possible to preview the network profile configuration via the right-click context menu.
+
+![Profile Preview](../assets/client-20.png)
 
 ## Sessions 
 
@@ -86,6 +92,12 @@ To interact with an agent, one can either double-click it in the table or graph 
 ![Session View Context Menu](../assets/client-2.png)
 
 It is also possible to select multiple rows by dragging or holding CTRL/SHIFT and performing actions on all selected rows simultaneously. 
+
+## Targets 
+
+The **Targets** view shows a list of unique hosts based on hostname + domain. A side panel shows metadata of the host as well as the number of sessions for that host on the team server.
+
+![Targets](../assets/client-21.png)
 
 ## Agent Console 
 
@@ -172,7 +184,6 @@ Similarly to the file browser, the **Process Browser** provides a table view of 
 The process list is refreshed either by running the ps command in the agent console or by clicking the refresh icon in the component. When the agent is running in a SYSTEM context, right-clicking a process offers the option to steal its token.
 
 ![File Browser](../assets/client-16.png)
-
 
 ## Script Manager
 

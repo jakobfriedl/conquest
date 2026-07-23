@@ -560,7 +560,7 @@ Return the architecture of the agent (`"x64"` or `"x86"`). Raises an error if th
 ---
 
 #### `conquest.set_impersonation(agentId, token)`
-Set the agent's token impersonation.
+Set the agent's token impersonation. Pass an empty string to clear it.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -570,7 +570,7 @@ Set the agent's token impersonation.
 ---
 
 #### `conquest.set_workingdir(agentId, path)`
-Set the agent's working directory displayed in the console prompt. Pass an empty string to clear it.
+Set the agent's working directory displayed in the console prompt.
 
 | Parameter | Type | Description |
 | --- | --- | --- |

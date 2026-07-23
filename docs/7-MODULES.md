@@ -89,7 +89,7 @@ The core module exposes commands that are built into the agent by default and ar
 Retrieve and update agent settings. Settings that are not specified remain unchanged. Execute this command without arguments to retrieve the current configuration.
 
 ```
-Usage: config [--sleep delay] [--jitter jitter] [--sleepmask technique] [--spoof] [--no-spoof]
+Usage: config [--sleep delay] [--jitter jitter] [--sleepmask technique] [--spoof] [--no-spoof] [--listener listenerId]
 Example: config --sleep 10 --jitter 15 --sleepmask ekko
 
 Optional arguments:
@@ -103,9 +103,14 @@ Optional arguments:
                                          - FOLIAGE
   --spoof                   BOOL       Enable stack spoofing to obfuscate the call stack (only available for EKKO and ZILEAN sleepmask techniques).
   --no-spoof                BOOL       Disable stack spoofing to obfuscate the call stack.
+  --listener listenerId     STRING     Dynamically switch the callback channel to another HTTP listener at runtime.
 ```
 
 ![Config](../assets/modules-1.png)
+
+Using the `--listener` flag, it is possible to dynamically switch to a different HTTP listener by changing callback hosts and the used network profile. 
+
+![Dynamic HTTP Channel Switching](../assets/modules-13.png)
 
 ### exit
 Terminate the agent process or thread. This command is also invoked when the agent is exited from the UI.
