@@ -335,7 +335,7 @@ proc draw*(component: ConsoleComponent) =
     ]#
     igAlignTextToFramePadding()
     let domain = if agent.domain.isEmptyOrWhitespace(): "" else: fmt".{agent.domain}"
-    let sessionInfo = fmt"{agent.username}@{agent.hostname}{domain} | {agent.ipInternal} | {$agent.pid}/{agent.process}".cstring
+    let sessionInfo = fmt"{agent.username}@{agent.hostname}{domain} | {agent.ipInternal} | {$agent.pid}/{agent.process} [{agent.arch}]".cstring
     igTextColored(CONSOLE_GRAY, sessionInfo)
     igSameLine(0.0f, 0.0f)
 

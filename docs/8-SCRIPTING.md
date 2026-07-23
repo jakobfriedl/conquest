@@ -46,7 +46,10 @@ The Python Module API enables users of the Conquest framework to add their own c
     - [`conquest.warn(agentId, message)`](#conquestwarnagentid-message)
     - [`conquest.info(agentId, message)`](#conquestinfoagentid-message)
   - [Utility](#utility)
+    - [`conquest.transportSettings(listenerId) -> str`](#conquesttransportsettingslistenerid---str)
+    - [`conquest.arch(agentId) -> str`](#conquestarchagentid---str)
     - [`conquest.set_impersonation(agentId, token)`](#conquestset_impersonationagentid-token)
+    - [`conquest.set_workingdir(agentId, path)`](#conquestset_workingdiragentid-path)
     - [`conquest.add_screenshot(agentId, filename, contents, note="")`](#conquestadd_screenshotagentid-filename-contents-note)
     - [`conquest.add_download(agentId, filename, contents, note="")`](#conquestadd_downloadagentid-filename-contents-note)
     - [`conquest.add_credential(agentId, credType, username, value, note="")`](#conquestadd_credentialagentid-credtype-username-value-note)
@@ -538,6 +541,24 @@ Log an informational message to the agent console.
 
 ### Utility
 
+#### `conquest.transportSettings(listenerId) -> str`
+Return the HEX-encoded transport settings for an HTTP listener. The packed data contains the listener ID, callback hosts and the C2 profile. Raises an error if the listener does not exist or is not an HTTP listener.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `listenerId` | `str` | ID of the HTTP listener. |
+
+---
+
+#### `conquest.arch(agentId) -> str`
+Return the architecture of the agent (`"x64"` or `"x86"`). Raises an error if the agent does not exist.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `agentId` | `str` | ID of the target agent. |
+
+---
+
 #### `conquest.set_impersonation(agentId, token)`
 Set the agent's token impersonation.
 
@@ -545,6 +566,16 @@ Set the agent's token impersonation.
 | --- | --- | --- |
 | `agentId` | `str` | ID of the target agent. |
 | `token` | `str` | Impersonation token/username of the impersonated user. |
+
+---
+
+#### `conquest.set_workingdir(agentId, path)`
+Set the agent's working directory displayed in the console prompt. Pass an empty string to clear it.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `agentId` | `str` | ID of the target agent. |
+| `path` | `str` | Working directory path, or `""` to clear. |
 
 ---
 
@@ -632,7 +663,7 @@ def _scshell(agentId, cmdline, args):
     path = f"\\\\{target}\\{share}\\{name if name else service}"
     if not path.endswith(".exe"): path += ".exe"
 
-    bof = os.path.join(SCRIPT_DIR, "scshell/scshell.x64.o")
+    bof = os.path.join(SCRIPT_DIR, f"scshell/scshell.{conquest.arch(agentId)}.o")
     params = conquest.bof_pack("zzzb", [
         target,         # z: Target system
         service,        # z: Target service
@@ -685,7 +716,7 @@ cmd_shutdown = (
                 conquest.error(agentId, "Set the --confirm flag to shutdown the target system.", cmdline) if not confirm
                 else (
                     
-                    bof := os.path.join(SCRIPT_DIR, "CS-Remote-OPs-BOF/Remote/shutdown/shutdown.x64.o"),
+                    bof := os.path.join(SCRIPT_DIR, f"CS-Remote-OPs-BOF/Remote/shutdown/shutdown.{conquest.arch(agentId)}.o"),
                     params := conquest.bof_pack("zziss", [
                         target,                 # z: Target system
                         message,                # z: Shutdown message
