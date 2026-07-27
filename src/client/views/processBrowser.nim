@@ -70,12 +70,13 @@ proc draw*(component: ProcessBrowserComponent) =
         ImGuiTreeNodeFlags_OpenOnArrow.int32
     )
 
-    let cols: int32 = 5
+    let cols: int32 = 6
     if igBeginTable("Processes", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
         
         igTableSetupColumn("Process name", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("PID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("PPID", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
+        igTableSetupColumn("Arch", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Session", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("User context", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
 
@@ -119,8 +120,10 @@ proc draw*(component: ProcessBrowserComponent) =
                     if igTableSetColumnIndex(2): 
                         igText(($process.ppid).cstring)
                     if igTableSetColumnIndex(3):
+                        igText(process.arch.cstring) 
+                    if igTableSetColumnIndex(4):
                         igText(($process.session).cstring) 
-                    if igTableSetColumnIndex(4): 
+                    if igTableSetColumnIndex(5): 
                         igText(process.user.cstring)
                     
                     # Remove color highlighting

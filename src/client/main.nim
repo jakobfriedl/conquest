@@ -387,6 +387,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                                 ppid: unpacker.getUint32(),
                                 name: unpacker.getDataWithLengthPrefix(),
                                 user: unpacker.getDataWithLengthPrefix(),
+                                arch: unpacker.getDataWithLengthPrefix(),
                                 session: unpacker.getUint32(),
                                 children: @[]
                             )

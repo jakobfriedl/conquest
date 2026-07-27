@@ -361,6 +361,7 @@ type
         ppid*: uint32 
         name*: string 
         user*: string
+        arch*: string
         session*: uint32
         children*: seq[uint32]
 

@@ -238,9 +238,9 @@ proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], pro
     var output = ""
         
     # Header row
-    let headers = @["PID", "PPID", "Process name", "Session", "User context"]
-    output.add(component.textarea.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(80) & headers[3].alignLeft(10) & headers[4]))
-    output.add(component.textarea.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(80) & "-".repeat(len(headers[3])).alignLeft(10) & "-".repeat(len(headers[4]))))
+    let headers = @["PID", "PPID", "Process name", "Arch", "Session", "User context"]
+    output.add(component.textarea.addItem(LOG_OUTPUT, headers[0].alignLeft(10) & headers[1].alignLeft(10) & headers[2].alignLeft(80) & headers[3].alignLeft(6) & headers[4].alignLeft(10) & headers[5]))
+    output.add(component.textarea.addItem(LOG_OUTPUT, "-".repeat(len(headers[0])).alignLeft(10) & "-".repeat(len(headers[1])).alignLeft(10) & "-".repeat(len(headers[2])).alignLeft(80) & "-".repeat(len(headers[3])).alignLeft(6) & "-".repeat(len(headers[4])).alignLeft(10) & "-".repeat(len(headers[5]))))
     
     # Format and print process
     proc printProcess(pid: uint32, indentSpaces: int = 0) =
@@ -249,7 +249,7 @@ proc listProcesses*(component: ConsoleComponent, rootProcesses: seq[uint32], pro
         
         var process = processTable[pid]
         let processName = " ".repeat(indentSpaces) & process.name
-        let line = ($process.pid).alignLeft(10) & ($process.ppid).alignLeft(10) & processName.alignLeft(80) & ($process.session).alignLeft(10) & process.user                        
+        let line = ($process.pid).alignLeft(10) & ($process.ppid).alignLeft(10) & processName.alignLeft(80) & process.arch.alignLeft(6) & ($process.session).alignLeft(10) & process.user                        
         output.add(component.textarea.addItem(LOG_OUTPUT, line, highlight = int(pid) == cq.sessions.agents[component.agentId].pid))
         
         # Recursively print child processes with indentation

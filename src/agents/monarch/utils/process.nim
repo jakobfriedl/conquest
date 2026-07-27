@@ -7,6 +7,7 @@ type
     NtQuerySystemInformation = proc(systemInformationClass: SYSTEM_INFORMATION_CLASS, systemInformation: PVOID, systemInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}
     NtOpenProcess = proc(hProcess: PHANDLE, desiredAccess: ACCESS_MASK, oa: PCOBJECT_ATTRIBUTES, clientId: PCLIENT_ID): NTSTATUS {.stdcall.}    
     NtOpenProcessToken = proc(processHandle: HANDLE, desiredAccess: ACCESS_MASK, tokenHandle: PHANDLE): NTSTATUS {.stdcall.}
+    NtQueryInformationProcess = proc(processHandle: HANDLE, processInformationClass: PROCESSINFOCLASS, processInformation: PVOID, processInformationLength: ULONG, returnLength: PULONG): NTSTATUS {.stdcall.}
     NtClose = proc(handle: HANDLE): NTSTATUS {.stdcall.}
 
 proc cmp*(x, y: ProcessInfo): int = 
@@ -51,6 +52,7 @@ proc processList*(): seq[ProcessInfo] =
     
     let pNtOpenProcess = cast[NtOpenProcess](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtOpenProcess")))
     let pNtOpenProcessToken = cast[NtOpenProcessToken](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtOpenProcessToken")))
+    let pNtQueryInformationProcess = cast[NtQueryInformationProcess](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtQueryInformationProcess")))
     let pNtClose = cast[NtClose](GetProcAddress(GetModuleHandleA(protect("ntdll")), protect("NtClose")))
     
     while true: 
@@ -66,25 +68,34 @@ proc processList*(): seq[ProcessInfo] =
             ppid = cast[uint32](sysProcessInfo.InheritedFromUniqueProcessId)
             session = cast[uint32](sysProcessInfo.SessionId)
             user: string = ""
+            arch: string = ""
+            wow64Info: ULONG_PTR = 0
 
-        # Retrieve user context    
         InitializeObjectAttributes(addr oa, NULL, 0, 0, NULL)
         clientId.UniqueProcess = cast[HANDLE](pid)
         clientId.UniqueThread = 0
 
         status = pNtOpenProcess(addr hProcess, PROCESS_QUERY_INFORMATION, addr oa, addr clientId)
-        if status == STATUS_SUCCESS and hProcess != 0: 
+        if status == STATUS_SUCCESS and hProcess != 0:
+            
+            # Retrieve username
             status = pNtOpenProcessToken(hProcess, TOKEN_QUERY, addr hToken)
-            if status == STATUS_SUCCESS and hToken != 0: 
+            if status == STATUS_SUCCESS and hToken != 0:
                 user = hToken.getTokenUser().username
                 discard pNtClose(hToken)
+            
+            # Retrieve process architecture
+            if pNtQueryInformationProcess(hProcess, processWow64Information, addr wow64Info, cast[ULONG](sizeof(ULONG_PTR)), NULL) == STATUS_SUCCESS:
+                arch = if wow64Info != 0: "x86" else: "x64"
+            
             discard pNtClose(hProcess)
-                
+
         result.add(ProcessInfo(
             pid: pid,
             ppid: ppid,
             name: (if sysProcessInfo.ImageName.Buffer != nil: $sysProcessInfo.ImageName.Buffer else: ""),
             user: user,
+            arch: arch,
             session: session
         ))
 

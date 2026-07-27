@@ -418,6 +418,7 @@ when MODULE_PROCESS.isEnabled():
                     .add(cast[uint32](procInfo.ppid))                           # [PPID]: 4 bytes 
                     .addDataWithLengthPrefix(string.toBytes(procInfo.name))     # [Process name]: Variable 
                     .addDataWithLengthPrefix(string.toBytes(procInfo.user))     # [Process user]: Variable
+                    .addDataWithLengthPrefix(string.toBytes(procInfo.arch))     # [Process arch]: Variable
                     .add(cast[uint32](procInfo.session))                        # [Session]: 4 bytes
 
             return ctx.createTaskResult(task, STATUS_COMPLETED, RESULT_BINARY, packer.pack())
