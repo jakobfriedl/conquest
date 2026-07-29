@@ -122,7 +122,19 @@ proc displayHelp(component: ConsoleComponent) =
     for group in cq.scriptManager.groups.keys.toSeq.sortedByIt(if it == "core": 0 else: 1):
         component.textarea.addItem(LOG_OUTPUT, group.toUpperAscii())
         for cmd in cq.scriptManager.groups[group].values():
-            component.textarea.addItem(LOG_OUTPUT, " * " & cmd.name.alignLeft(25) & cmd.description)
+            let color = case cmd.category
+                of BEHAVIOUR_CORE: CONSOLE_GRAY 
+                of BEHAVIOUR_API: CONSOLE_WARNING
+                of BEHAVIOUR_BOF: CONSOLE_INFO
+                of BEHAVIOUR_DLL: CONSOLE_SUCCESS
+            
+            component.textarea.addItem(LOG_OUTPUT, @[
+                (" * ", color),
+                (cmd.name.alignLeft(25), CONSOLE_DEFAULT),
+                (($cmd.category).align(6) & " ", color),
+                (cmd.description, CONSOLE_DEFAULT)
+            ])
+
         component.textarea.addItem(LOG_OUTPUT, "")
 
 proc displayCommandHelp(component: ConsoleComponent, command: Command) =

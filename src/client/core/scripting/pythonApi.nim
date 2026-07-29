@@ -118,13 +118,14 @@ proc setOutputHandler(self: Command, handler: PyObject): Command {.exportpy.} =
         self.outputHandler = handler
     return self 
 
-proc createCommand(name, description, example, message: string, mitre: seq[string] = @[]): Command {.exportpy.} = 
+proc createCommand(name, description, example, message: string, mitre: seq[string] = @[], category: string = "BOF"): Command {.exportpy.} = 
     return Command(
         name: name, 
         description: description,
         example: example,
         message: message,
         mitre: mitre,
+        category: parseEnum[CommandCategory](category.toUpperAscii()),
         arguments: @[],
         hasHandler: false
     )

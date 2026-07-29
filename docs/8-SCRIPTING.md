@@ -15,7 +15,7 @@ The Python Module API enables users of the Conquest framework to add their own c
     - [`conquest.unload_script(path)`](#conquestunload_scriptpath)
   - [Command Creation](#command-creation)
     - [`conquest.createModule(name, description)`](#conquestcreatemodulename-description)
-    - [`conquest.createCommand(name, description, example, message, mitre=[]) -> Command`](#conquestcreatecommandname-description-example-message-mitre---command)
+    - [`conquest.createCommand(name, description, example, message, mitre=[], category) -> Command`](#conquestcreatecommandname-description-example-message-mitre-category---command)
     - [`.addArgString(name, description, required=False, default="", nargs=1) -> Command`](#addargstringname-description-requiredfalse-default-nargs1---command)
     - [`.addFlagString(flag, name, description, required=False, default="", nargs=1) -> Command`](#addflagstringflag-name-description-requiredfalse-default-nargs1---command)
     - [`.addArgInt(name, description, required=False, default=0) -> Command`](#addargintname-description-requiredfalse-default0---command)
@@ -128,7 +128,7 @@ Register a new module that can be enabled during payload generation.
 
 ---
 
-#### `conquest.createCommand(name, description, example, message, mitre=[]) -> Command`
+#### `conquest.createCommand(name, description, example, message, mitre=[], category) -> Command`
 Create a new command definition. Returns a `Command` object that can be chained with argument and registration calls.
 
 | Parameter | Type | Description |
@@ -138,6 +138,7 @@ Create a new command definition. Returns a `Command` object that can be chained 
 | `example` | `str` | Example usage shown in the `help` output. |
 | `message` | `str` | Message logged to the console when the command is tasked. |
 | `mitre` | `list[str]` | Optional list of MITRE ATT&CK technique IDs. |
+| `category` | `str` | One of the following command categories:<br> - `CORE`: Housekeeping commands<br> - `API`: Native commands implemented using Windows APIs<br> - `BOF`: Capability executed as a Beacon Object File (**default**)<br> - `DLL`: Capability executed as a post-ex DLL |
 
 ---
 

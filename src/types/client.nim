@@ -22,6 +22,12 @@ type
         of FILE: 
             binDefault*: string
 
+    CommandCategory* = enum 
+        BEHAVIOUR_CORE = "CORE"
+        BEHAVIOUR_API = "API"
+        BEHAVIOUR_BOF = "BOF"
+        BEHAVIOUR_DLL = "DLL"
+
     Command* = ref object of PyNimObjectExperimental
         name*: string 
         description*: string 
@@ -33,6 +39,7 @@ type
         handler*: PyObject 
         hasOutputHandler*: bool 
         outputHandler*: PyObject 
+        category*: CommandCategory
 
     Module* = ref object of RootObj
         name*: string 
