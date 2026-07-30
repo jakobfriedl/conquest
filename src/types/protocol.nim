@@ -10,6 +10,7 @@ type
         FLAG_PLAINTEXT = 0'u16
         FLAG_ENCRYPTED = 1'u16
         FLAG_COMPRESSED = 2'u16
+        FLAG_OUTPUT_HANDLER = 4'u16 
 
     StatusType* = enum 
         STATUS_COMPLETED = 0'u8

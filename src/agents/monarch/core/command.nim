@@ -18,7 +18,7 @@ for cmd in low(CommandType) .. high(CommandType):
 
 # Helper function for checking if a module is enabled
 proc isEnabled(module: ModuleType): bool = 
-    return ((MODULES and cast[uint32](module)) == cast[uint32](module))
+    return (MODULES and module.uint32) == module.uint32
 
 #[
     Built-in modules (always enabled)
@@ -756,15 +756,15 @@ when MODULE_FILESYSTEM.isEnabled():
                     # Build flags and update counters
                     var flags: uint8 = 0
                     if (attrs and FILE_ATTRIBUTE_DIRECTORY) != 0:
-                        flags = flags or cast[uint8](IS_DIR)                    
+                        flags = flags or IS_DIR.uint8                    
                     if (attrs and FILE_ATTRIBUTE_HIDDEN) != 0:
-                        flags = flags or cast[uint8](IS_HIDDEN)
+                        flags = flags or IS_HIDDEN.uint8
                     if (attrs and FILE_ATTRIBUTE_READONLY) != 0:
-                        flags = flags or cast[uint8](IS_READONLY)
+                        flags = flags or IS_READONLY.uint8
                     if (attrs and FILE_ATTRIBUTE_ARCHIVE) != 0:
-                        flags = flags or cast[uint8](IS_ARCHIVE)
+                        flags = flags or IS_ARCHIVE.uint8
                     if (attrs and FILE_ATTRIBUTE_SYSTEM) != 0:
-                        flags = flags or cast[uint8](IS_SYSTEM)
+                        flags = flags or IS_SYSTEM.uint8
                     
                     # Create entry
                     entries.add(DirectoryEntry(
@@ -781,8 +781,8 @@ when MODULE_FILESYSTEM.isEnabled():
             
             # Sort entries using an anonymous procedure (directories first)
             entries.sort do (a, b: DirectoryEntry) -> int:
-                let aIsDir = (a.flags and cast[uint8](IS_DIR)) != 0
-                let bIsDir = (b.flags and cast[uint8](IS_DIR)) != 0
+                let aIsDir = (a.flags and IS_DIR.uint8) != 0
+                let bIsDir = (b.flags and IS_DIR.uint8) != 0
                 
                 if aIsDir != bIsDir:
                     if aIsDir: -1 else: 1

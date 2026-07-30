@@ -371,12 +371,12 @@ proc add_credential(agentId: string, credType: int, username, value: string, not
         cq.connection.sendLootModify(loot, @[])
 
 # Execute a command
-proc execute_command(agentId, command: string) {.exportpy.} =
-    sendTask(agentId, command)
+proc execute_command(agentId, command: string, outputHandler: bool = true) {.exportpy.} =
+    sendTask(agentId, command, outputHandler)
 
 # Execute an alias command string instead of the entered command
-proc execute_alias(agentId, command, alias: string) {.exportpy.} =
-    sendTask(agentId, command, alias)
+proc execute_alias(agentId, command, alias: string, outputHandler: bool = true) {.exportpy.} =
+    sendTask(agentId, command, alias, outputHandler)
 
 proc get_string(args: seq[TaskArg], i: int = 0): string {.exportpy.} = 
     if i >= args.len(): 

@@ -306,7 +306,9 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             agentId = event.data["agentId"].getStr() 
                             message = event.data["message"].getStr()
                             taskId = event.data["taskId"].getStr()
+                            logType = cast[LogType](event.data["logType"].getInt())
                             noOutput = event.data["noOutput"].getBool()
+                            outputHandler = event.data["outputHandler"].getBool()
                             timestamp = event.timestamp.fromUnix().local().format("dd-MM-yyyy HH:mm:ss")
 
                         if taskId != "" and not noOutput: 
@@ -317,7 +319,10 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             if not command.hasOutputHandler:
                                 raise newException(CatchableError, "Command has no output handler.")        
                             
-                            # Process output using callback handler using Python and use conquest.output to print the formatted data to the console.  
+                            # Check if output handler has been enabled
+                            if not outputHandler:
+                                raise newException(CatchableError, "Output handler not enabled.")        
+
                             discard command.outputHandler.callObject(agentId, message)
                         
                         except CatchableError: 
@@ -437,7 +442,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                                 lastWriteTime: lastWriteTime,
                                 isLoaded: false, 
                                 children: 
-                                    if (flags and cast[uint8](IS_DIR)) != 0: some(initOrderedTable[string, DirectoryEntry]()) 
+                                    if (flags and IS_DIR.uint8) != 0: some(initOrderedTable[string, DirectoryEntry]()) 
                                     else: none(OrderedTable[string, DirectoryEntry])
                             ))
 
@@ -464,7 +469,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             if not currentTable[].hasKey(component):
                                 currentTable[][component] = DirectoryEntry(
                                     name: component,
-                                    flags: cast[uint8](IS_DIR),
+                                    flags: IS_DIR.uint8,
                                     children: some(initOrderedTable[string, DirectoryEntry]())
                                 )
                             

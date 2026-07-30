@@ -7,8 +7,8 @@ proc createRegistration*(ctx: AgentCtx, metadata: AgentMetadata): Registration =
         header: Header(
             magic: MAGIC,
             version: VERSION, 
-            packetType: cast[uint8](MSG_REGISTER),
-            flags: cast[uint16](FLAG_ENCRYPTED) or cast[uint16](FLAG_COMPRESSED),
+            packetType: MSG_REGISTER.uint8,
+            flags: FLAG_ENCRYPTED.uint16 or FLAG_COMPRESSED.uint16,
             size: 0'u32,
             agentId: string.toUuid(ctx.agentId),
             seqNr: nextSequence(string.toUuid(ctx.agentId)),                              

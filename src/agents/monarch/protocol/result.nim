@@ -7,8 +7,8 @@ proc createTaskResult*(ctx: AgentCtx, task: Task, status: StatusType, resultType
         header: Header(
             magic: MAGIC,
             version: VERSION, 
-            packetType: cast[uint8](MSG_RESULT),
-            flags: task.header.flags,
+            packetType: MSG_RESULT.uint8,
+            flags: task.header.flags,       # Result packet has the same flags as the corresponding task
             size: 0'u32,
             agentId: string.toUuid(ctx.agentId),
             seqNr: nextSequence(string.toUuid(ctx.agentId)), 
@@ -43,7 +43,7 @@ proc serializeTaskResult*(ctx: AgentCtx, taskResult: var TaskResult): seq[byte] 
     packer.reset()
 
     # Compress payload 
-    if (taskResult.header.flags and cast[uint16](FLAG_COMPRESSED)) != 0: 
+    if (taskResult.header.flags and FLAG_COMPRESSED.uint16) != 0: 
         payload = compress(payload, BestCompression, dfGzip)
 
     # Encrypt result body 

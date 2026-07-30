@@ -291,18 +291,18 @@ proc listDirectoryContents*(component: ConsoleComponent, path: string, entries: 
     # Process entries
     for entry in entries:
         var mode = ""
-        mode &= (if (entry.flags and cast[uint8](IS_DIR)) != 0: (inc totalDirs; "d") else: (inc totalFiles; "-"))
-        mode &= (if (entry.flags and cast[uint8](IS_ARCHIVE)) != 0: "a" else: "-")
-        mode &= (if (entry.flags and cast[uint8](IS_READONLY)) != 0: "r" else: "-")
-        mode &= (if (entry.flags and cast[uint8](IS_HIDDEN)) != 0: "h" else: "-")
-        mode &= (if (entry.flags and cast[uint8](IS_SYSTEM)) != 0: "s" else: "-")
+        mode &= (if (entry.flags and IS_DIR.uint8) != 0: (inc totalDirs; "d") else: (inc totalFiles; "-"))
+        mode &= (if (entry.flags and IS_ARCHIVE.uint8) != 0: "a" else: "-")
+        mode &= (if (entry.flags and IS_READONLY.uint8) != 0: "r" else: "-")
+        mode &= (if (entry.flags and IS_HIDDEN.uint8) != 0: "h" else: "-")
+        mode &= (if (entry.flags and IS_SYSTEM.uint8) != 0: "s" else: "-")
         
         # Date formatting
         let dt = fromUnix(entry.lastWriteTime)
         let dateTimeStr = dt.format("dd/MM/yyyy HH:mm:ss")
         
         # Size formatting
-        let sizeStr = if (entry.flags and cast[uint8](IS_DIR)) != 0: "<DIR>" else: $entry.size
+        let sizeStr = if (entry.flags and IS_DIR.uint8) != 0: "<DIR>" else: $entry.size
         
         # Build the entry line using consistent alignment
         output.add(component.textarea.addItem(LOG_OUTPUT, mode.alignLeft(8) & dateTimeStr.alignLeft(25) & sizeStr.alignLeft(15) & entry.name))

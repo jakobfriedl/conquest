@@ -98,6 +98,7 @@ proc handleResult*(resultData: seq[byte]) =
                 taskResult = cq.deserializeTaskResult(resultData) 
                 taskId = Uuid.toString(taskResult.taskId)
                 agentId = Uuid.toString(taskResult.header.agentId)
+                outputHandler = (taskResult.header.flags and FLAG_OUTPUT_HANDLER.uint16) != 0
             
             cq.sendConsoleItem(agentId, LOG_INFO, fmt"{$resultData.len} bytes received.")
             cq.info(fmt"{$resultData.len} bytes received.")
@@ -282,7 +283,7 @@ proc handleResult*(resultData: seq[byte]) =
                 
                 # Output RESULT_STRING packets to the agent console
                 if cast[ResultType](taskResult.resultType) != RESULT_BINARY:
-                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command, taskId, cast[ResultType](taskResult.resultType) == RESULT_NO_OUTPUT)
+                    cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command, taskId, cast[ResultType](taskResult.resultType) == RESULT_NO_OUTPUT, outputHandler)
 
             of STATUS_FAILED: 
                 cq.sendConsoleItem(agentId, LOG_ERROR, fmt"Task {taskId} failed.")

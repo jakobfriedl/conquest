@@ -120,7 +120,7 @@ proc sendEventlogItem*(cq: Conquest, logType: LogType, message: string, clientId
         eventType: CLIENT_EVENTLOG_ITEM,
         timestamp: now().toTime().toUnix(),
         data: %*{
-            "logType": cast[uint8](logType),
+            "logType": logType.uint8,
             "message": message
         }
     )
@@ -132,17 +132,18 @@ proc sendEventlogItem*(cq: Conquest, logType: LogType, message: string, clientId
     if cq.clients.len > 0 or clientId != "":
         cq.broadcast(event, clientId)
 
-proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: string, command: string = "", taskId: string = "", noOutput: bool = false, clientId: string = "") = 
+proc sendConsoleItem*(cq: Conquest, agentId: string, logType: LogType, message: string, command: string = "", taskId: string = "", noOutput: bool = false, outputHandler: bool = false, clientId: string = "") = 
     let event = Event(
         eventType: CLIENT_CONSOLE_ITEM,
         timestamp: now().toTime().toUnix(),
         data: %*{
             "agentId": agentId,
-            "logType": cast[uint8](logType),
+            "logType": logType.uint8,
             "command": command,
             "taskId": taskId,
             "message": message,
-            "noOutput": noOutput
+            "noOutput": noOutput,
+            "outputHandler": outputHandler
         }
     )
 
@@ -211,7 +212,7 @@ proc sendBuildlogItem*(cq: Conquest, logType: LogType, message: string, clientId
         eventType: CLIENT_BUILDLOG_ITEM,
         timestamp: now().toTime().toUnix(),
         data: %*{
-            "logType": cast[uint8](logType),
+            "logType": logType.uint8,
             "message": message
         }
     )

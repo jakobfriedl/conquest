@@ -26,11 +26,11 @@ proc formatFileSize(size: int): string =
 proc formatFlags(flags: uint8): string =
     # Compact professional format: [d]ir, [a]rchive, [r]eadonly, [h]idden, [s]ystem
     result = "-----"
-    if (flags and cast[uint8](IS_DIR)) != 0:      result[0] = 'd'
-    if (flags and cast[uint8](IS_ARCHIVE)) != 0:  result[1] = 'a'
-    if (flags and cast[uint8](IS_READONLY)) != 0: result[2] = 'r'
-    if (flags and cast[uint8](IS_HIDDEN)) != 0:   result[3] = 'h'
-    if (flags and cast[uint8](IS_SYSTEM)) != 0:   result[4] = 's'
+    if (flags and IS_DIR.uint8) != 0:      result[0] = 'd'
+    if (flags and IS_ARCHIVE.uint8) != 0:  result[1] = 'a'
+    if (flags and IS_READONLY.uint8) != 0: result[2] = 'r'
+    if (flags and IS_HIDDEN.uint8) != 0:   result[3] = 'h'
+    if (flags and IS_SYSTEM.uint8) != 0:   result[4] = 's'
 
 proc draw*(component: FileBrowserComponent) = 
     igBegin(component.title.cstring, component.showComponent, 0)
@@ -105,7 +105,7 @@ proc draw*(component: FileBrowserComponent) =
                 
                 let isSelected = component.selection == path
                 let hasChildren = entry.children.isSome() and entry.children.get().len > 0
-                let isDir = (entry.flags and cast[uint8](IS_DIR)) != 0
+                let isDir = (entry.flags and IS_DIR.uint8) != 0
                 
                 if igTableSetColumnIndex(0):
                     let flags = if hasChildren: treeFlags else: ImGuiTreeNodeFlags_Leaf.int32

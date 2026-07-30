@@ -45,7 +45,7 @@ proc deserializeTaskResult*(cq: Conquest, resultData: seq[byte]): TaskResult =
 
     # Decrypt payload 
     var payload = decrypt(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.nonce, unpacker.getBytes(int(header.size)), header.seqNr, header.mac)
-    if (header.flags and cast[uint16](FLAG_COMPRESSED)) != 0:
+    if (header.flags and FLAG_COMPRESSED.uint16) != 0:
         payload = uncompress(payload, dfGzip)
 
     # Deserialize decrypted data
@@ -88,7 +88,7 @@ proc deserializeNewAgent*(cq: Conquest, data: seq[byte], remoteAddress: string):
     
     # Decrypt payload 
     var payload = decrypt(sessionKey, header.nonce, unpacker.getBytes(int(header.size)) , header.seqNr, header.mac)
-    if (header.flags and cast[uint16](FLAG_COMPRESSED)) != 0:
+    if (header.flags and FLAG_COMPRESSED.uint16) != 0:
         payload = uncompress(payload, dfGzip)
 
     # Deserialize decrypted data
@@ -142,7 +142,7 @@ proc deserializeHeartbeat*(cq: Conquest, data: seq[byte]): Heartbeat =
 
     # Decrypt payload
     var payload = decrypt(cq.agents[Uuid.toString(header.agentId)].sessionKey, header.nonce, unpacker.getBytes(int(header.size)), header.seqNr, header.mac)
-    if (header.flags and cast[uint16](FLAG_COMPRESSED)) != 0:
+    if (header.flags and FLAG_COMPRESSED.uint16) != 0:
         payload = uncompress(payload, dfGzip)
 
     # Deserialize decrypted data

@@ -21,7 +21,7 @@ proc deserializeTask*(ctx: AgentCtx, bytes: seq[byte]): Task =
 
     # Decrypt payload 
     var payload = decrypt(ctx.sessionKey, header.nonce, unpacker.getBytes(int(header.size)), header.seqNr, header.mac)
-    if (header.flags and cast[uint16](FLAG_COMPRESSED)) != 0:
+    if (header.flags and FLAG_COMPRESSED.uint16) != 0:
         payload = uncompress(payload, dfGzip)
 
     # Deserialize decrypted data

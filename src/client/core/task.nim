@@ -144,7 +144,7 @@ proc parseArguments*(command: Command, arguments: seq[string]): seq[TaskArg] =
         
         result.add(taskArg)
 
-proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[string]): Task = 
+proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[string], outputHandler: bool = true): Task = 
     result.taskId = string.toUuid(generateUUID()) 
     result.listenerId = string.toUuid(listenerId)
     result.timestamp = uint32(now().toTime().toUnix())
@@ -158,8 +158,8 @@ proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[s
     var taskHeader: Header
     taskHeader.magic = MAGIC
     taskHeader.version = VERSION 
-    taskHeader.packetType = cast[uint8](MSG_TASK)
-    taskHeader.flags = cast[uint16](FLAG_ENCRYPTED) or cast[uint16](FLAG_COMPRESSED)
+    taskHeader.packetType = MSG_TASK.uint8
+    taskHeader.flags = FLAG_ENCRYPTED.uint16 or FLAG_COMPRESSED.uint16 or (if outputHandler: FLAG_OUTPUT_HANDLER.uint16 else: 0'u16)
     taskHeader.size = 0'u32
     taskHeader.agentId = string.toUuid(agentId)
     taskHeader.seqNr = nextSequence(taskHeader.agentId)
@@ -168,22 +168,22 @@ proc createTask*(agentId, listenerId: string, command: Command, arguments: seq[s
     result.header = taskHeader
 
 # Wrapper functions for dispatching tasks to the agent
-proc sendTask*(agentId, input: string) = 
+proc sendTask*(agentId, input: string, outputHandler: bool = true) = 
     let 
         args = input.parseInput()
         command = cq.scriptManager.getCommand(args[0])
         agent = cq.sessions.agents[agentId]
-        task = createTask(agentId, agent.listenerId, command, args[1..^1])
+        task = createTask(agentId, agent.listenerId, command, args[1..^1], outputHandler)
 
     cq.connection.sendAgentTask(agentId, task, input, fmt"{command.message} ({Uuid.toString(task.taskId)})")
  
-proc sendTask*(agentId, input, alias: string) = 
+proc sendTask*(agentId, input, alias: string, outputHandler: bool = true) = 
     let 
         args = input.parseInput()
         aliasArgs = alias.parseInput()
         command = cq.scriptManager.getCommand(args[0])
         aliasCommand = cq.scriptManager.getCommand(aliasArgs[0])
         agent = cq.sessions.agents[agentId]
-        task = createTask(agentId, agent.listenerId, aliasCommand, aliasArgs[1..^1])
+        task = createTask(agentId, agent.listenerId, aliasCommand, aliasArgs[1..^1], outputHandler)
         
     cq.connection.sendAgentTask(agentId, task, input, fmt"{command.message} ({Uuid.toString(task.taskId)})")
