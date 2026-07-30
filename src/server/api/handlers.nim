@@ -148,8 +148,8 @@ proc handleResult*(resultData: seq[byte]) =
                             cq.sendConsoleItem(agentId, LOG_INFO, fmt"Task {taskId} in progress: {progress:.2f}%")
                 
                 else:
-                    if int(taskResult.length) > 0:        
-                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command, taskId)
+                    if int(taskResult.length) > 0:
+                        cq.sendConsoleItem(agentId, LOG_OUTPUT, Bytes.toString(taskResult.data), command, taskId, outputHandler = outputHandler)
 
                 return
 
