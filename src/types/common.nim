@@ -141,7 +141,7 @@ when defined(client) or defined(server):
             PAYLOAD_EXE = "Windows Executable (.exe)"
             PAYLOAD_SVC = "Windows Service Executable (.svc.exe)"
             PAYLOAD_DLL = "Windows DLL (.dll)"
-            # PAYLOAD_BIN = "Raw shellcode (.bin)"
+            PAYLOAD_BIN = "Raw Shellcode (.bin)"
 
         ListenerType* {.size: sizeof(uint8).} = enum
             LISTENER_HTTP = "HTTP"

@@ -29,7 +29,7 @@ When the `Monarch` is built, it is embedded with a large placeholder field that 
 | --- | --- | --- | 
 | Agent | Dropdown selection | Agent type. Currently, only the `Monarch` agent can be built using the Conquest operator client. | 
 | Architecture | Dropdown selection | Target architecture. Available options are: `x64` and `x86`. | 
-| Payload type | Dropdown selection | Type of payload to create. The following payload types are available: <br> - Windows Executable (.exe)<br> - Windows DLL (.dll)<br> - Windows Service Executable (.svc.exe) | 
+| Payload type | Dropdown selection | Type of payload to create. The following payload types are available: <br> - Windows Executable (.exe)<br> - Windows DLL (.dll)<br> - Windows Service Executable (.svc.exe)<br> - Raw Shellcode (.bin) | 
 | Listener | Dropdown selection | Listener the agent will be configured to connect to. | 
 | Verbose | Boolean | Enable/Disable verbose mode. When this checkbox is checked, the agent prints debug messages in the console. |
 

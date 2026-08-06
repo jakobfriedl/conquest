@@ -18,12 +18,24 @@ export PATH=/home/<user>/.nimble/bin:$PATH
 ```
 
 ## 3. Install Dependencies
+
 Conquest is designed to be compiled and run on Ubuntu/Debian-based systems. To run the operator client on Windows, install these dependencies in WSL instead.
+
 ```bash
 sudo apt update
-sudo apt install gcc g++ make git curl xz-utils
+sudo apt install gcc g++ make mingw-w64 git curl xz-utils
 sudo apt install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgtk2.0-dev
 ```
+
+### Crystal Palace 
+
+Conquest uses the Crystal Palace linker from the [Tradecraft Garden](https://tradecraftgarden.org/) to create position-independent shellcode (.bin) payloads.
+
+It requires the following dependencies
+
+```bash
+sudo apt install zip openjdk-11-jdk
+``` 
 
 ## 4. Compile
 

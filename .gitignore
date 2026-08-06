@@ -1,12 +1,20 @@
-/vendor/*
 *.db
 *.ini
 *.key
 !data/*/.gitkeep
+
 # Ignore binaries 
 bin/*
 !bin/.gitkeep
 *.exe
+
+# Allow loader .o and .spec files (globally ignored otherwise)
+!/data/tools/tcg/**/*.o
+!/data/tools/tcg/**/*.spec
+
+# Ignore custom loaders except the default simple_rdll
+/data/tools/tcg/loaders/*
+!/data/tools/tcg/loaders/default
 
 # Ignore log files
 *.log

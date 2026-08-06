@@ -10,7 +10,6 @@ import ../../types/[common, server]
 const PLACEHOLDER = "PLACEHOLDER"
 
 proc serializeConfiguration(cq: Conquest, agentBuildInformation: AgentBuildInformation, listener: Listener, clientId: string = ""): seq[byte] = 
-    
     var packer = Packer.init()
 
     # Add listener configuration
@@ -80,7 +79,6 @@ proc serializeConfiguration(cq: Conquest, agentBuildInformation: AgentBuildInfor
     return encMaterial & encData 
     
 proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentBuildInformation, listener: Listener, clientId: string = ""): string = 
-    
     # Build payload name 
     let listenerType = ($listener.listenerType)
     let agentType = ($agentBuildInformation.agentType).toLowerAscii() 
@@ -95,13 +93,12 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
     case agentBuildInformation.payloadType
     of PAYLOAD_EXE: ext = "exe"
     of PAYLOAD_SVC: ext = "svc.exe"
-    of PAYLOAD_DLL:
+    of PAYLOAD_DLL, PAYLOAD_BIN:
         ext = "dll"
         additionalFlags = """
 --app:lib
 --nomain
 --passL:"-static-libgcc -static-libstdc++ -Wl,-Bstatic -lpthread""""
-    # of PAYLOAD_BIN: ext = "bin"
 
     let configFile = fmt"{CONQUEST_ROOT}/src/agents/{agentType}/nim.cfg"  
     let outFile = fmt"{CONQUEST_ROOT}/bin/{agentType}.{listenerType.toLowerAscii()}_{arch}.{ext}" 
@@ -116,6 +113,7 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
     # Create agent configuration file (nim.cfg)  
     let placeholder = PLACEHOLDER & "A".repeat(placeholderLength - len(PLACEHOLDER))
     let hideConsole = if not agentBuildInformation.verbose: ",-subsystem,windows" else: ""
+    let payloadType = if agentBuildInformation.payloadType == PAYLOAD_BIN: symbolName(PAYLOAD_DLL) else: symbolName(agentBuildInformation.payloadType) # Shellcode payload is first compiled as a DLL
     var config = fmt"""# Compiler flags
 -d:agent
 -d:release
@@ -127,7 +125,7 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
 -d:MODULES={$agentBuildInformation.modules}
 -d:VERBOSE={$agentBuildInformation.verbose}
 -d:TRANSPORT_{listenerType}
--d:{symbolName(agentBuildInformation.payloadType)}"""
+-d:{payloadType}""" 
 
     writeFile(configFile, config)
 
@@ -163,16 +161,15 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
         cq.error("An error occurred: ", err.msg)
         return ""
     
-proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte], clientId: string = ""): seq[byte] = 
-    
+proc patch(cq: Conquest, path: string, configuration: seq[byte], clientId: string = ""): seq[byte] = 
     cq.info("Patching profile configuration into agent.")
     cq.sendBuildlogItem(LOG_INFO_SHORT, "Patching profile configuration into agent.", clientId = clientId)
 
     try: 
-        var exeBytes = readFile(unpatchedExePath) 
+        var bytes = readFile(path) 
 
         # Find placeholder 
-        let placeholderPos = exeBytes.find(PLACEHOLDER) 
+        let placeholderPos = bytes.find(PLACEHOLDER) 
         if placeholderPos == -1: 
             raise newException(CatchableError, "Placeholder not found.")
         
@@ -181,13 +178,13 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte], cli
 
         # Patch placeholder bytes
         for i, c in Bytes.toString(configuration): 
-            exeBytes[placeholderPos + i] = c 
+            bytes[placeholderPos + i] = c 
 
-        writeFile(unpatchedExePath, exeBytes)
+        writeFile(path, bytes)
 
-        cq.success(fmt"Agent payload patched successfully: {unpatchedExePath}.")
-        cq.sendBuildlogItem(LOG_SUCCESS_SHORT, fmt"Agent payload patched successfully: {unpatchedExePath}.", clientId = clientId)
-        return string.toBytes(exeBytes)
+        cq.success(fmt"Agent payload patched successfully: {path}.")
+        cq.sendBuildlogItem(LOG_SUCCESS_SHORT, fmt"Agent payload patched successfully: {path}.", clientId = clientId)
+        return string.toBytes(bytes)
     
     except CatchableError as err:
         cq.error("An error occurred: ", err.msg) 
@@ -197,7 +194,6 @@ proc patch(cq: Conquest, unpatchedExePath: string, configuration: seq[byte], cli
 
 # Agent generation 
 proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation, clientId: string = ""): tuple[name: string, payload: seq[byte]] =
-
     # Verify that listener exists
     if not cq.dbListenerExists(agentBuildInformation.listenerId): 
         cq.error(fmt"Listener {agentBuildInformation.listenerId} does not exist.")
@@ -206,9 +202,43 @@ proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation, cli
     let listener = cq.listeners[agentBuildInformation.listenerId]
     var config = cq.serializeConfiguration(agentBuildInformation, listener, clientId)
     
-    let unpatchedExePath = cq.compile(config.len(), agentBuildInformation, listener, clientId)
-    if unpatchedExePath.isEmptyOrWhitespace():
+    var path = cq.compile(config.len(), agentBuildInformation, listener, clientId)
+    if path.isEmptyOrWhitespace():
         return 
 
+    var patched = cq.patch(path, config, clientId)
+
+    # Generate shellcode payload using Crystal Palace
+    if agentBuildInformation.payloadType == PAYLOAD_BIN:
+        cq.sendBuildlogItem(LOG_INFO_SHORT, "Creating position-independent shellcode.", clientId = clientId)
+
+        # Default simple RDLL loader
+        let spec = fmt"{CONQUEST_ROOT}/data/tools/tcg/loaders/default/loader.spec"
+        let binPath = path.changeFileExt("bin")
+        let cmd = fmt"{CONQUEST_ROOT}/data/tools/tcg/cpl link {spec} {path} {binPath}"
+
+        try:
+            let process = startProcess("/bin/bash", args=["-c", cmd], options={poUsePath, poStdErrToStdOut})
+            let outputStream = process.outputStream
+
+            var line: string
+            while outputStream.readLine(line):
+                cq.output(line)
+
+            let exitCode = process.waitForExit()
+            if exitCode != 0:
+                cq.error("Crystal Palace linking failed with code ", $exitCode)
+                cq.sendBuildlogItem(LOG_ERROR_SHORT, "Crystal Palace linking failed with code " & $exitCode, clientId = clientId)
+                return
+
+            patched = string.toBytes(readFile(binPath))
+            path = binPath
+            cq.sendBuildlogItem(LOG_SUCCESS_SHORT, "Shellcode generated successfully.", clientId = clientId)
+
+        except CatchableError as err:
+            cq.error("Crystal Palace linking failed: ", err.msg)
+            cq.sendBuildlogItem(LOG_ERROR_SHORT, "Crystal Palace linking failed: " & err.msg, clientId = clientId)
+            return
+
     # Return packet to send to client
-    return (unpatchedExePath.extractFilename(), cq.patch(unpatchedExePath, config, clientId))
+    return (path.extractFilename(), patched)

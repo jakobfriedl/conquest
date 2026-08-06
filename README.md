@@ -41,7 +41,7 @@ For more information about architecture, usage and features, check out the [docu
 ### Monarch Agent
 
 - Support for x64 & x86 architectures 
-- Different payload types: .exe, .dll, .svc.exe
+- Different payload types: .exe, .dll, .svc.exe, .bin
 - Sleep obfuscation via Ekko, Zilean or Foliage with support for call stack spoofing
 - Asynchronous job system for long-running tasks
 - Stable COFF/BOF Loader
