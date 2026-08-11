@@ -24,12 +24,22 @@ proc unregisterCommands(path: string) =
             if cq.scriptManager.groups[cmd.group].len == 0:
                 cq.scriptManager.groups.del(cmd.group)
 
+proc unregisterLoaders(path: string) =
+    if not cq.scriptManager.scripts.hasKey(path):
+        return
+
+    for loader in cq.scriptManager.scripts[path].loaders:
+        cq.scriptManager.loaders.del(loader.name)
+        if cq.connection != nil:
+            cq.connection.sendLoaderRemove(loader.name)
+
 proc load_script*(path: string) {.exportpy.} =
     try:
-        # Unregister commands before reloading
+        # Unregister commands and loaders before reloading
         unregisterCommands(path)
+        unregisterLoaders(path)
         scriptPath = path
-        cq.scriptManager.scripts[path] = (active: false, error: "", commands: @[])
+        cq.scriptManager.scripts[path] = (active: false, error: "", commands: @[], loaders: @[])
 
         let script = readFile(path)
         let builtins = pyBuiltinsModule()
@@ -62,6 +72,7 @@ proc unload_script*(path: string) {.exportpy.} =
     try:
         if dbRemoveScript(path):
             unregisterCommands(path)
+            unregisterLoaders(path)
             cq.scriptManager.scripts.del(path)
 
     except:

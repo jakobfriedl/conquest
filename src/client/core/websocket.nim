@@ -147,3 +147,24 @@ proc sendImpersonationToken*(connection: WsConnection, agentId, impersonationTok
         }
     )
     connection.ws.sendEvent(event, connection.sessionKey)
+
+proc sendLoaderAdd*(connection: WsConnection, name, srcZip: string) =
+    let event = Event(
+        eventType: CLIENT_UDRL_ADD,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "name": name,
+            "srcZip": encode(srcZip)
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)
+
+proc sendLoaderRemove*(connection: WsConnection, name: string) =
+    let event = Event(
+        eventType: CLIENT_UDRL_REMOVE,
+        timestamp: now().toTime().toUnix(),
+        data: %*{
+            "name": name
+        }
+    )
+    connection.ws.sendEvent(event, connection.sessionKey)

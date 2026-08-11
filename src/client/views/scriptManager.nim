@@ -1,5 +1,5 @@
 import imguin/[cimgui, glfw_opengl]
-import tables, sequtils, strformat
+import tables, sequtils, strformat, strutils
 import ../utils/[appImGui, dialogs]
 import ../core/scripting/engine
 import ../../types/client
@@ -8,9 +8,10 @@ proc ScriptManager*(title: string, showComponent: ptr bool): ScriptManagerCompon
     result = new ScriptManagerComponent
     result.title = title
     result.showComponent = showComponent
-    result.scripts = initOrderedTable[string, tuple[active: bool, error: string, commands: seq[tuple[group: string, name: string]]]]()
+    result.scripts = initOrderedTable[string, tuple[active: bool, error: string, commands: seq[tuple[group: string, name: string]], loaders: seq[UDRL]]]()
     result.modules = initTable[string, Module]()
     result.groups = initOrderedTable[string, OrderedTable[string, Command]]()
+    result.loaders = initTable[string, UDRL]() 
     result.selection = ImGuiSelectionBasicStorage_ImGuiSelectionBasicStorage()
 
 proc draw*(component: ScriptManagerComponent) = 
@@ -45,7 +46,7 @@ proc draw*(component: ScriptManagerComponent) =
     )
     
     let cols: int32 = 2
-    if igBeginTable("Modules", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
+    if igBeginTable("Scripts", cols, tableFlags, vec2(0.0f, 0.0f), 0.0f):
         
         igTableSetupColumn("Script Path", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
         igTableSetupColumn("Status", ImGuiTableColumnFlags_None.int32, 0.0f, 0)
@@ -73,11 +74,22 @@ proc draw*(component: ScriptManagerComponent) =
                 discard igSelectable_Bool(path.cstring, isSelected, ImGuiSelectableFlags_SpanAllColumns.int32, vec2(0.0f, 0.0f))
 
                 # Show commands
-                if igIsItemHovered(ImGuiHoveredFlags_None.int32) and entry.commands.len > 0:
+                if igIsItemHovered(ImGuiHoveredFlags_None.int32) and (entry.commands.len > 0 or entry.loaders.len > 0):
                     igBeginTooltip()
-                    igText(fmt"Available commands:".cstring)
-                    for cmd in entry.commands:
-                        igText(fmt" - {cmd.name}".cstring)
+                    
+                    if entry.commands.len() > 0:
+                        igText(fmt"Commands:".cstring)
+                        for cmd in entry.commands:
+                            igText(fmt" - {cmd.name}".cstring)
+
+                        if entry.loaders.len() > 0:
+                            igText("\n".cstring)
+
+                    if entry.loaders.len() > 0: 
+                        igText(fmt"Loaders:".cstring)
+                        for loader in entry.loaders:
+                            igText(fmt" - {loader.name}".cstring)
+
                     igEndTooltip()
 
                 if igTableSetColumnIndex(1):
@@ -97,7 +109,7 @@ proc draw*(component: ScriptManagerComponent) =
                 
             if igMenuItem("Remove", nil, false, true):
                 for i, path in scripts:
-                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)):
+                    if ImGuiSelectionBasicStorage_Contains(component.selection, cast[ImGuiID](i)) and not path.endsWith("default.py"): # Do not remove default script
                         unloadScript(path)
                 ImGuiSelectionBasicStorage_Clear(component.selection)
                 igCloseCurrentPopup()

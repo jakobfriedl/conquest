@@ -56,7 +56,8 @@ proc resetModalValues*(component: PayloadModalComponent) =
     component.listener = 0
     component.agentType = 0
     component.arch = 0
-    component.payloadType = 0 
+    component.payloadType = 0
+    component.loader = 0
     component.verbose = false
     
     # Sleep settings
@@ -153,6 +154,10 @@ proc serializeConfig(component: PayloadModalComponent): string =
     config["agentType"] = %symbolName(AgentType(component.agentType))
     config["arch"] = %symbolName(Architecture(component.arch))
     config["payloadType"] = %symbolName(PayloadType(component.payloadType))
+    if component.payloadType == PAYLOAD_BIN.int32:
+        let loaders = cq.scriptManager.loaders.keys.toSeq()
+        if component.loader < loaders.len().int32:
+            config["loader"] = %loaders[component.loader]
     config["verbose"] = %component.verbose
     config["sleepDelay"] = %component.sleepDelay.int
     config["jitter"] = %component.jitter.int
@@ -297,6 +302,25 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                 availableSize = igGetContentRegionAvail()
                 igSetNextItemWidth(availableSize.x)
                 igCombo_Str("##InputPayloadType", addr component.payloadType, component.payloadTypes.cstring, component.payloadTypes.len().int32)
+
+                if component.payloadType == PAYLOAD_BIN.int32:
+                    let loaderNames = cq.scriptManager.loaders.keys.toSeq()
+                    let preview = if component.loader < loaderNames.len().int32: loaderNames[component.loader] else: ""
+
+                    igText("Loader:       ")
+                    igSameLine(0.0f, textSpacing)
+                    availableSize = igGetContentRegionAvail()
+                    igSetNextItemWidth(availableSize.x)
+                    if igBeginCombo("##InputLoader", preview.cstring, ImGuiComboFlags_None.int32):
+                        for i, name in loaderNames:
+                            let isSelected = component.loader == i.int32
+                            if igSelectable_Bool(name.cstring, isSelected, ImGuiSelectableFlags_None.int32, vec2(0.0f, 0.0f)):
+                                component.loader = i.int32
+                            if isSelected:
+                                igSetItemDefaultFocus()
+                            if igIsItemHovered(ImGuiHoveredFlags_None.int32) and cq.scriptManager.loaders.hasKey(name):
+                                igSetTooltip(cq.scriptManager.loaders[name].description.cstring)
+                        igEndCombo()
 
                 igDummy(vec2(0.0f, 10.0f))
                 igSeparator()
@@ -600,11 +624,19 @@ proc draw*(component: PayloadModalComponent, listeners: seq[UIListener]): AgentB
                     if component.ipGuardrailEnabled: guardrails = guardrails or uint32(GUARDRAIL_IP)
                     if component.hostGuardrailEnabled: guardrails = guardrails or uint32(GUARDRAIL_HOSTNAME)
 
+                    let loaders = cq.scriptManager.loaders.keys.toSeq()
+                    let selectedLoader = 
+                        if component.payloadType == PAYLOAD_BIN.int32 and component.loader < loaders.len().int32: loaders[component.loader] 
+                        else: "default"
+
+                    echo selectedLoader
+
                     result = AgentBuildInformation(
                         listenerId: listeners[component.listener].listenerId,
                         agentType: cast[AgentType](component.agentType),
                         arch: cast[Architecture](component.arch),
                         payloadType: cast[PayloadType](component.payloadType),
+                        loader: selectedLoader,
                         verbose: component.verbose,
                         sleepSettings: SleepSettings(
                             sleepDelay: component.sleepDelay,

@@ -212,8 +212,7 @@ proc agentBuild*(cq: Conquest, agentBuildInformation: AgentBuildInformation, cli
     if agentBuildInformation.payloadType == PAYLOAD_BIN:
         cq.sendBuildlogItem(LOG_INFO_SHORT, "Creating position-independent shellcode.", clientId = clientId)
 
-        # Default simple RDLL loader
-        let spec = fmt"{CONQUEST_ROOT}/data/tools/tcg/loaders/default/loader.spec"
+        let spec = fmt"{CONQUEST_ROOT}/data/tools/tcg/loaders/{agentBuildInformation.loader}/loader.spec"
         let binPath = path.changeFileExt("bin")
         let cmd = fmt"{CONQUEST_ROOT}/data/tools/tcg/cpl link {spec} {path} {binPath}"
 

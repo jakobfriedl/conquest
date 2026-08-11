@@ -399,3 +399,19 @@ proc get_file(args: seq[TaskArg], i: int = 0): tuple[name: string, data: seq[byt
     var unpacker = Unpacker.init(Bytes.toString(args[i].data))
     result.name = unpacker.getDataWithLengthPrefix()                    # File name
     result.data = string.toBytes(unpacker.getDataWithLengthPrefix())    # File contents
+
+proc registerLoader(name: string, description: string, srcZip: seq[byte]) {.exportpy.} =
+    let loader = UDRL(
+        name: name,
+        description: description,
+        srcZip: Bytes.toString(srcZip)
+    )
+    cq.scriptManager.loaders[name] = loader
+
+    if scriptPath != "" and cq.scriptManager.scripts.hasKey(scriptPath):
+        var entry = cq.scriptManager.scripts[scriptPath]
+        entry.loaders.add(loader)
+        cq.scriptManager.scripts[scriptPath] = entry
+
+    if cq.connection != nil:
+        cq.connection.sendLoaderAdd(name, loader.srcZip)

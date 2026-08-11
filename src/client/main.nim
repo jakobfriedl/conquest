@@ -194,6 +194,10 @@ proc main(ip: string = "localhost", port: int = 37573) =
                             connectModal.errorMessage.setLen(0)
                             cq.connection.sendSyncRequest()
 
+                            # Send loaders upon team server connection
+                            for name, loader in cq.scriptManager.loaders:
+                                cq.connection.sendLoaderAdd(name, loader.srcZip)
+
                         else: 
                             connectModal.errorMessage = "Incorrect username or password."
                             # Close websocket connection
@@ -327,7 +331,7 @@ proc main(ip: string = "localhost", port: int = 37573) =
                         
                         except CatchableError: 
                             if cq.sessions.agents.hasKey(agentId):
-                                cq.sessions.agents[agentId].console.textarea.addItem(cast[LogType](event.data["logType"].getInt()), message, timestamp)
+                                cq.sessions.agents[agentId].console.textarea.addItem(logType, message, timestamp)
                     
                     of CLIENT_EVENTLOG_ITEM: 
                         cq.eventlog.textarea.addItem(

@@ -62,7 +62,6 @@ typedef struct {
     char value[];
 } RESOURCE;
 
-
 void fix_section_permissions(DLLDATA * dll, char * dst) {
 	DWORD section_count = dll->NtHeaders->FileHeader.NumberOfSections;
 	IMAGE_SECTION_HEADER * section_hdr = (IMAGE_SECTION_HEADER *) PTR_OFFSET(dll->OptionalHeader, dll->NtHeaders->FileHeader.SizeOfOptionalHeader);
@@ -93,9 +92,6 @@ void fix_section_permissions(DLLDATA * dll, char * dst) {
 	}
 }
 
-/*
- * Our reflective loader itself, have fun, go nuts!
- */
 void go() {
 	DLLDATA      data;
 	IMPORTFUNCS  funcs;

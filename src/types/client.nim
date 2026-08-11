@@ -46,6 +46,13 @@ type
         description*: string
         commands*: seq[Command]
     
+# User-defined reflective Crystal Palace loaders for creating PIC shellcode
+type 
+    UDRL* = ref object of PyNimObjectExperimental
+        name*: string
+        description*: string
+        srcZip*: string
+
 # UI components
 const MAX_INPUT_LENGTH* = 16384 # Input needs to allow enough characters for long commands (e.g. Rubeus tickets, certficates, ...)
 
@@ -201,9 +208,10 @@ type
         payloadTypes*: string  
         sleepMaskTechniques*: string
         
-        listener*: int32 
+        listener*: int32
         agentType*: int32
         payloadType*: int32
+        loader*: int32
         arch*: int32
         sleepDelay*: uint32
         jitter*: int32 
@@ -265,9 +273,10 @@ type
     ScriptManagerComponent* = ref object of RootObj
         title*: string 
         showComponent*: ptr bool
-        scripts*: OrderedTable[string, tuple[active: bool, error: string, commands: seq[tuple[group: string, name: string]]]]
+        scripts*: OrderedTable[string, tuple[active: bool, error: string, commands: seq[tuple[group: string, name: string]], loaders: seq[UDRL]]]
         modules*: Table[string, Module]
         groups*: OrderedTable[string, OrderedTable[string, Command]] 
+        loaders*: Table[string, UDRL]
         selection*: ptr ImGuiSelectionBasicStorage
 
     ProcessBrowserComponent* = ref object of RootObj

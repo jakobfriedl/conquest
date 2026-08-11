@@ -1,4 +1,4 @@
-import mummy, mummy/routers
+import mummy, mummy/routers, zippy/ziparchives
 import terminal, json, math, base64, times, os
 import strutils, strformat, system, tables
 
@@ -173,6 +173,28 @@ proc websocketHandler(ws: WebSocket, event: WebSocketEvent, message: Message) {.
                     if cq.dbUpdateAgent(cq.agents[agentId]):
                         # Broadcast updated token to all connected clients
                         cq.sendImpersonationToken(agentId, cq.agents[agentId].impersonationToken)
+
+                of CLIENT_UDRL_ADD:
+                    let 
+                        name = event.data["name"].getStr()
+                        zipData = decode(event.data["srcZip"].getStr())
+                        loaderDir = fmt"{CONQUEST_ROOT}/data/tools/tcg/loaders/{name}"
+                        zipPath = fmt"/tmp/{name}.zip"
+                    
+                    writeFile(zipPath, zipData)
+                    try: 
+                        extractAll(zipPath, loaderDir)
+                    except: 
+                        # Loader directory already exists
+                        # We do not overwrite existing loader directories
+                        discard
+                    removeFile(zipPath)
+
+                of CLIENT_UDRL_REMOVE:
+                    let name = event.data["name"].getStr()
+                    let loaderDir = fmt"{CONQUEST_ROOT}/data/tools/tcg/loaders/{name}"
+                    if dirExists(loaderDir) and name != "default":
+                        removeDir(loaderDir)
 
                 else: discard
 

@@ -147,11 +147,12 @@ when defined(client) or defined(server):
             LISTENER_HTTP = "HTTP"
             LISTENER_SMB = "SMB"
 
-        AgentBuildInformation* = ref object 
+        AgentBuildInformation* = ref object
             listenerId*: string
             agentType*: AgentType
             arch*: Architecture
             payloadType*: PayloadType
+            loader*: string
             verbose*: bool
             sleepSettings*: SleepSettings
             guardrails*: Guardrails

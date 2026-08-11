@@ -1,5 +1,7 @@
 import conquest
-import re
+import re, os, shutil
+
+SCRIPT_DIR = os.path.dirname(__file__)
 
 # Create default modules (selectable during payload generation)
 conquest.createModule("shell", "Execute shell commands.")
@@ -11,6 +13,16 @@ conquest.createModule("process", "Interact with Windows processes.")
 conquest.createModule("filesystem", "Conduct simple filesystem operations via Windows API.")
 conquest.createModule("screenshot", "Take and retrieve a screenshot of the target desktop.")
 conquest.createModule("token", "Manipulate Windows access tokens.")
+
+# Create default loader
+zip_path = shutil.make_archive("default", "zip", os.path.join(SCRIPT_DIR, "tools/tcg/loaders/default"))
+with open(zip_path, "rb") as f:
+    conquest.registerLoader(
+        "default", 
+        "Simple RDLL loader with XOR resource masking.", 
+        f.read()
+    )
+os.remove(zip_path)
 
 # Built-in modules (always enabled)
 SLEEPMASK_TECHNIQUES = {
