@@ -19,7 +19,7 @@ zip_path = shutil.make_archive("default", "zip", os.path.join(SCRIPT_DIR, "tools
 with open(zip_path, "rb") as f:
     conquest.registerLoader(
         "default", 
-        "Simple RDLL loader with XOR resource masking.", 
+        "Simple RDLL loader with XOR resource masking.",  
         f.read()
     )
 os.remove(zip_path)
