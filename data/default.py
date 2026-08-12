@@ -217,21 +217,21 @@ cmd_ls = (
 )
 
 cmd_rm = (
-    conquest.createCommand(name="rm", description="Remove a file.", example="rm C:\\Windows\\Tasks\\payload.exe", message="Tasked agent to remove file.")
+    conquest.createCommand(name="rm", description="Remove a file.", example="rm C:\\Windows\\Tasks\\payload.exe", message="Tasked agent to remove file.", category="API")
             .addArgString("file", "Relative or absolute path to the file to delete.", True)
             .registerToGroup("situational awareness")
             .registerToModule("filesystem")
 )
 
 cmd_rmdir = (
-    conquest.createCommand(name="rmdir", description="Remove a directory.", example="rmdir C:\\Payloads", message="Tasked agent to remove directory.")
+    conquest.createCommand(name="rmdir", description="Remove a directory.", example="rmdir C:\\Payloads", message="Tasked agent to remove directory.", category="API")
             .addArgString("directory", "Relative or absolute path to the directory to delete.", True)
             .registerToGroup("situational awareness")
             .registerToModule("filesystem")
 )
 
 cmd_move = (
-    conquest.createCommand(name="move", description="Move a file or directory.", example="move source.exe C:\\Windows\\Tasks\\destination.exe", message="Tasked agent to move file or directory.")
+    conquest.createCommand(name="move", description="Move a file or directory.", example="move source.exe C:\\Windows\\Tasks\\destination.exe", message="Tasked agent to move file or directory.", category="API")
             .addArgString("source", "Source file path.", True)
             .addArgString("destination", "Destination file path.", True)
             .registerToGroup("situational awareness")
@@ -239,7 +239,7 @@ cmd_move = (
 )
 
 cmd_copy = (
-    conquest.createCommand(name="copy", description="Copy a file or directory.", example="copy source.exe C:\\Windows\\Tasks\\destination.exe", message="Tasked agent to copy file or directory.")
+    conquest.createCommand(name="copy", description="Copy a file or directory.", example="copy source.exe C:\\Windows\\Tasks\\destination.exe", message="Tasked agent to copy file or directory.", category="API")
             .addArgString("source", "Source file path.", True)
             .addArgString("destination", "Destination file path.", True)
             .registerToGroup("situational awareness")
