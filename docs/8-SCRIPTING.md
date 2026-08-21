@@ -57,9 +57,12 @@ The Python Module API enables users of the Conquest framework to add their own c
     - [`conquest.resources_root() -> str`](#conquestresources_root---str)
     - [`conquest.user() -> str`](#conquestuser---str)
     - [`conquest.debug_log(message)`](#conquestdebug_logmessage)
+  - [User-Defined Reflective Loaders (UDRL)](#user-defined-reflective-loaders-udrl)
+    - [`conquest.registerLoader(name, description, srcZip)`](#conquestregisterloadername-description-srczip)
 - [Examples](#examples)
   - [scshell](#scshell)
   - [shutdown](#shutdown)
+  - [Simple RDLL](#simple-rdll)
 
 ## Script Manager
 
@@ -641,6 +644,34 @@ Print a message to stdout on the client for debugging purposes.
 
 ---
 
+### User-Defined Reflective Loaders (UDRL)
+
+Conquest supports user-defined reflective loaders for the creation of the position-independent shellcode. Currently, only loaders developed using [Crystal Palace](https://tradecraftgarden.org/crystalpalace.html) are handled. These loaders allow the operators to bring their own evasion tradecraft to Conquest's default agent, enabling techniques like call stack spoofing, indirect syscalls or resource masking. There is a simple RDLL loader with basic XOR resource masking included in the repository by default.
+
+UDRLs should be built and compiled on the operator client, from where the Python module is loaded and must have the `loader.spec` file at the directory root. The entire loader directory is zipped and sent to the team server via a Websocket event, where it is then extracted into [data/tools/tcg/loaders](../data/tools/tcg/loaders/). All registered loaders can be selected during the generation of a raw shellcode payload. When the registering script is unloaded, its loaders are removed from both the client and the team server.
+
+![Selecting a loader](../assets/scripting-1.png)
+
+When a shellcode payload is requested to be built, the team server first builds a DLL and then uses the `cpl link` command from Crystal Palace to create a PIC payload, which it sends back to the client.
+
+#### `conquest.registerLoader(name, description, srcZip)`
+
+Register a Crystal Palace reflective loader.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `name` | `str` | Unique loader name. Used as the directory name under `data/tools/tcg/loaders/` on the team server. Existing loader directories are not overwritten. |
+| `description` | `str` | Short description displayed as a tooltip in the loader dropdown during payload generation. |
+| `srcZip` | `bytes` | Raw bytes of a ZIP archive containing the Crystal Palace loader project (`loader.spec`, `src/`, `bin/`). |
+
+Use utilities like `shutil` to create the ZIP archives.
+
+```python
+shutil.make_archive("default", "zip", os.path.join(SCRIPT_DIR, "tools/tcg/loaders/default"))
+```
+
+---
+
 ## Examples 
 
 For implementation references and examples, check out the official [conquest-modules](https://github.com/jakobfriedl/conquest-modules) GitHub repository. The following two examples are samples from this collection.
@@ -731,4 +762,23 @@ cmd_shutdown = (
                 )
             ))
 ).registerToGroup("remote operations")
+```
+
+### Simple RDLL
+
+```python
+import conquest
+import re, os, shutil
+
+SCRIPT_DIR = os.path.dirname(__file__)
+
+# Create default loader
+zip_path = shutil.make_archive("default", "zip", os.path.join(SCRIPT_DIR, "tools/tcg/loaders/default"))
+with open(zip_path, "rb") as f:
+    conquest.registerLoader(
+        "default", 
+        "Simple RDLL loader with XOR resource masking.",  
+        f.read()
+    )
+os.remove(zip_path)
 ```

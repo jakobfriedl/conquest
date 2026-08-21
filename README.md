@@ -35,7 +35,7 @@ For more information about architecture, usage and features, check out the [docu
 - File and process browser components
 - Console history and auto-complete for agent commands
 - Powerful console search functionality with Regex support
-- Powerful and extensible Python Scripting API for creating commands
+- Powerful and extensible Python Scripting API for creating commands and UDRLs
 - Battle-tested [module ecosystem](https://github.com/jakobfriedl/conquest-modules) 
 
 ### Monarch Agent
