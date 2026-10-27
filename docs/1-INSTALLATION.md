@@ -101,3 +101,11 @@ This will automatically resolve all dependencies, build both the server and clie
 ### Dependencies
 The following packages will be pulled in automatically:
 `nim`, `nimble`, `git`, `curl`, `base-devel`, `xz`, `glfw-x11`, `mesa`, `glu`, `libx11`, `libxrandr`, `libxinerama`, `libxcursor`, `libxi`, `gtk2`
+
+# Nix development environment
+
+Conquest features a [Nix flake](../flake.nix), with which it is possible to enter a development environment where all the OS and Nim dependencies are installed automatically. Conquest binaries (server, client) need to be compiled and executed from this shell using the abovementioned commands. The development environment can be entered by running the following:
+
+```bash
+nix develop
+```

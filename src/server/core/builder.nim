@@ -137,8 +137,8 @@ proc compile(cq: Conquest, placeholderLength: int, agentBuildInformation: AgentB
     cq.sendBuildlogItem(LOG_INFO_SHORT, "Compiling agent...", clientId = clientId)
     
     try:
-        # Using the startProcess function from the 'osproc' module, it is possible to retrieve the output as it is recenonceed, line-by-line instead of all at once
-        let process = startProcess("/bin/bash", args=["-c", buildCommand], options={poUsePath, poStdErrToStdOut})
+        # Using the startProcess function from the 'osproc' module, it is possible to retrieve the output as it is received, line-by-line instead of all at once
+        let process = startProcess("/bin/sh", args=["-c", buildCommand], options={poStdErrToStdOut})
         let outputStream = process.outputStream
 
         var line: string

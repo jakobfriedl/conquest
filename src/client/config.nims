@@ -41,6 +41,7 @@ when STATIC_LINK_GLFW: # GLFW static link
         switch "passL","-lpthread"
         switch "passL","-ldl"
         switch "passL","-lm"
+        switch "passL","-lstdc++"
 else: # shared/dll
     when defined(windows):
         if TC == "vcc":

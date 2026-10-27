@@ -136,7 +136,7 @@ proc createApp*(w: cint = 1024, h: cint = 900, imnodes: bool = false, implot: bo
     var pio = igGetIO()
     pio.IniFileName = (CONQUEST_ROOT & "/src/client/layout.ini").cstring
     setTheme(Dark)
-    discard setupFonts() 
+    discard setupFonts()
     result.showWindowDelay = 2
 
 # pollEvents
